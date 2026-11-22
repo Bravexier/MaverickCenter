@@ -93,7 +93,7 @@ function ecrire(db, table, cle, valeurs) {
 }
 
 /** Recalcule la clé de chaque mot-clé, comme le service en fin de lot (en deux passes : `mot_cle.cle` est unique). */
-function recalculerLesCles(db) {
+export function recalculerLesCles(db) {
   const motsCles = motsClesDeLaBase(db);
   const cles = clesDesMotsCles(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])));
   for (const m of motsCles) db.prepare('UPDATE mot_cle SET cle = ? WHERE id = ?').run(`provisoire-${m.id}`, m.id);

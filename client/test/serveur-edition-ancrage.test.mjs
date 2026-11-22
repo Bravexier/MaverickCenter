@@ -1,0 +1,292 @@
+// L'action « Préparer l'ancrage » (décision R309, docs/chantier-ancrage-mots-cles.md, §5 ; serveur/edition-ancrage-lots.mjs) : les lots du plan déposés et
+// enchaînés par le vrai service, sur une petite base d'essai (un dépôt coûte un essai complet sur une copie). Un seul enchaînement est
+// joué, puis copié pour chaque test qui le prolonge. Noms inventés ; les lignes se prennent par ordre d'id, aucune valeur de règle n'est lue.
+//   node --test test/serveur-edition-ancrage.test.mjs
+import assert from 'node:assert/strict';
+import { copyFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
+import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
+import { lignesAnnuleesDeLAncrage, preparerLAncrage } from '../serveur/edition-ancrage-lots.mjs';
+import { annuler, annulerUneLigne, deposerEtAppliquer, lire } from '../serveur/edition-lots.mjs';
+import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
+import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
+import { messageDeLAncrage } from '../src/lib/lots-rendu.mjs';
+import { CATEGORIES_NOUVELLES, TYPE_UNIQUE } from '../src/lib/mots-cles-ancrage.mjs';
+import { baseDAncrage, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+
+const racine = dossierTemporaire('ancrage-action');
+let n = 0;
+const OUVERT = { controle: { ouvertHorsEdition: true }, enArrierePlan: false };
+const nomInvente = (suffixe) => `Zephyrion ${suffixe} ${process.pid}`;
+
+/**
+ * Une petite base d'essai (test/aide-ancrage.mjs), en fichier : deux capacités, une page de guide, une page de race désignée par un mot-clé au nom différent (un
+ * renommage), deux sorts d'une magie, et deux mots-clés de la liste du type unique, à plusieurs catégories (`aReclasser`).
+ */
+function nouvelle({ pageDeMagie = true } = {}) {
+  const memoire = baseDAncrage();
+  const capacites = ['capacites/zephyrion-a', 'capacites/zephyrion-b'];
+  capacites.forEach((id, i) => poserPage(memoire, id, nomInvente(`capacité ${i}`)));
+  const guide = poserPage(memoire, 'guide/zephyrion', nomInvente('guide'));
+  const race = poserPage(memoire, 'races/zephyrion', nomInvente('race'));
+  const motCleRace = poserMotCle(memoire, { libelle: nomInvente('ancien nom'), url: adresseDeLaPage(race), categories: ['Race'] });
+  // la magie a sa page, déjà ancrée : l'adresse d'un sort y renvoie (sans elle, le service refuse le lot des sorts)
+  const titreMagie = nomInvente('magie');
+  const idMagie = 'magies/zephyrion';
+  let motCleMagie = null;
+  if (pageDeMagie) {
+    poserPage(memoire, idMagie, titreMagie);
+    motCleMagie = poserMotCle(memoire, { libelle: titreMagie, url: adresseDeLaPage(idMagie), categories: ['Magie'] });
+    memoire.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(motCleMagie, idMagie);
+  }
+  const magie = poserMagie(memoire, idMagie, titreMagie, { mot_cle_id: motCleMagie });
+  const sorts = [0, 1].map((i) => poserSort(memoire, magie, nomInvente(`sort ${i}`)));
+  const aReclasser = TYPE_UNIQUE['Équipement'].slice(0, 2);
+  aReclasser.forEach((id, i) => poserMotCle(memoire, { id, libelle: nomInvente(`reclassé ${i}`), categories: ['Équipement', 'Combat'] }));
+  recalculerLesCles(memoire);
+  const dossier = join(racine, `b${(n += 1)}`);
+  mkdirSync(dossier, { recursive: true });
+  const chemin = join(dossier, 'vivante.db');
+  memoire.exec(`VACUUM INTO '${chemin.replaceAll("'", "''")}'`);
+  memoire.close();
+  const db = ouvrirBaseVivante(chemin);
+  return { db, base: () => db, dossier: join(racine, `essais${n}`), chemin, monde: { capacites, guide, race, motCleRace, sorts, aReclasser } };
+}
+
+/** L'enchaînement complet, joué une seule fois ; chaque test en prend une copie. */
+let chaine = null;
+const laChaine = () => (chaine ??= (async () => {
+  const m = nouvelle();
+  const avant = new Set(controlerLeContenu(m.db).problemes);
+  const resultat = await preparerLAncrage(m.base, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT });
+  return { ...m, avant, resultat };
+})());
+
+/** Une copie de la base après l'enchaînement. */
+async function apresLaChaine() {
+  const c = await laChaine();
+  const dossier = join(racine, `c${(n += 1)}`);
+  mkdirSync(dossier, { recursive: true });
+  const chemin = join(dossier, 'vivante.db');
+  copyFileSync(c.chemin, chemin);
+  const db = ouvrirBaseVivante(chemin);
+  return { db, base: () => db, dossier: join(racine, `essais${n}`), monde: c.monde, resultat: c.resultat };
+}
+
+const lancer = (m, options = {}) => preparerLAncrage(m.base, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT, ...options });
+const ancre = (m, table, id) => m.db.prepare(`SELECT mot_cle_id AS a FROM "${table}" WHERE id = ?`).get(id).a;
+const nomDe = (m, id) => m.db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle;
+const lotsR309 = (m) => m.db.prepare("SELECT id, etat, lot_id FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid").all();
+const rangDansLeJournal = (m, lotId, table, cle) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lotId, table)
+  .find((l) => Object.entries(cle).every(([c, v]) => JSON.parse(l.cle)[c] === v))?.rang;
+/** Le lot appliqué qui porte l'écriture de `table` / `cle`, et le numéro de sa ligne. */
+function ligneDuLot(m, table, cle) {
+  for (const l of lotsR309(m)) {
+    const rang = rangDansLeJournal(m, l.lot_id, table, cle);
+    if (rang) return { lot: l.id, rang };
+  }
+  throw new Error(`aucune ligne pour ${table} ${JSON.stringify(cle)}`);
+}
+
+test('avec la clé de dépôt : les lots s’enchaînent, chaque élément est ancré, la base passe db:check (R291, R306, R309)', async () => {
+  const c = await laChaine();
+  const { resultat: r, monde } = c;
+  assert.equal(r.arret, null, r.arret?.motif);
+  assert.equal(r.suite, false);
+  assert.deepEqual(r.lots.map((l) => l.etat), r.lots.map(() => 'applique'));
+  assert.equal(r.lots.length, 4, 'noms, sorts, pages, capacités');
+  assert.ok(r.lots.every((l) => l.ecrites > 0));
+  assert.ok(r.comptes.crees >= 4, JSON.stringify(r.comptes));
+  for (const libelle of CATEGORIES_NOUVELLES) assert.ok(c.db.prepare('SELECT 1 FROM categorie_mot_cle WHERE libelle = ?').get(libelle), libelle);
+  for (const id of monde.capacites) assert.notEqual(ancre(c, 'page', id), null, id);
+  for (const id of monde.sorts) assert.notEqual(ancre(c, 'sort', id), null, id);
+  assert.equal(ancre(c, 'page', monde.race), monde.motCleRace);
+  assert.equal(nomDe(c, monde.motCleRace), c.db.prepare('SELECT titre FROM page WHERE id = ?').get(monde.race).titre, 'le mot-clé désigné prend le nom de sa page');
+  for (const id of monde.aReclasser) assert.equal(c.db.prepare('SELECT count(*) AS n FROM mot_cle_categorie WHERE mot_cle_id = ?').get(id).n, 1, `type unique de #${id}`);
+  const nouveaux = controlerLeContenu(c.db).problemes.filter((p) => !c.avant.has(p));
+  assert.deepEqual(nouveaux, []);
+  const message = messageDeLAncrage(r);
+  assert.ok(message.includes(String(r.lots.length)));
+  assert.doesNotMatch(message, /mot_cle|categorie_|type_sort/, 'ni table ni colonne dans le message');
+});
+
+test('rejouable : un second lancement ne dépose rien', async () => {
+  const m = await apresLaChaine();
+  const avant = lotsR309(m).length;
+  const r = await lancer(m);
+  assert.deepEqual([r.lots, r.arret, r.suite], [[], null, false]);
+  assert.equal(lotsR309(m).length, avant);
+  assert.match(messageDeLAncrage(r), /Rien à préparer/);
+});
+
+test('sans clé : un seul lot en proposition, le contenu n’a pas bougé, `suite` vrai ; relancer ne dépose pas un doublon', async () => {
+  const m = nouvelle();
+  const categories = m.db.prepare('SELECT count(*) AS n FROM categorie_mot_cle').get().n;
+  const r = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
+  assert.equal(r.lots.length, 1);
+  assert.equal(r.lots[0].etat, 'propose');
+  assert.equal(r.suite, true);
+  assert.equal(r.arret, null, r.arret?.motif);
+  assert.equal(m.db.prepare('SELECT count(*) AS n FROM categorie_mot_cle').get().n, categories, 'rien n’entre sans le clic');
+  assert.equal(ancre(m, 'page', m.monde.race), null);
+  const encore = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
+  assert.deepEqual(encore.lots, []);
+  assert.ok(encore.arret?.motif, 'la proposition en attente est dite');
+  assert.equal(lotsR309(m).length, 1, 'pas de doublon');
+});
+
+test('un lot refusé n’écrit rien et arrête la suite, avec son motif : le premier refus de l’essai', async () => {
+  // la magie n'a pas de page : l'adresse de ses sorts n'existe pas, le service refuse le lot des sorts ; le lot 1 est déjà passé
+  const m = nouvelle({ pageDeMagie: false });
+  const [sort0, sort1] = m.monde.sorts.map((id) => m.db.prepare('SELECT nom FROM sort WHERE id = ?').get(id).nom);
+  const motsCles = () => m.db.prepare('SELECT count(*) AS n FROM mot_cle').get().n;
+  const r = await lancer(m);
+  assert.equal(r.lots.length, 1, 'le lot 1 reste appliqué');
+  assert.ok(r.arret?.titre, 'le lot arrêté est nommé');
+  assert.notEqual(r.arret.titre, r.lots[0].titre);
+  assert.ok(r.arret.motif.includes(sort0), r.arret.motif);
+  assert.ok(!r.arret.motif.includes(sort1), 'un seul motif : le premier refus, sans la cascade');
+  assert.equal(r.suite, true);
+  for (const id of [...m.monde.sorts, ...m.monde.capacites]) assert.equal(ancre(m, id.includes('#sort:') ? 'sort' : 'page', id), null, `${id} : rien du lot refusé, rien après lui`);
+  const refuse = m.db.prepare("SELECT etat FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid DESC LIMIT 1").get();
+  assert.equal(refuse.etat, 'refuse');
+  const nombre = motsCles();
+  assert.equal((await lancer(m)).lots.length, 0, 'relancé, il s’arrête au même refus');
+  assert.equal(motsCles(), nombre);
+  assert.ok(messageDeLAncrage(r).includes(r.arret.motif));
+});
+
+test('une ligne annulée reste écartée et listée, avec tout son groupe', async () => {
+  const m = await apresLaChaine();
+  const [page] = m.monde.capacites;
+  const motCle = ancre(m, 'page', page);
+  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: motCle });
+  annulerUneLigne(m.db, lot, rang);
+  assert.equal(ancre(m, 'page', page), null);
+  const cles = lignesAnnuleesDeLAncrage(m.db);
+  assert.ok(cles.has(`page:${page}`), [...cles].join(', '));
+
+  const r = await lancer(m);
+  assert.deepEqual(r.lots, [], 'rien n’est redéposé');
+  assert.ok(r.ecartees.includes(`page:${page}`));
+  assert.equal(ancre(m, 'page', page), null);
+  assert.match(messageDeLAncrage(r), /Reprendre/);
+
+  // « Reprendre » redépose la ligne ; elle n'est plus écartée ensuite
+  const repris = await lancer(m, { reprendre: true });
+  assert.equal(repris.lots.length, 1);
+  assert.deepEqual(repris.ecartees, []);
+  assert.notEqual(ancre(m, 'page', page), null);
+  assert.ok(!lignesAnnuleesDeLAncrage(m.db).has(`page:${page}`), 'reprise : la ligne ne compte plus comme annulée');
+});
+
+test('un renommage annulé garde l’ancien nom, signalé comme écart', async () => {
+  const m = await apresLaChaine();
+  const { motCleRace, race } = m.monde;
+  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: motCleRace });
+  const nouveau = nomDe(m, motCleRace);
+  annulerUneLigne(m.db, lot, rang);
+  const ancien = nomDe(m, motCleRace);
+  assert.notEqual(ancien, nouveau);
+  const r = await lancer(m);
+  assert.deepEqual(r.lots, []);
+  assert.equal(nomDe(m, motCleRace), ancien, 'il garde son ancien nom');
+  assert.ok(r.ecartees.includes(`nom:${motCleRace}`), r.ecartees.join(', '));
+  assert.match(messageDeLAncrage(r), /ancien nom/);
+  assert.equal(ancre(m, 'page', race), motCleRace, 'l’ancre, elle, reste');
+});
+
+test('« Reprendre » redépose les lignes annulées, un lot annulé en entier compris', async () => {
+  const m = await apresLaChaine();
+  const dernier = lotsR309(m).at(-1);
+  annuler(m.db, dernier.id, {});
+  const ecartees = await lancer(m);
+  assert.deepEqual(ecartees.lots, [], 'un lot annulé en entier n’est pas refait');
+  assert.ok(ecartees.ecartees.length > 0);
+  const r = await lancer(m, { reprendre: true });
+  assert.equal(r.arret, null, r.arret?.motif);
+  assert.equal(r.lots.length, 1);
+  assert.deepEqual(r.ecartees, []);
+  for (const id of m.monde.capacites) assert.notEqual(ancre(m, 'page', id), null, id);
+});
+
+test('tout défait, lot par lot : même les catégories créées ne reviennent pas sans « Reprendre »', async () => {
+  const m = await apresLaChaine();
+  for (const l of lotsR309(m).reverse()) annuler(m.db, l.id, {});
+  for (const libelle of CATEGORIES_NOUVELLES) assert.equal(m.db.prepare('SELECT 1 FROM categorie_mot_cle WHERE libelle = ?').get(libelle), undefined, libelle);
+  const r = await lancer(m);
+  assert.deepEqual(r.lots, []);
+  assert.equal(r.suite, false);
+  for (const libelle of CATEGORIES_NOUVELLES) assert.ok(r.ecartees.includes(`categorie:${libelle}`), libelle);
+  for (const libelle of CATEGORIES_NOUVELLES) assert.equal(m.db.prepare('SELECT 1 FROM categorie_mot_cle WHERE libelle = ?').get(libelle), undefined, libelle);
+});
+
+test('le refus d’une reprise par un lot forgé : aligner ne prend aucune valeur', async () => {
+  const m = await apresLaChaine();
+  const { motCleRace } = m.monde;
+  const nom = nomDe(m, motCleRace);
+  const force = nomInvente('forgé');
+  const forge = {
+    format: FORMAT_DU_LOT, titre: 'Lot forgé', nature: 'decision', decision: 'R309', auteur: 'essai',
+    operations: [{ table: 'mot_cle', cle: { id: motCleRace }, operation: 'modifier', avant: { libelle: nom }, apres: { libelle: force }, ancrage: { aligner: true } }],
+  };
+  await assert.rejects(deposerEtAppliquer(m.base, forge, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT }), (e) => e.statut === 409);
+  assert.equal(nomDe(m, motCleRace), nom, 'le nom vient de la page, jamais du lot');
+});
+
+test('les adresses gardées pendant un lot sont oubliées dès qu’une opération peut en changer une', async () => {
+  const m = nouvelle();
+  const { capacites: [capacite], sorts: [sort] } = m.monde;
+  const magie = 'magies/zephyrion';
+  m.db.prepare("UPDATE page SET statut = 'example' WHERE id = ?").run(magie); // l'adresse du sort n'existe pas encore
+  const categorie = (libelle) => m.db.prepare('SELECT id FROM categorie_mot_cle WHERE libelle = ?').get(libelle).id;
+  const creation = (jeton, table, id, type) => {
+    const element = m.db.prepare(`SELECT ${table === 'page' ? 'titre' : 'nom'} AS nom FROM "${table}" WHERE id = ?`).get(id);
+    const url = table === 'page' ? adresseDeLaPage(id) : adresseDuSort(id);
+    return { table: 'mot_cle', cle: { id: { $numero: jeton } }, operation: 'inserer', apres: { id: { $numero: jeton }, libelle: element.nom, url }, ancrage: { table, id, type } };
+  };
+  const lot = {
+    format: FORMAT_DU_LOT, titre: 'Adresses', nature: 'decision', decision: 'R309', auteur: 'essai',
+    operations: [
+      creation('a', 'page', capacite, categorie('Don')),
+      { table: 'page', cle: { id: magie }, operation: 'modifier', avant: { statut: 'example' }, apres: { statut: 'draft' } },
+      creation('b', 'sort', sort, categorie('Sort')),
+    ],
+  };
+  const fait = await deposerEtAppliquer(m.base, lot, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT });
+  assert.equal(fait.etat, 'applique');
+  assert.notEqual(ancre(m, 'sort', sort), null, 'la page rendue visible dans le lot compte pour la création suivante');
+});
+
+test('« à trancher » arrive dans le résultat', async () => {
+  const m = nouvelle();
+  const [page] = m.monde.capacites;
+  // deux mots-clés à la même adresse : l'action ne devine pas lequel prend la page
+  const [a, b] = m.db.prepare('SELECT id FROM mot_cle WHERE url IS NULL AND verrou = 0 ORDER BY id LIMIT 2').all().map((l) => l.id);
+  for (const id of [a, b]) m.db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(adresseDeLaPage(page), id);
+  const r = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
+  const cas = r.a_trancher.find((x) => x.id === page);
+  assert.ok(cas, JSON.stringify(r.a_trancher));
+  assert.ok(messageDeLAncrage(r).includes(cas.raison));
+  assert.equal(ancre(m, 'page', page), null);
+});
+
+test('le message suit le résultat, sans jargon', () => {
+  const vide = messageDeLAncrage({ lots: [], arret: null, suite: false, a_trancher: [], ecartees: [], comptes: {} });
+  assert.match(vide, /Rien à préparer/);
+  const propose = messageDeLAncrage({ lots: [{ etat: 'propose', titre: 'A' }], arret: null, suite: true, a_trancher: [], ecartees: [], comptes: {} });
+  assert.match(propose, /proposition/);
+  const mots = messageDeLAncrage({ lots: [], arret: null, suite: false, a_trancher: [], ecartees: ['page:races/x', 'sort:m#sort:y', 'type_sort:soin', 'nom:12', 'type:13', 'categorie:Guide'], comptes: {} });
+  for (const brut of ['page:', 'sort:', 'type_sort', 'nom:', 'type:', 'categorie:']) assert.ok(!mots.includes(brut), brut);
+  const beaucoup = messageDeLAncrage({ lots: [], arret: null, suite: false, a_trancher: [], ecartees: Array.from({ length: 30 }, (_, i) => `page:p${i}`), comptes: {} });
+  assert.match(beaucoup, /20 de plus/);
+});
+
+test('lire reste possible sur un lot de l’action (le format n’a pas de `famille`)', async () => {
+  const c = await laChaine();
+  const { contenu } = lire(c.db, lotsR309(c)[0].id);
+  assert.equal(contenu.famille, undefined);
+});

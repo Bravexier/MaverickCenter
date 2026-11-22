@@ -386,8 +386,9 @@ export function htmlDesLots({ lots = [] } = {}, vue = {}) {
     appliques.length ? pluriel(appliques.length, 'changement appliqué', 'changements appliqués') : null].filter(Boolean).join(' · ');
   const resume = `<summary><h3 class="nv-domaine__entete"><span class="nv-domaine__titre">Modifications de l’équipe</span>${comptes ? ` <span class="nv-compte">${echapper(comptes)}</span>` : ''}</h3></summary>`;
   const entete = `<p class="nv-lots__intro">Ce que l’équipe a changé sur le site est appliqué tout de suite ; vous le retrouvez ici, ligne par ligne, avec la valeur d’avant et celle d’après, tant que la production ne l’a pas reçu. « Annuler cette modification » remet une ligne comme avant, après votre confirmation.</p>`
-    + `<div class="nv-dev__actions"><button type="button" data-nv-recalcul>Tout recalculer</button><button type="button" data-nv-lots-actualiser>Actualiser</button></div>`
-    + `<p class="nv-conflit__aide">« Tout recalculer » sert après un changement de code : il recalcule les pages que le code d’aujourd’hui calcule autrement.</p>`;
+    + `<div class="nv-dev__actions"><button type="button" data-nv-recalcul>Tout recalculer</button><button type="button" data-nv-ancrage>Préparer l’ancrage</button>`
+    + `${vue.ancrageAReprendre ? '<button type="button" data-nv-ancrage-reprendre>Reprendre les lignes annulées</button>' : ''}<button type="button" data-nv-lots-actualiser>Actualiser</button></div>`
+    + `<p class="nv-conflit__aide">« Tout recalculer » sert après un changement de code : il recalcule les pages que le code d’aujourd’hui calcule autrement. « Préparer l’ancrage » donne un mot-clé à chaque page, sort et type de sort qui n’en a pas ; il ne refait jamais une ligne que vous avez annulée.</p>`;
   const bloc = (titre, contenu, attribut) => `<div class="nv-lots__groupe" ${attribut}><h4 class="nv-lots__sous-titre">${echapper(titre)}</h4>${contenu}</div>`;
   const attente = attendent.length
     ? bloc(`Propositions en attente (${attendent.length})`, `<p class="nv-conflit__aide">Une proposition ne change rien tant que vous n’avez pas cliqué sur « Appliquer ».</p>${attendent.map((l) => htmlDuLot(l, vue)).join('')}`, 'data-nv-lots-attente') : '';
@@ -446,6 +447,41 @@ export function messageDuRecalcul(r) {
   const calculees = pluriel(n, 'page se calculait autrement', 'pages se calculaient autrement');
   if (r.lot.etat === 'applique') return { texte: `Recalcul appliqué : ${calculees}. Vous le retrouvez ci-dessous, ligne par ligne.${reste ? ` ${reste}` : ''}`, lignes: [], erreur: false };
   return { texte: `Une proposition est faite : ${pluriel(n, 'page se calcule autrement', 'pages se calculent autrement')}. Vérifiez-la ci-dessous, puis appliquez-la ou refusez-la.${reste ? ` ${reste}` : ''}`, lignes: [], erreur: false };
+}
+
+const LISTE_MAX_DE_L_ANCRAGE = 10;
+
+/** Une ligne écartée de l'ancrage, dite sans son code (`page:<id>`, `nom:<id>`…). */
+function phraseDeLEcartee(cle) {
+  const [genre] = cle.split(':', 1);
+  const quoi = cle.slice(genre.length + 1);
+  return {
+    page: `la page ${quoi}`, sort: `le sort ${quoi.split('#sort:').pop()}`, type_sort: `le type de sort ${quoi}`, nom: `le mot-clé n° ${quoi}, qui garde son ancien nom`,
+    type: `le mot-clé n° ${quoi}, qui garde ses catégories`, categorie: `la catégorie ${quoi} (tant qu’elle manque, les créations attendent)`,
+  }[genre] ?? quoi;
+}
+
+const listeCourte = (liste) => `${liste.slice(0, LISTE_MAX_DE_L_ANCRAGE).join(' ; ')}${liste.length > LISTE_MAX_DE_L_ANCRAGE ? ` ; … et ${liste.length - LISTE_MAX_DE_L_ANCRAGE} de plus` : ''}`;
+
+/**
+ * Le message d'après « Préparer l'ancrage » (réponse de POST …/ancrage/), pour le propriétaire : ce qui est appliqué ou proposé, le motif d'un arrêt, ce qui reste à
+ * trancher, les lignes annulées laissées de côté.
+ * @param {{ lots?: object[], arret?: { titre: string, motif: string } | null, a_trancher?: object[], ecartees?: string[] }} r
+ * @returns {string}
+ */
+export function messageDeLAncrage(r) {
+  const lots = r?.lots ?? [];
+  const appliques = lots.filter((l) => l.etat === 'applique').length;
+  const aTrancher = r?.a_trancher ?? [];
+  const ecartees = r?.ecartees ?? [];
+  const parties = [];
+  if (appliques) parties.push(`${pluriel(appliques, 'lot appliqué', 'lots appliqués')} : vous les retrouvez ci-dessous, ligne par ligne.`);
+  if (lots.some((l) => l.etat === 'propose')) parties.push('Une proposition est faite : vérifiez-la ci-dessous et appliquez-la, puis relancez « Préparer l’ancrage » pour la suite.');
+  if (r?.arret) parties.push(`Arrêt sur « ${r.arret.titre} », rien de ce lot n’est écrit : ${r.arret.motif}`);
+  if (!lots.length && !r?.arret) parties.push('Rien à préparer : tout ce qui pouvait être ancré l’est déjà.');
+  if (aTrancher.length) parties.push(`À trancher (${aTrancher.length}) : ${listeCourte(aTrancher.map((x) => `${x.nom} : ${x.raison}`))}.`);
+  if (ecartees.length) parties.push(`Lignes annulées laissées de côté (${ecartees.length}) : ${listeCourte(ecartees.map(phraseDeLEcartee))}. « Reprendre les lignes annulées » les redépose.`);
+  return parties.join(' ');
 }
 
 /**

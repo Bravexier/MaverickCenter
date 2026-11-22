@@ -64,6 +64,8 @@
 //   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers, magies, armes, armures, boucliers, composants, potions) et ce que le
 //                                              code d'aujourd'hui en dérive, calculés sur une copie et DÉPOSÉS comme un lot de nature « code » (essai à blanc, clic du propriétaire :
 //                                              comme tout lot) ; la réponse (une promesse) porte { lot, recalcul } (lot null sans écart ; rien n'est écrit dans le contenu)
+//   POST /api/edition/lots/ancrage/            { reprendre? } → « préparer l'ancrage » (R309, serveur/edition-ancrage-lots.mjs) : les lots du plan, enchaînés avec la clé de dépôt ou le mot de passe,
+//                                              un seul en proposition sinon ; la réponse (une promesse) porte { lots, arret, suite, a_trancher, ecartees, comptes }
 //   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (mot de passe) ; 409 dit ce qui le refuse
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
@@ -141,6 +143,7 @@ import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './edition-chronologie.mjs';
 import { planVivant } from './edition-plan.mjs';
 import * as lots from './edition-lots.mjs';
+import { preparerLAncrage } from './edition-ancrage-lots.mjs';
 import {
   CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
   lignesALivrer, lireReference, noteEnPreparation, occupe,
@@ -437,6 +440,31 @@ function traiterLeRecalcul(requete, service, permis) {
   }
 }
 
+/** POST /api/edition/lots/ancrage/ : « préparer l'ancrage » (serveur/edition-ancrage-lots.mjs), classe `proposition`. Un arrêt sur un refus est une réponse 200 : il dit où la suite s'est arrêtée. */
+function traiterLAncrage(requete, service, permis) {
+  const refus = permis('POST');
+  if (refus) return refus;
+  const { refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  if (valeur?.reprendre !== undefined && typeof valeur.reprendre !== 'boolean') return erreur(400, '« reprendre » vaut true ou false.');
+  const echec = (e) => {
+    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  };
+  const options = {
+    enArrierePlan: service.lots?.enArrierePlan !== false,
+    reprendre: valeur?.reprendre === true,
+    controle: service.source?.() ? { ouvertHorsEdition: true } : {}, // `mot_cle_categorie` est hors édition : comme un dépôt, le lot ne s'y ouvre que sur la base source
+  };
+  const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false }; // R291 : la clé de dépôt posée, chaque lot s'applique aussitôt
+  return preparerLAncrage(service.base, depot.direct ? { ...options, par: depot.par } : options).then((r) => {
+    service.journal?.(`lots : préparer l'ancrage, ${r.lots.length} lot(s) ${depot.direct ? `appliqué(s) par ${depot.par}` : 'proposé(s)'}${r.arret ? `, arrêt sur « ${r.arret.titre} »` : ''}, ${r.a_trancher.length} à trancher, ${r.ecartees.length} écartée(s)`);
+    return json(200, r);
+  }, echec);
+}
+
 /**
  * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt, l'essai et
  * l'aperçu d'une annulation rendent une PROMESSE (ils tournent dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer, refuser et annuler
@@ -448,6 +476,7 @@ function traiterLots(requete, service, reste, permis) {
   if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
   const [id, action, ...suite] = reste;
   if (id === 'recalcul' && action === undefined) return traiterLeRecalcul(requete, service, permis);
+  if (id === 'ancrage' && action === undefined) return traiterLAncrage(requete, service, permis);
   // `…/<id>/lignes/<n>/annulation/` et `…/annuler/` (R291) : une seule ligne du lot ; `quoi` nomme l'action
   let numero = null;
   let quoi = action;

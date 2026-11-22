@@ -560,6 +560,14 @@ function cheminsDuService() {
         responses: { 200: reponse('Rien à recalculer.', objet), 201: reponse('Déposé et essayé.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Plus d’écarts que ce qu’un lot porte.', objet), 503: ref('responses', 'Indisponible') },
       },
     },
+    '/edition/lots/ancrage/': {
+      post: {
+        operationId: 'edition_lots_ancrage', tags: [SERVICE], summary: 'Préparer l’ancrage des mots-clés',
+        description: `Décision R309 : calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite (arret : le lot et son premier motif ; réponse 200). Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose. 200 avec { lots, arret, suite, a_trancher, ecartees, comptes }.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json({ type: 'object', additionalProperties: false, properties: { reprendre: { type: 'boolean', description: 'Redéposer les lignes annulées.' } } }) },
+        responses: { 200: reponse('Le résultat : lots déposés, arrêt éventuel, ce qui reste à trancher, lignes écartées.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Une préparation tourne déjà, ou le journal d’un lot de l’ancrage est illisible.', objet), 503: ref('responses', 'Indisponible') },
+      },
+    },
     '/edition/extrait/': {
       get: {
         operationId: 'edition_extrait', tags: [SERVICE], summary: 'Extrait du contenu (fichier SQLite)',

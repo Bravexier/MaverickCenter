@@ -269,7 +269,8 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
       { champ: 'libelle', mot_cle: pris.m.id });
   }
   MOTS_CLES.refuserLesSynonymes(db, { id, libelle }, synonymes);
-  if (url) refuserLeLien(db, { libelle, url });
+  // un lot d'ancrage crée des centaines de mots-clés de suite : les adresses du site ne se relisent pas à chacun (`ctx.adressesDuLot`, oubliées par `appliquerUnLot`)
+  if (url) refuserLeLien(db, { libelle, url }, ancre && ctx.voie === 'lot' ? (ctx.adressesDuLot ??= adressesDuSite(db)) : null);
   if (couleur) refuserLaCouleur({ libelle, couleur });
   if (icone) refuserLIcone({ libelle, icone });
   w.inserer('mot_cle', {
@@ -294,9 +295,9 @@ function plancherDesIdsDeMotsCles() {
  * imprimable sans espace ni « \ », la barre finale), puis son chemin, qui doit être celui d'une page du site qui n'est pas d'exemple, d'une rubrique ou
  * d'une route fixe (lib/adresses-db.mjs#adressesDuSite, lu dans la base vivante) ; l'ancre et la requête ne sont pas vérifiées. 400, `champ: 'url'`.
  */
-export function refuserLeLien(db, m) {
+export function refuserLeLien(db, m, adresses = null) {
   if (m.url === null || m.url === undefined) return;
-  const faute = fauteDeLUrl(m.url, adressesDuSite(db));
+  const faute = fauteDeLUrl(m.url, adresses ?? adressesDuSite(db));
   if (faute) throw new ErreurEdition(400, `Mot-clé « ${m.libelle} » : le lien « ${m.url} » ne convient pas (${faute}).`, { champ: 'url' });
 }
 
@@ -3722,6 +3723,8 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
       isoler: (faire) => w.isoler(faire),
       executer: (op, { gel = true } = {}) => {
         ctx.gel = gel;
+        // seules ces deux opérations laissent les pages comme elles sont : toute autre peut changer une adresse du site
+        if (!['ancrer_nouveau', 'verifier_ligne'].includes(op.op)) ctx.adressesDuLot = null;
         return executerUneOperation(ctx, op, place++, { operations: permises, prefixe: false });
       },
       ecrites: () => w.nombre,

@@ -363,6 +363,20 @@ test('« Tout recalculer » : rien à recalculer est dit sans lot ; un lot dépo
   assert.ok(echec.section().querySelector('[data-nv-lots-message]').textContent.includes('trop de pages pour un lot'));
 });
 
+test('« Préparer l’ancrage » (R309) : le clic dit le résultat ; « Reprendre les lignes annulées » n’apparaît que s’il y en a, et seul il demande de les reprendre', async () => {
+  const resultat = (ecartees) => [200, { lots: [], arret: null, suite: false, a_trancher: [], ecartees, comptes: {} }];
+  let ecartees = ['page:races/zephyrion'];
+  const page = await monter([], { 'POST edition/lots/ancrage/': () => resultat(ecartees) });
+  assert.equal(page.section().querySelector('[data-nv-ancrage-reprendre]'), null, 'rien à reprendre tant que l’action n’a rien dit');
+  await page.clic(page.section().querySelector('[data-nv-ancrage]'));
+  assert.deepEqual(page.ecritures(), [['POST edition/lots/ancrage/', {}]]);
+  assert.ok(page.section().querySelector('[data-nv-lots-message]').textContent.includes('races/zephyrion'));
+  ecartees = [];
+  await page.clic(page.section().querySelector('[data-nv-ancrage-reprendre]'));
+  assert.deepEqual(page.ecritures().at(-1), ['POST edition/lots/ancrage/', { reprendre: true }]);
+  assert.equal(page.section().querySelector('[data-nv-ancrage-reprendre]'), null, 'plus rien à reprendre');
+});
+
 test('le HTML venu de la base ne s’exécute pas dans la page ; « Voir la page de production » cache la section, la décocher la remet', async () => {
   const piege = '<img src=x onerror=alert(1)>';
   const page = await monter([lot('p', { titre: piege })]);

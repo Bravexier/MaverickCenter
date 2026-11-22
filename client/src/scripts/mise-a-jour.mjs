@@ -30,7 +30,7 @@ import {
 } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
-  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLAncrage, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, verrousDuLot,
 } from '../lib/lots-rendu.mjs';
 
@@ -81,7 +81,7 @@ const conflits = { section: null, reponse: null, listes: null, choisis: new Map(
  * récents (leurs lignes), ce que le propriétaire a coché (décisions à ouvrir, par proposition), les messages (clés `<lot>` ou `<lot>#<ligne>`), ce qu'il a
  * déplié, le message d'en tête, et un verrou contre le double clic.
  */
-const lots = { section: null, reponse: null, erreur: '', coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false };
+const lots = { section: null, reponse: null, erreur: '', coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false, ancrageAReprendre: false };
 
 function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
@@ -255,7 +255,7 @@ function sectionDesLots() {
 }
 
 /** L'état de la page pour le rendu (`lib/lots-rendu.mjs`). */
-const vueDesLots = () => ({ coches: lots.coches, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message });
+const vueDesLots = () => ({ coches: lots.coches, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message, ancrageAReprendre: lots.ancrageAReprendre });
 
 function rendreLesLots() {
   const section = sectionDesLots();
@@ -343,12 +343,15 @@ async function clicSurLesLots(bouton) {
     return rendreLesLots();
   }
   const id = bouton.closest('[data-nv-lot-id]')?.dataset.nvLotId ?? null;
-  const action = ['data-nv-recalcul', 'data-nv-lots-actualiser', 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler-ligne'].find((a) => bouton.hasAttribute(a));
-  if (!action || (action !== 'data-nv-recalcul' && action !== 'data-nv-lots-actualiser' && !id)) return;
+  const sansLot = ['data-nv-recalcul', 'data-nv-ancrage', 'data-nv-ancrage-reprendre', 'data-nv-lots-actualiser'];
+  const action = [...sansLot, 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler-ligne'].find((a) => bouton.hasAttribute(a));
+  if (!action || (!sansLot.includes(action) && !id)) return;
   lots.occupe = true;
   try {
     lots.message = null;
     if (action === 'data-nv-recalcul') await toutRecalculer();
+    else if (action === 'data-nv-ancrage') await preparerLAncrage(false);
+    else if (action === 'data-nv-ancrage-reprendre') await preparerLAncrage(true);
     else if (action === 'data-nv-lots-actualiser') await chargerLesLots();
     else if (action === 'data-nv-appliquer') await appliquerUnLot(id);
     else if (action === 'data-nv-refuser') await refuserUnLot(id);
@@ -508,6 +511,20 @@ async function toutRecalculer() {
     lots.message = messageDErreur(e);
   }
   await chargerLesLots();
+}
+
+/** « Préparer l'ancrage » (R309) ; `reprendre` : le geste qui redépose les lignes annulées. La note en préparation compte ce qui vient d'être appliqué. */
+async function preparerLAncrage(reprendre) {
+  lots.message = { texte: 'Préparation en cours : chaque lot est essayé sur une copie, cela peut prendre quelques minutes…', lignes: [] };
+  rendreLesLots();
+  try {
+    const r = await appel('POST', 'edition/lots/ancrage/', reprendre ? { reprendre: true } : {});
+    lots.message = { texte: messageDeLAncrage(r), lignes: [], erreur: Boolean(r?.arret) };
+    lots.ancrageAReprendre = (r?.ecartees?.length ?? 0) > 0;
+  } catch (e) {
+    lots.message = messageDErreur(e);
+  }
+  await relireLaPage();
 }
 
 // --- Lignes en conflit ---------------------------------------------------------------------------------------------------------------------------

@@ -82,7 +82,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
       ['GET', `/api/edition/lots/${UUID}/annulation/`], // l'aperçu de l'annulation d'un lot : calculé sur une copie, rien n'est écrit
     ],
     // lots de changements : une session dépose, refait l'essai et dépose « tout recalculer » avec la clé de lecture (elle n'écrit que `lot_de_changements`, jamais le contenu)
-    proposition: [['POST', '/api/edition/lots/'], ['POST', `/api/edition/lots/${UUID}/essai/`], ['POST', '/api/edition/lots/recalcul/']],
+    proposition: [['POST', '/api/edition/lots/'], ['POST', `/api/edition/lots/${UUID}/essai/`], ['POST', '/api/edition/lots/recalcul/'], ['POST', '/api/edition/lots/ancrage/']],
     ecriture: [
       ['POST', '/api/edition/'], ['POST', '/api/maintenance/lever/'],
       ['POST', '/api/edition/atelier/'], // « le bouton » de l'atelier : l'extrait refait tout de suite (le mot de passe seul)
@@ -104,7 +104,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
 });
 
 test('toute méthode d’écriture d’une route connue est « ecriture », sauf la liste des POST qui ne font que lire (les pages en ont besoin sans connexion)', () => {
-  const PROPOSITIONS = new Set(['/api/edition/lots', `/api/edition/lots/${UUID}/essai`, '/api/edition/lots/recalcul']); // elles n'écrivent que la proposition et son essai
+  const PROPOSITIONS = new Set(['/api/edition/lots', `/api/edition/lots/${UUID}/essai`, '/api/edition/lots/recalcul', '/api/edition/lots/ancrage']); // elles n'écrivent que la proposition et son essai
   const POST_QUI_LISENT = new Set(['/api/classeur', '/api/metriques/page', '/api/acces',
     '/api/edition/lignes', '/api/edition/race', '/api/edition/classe', '/api/edition/bestiaire', '/api/edition/portrait', '/api/edition/evenement']);
   for (const [m, c] of routesDeLEntete().filter(([m]) => m !== 'GET')) {

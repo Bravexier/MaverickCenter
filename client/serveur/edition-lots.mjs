@@ -564,7 +564,7 @@ function planDeLAnnulation(db, lotId, lignes = null) {
 }
 
 /** L'effet net du lot du journal : une ligne par ligne de table touchée, numérotée par le rang de sa première écriture au journal (stable : c'est « la ligne n » des routes). */
-const netsDuLot = (db, lotId) => effetNetDuLot(lignesDuLot(db, lotId));
+export const netsDuLot = (db, lotId) => effetNetDuLot(lignesDuLot(db, lotId));
 
 /** Les opérations du service qui remettent une ligne : { ops } ou { refus }. La réinsertion d'une ligne retirée par le lot est une restauration à l'identique. */
 function operationsDeLAnnulation(db, net, jugement) {
@@ -1442,7 +1442,7 @@ export function deposer(base, corps, { instant = instantMaintenant(), id = rando
 }
 
 /** Les motifs d'un essai qui ne peut pas s'appliquer (opérations refusées, refus de l'application, problèmes du contenu nés du lot), pour la réponse d'un dépôt refusé. */
-function motifsDeLEssai(essai) {
+export function motifsDeLEssai(essai) {
   if (!essai || essai.verdict === 'en_echec') return [`l’essai à blanc a échoué : ${essai?.erreur ?? 'sans raison donnée'}`];
   const refusees = (essai.operations ?? []).filter((o) => o.etat === 'refusee').map((o) => `opération ${o.rang} : ${o.message}`);
   const changees = (essai.operations ?? []).filter((o) => o.etat === 'changee').map((o) => `opération ${o.rang} : la valeur a changé depuis le lot (le site prime)`);
