@@ -733,6 +733,7 @@ const aDesBalises = (valeur) => typeof valeur === 'string' && valeur.includes('{
  * Juge les lignes du lot sans compter comme un changement du site ce que le recalcul des clés a réécrit : la clé d'un mot-clé créé et ancré, la clé d'une balise.
  *   - `vu(net, actuelle)` : la ligne, ses valeurs d'avant ou de fin prises à la forme actuelle quand le texte n'en diffère que par la clé d'une balise ;
  *   - `juger(net, actuelle)` : `jugerLAnnulation` de cette ligne ; un texte vraiment changé reste gardé ;
+ *   - `seuleLaCle(net, actuelle)` : la ligne n'a rien à remettre et ne diffère de sa valeur d'avant que par la clé d'une balise ;
  *   - `enClesDuMoment(net)` : la ligne, avec ses textes d'avant à écrire aux clés actuelles.
  * Le vocabulaire est relu après chaque écriture de la connexion, seulement si un texte le demande.
  */
@@ -766,6 +767,12 @@ function jugeDesLignes(db, nets) {
   return {
     vu,
     juger: (net, actuelle) => jugerLAnnulation(vu(net, actuelle), actuelle),
+    seuleLaCle(net, actuelle) {
+      if (net.genre !== 'modifier' || !actuelle) return false;
+      const vue = vu(net, actuelle);
+      const { remises, gardees } = jugerLAnnulation(vue, actuelle);
+      return !remises.length && !gardees.length && Object.keys(net.fin).some((c) => vue.origine[c] !== net.origine[c]);
+    },
     enClesDuMoment: (net) => (net.genre === 'modifier' && Object.values(net.origine).some(aDesBalises) ? avecClesDuMoment(net, lecture()) : net),
   };
 }
@@ -1050,6 +1057,7 @@ function memoriser(f) {
 
 /** Pourquoi une ligne qui n'a rien à remettre ne s'annule pas : déjà revenue à sa valeur d'avant, ou changée depuis par le site. */
 const motifSansRemise = (etat) => (etat === 'comme_avant' ? 'Cette ligne a déjà sa valeur d’avant le lot : rien à remettre.' : 'Toutes ses valeurs ont changé depuis : le site prime, rien n’est remis.');
+const MOTIF_DE_LA_CLE_SEULE = 'Seule la clé d’un mot-clé y a changé : ce texte revient avec lui.';
 
 /** Les lignes déjà annulées d'un lot appliqué (`bilan.lignes_annulees`, clé = numéro de la ligne). */
 const lignesDejaAnnulees = (ligne) => new Set(Object.keys(jsonOuNull(ligne.bilan)?.lignes_annulees ?? {}).map(Number));
@@ -1106,7 +1114,8 @@ function avecLaProduction(chemin, faire) {
 
 /**
  * Les lignes d'un lot appliqué ou annulé, pour la page (« comme les notes de version ») : chacune avec ses colonnes avant → après, son état et si elle s'annule seule.
- * `etat` : `en_place` (le lot l'a écrite et rien n'y a touché), `annulee` (par ce clic, ou par l'annulation du lot entier), `modifiee_depuis` (le site a changé une valeur
+ * `etat` : `en_place` (le lot l'a écrite et rien n'y a touché ; dans un lot appliqué, aussi un texte dont seule la clé d'une balise a changé : il revient avec son
+ * mot-clé, sans s'annuler seul), `annulee` (par ce clic, ou par l'annulation du lot entier), `modifiee_depuis` (le site a changé une valeur
  * que le lot avait écrite : le site prime, `colonnes_modifiees`), `comme_avant` (la ligne a déjà sa valeur d'avant le lot). `annulable_seule` est faux avec un `motif` :
  * lot pas appliqué, ligne déjà annulée ou comme avant, tout modifié depuis, ou une autre ligne du lot la tient (`depend_de`). Avec `production` (la base ouverte),
  * chaque ligne dit aussi `ecart_production` : vrai si elle diffère de la production.
@@ -1153,10 +1162,12 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       }
       const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
       const motifDuGroupe = gardes.get(net.rang) ?? null;
-      const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length ? 'en_place' : 'comme_avant';
-      const tenue = motifDuGroupe ? [] : tenueDe(net.rang);
+      const cleSeule = ligne.etat === 'applique' && !motifDuGroupe && juge.seuleLaCle(net, actuelle);
+      const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length || cleSeule ? 'en_place' : 'comme_avant';
+      const tenue = motifDuGroupe || cleSeule ? [] : tenueDe(net.rang);
       let motif = null;
       if (motifDuGroupe) motif = motifDuGroupe;
+      else if (cleSeule) motif = MOTIF_DE_LA_CLE_SEULE;
       else if (!jugement.remises.length) motif = motifSansRemise(etat);
       else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
       else if (tenue.length) motif = `Cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}.`;

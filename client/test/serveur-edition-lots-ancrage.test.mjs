@@ -540,8 +540,9 @@ test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un 
   // une ligne que le recalcul seul a réécrite n'a rien à remettre : la page ne propose pas de l'annuler
   const nPur = rang('metier', { id: tPur });
   assert.notEqual(texte(tPur), textePur);
-  assert.equal(ligne(nPur).etat, 'comme_avant', ligne(nPur).motif);
+  assert.equal(ligne(nPur).etat, 'en_place', ligne(nPur).motif);
   assert.equal(ligne(nPur).annulable_seule, false);
+  assert.match(ligne(nPur).motif, /Seule la clé/);
 
   // un texte du lot, avant ses groupes : la clé d'avant du voisin est devenue ambiguë, il s'écrit avec sa clé du moment
   const nAvant = rang('metier', { id: tAvant });
@@ -577,6 +578,7 @@ test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un 
   // l'autre ordre : après ses groupes, le texte du lot reste en place, sa balise réécrite n'est pas un changement du site ; les deux ordres donnent le même texte
   assert.equal(texte(tAvant), textesDAvant.get(tAvant));
   assert.equal(texte(tPur), textePur, 'le recalcul a ramené le texte qu’il avait réécrit');
+  assert.equal(ligne(nPur).etat, 'comme_avant', 'la clé revenue, la ligne vaut son texte d’avant');
   const nApres = rang('metier', { id: tApres });
   assert.equal(ligne(nApres).etat, 'en_place', ligne(nApres).motif);
   assert.equal(ligne(nApres).annulable_seule, true, ligne(nApres).motif);
