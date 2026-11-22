@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, relative } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as attendre } from 'node:timers/promises';
@@ -151,8 +152,8 @@ test('interrompu', (t) => { cree('interrompu', { t }); process.exit(7); });
   assert.deepEqual(readdirSync(temporaire), [], 'rien ne reste');
 });
 
-test('estVerrouille : EPERM et EBUSY sous Windows seulement ; toute autre erreur reste une erreur', () => {
-  for (const code of ['EPERM', 'EBUSY']) {
+test('estVerrouille : EPERM, EBUSY et ENOTEMPTY sous Windows seulement ; toute autre erreur reste une erreur', () => {
+  for (const code of ['EPERM', 'EBUSY', 'ENOTEMPTY']) {
     assert.equal(estVerrouille({ code }, 'win32'), true, code);
     assert.equal(estVerrouille({ code }, 'linux'), false, `${code} sous Linux`);
   }
@@ -174,10 +175,22 @@ writeFileSync(${JSON.stringify(journal)}, dossier);
 globalThis.base = new DatabaseSync(join(dossier, 'base.db'));
 globalThis.base.exec('CREATE TABLE t (x)');
 supprimerDossierTemporaire(dossier); // comme à la fin d'un test (t.after), base encore ouverte
+// posé après celui de l'aide : la sortie traîne, et le processus détaché, déjà lancé, doit attendre que la base soit libérée
+process.on('exit', () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500));
 `);
   const r = spawnSync(process.execPath, ['--no-warnings', essai], { encoding: 'utf8', env: { ...process.env, ...variablesTemporaires(temporaire) } });
   assert.equal(r.status, 0, r.stderr);
   const dossier = readFileSync(journal, 'utf8');
   for (let i = 0; i < 100 && existsSync(dossier); i += 1) await attendre(100);
   assert.ok(!existsSync(dossier), 'supprimé après la sortie du processus');
+});
+
+test('un dossier resté verrouillé par une base ouverte est repris dès la création du suivant', (t) => {
+  const premier = dossierTemporaire('reprise', { t });
+  const base = new DatabaseSync(join(premier, 'base.db'));
+  base.exec('CREATE TABLE t (x)');
+  supprimerDossierTemporaire(premier); // sous Windows, la base ouverte l'empêche
+  base.close();
+  dossierTemporaire('reprise-suivant', { t });
+  assert.equal(existsSync(premier), false);
 });

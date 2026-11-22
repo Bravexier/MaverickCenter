@@ -11,25 +11,37 @@ import { dirname, join } from 'node:path';
 export const PREFIXE_COMMUN = 'maverick-test-';
 
 const enCours = new Set();
+const aReprendre = new Set(); // Windows : ceux dont la suppression a buté sur un fichier encore ouvert
 let surveillance = false;
 
-/** Windows refuse de supprimer un fichier encore ouvert (base SQLite d'un test) : EPERM ou EBUSY. Sur un autre système, ces erreurs restent des erreurs. */
-export const estVerrouille = (erreur, plateforme = process.platform) => plateforme === 'win32' && ['EPERM', 'EBUSY'].includes(erreur?.code);
+/** Windows refuse de supprimer un fichier encore ouvert (base SQLite d'un test) : EPERM, EBUSY ou ENOTEMPTY. Sur un autre système, ces erreurs restent des erreurs. */
+export const estVerrouille = (erreur, plateforme = process.platform) => plateforme === 'win32' && ['EPERM', 'EBUSY', 'ENOTEMPTY'].includes(erreur?.code);
 
-/** Supprime `dossier` (récursivement, sans erreur s'il n'existe plus) et l'oublie ; verrouillé sous Windows, il reste en cours pour la sortie du processus. */
+/** Supprime `dossier` (récursivement, sans erreur s'il n'existe plus) et l'oublie ; verrouillé sous Windows, il est repris à la création du dossier suivant, puis à la sortie du processus. */
 export function supprimerDossierTemporaire(dossier) {
   try {
     rmSync(dossier, { recursive: true, force: true });
   } catch (erreur) {
-    if (estVerrouille(erreur)) return;
-    throw erreur;
+    if (!estVerrouille(erreur)) throw erreur;
+    aReprendre.add(dossier);
+    return;
   }
+  aReprendre.delete(dossier);
   enCours.delete(dossier);
 }
 
-/** Les verrous de Windows tombent avec le processus : un processus détaché finit la suppression juste après lui. */
+/**
+ * Les verrous de Windows tombent avec le processus : un processus détaché finit la suppression juste après lui, en réessayant dix secondes au plus. La boucle
+ * est ici car les reprises de rmSync (maxRetries) rendent la main aussitôt sur un fichier encore ouvert.
+ */
 function confierLaSuppression(dossiers) {
-  const script = "for (const d of process.argv.slice(1)) try { require('node:fs').rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch {}";
+  const script = `const { rmSync } = require('node:fs');
+const pause = new Int32Array(new SharedArrayBuffer(4));
+let restants = process.argv.slice(1);
+for (let essai = 0; essai < 100 && restants.length > 0; essai++) {
+  if (essai > 0) Atomics.wait(pause, 0, 0, 100);
+  restants = restants.filter((d) => { try { rmSync(d, { recursive: true, force: true }); return false; } catch { return true; } });
+}`;
   spawn(process.execPath, ['-e', script, ...dossiers], { detached: true, stdio: 'ignore', windowsHide: true, cwd: dirname(process.execPath) }).unref();
 }
 
@@ -45,6 +57,7 @@ export const dossiersEnCours = () => [...enCours];
  * pour un autre système de fichiers).
  */
 export function dossierTemporaire(prefixe, { t, dans = tmpdir() } = {}) {
+  for (const d of [...aReprendre]) supprimerDossierTemporaire(d);
   const dossier = mkdtempSync(join(dans, `${PREFIXE_COMMUN}${prefixe}-`));
   enCours.add(dossier);
   if (!surveillance) {
