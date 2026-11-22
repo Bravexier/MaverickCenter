@@ -113,7 +113,7 @@ test('une source qui est elle-même un lien est refusée', () => {
   assert.equal(readFileSync(join(m.cible, 'index.html'), 'utf8'), 'ancien');
 });
 
-test('une FIFO dans la source est refusée (83) sans bloquer', { skip: SEUL_LINUX || spawnSync('mkfifo', ['--version'], { stdio: 'ignore' }).error ? 'mkfifo indisponible' : false }, () => {
+test('une FIFO dans la source est refusée (83) sans bloquer', { skip: SEUL_LINUX || (spawnSync('mkfifo', ['--version'], { stdio: 'ignore' }).error ? 'mkfifo indisponible' : false) }, () => {
   const m = monde({ servi: { 'index.html': 'ancien' }, fabrique: { 'index.html': 'neuf' } });
   const fifo = spawnSync('mkfifo', [join(m.source, 'tuyau.html')]);
   assert.equal(fifo.status, 0);
