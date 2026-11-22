@@ -377,7 +377,7 @@ describe('chemin heureux : preparer, puis livrer (fusion dans dev, livraison ver
     // tous les contrôles, dont le job client de ci.yml, par sh -c dans client/, avec un RUNNER_TEMP à eux
     const controles = m.executions.filter((e) => e.commande === 'sh');
     assert.deepEqual(controles.map((e) => e.args), CONTROLES.map((c) => ['-c', c]));
-    assert.ok(controles.every((e) => e.cwd === '/depot/client' && e.env.RUNNER_TEMP?.includes('controles') && !('GH_TOKEN' in e.env)));
+    assert.ok(controles.every((e) => e.cwd === join('/depot', 'client') && e.env.RUNNER_TEMP?.includes('controles') && !('GH_TOKEN' in e.env)));
     // commit : seulement les fichiers de data/rows annoncés, auteur github-actions[bot], sans hooks
     assert.deepEqual(m.indexes, CHEMINS);
     assert.equal(m.commits.length, 1);
