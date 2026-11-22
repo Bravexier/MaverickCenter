@@ -34,8 +34,9 @@ export function categoriesDesMotsCles(db) {
 
 /**
  * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, cle, description,
- * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles }], dans l'ordre de leur id (`icone` : migration 0116, décision
- * R235, lib/icones.mjs). Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
+ * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles, parent }], dans l'ordre de leur id (`icone` : migration 0116,
+ * décision R235, lib/icones.mjs ; `parent` : le nom de la magie du sort que le mot-clé ancre, migration 0131, décision R309, null sinon et pour une base
+ * sans `sort.mot_cle_id` ; il sert à lib/mots-cles-cles.mjs#clesDesMotsCles et n'entre pas dans le vocabulaire des balises). Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
  * libelle_cle, ni catégorie ni clé quittée, et son abréviation (0090) pour seul synonyme ; d'avant la 0056, la 0098, la 0110 ou la 0116 : NULL (0 pour
  * le verrou) ; vide sans table mot_cle (avant la 0043).
  * @param {import('node:sqlite').DatabaseSync} db
@@ -49,7 +50,7 @@ export function motsClesDeLaBase(db) {
   const optionnelles = [...['description', 'couleur', 'url', 'monnaie_id', 'icone'].map((c) => colonne(c)), colonne('verrou', '0')].join(', ');
   const abreviation = !tableExiste(db, 'mot_cle_synonyme') && enPlace.includes('abreviation');
   const lignes = db.prepare(`SELECT id, libelle, ${cle}, ${optionnelles}${abreviation ? ', "abreviation"' : ''} FROM mot_cle ORDER BY id`).all();
-  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [] }]));
+  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [], parent: null }]));
   for (const m of parId.values()) {
     if (abreviation) {
       if (typeof m.abreviation === 'string' && m.abreviation) m.synonymes.push(m.abreviation);
@@ -64,6 +65,12 @@ export function motsClesDeLaBase(db) {
   }
   if (tableExiste(db, 'mot_cle_ancienne_cle')) {
     for (const a of db.prepare('SELECT mot_cle_id, cle FROM mot_cle_ancienne_cle ORDER BY mot_cle_id, cle').all()) parId.get(a.mot_cle_id)?.anciennes_cles.push(a.cle);
+  }
+  if (tableExiste(db, 'sort') && tableExiste(db, 'magie') && colonnesDe(db, 'sort').includes('mot_cle_id')) {
+    for (const p of db.prepare('SELECT s.mot_cle_id, m.nom FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.mot_cle_id IS NOT NULL').all()) {
+      const m = parId.get(p.mot_cle_id);
+      if (m) m.parent = p.nom;
+    }
   }
   return [...parId.values()];
 }

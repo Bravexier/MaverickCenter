@@ -2,6 +2,7 @@
 // tools/db/maverick.py#cles_des_mots_cles (la référence), rend les mêmes clés et les mêmes refus ; sur la base, chaque clé est celle de la règle.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
@@ -20,7 +21,8 @@ import maverick as T
 sortie = []
 for c in json.load(sys.stdin):
     try:
-        cles = T.cles_des_mots_cles([(m['id'], m['libelle'], m['categories']) for m in c['motsCles']], {int(k): v for k, v in c['categories'].items()}, strict=c.get('strict', True))
+        parents = {m['id']: m['parent'] for m in c['motsCles'] if m.get('parent')}
+        cles = T.cles_des_mots_cles([(m['id'], m['libelle'], m['categories']) for m in c['motsCles']], {int(k): v for k, v in c['categories'].items()}, strict=c.get('strict', True), parents=parents)
         sortie.append({'cles': {str(k): v for k, v in cles.items()}})
     except T.HomonymesRefuses as e:
         sortie.append({'refus': sorted([[b, sorted(ids), r] for b, ids, r in e.fautes])})
@@ -45,6 +47,7 @@ function javascript(c) {
 }
 
 const CATEGORIES = { 1: 'Règles', 2: 'Magie', 3: 'Race', 6: 'Classe', 10: 'Métier' };
+const CATEGORIES_R309 = { 10: 'Métier', 16: 'Sort' };
 const CAS = [
   // R232 (2) : sans homonyme, le slug du libellé
   { motsCles: [{ id: 1, libelle: 'Recharge longue', categories: [] }, { id: 2, libelle: 'Écho de pierre', categories: [1] }], categories: CATEGORIES },
@@ -61,7 +64,13 @@ const CAS = [
   // sans `strict` (l'état intermédiaire de la 0113) : un homonyme sans catégorie propre prend le slug seul ; deux clés égales restent refusées
   { motsCles: [{ id: 1, libelle: 'Anansi', categories: [] }, { id: 2, libelle: 'Anansi', categories: [6] }], categories: CATEGORIES, strict: false },
   { motsCles: [{ id: 1, libelle: 'Anansi', categories: [] }, { id: 2, libelle: 'Anansi', categories: [] }], categories: CATEGORIES, strict: false },
+  // R309 : deux homonymes de même type (ici deux sorts) se distinguent par leur parent, la magie du sort ; les cas suivants sont ajoutés à la fin (CAS_R309 les lit par index)
+  { motsCles: [{ id: 1, libelle: 'Contre-sort', categories: [16], parent: 'Arcane' }, { id: 2, libelle: 'Contre-sort', categories: [16], parent: 'Corruption' }], categories: CATEGORIES_R309 },
+  { motsCles: [{ id: 1, libelle: 'Sapeur', categories: [10] }, { id: 2, libelle: 'Sapeur', categories: [16], parent: 'Feu' }], categories: CATEGORIES_R309 },
+  { motsCles: [{ id: 1, libelle: 'X', categories: [16], parent: 'Feu' }, { id: 2, libelle: 'X', categories: [16], parent: 'Feu' }], categories: CATEGORIES_R309 },
+  { motsCles: [{ id: 1, libelle: 'X', categories: [16] }, { id: 2, libelle: 'X', categories: [16] }], categories: CATEGORIES_R309 },
 ];
+const CAS_R309 = CAS.length - 4;
 
 test('R232 : clesDesMotsCles (JS) rend les clés et les refus de maverick.py#cles_des_mots_cles', { skip: sansPython }, () => {
   const py = python(CAS);
@@ -76,13 +85,52 @@ test('R232 (2) : la forme de la clé — le slug seul, puis les seules catégori
   assert.equal(javascript(CAS[6]).refus[0][2], 'clé déjà prise');
 });
 
+test('R309 : deux homonymes de même type se distinguent par leur parent ; sans parent, ou avec le même, le refus', () => {
+  const [contreSort, sapeur, memeParent, sansParent] = [0, 1, 2, 3].map((i) => javascript(CAS[CAS_R309 + i]));
+  assert.deepEqual(contreSort.cles, { 1: 'contre-sort-arcane', 2: 'contre-sort-corruption' }, 'le parent s’ajoute après le libellé');
+  assert.deepEqual(sapeur.cles, { 1: 'sapeur-metier', 2: 'sapeur-sort' }, 'des types différents : le type suffit, le parent n’entre pas dans la clé');
+  assert.deepEqual(memeParent.refus, [['x-feu', [1, 2], 'clé déjà prise']], 'même type, même parent : la clé est prise, et rien d’autre');
+  assert.ok(sansParent.refus.some(([base, ids, raison]) => base === 'x' && ids.join() === '1,2' && raison === RAISONS_PY.incluses), 'sans parent, le refus « catégories incluses » reste');
+  assert.ok(sansParent.refus.some(([, , raison]) => raison === RAISONS_PY['cle-prise']));
+});
+
+test('R309 : clesDesMotsCles ne lit le parent que d’un homonyme de même type ; un parent seul ne change pas la clé d’un mot-clé sans homonyme', () => {
+  const sansHomonyme = clesDesMotsCles([{ id: 1, libelle: 'Rituel', categories: [16], parent: 'Arcane' }], CATEGORIES_R309);
+  assert.equal(sansHomonyme.get(1), 'rituel');
+  const mixte = clesDesMotsCles([{ id: 1, libelle: 'Rituel', categories: [16], parent: 'Arcane' }, { id: 2, libelle: 'Rituel', categories: [16] }], CATEGORIES_R309, { strict: false });
+  assert.equal(mixte.get(1), 'rituel-arcane');
+  assert.equal(mixte.get(2), 'rituel', 'sans parent (et non strict) : le libellé seul, comme avant');
+});
+
 test('R232 : sur la base, chaque clé est celle de la règle (stricte), et la même que celle de maverick.py', { skip: sansPython }, () => {
   const db = ouvrirBase();
   const motsCles = motsClesDeLaBase(db);
   const categories = Object.fromEntries(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
-  const cas = { motsCles: motsCles.map((m) => ({ id: m.id, libelle: m.libelle, categories: m.categories })), categories };
+  const cas = { motsCles: motsCles.map((m) => ({ id: m.id, libelle: m.libelle, categories: m.categories, parent: m.parent })), categories };
   const js = javascript(cas);
   assert.ok(js.cles, `la base respecte la règle : ${JSON.stringify(js.refus)}`);
   for (const m of motsCles) assert.equal(js.cles[m.id], m.cle, `mot-clé ${m.id}`);
   assert.deepEqual(js, python([cas])[0]);
+});
+
+test('R309 : motsClesDeLaBase porte le parent d’un mot-clé de sort (la magie du sort), null sinon ; une base sans sort.mot_cle_id n’en lève pas', () => {
+  const essai = new DatabaseSync(':memory:');
+  essai.exec(`
+    CREATE TABLE mot_cle (id INTEGER PRIMARY KEY, libelle TEXT NOT NULL, cle TEXT NOT NULL);
+    CREATE TABLE magie (id TEXT PRIMARY KEY, nom TEXT NOT NULL);
+    CREATE TABLE sort (id TEXT PRIMARY KEY, magie_id TEXT NOT NULL REFERENCES magie(id), nom TEXT NOT NULL);
+    INSERT INTO mot_cle (id, libelle, cle) VALUES (1, 'Essaim fantôme', 'essaim-fantome-zorg'), (2, 'Essaim fantôme', 'essaim-fantome-quix'), (3, 'Mot libre', 'mot-libre');
+    INSERT INTO magie (id, nom) VALUES ('magies/zorg', 'Zorg'), ('magies/quix', 'Quix');
+    INSERT INTO sort (id, magie_id, nom) VALUES ('magies/zorg#sort:essaim', 'magies/zorg', 'Essaim fantôme'), ('magies/quix#sort:essaim', 'magies/quix', 'Essaim fantôme');`);
+  // base d'avant la 0131 : pas de colonne, donc pas de parent, et aucune erreur
+  assert.deepEqual(motsClesDeLaBase(essai).map((m) => m.parent), [null, null, null]);
+  essai.exec(`
+    ALTER TABLE sort ADD COLUMN mot_cle_id INTEGER REFERENCES mot_cle(id);
+    UPDATE sort SET mot_cle_id = 1 WHERE magie_id = 'magies/zorg';
+    UPDATE sort SET mot_cle_id = 2 WHERE magie_id = 'magies/quix';`);
+  assert.deepEqual(motsClesDeLaBase(essai).map((m) => [m.id, m.parent]), [[1, 'Zorg'], [2, 'Quix'], [3, null]]);
+  // les deux homonymes de même type, ancrés sur deux sorts de même nom, reçoivent chacun la clé de leur magie
+  const types = new Map([[16, 'Sort']]);
+  const cles = clesDesMotsCles(motsClesDeLaBase(essai).map((m) => ({ ...m, categories: m.id === 3 ? [] : [16] })), types);
+  assert.deepEqual([...cles], [[1, 'essaim-fantome-zorg'], [2, 'essaim-fantome-quix'], [3, 'mot-libre']]);
 });
