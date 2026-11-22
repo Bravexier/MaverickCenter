@@ -32,11 +32,18 @@ export function trouverRacine() {
 
 const caches = (globalThis.__maverickDonnees ??= { bases: new Map(), nettoyage: false });
 
-/** Ferme chaque base puis supprime son dossier temporaire : Windows refuse de supprimer un fichier SQLite encore ouvert (EPERM). */
+/**
+ * Ferme chaque base puis supprime son dossier temporaire : Windows refuse de supprimer un fichier SQLite encore ouvert (EPERM). Ne lève jamais : à la sortie
+ * d'un build raté, une erreur ici remplacerait la vraie cause de l'échec ; un dossier resté est seulement signalé, et les bases suivantes sont quand même libérées.
+ */
 export function libererLesBases(bases) {
   for (const { db, dossier } of bases) {
-    if (db.isOpen) db.close();
-    rmSync(dossier, { recursive: true, force: true });
+    try {
+      if (db.isOpen) db.close();
+      rmSync(dossier, { recursive: true, force: true });
+    } catch (err) {
+      console.warn(`[donnees] dossier temporaire non supprimé (${dossier}) : ${err.message}`);
+    }
   }
 }
 
