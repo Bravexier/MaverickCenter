@@ -9,6 +9,7 @@ import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -56,7 +57,7 @@ function enService(nom, { mode = 'test', version = '0.2.2', source = true } = {}
   return dossier;
 }
 
-test('db/source : --copier-base-prod est refusé avant toute écriture', { skip }, () => {
+test('db/source : --copier-base-prod est refusé avant toute écriture', { skip: SEUL_LINUX || skip }, () => {
   const prod = join(racine, 'maverick-center');
   assert.equal(lancer(installateur({ mode: 'prod', label: 'prod', version: '0.2.0' }), ['--dossier', prod]).code, 0);
   const dev = enService('copie-refusee');
@@ -67,7 +68,7 @@ test('db/source : --copier-base-prod est refusé avant toute écriture', { skip 
   assert.deepEqual(etat(dev), avant, 'rien n’a été modifié');
 });
 
-test('db/source : une publication plus ancienne que celle installée est refusée, une égale ou plus récente s’installe (garde-fou 7)', { skip }, () => {
+test('db/source : une publication plus ancienne que celle installée est refusée, une égale ou plus récente s’installe (garde-fou 7)', { skip: SEUL_LINUX || skip }, () => {
   const dev = enService('plus-ancienne', { version: '0.2.10' });
   const avant = etat(dev);
   const r = lancer(installateur({ label: 'ancienne', version: '0.2.9' }), ['--dossier', dev]);
@@ -83,14 +84,14 @@ test('db/source : une publication plus ancienne que celle installée est refusé
   assert.ok(existsSync(join(dev, 'db', 'source')));
 });
 
-test('sans db/source : une publication plus ancienne s’installe comme avant (le contrôle est celui de mise-a-jour.sh)', { skip }, () => {
+test('sans db/source : une publication plus ancienne s’installe comme avant (le contrôle est celui de mise-a-jour.sh)', { skip: SEUL_LINUX || skip }, () => {
   const dev = enService('sans-marqueur', { version: '0.2.10', source: false });
   const r = lancer(installateur({ label: 'ancienne', version: '0.2.9' }), ['--dossier', dev]);
   assert.equal(r.code, 0, r.out);
   assert.match(readFileSync(join(dev, 'VERSION'), 'utf8'), /^version=0\.2\.9$/m);
 });
 
-test('bascule.sh, repetition-prod.sh et repetition-bascule-2.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip }, () => {
+test('bascule.sh, repetition-prod.sh et repetition-bascule-2.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip: SEUL_LINUX || skip }, () => {
   const dev = enService('livraison-bascule', { source: false });
   const prod = join(racine, 'prod-sans-bascule');
   assert.equal(lancer(installateur({ mode: 'prod', label: 'p', version: '0.2.0' }), ['--dossier', prod]).code, 0);

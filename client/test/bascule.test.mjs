@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { estEnBascule2 } from '../serveur/base-source.mjs';
 import { empreintesDuContenu } from '../serveur/empreintes.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/bascule.sh', import.meta.url));
 const SAUVEGARDE = fileURLToPath(new URL('../../deploy/installateur/sauvegarde', import.meta.url));
@@ -104,7 +105,7 @@ function creerMonde(t, { devSql = '' } = {}) {
 /** Une sauvegarde nommée réussie, notée comme `sauvegarder` la note (les outils des sauvegardes ont leur propre test, plus bas). */
 const sauvegardeReussie = (m, iso = HORLOGE) => appendFileSync(m.d('etat-bascule', 'etat'), `SAUVEGARDE=ok\nSAUVEGARDE_NOM=bascule-1-essai\nSAUVEGARDE_LE=${epoch(iso)}\n`);
 
-test('poser refuse sans gel, sans constat EGALITE ni sauvegarde ; le constat refuse un service en marche ; rien n’est posé', { skip }, (t) => {
+test('poser refuse sans gel, sans constat EGALITE ni sauvegarde ; le constat refuse un service en marche ; rien n’est posé', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   let r = m.lancer('poser');
   assert.equal(r.code, 1, r.out);
@@ -125,7 +126,7 @@ test('poser refuse sans gel, sans constat EGALITE ni sauvegarde ; le constat ref
   assert.match(r.out, /REFUS : l'envoi hors du serveur n'est pas activé/);
 });
 
-test('le jour J : geler, constat EGALITE dans le conteneur, sauvegarde, poser (marqueur, service relancé, source: true), état, puis retirer sans rien effacer', { skip }, (t) => {
+test('le jour J : geler, constat EGALITE dans le conteneur, sauvegarde, poser (marqueur, service relancé, source: true), état, puis retirer sans rien effacer', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t, { devSql: "UPDATE personnage SET nom = 'Une fiche du site de dev';" });
   let r = m.lancer('geler');
   assert.equal(r.code, 0, r.out);
@@ -160,7 +161,7 @@ test('le jour J : geler, constat EGALITE dans le conteneur, sauvegarde, poser (m
   assert.match(m.docker(), /^compose restart serveur$/m);
 });
 
-test('un constat de plus d’une heure, ou fait avant le gel en cours, ne permet pas de poser', { skip }, (t) => {
+test('un constat de plus d’une heure, ou fait avant le gel en cours, ne permet pas de poser', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   m.lancer('geler');
   assert.equal(m.lancer('constat').code, 0);
@@ -177,7 +178,7 @@ test('un constat de plus d’une heure, ou fait avant le gel en cours, ne permet
   assert.equal(existsSync(m.d('dev', 'db', 'source')), false);
 });
 
-test('un constat qui trouve un écart : code 1, la table nommée, rien ne peut être posé', { skip }, (t) => {
+test('un constat qui trouve un écart : code 1, la table nommée, rien ne peut être posé', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t, { devSql: "UPDATE famille SET libelle = 'Changée sur le site de dev';" });
   m.lancer('geler');
   const r = m.lancer('constat');
@@ -189,7 +190,7 @@ test('un constat qui trouve un écart : code 1, la table nommée, rien ne peut �
   assert.match(m.lancer('poser').out, /REFUS : aucun constat EGALITE/);
 });
 
-test('etat : dit si le site de dev lit l’attestation de la production (son dossier des métriques), sinon le réglage et le geste ; rien n’est modifié', { skip }, (t) => {
+test('etat : dit si le site de dev lit l’attestation de la production (son dossier des métriques), sinon le réglage et le geste ; rien n’est modifié', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   // sans MAVERICK_DOSSIER_METRIQUES dans son .env, le site de dev lit son propre metriques/ (incident du 2026-11-19)
   let r = m.lancer('etat');
@@ -374,7 +375,7 @@ test('poser-bascule-2 : refusé sans db/source, ou si le docker-compose.yml du s
   assert.equal(existsSync(m.d('dev', 'db', 'bascule-2')), false);
 });
 
-test('poser-bascule-2 : le dossier partagé créé (755), la ligne du .env, le marqueur écrit d’un coup, le service recréé ; état ; une seconde pose refusée ; retirer-bascule-2 renomme sans rien effacer', { skip }, (t) => {
+test('poser-bascule-2 : le dossier partagé créé (755), la ligne du .env, le marqueur écrit d’un coup, le service recréé ; état ; une seconde pose refusée ; retirer-bascule-2 renomme sans rien effacer', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   writeFileSync(m.d('dev', 'db', 'source'), 'format=maverick-source/1\n');
   writeFileSync(m.d('dev', 'docker-compose.yml'), '- ${MAVERICK_DOSSIER_PAQUETS:-./paquets}:/paquets\n');

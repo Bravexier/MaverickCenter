@@ -12,6 +12,7 @@ import { urlDuMorceau } from '../src/lib/markdown-fichier.mjs';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { dossierTemporaire, fichierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
 import { lireSansCrlf, sansCrlf } from './aide-fins-de-ligne.mjs';
+import { reserveALinux } from './aide-plateforme.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['-I', '-c', 'pass']).status !== 0 && 'python3 absent';
@@ -77,6 +78,11 @@ test('lireSansCrlf : un fichier en CRLF se lit avec des « \\n », un fichier en
   assert.equal(lireSansCrlf(pathToFileURL(crlf)), '# Titre\n\n## Partie\n', 'par une URL');
   assert.equal(lireSansCrlf(lf), '# Titre\n\n## Partie\n');
   assert.equal(sansCrlf('a\rb'), 'a\rb', 'un retour chariot seul n’est pas une fin de ligne');
+});
+
+test('réserve Linux : un test réservé tourne sous Linux (la CI), et se saute ailleurs avec sa raison', () => {
+  assert.equal(reserveALinux('linux'), false);
+  for (const plateforme of ['win32', 'darwin']) assert.match(reserveALinux(plateforme), /réservé à Linux/);
 });
 
 test('lireSchema : un schéma en CRLF se lit comme en LF', () => {

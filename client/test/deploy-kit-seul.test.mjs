@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -76,7 +77,7 @@ const archiveDe = (fichier, dossier) => {
   return dossier;
 };
 
-test('fabriquer --kit-seul : l’archive n’a aucune page, seulement le service (version.json avec le commit) et le kit ; le script porte KIT_SEUL=1', { skip }, () => {
+test('fabriquer --kit-seul : l’archive n’a aucune page, seulement le service (version.json avec le commit) et le kit ; le script porte KIT_SEUL=1', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const i = installateur({ kitSeul: true, depot });
   assert.equal(i.KIT_SEUL, '1');
@@ -104,7 +105,7 @@ test('fabriquer --kit-seul : l’archive n’a aucune page, seulement le service
   assert.ok(!('commit' in infoCourt));
 });
 
-test('fabriquer --kit-seul : demande --kit, refuse --site ; sans lui, KIT_SEUL=0 et le site complet', { skip }, () => {
+test('fabriquer --kit-seul : demande --kit, refuse --site ; sans lui, KIT_SEUL=0 et le site complet', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const site = join(racine, `site-${(n += 1)}`);
   ecrire(site, { 'index.html': 'x' });
@@ -125,7 +126,7 @@ test('fabriquer --kit-seul : demande --kit, refuse --site ; sans lui, KIT_SEUL=0
   assert.equal(cli('--kit', depot).status, 1, 'sans --site ni --kit-seul');
 });
 
-test('l’installateur de test sans kit seul : le modèle et les sections du kit seul, sans effet (KIT_SEUL=0)', { skip }, () => {
+test('l’installateur de test sans kit seul : le modèle et les sections du kit seul, sans effet (KIT_SEUL=0)', { skip: SEUL_LINUX || skip }, () => {
   const i = installateur({ depot: fauxDepot() });
   const script = contenuDe(i.fichier);
   assert.match(script, /^KIT_SEUL=0$/m);
@@ -133,7 +134,7 @@ test('l’installateur de test sans kit seul : le modèle et les sections du kit
   assert.match(script, /if \[ "\$KIT_SEUL" = 1 \]; then/);
 });
 
-test('installer un kit seul : refusé sans atelier/servir (aucune écriture, le geste exact) ; avec, seul site/_serveur/ est posé, les pages restent, le kit et la marque suivent', { skip }, () => {
+test('installer un kit seul : refusé sans atelier/servir (aucune écriture, le geste exact) ; avec, seul site/_serveur/ est posé, les pages restent, le kit et la marque suivent', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const instance = join(racine, `test-${(n += 1)}`);
   const complet = installateur({ depot, label: 'complet' });
@@ -176,7 +177,7 @@ test('installer un kit seul : refusé sans atelier/servir (aucune écriture, le 
   assert.equal(readFileSync(join(instance, 'site/donnees/maverick.db'), 'utf8'), 'base fabriquée');
 });
 
-test('un installateur de test complet reste celui d’avant sur une instance qui a atelier/servir : il pose le site entier', { skip }, () => {
+test('un installateur de test complet reste celui d’avant sur une instance qui a atelier/servir : il pose le site entier', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const instance = join(racine, `test-${(n += 1)}`);
   assert.equal(lancer(installateur({ depot, label: 'a' }).fichier, ['--dossier', instance]).code, 0);

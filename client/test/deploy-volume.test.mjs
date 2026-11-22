@@ -16,6 +16,7 @@ import {
 } from '../serveur/metriques.mjs';
 import { LANCEMENTS_PAR_JOUR } from '../serveur/notes-de-version.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../../${chemin}`, import.meta.url)), 'utf8');
 const COMPOSES = ['deploy/docker-compose.yml', 'deploy/installateur/docker-compose.yml'];
@@ -229,7 +230,7 @@ function lancerVolume(a, args = [a.normal, a.essai], env = {}) {
 const somme = (liste) => liste.reduce((t, e) => t + e.octets, 0);
 const elements = (j, filtre) => j.elements.filter((e) => Object.entries(filtre).every(([k, v]) => e[k] === v));
 
-test('volume.sh : les clés et libellés de la répartition du service, puis docker, journaux, installations ; la somme fait le disque', { skip: skipVolume }, () => {
+test('volume.sh : les clés et libellés de la répartition du service, puis docker, journaux, installations ; la somme fait le disque', { skip: SEUL_LINUX || skipVolume }, () => {
   const a = arborescence();
   const r = lancerVolume(a);
   assert.equal(r.code, 0, r.out);
@@ -262,7 +263,7 @@ test('volume.sh : les clés et libellés de la répartition du service, puis doc
   assert.deepEqual(j.hors_disque, []);
 });
 
-test('volume.sh : chaque fichier compté une fois, sous la clé que lui donne le service (categorieDuFichierDuSite)', { skip: skipVolume }, () => {
+test('volume.sh : chaque fichier compté une fois, sous la clé que lui donne le service (categorieDuFichierDuSite)', { skip: SEUL_LINUX || skipVolume }, () => {
   const a = arborescence();
   assert.equal(lancerVolume(a).code, 0);
   const j = JSON.parse(readFileSync(join(a.metriques, 'volume-hote.json'), 'utf8'));
@@ -304,7 +305,7 @@ test('volume.sh : chaque fichier compté une fois, sous la clé que lui donne le
     alloues(join(a.root, 'maverick-center-V0.3-install.sh')) + alloues(join(a.home, 'ubuntu', 'maverick-center-V0.3.1-install.sh')));
 });
 
-test('volume.sh : sans dossier partagé (NAS, une instance), les métriques de db/metriques/ ne sont comptées qu’une fois ; db/ en lien suivi', { skip: skipVolume }, () => {
+test('volume.sh : sans dossier partagé (NAS, une instance), les métriques de db/metriques/ ne sont comptées qu’une fois ; db/ en lien suivi', { skip: SEUL_LINUX || skipVolume }, () => {
   const a = arborescence();
   const seule = join(a.d, 'nas', 'maverick-center');
   fichier(join(seule, 'site', 'index.html'), 9_000);
@@ -360,7 +361,7 @@ test('volume.sh : une mesure sur un autre disque va dans hors_disque, jamais dan
   assert.equal(lancerVolume(b, [join(b.d, 'absent')]).code, 1);
 });
 
-test('le service de chaque instance lit volume-hote.json : sa jauge = celle de l’hôte, ses propres mesures à la place des siennes (images de sa base à part)', { skip: skipVolume }, () => {
+test('le service de chaque instance lit volume-hote.json : sa jauge = celle de l’hôte, ses propres mesures à la place des siennes (images de sa base à part)', { skip: SEUL_LINUX || skipVolume }, () => {
   const a = arborescence();
   assert.equal(lancerVolume(a).code, 0);
   const j = JSON.parse(readFileSync(join(a.metriques, 'volume-hote.json'), 'utf8'));
@@ -391,7 +392,7 @@ test('le service de chaque instance lit volume-hote.json : sa jauge = celle de l
   }
 });
 
-test('volume.sh : un lien posé à l’avance dans le dossier partagé (que les conteneurs modifient) n’est jamais suivi — le fichier provisoire a un nom imprévisible, créé en exclusivité', { skip: skipVolume }, () => {
+test('volume.sh : un lien posé à l’avance dans le dossier partagé (que les conteneurs modifient) n’est jamais suivi — le fichier provisoire a un nom imprévisible, créé en exclusivité', { skip: SEUL_LINUX || skipVolume }, () => {
   const a = arborescence();
   const victime = join(a.normal, 'db', 'vivante.db');
   writeFileSync(victime, 'SQLite format 3\u0000CONTENU-PRECIEUX', { mode: 0o600 });

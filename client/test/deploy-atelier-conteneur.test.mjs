@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/atelier/conteneur.sh', import.meta.url));
 const skip = spawnSync('sh', ['-c', 'command -v timeout && command -v dd'], { stdio: 'ignore' }).status !== 0 && 'timeout ou dd indisponible';
@@ -40,7 +41,7 @@ const lancer = (r, env = {}) => spawnSync('sh', [SCRIPT], {
   env: { PATH: process.env.PATH, KIT: join(r, 'kit'), SITE: join(r, 'site'), CONTENU: join(r, 'contenu'), TRAVAIL: join(r, 'travail'), SORTIE: join(r, 'sortie'), RESULTATS: join(r, 'resultats'), VERSION_INSTALLEE: '1.2.3', ...env },
 });
 
-test('la sortie de l’atelier ne porte pas le `_serveur/` du build (la comparaison, avant, l’a vu) ; les pages y sont', { skip }, (t) => {
+test('la sortie de l’atelier ne porte pas le `_serveur/` du build (la comparaison, avant, l’a vu) ; les pages y sont', { skip: SEUL_LINUX || skip }, (t) => {
   const r = monde(t);
   const p = lancer(r);
   assert.equal(p.status, 0, p.stdout + p.stderr);
@@ -49,7 +50,7 @@ test('la sortie de l’atelier ne porte pas le `_serveur/` du build (la comparai
   assert.equal(readFileSync(join(r, 'vu.txt'), 'utf8'), '_serveur vu', 'la comparaison avec le site livré a lieu avant le retrait');
 });
 
-test('la répétition de la bascule 2 (MODE_REPETITION=1) ne copie rien vers la sortie : le site reste dans le travail avec son `_serveur/`, jugé là où il est fait', { skip }, (t) => {
+test('la répétition de la bascule 2 (MODE_REPETITION=1) ne copie rien vers la sortie : le site reste dans le travail avec son `_serveur/`, jugé là où il est fait', { skip: SEUL_LINUX || skip }, (t) => {
   const r = monde(t);
   const p = lancer(r, { MODE_REPETITION: '1' });
   assert.equal(p.status, 0, p.stdout + p.stderr);

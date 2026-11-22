@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip') && have('find')) && 'tar, gzip ou find indisponible';
@@ -44,7 +45,7 @@ function lancer(fichier, dossier, bin, env = {}) {
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
 
-test('éteint par défaut : sans activation-par-paquet, l’installation de production ne crée rien, ne change aucun propriétaire et ne dit rien de l’activation', { skip }, () => {
+test('éteint par défaut : sans activation-par-paquet, l’installation de production ne crée rien, ne change aucun propriétaire et ne dit rien de l’activation', { skip: SEUL_LINUX || skip }, () => {
   const i = prod();
   const dossier = instance();
   const journal = join(racine, `appels-${(n += 1)}`);
@@ -60,7 +61,7 @@ test('éteint par défaut : sans activation-par-paquet, l’installation de prod
   assert.match(a.stderr, /== IMPOSSIBLE : l'activation par paquet est éteinte \(.*activation-par-paquet n'existe pas\) : rien n'a changé/);
 });
 
-test('avec activation-par-paquet, root : maverick-site créé s’il manque, site/ à lui SAUF _serveur/ (à root), chown -h par find -P ; sans kit, activer.sh n’est pas lancé et le dit', { skip }, () => {
+test('avec activation-par-paquet, root : maverick-site créé s’il manque, site/ à lui SAUF _serveur/ (à root), chown -h par find -P ; sans kit, activer.sh n’est pas lancé et le dit', { skip: SEUL_LINUX || skip }, () => {
   const i = prod();
   const dossier = instance();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
@@ -89,7 +90,7 @@ test('avec activation-par-paquet, root : maverick-site créé s’il manque, sit
   assert.doesNotMatch(readFileSync(journal2, 'utf8'), /useradd/);
 });
 
-test('avec activation-par-paquet sans être root : rien n’est créé ni changé, et l’installation continue avec le geste', { skip }, () => {
+test('avec activation-par-paquet sans être root : rien n’est créé ni changé, et l’installation continue avec le geste', { skip: SEUL_LINUX || skip }, () => {
   const i = prod();
   const dossier = instance();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
@@ -100,7 +101,7 @@ test('avec activation-par-paquet sans être root : rien n’est créé ni chang�
   assert.equal(existsSync(journal), false);
 });
 
-test('avec le kit posé, activer.sh est lancé ; son refus ne fait jamais échouer l’installation (code 0, ATTENTION, le geste, sa sortie au journal)', { skip }, () => {
+test('avec le kit posé, activer.sh est lancé ; son refus ne fait jamais échouer l’installation (code 0, ATTENTION, le geste, sa sortie au journal)', { skip: SEUL_LINUX || skip }, () => {
   const i = prod();
   const dossier = instance();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
@@ -114,7 +115,7 @@ test('avec le kit posé, activer.sh est lancé ; son refus ne fait jamais échou
   assert.match(readFileSync(join(dossier, 'installation.log'), 'utf8'), /IMPOSSIBLE/, 'et au journal de l’installation');
 });
 
-test('l’installateur de test ne porte rien de l’activation : ni fragment, ni activer.sh dans l’archive', { skip }, () => {
+test('l’installateur de test ne porte rien de l’activation : ni fragment, ni activer.sh dans l’archive', { skip: SEUL_LINUX || skip }, () => {
   const site = join(racine, `site-${(n += 1)}`);
   ecrire(join(site, 'index.html'), 'x');
   const t = fabriquer({ mode: 'test', tag: 'v0.2.0', version: '0.2.0', sha: 'local', site, sortie: join(racine, 'sortie-test') });

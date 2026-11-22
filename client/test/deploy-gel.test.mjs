@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { FICHIER_GEL, lireLeGel, messageDuGel } from '../serveur/gel.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/gel.sh', import.meta.url));
 const outil = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
@@ -35,7 +36,7 @@ function instance(t, nom = 'maverick-center-test') {
   return { racine, dossier, fichier: join(dossier, 'db', FICHIER_GEL), lancer };
 }
 
-test('poser : db/gel.json que le service lit ; 60 minutes par défaut, le motif et le geste exact ; lisible par le service, écrit en entier par un fichier provisoire, rien ne traîne', { skip: SKIP }, (t) => {
+test('poser : db/gel.json que le service lit ; 60 minutes par défaut, le motif et le geste exact ; lisible par le service, écrit en entier par un fichier provisoire, rien ne traîne', { skip: SEUL_LINUX || SKIP }, (t) => {
   const i = instance(t);
   const avant = Date.now();
   const r = i.lancer('poser');
@@ -57,7 +58,7 @@ test('poser : db/gel.json que le service lit ; 60 minutes par défaut, le motif 
   assert.match(messageDuGel(lu.gel, { maintenantMs: avant }), /gel\.sh lever/);
 });
 
-test('poser --duree et --motif : la durée voulue (1 à 240 minutes), un motif quelconque (guillemets, barres, accents, retours à la ligne) reste un JSON valide', { skip: SKIP }, (t) => {
+test('poser --duree et --motif : la durée voulue (1 à 240 minutes), un motif quelconque (guillemets, barres, accents, retours à la ligne) reste un JSON valide', { skip: SEUL_LINUX || SKIP }, (t) => {
   const i = instance(t, 'maverick-center');
   for (const [duree, attendu] of [['1', 1], ['15', 15], ['240', 240]]) {
     const avant = Date.now();
@@ -110,7 +111,7 @@ test('lever : retire le gel et le dit ; sans gel, le dit aussi (code 0) ; le ser
   assert.equal(lireLeGel(join(i.dossier, 'db')).etat, 'absent');
 });
 
-test('etat : aucun gel ; un gel (jusqu’à quand, combien de minutes, motif, geste) ; un gel échu ; un fichier illisible tenu au plus 2 h', { skip: SKIP }, (t) => {
+test('etat : aucun gel ; un gel (jusqu’à quand, combien de minutes, motif, geste) ; un gel échu ; un fichier illisible tenu au plus 2 h', { skip: SEUL_LINUX || SKIP }, (t) => {
   const i = instance(t);
   assert.match(i.lancer('etat').out, /Gel : aucun/);
   i.lancer('poser', '--duree', '45', '--motif', 'essai');
@@ -167,7 +168,7 @@ test('sans MAVERICK_ESSAI, un autre que root est refusé avant toute écriture',
 // La livraison : les deux instances
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-test('l’installateur livre gel.sh à la racine de l’instance de test ET de production, exécutable, tel quel ; il remplace une ancienne version et ne touche pas à db/gel.json', { skip: SANS_TAR }, (t) => {
+test('l’installateur livre gel.sh à la racine de l’instance de test ET de production, exécutable, tel quel ; il remplace une ancienne version et ne touche pas à db/gel.json', { skip: SEUL_LINUX || SANS_TAR }, (t) => {
   const racine = dossierTemporaire('gel-livraison', { t });
   const site = join(racine, 'site');
   mkdirSync(site);

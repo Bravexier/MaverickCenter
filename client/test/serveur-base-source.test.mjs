@@ -15,6 +15,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { LIVRAISON, NUMERO, baseDesRegles, baseRemplie, etatDuFichier, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const JSON_ = { 'content-type': 'application/json' };
 /**
@@ -142,7 +143,7 @@ test('marqueur, base d’une version d’avant et remplie : migrations essayées
   }
 });
 
-test('marqueur : ni le fichier des règles changé ni la base retirée ne la font refaire ; une base retirée n’est pas recréée', async (t) => {
+test('marqueur : ni le fichier des règles changé ni la base retirée ne la font refaire ; une base retirée n’est pas recréée', { skip: SEUL_LINUX }, async (t) => {
   const dossier = nouveauDossier('jamais-refaite', t);
   const { chemin: remplie } = baseRemplie();
   const vivante = join(dossier, 'vivante.db');

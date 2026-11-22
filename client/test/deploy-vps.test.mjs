@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const vps = fileURLToPath(new URL('../../deploy/vps/', import.meta.url));
 const installateur = readFileSync(fileURLToPath(new URL('../../deploy/installateur/installateur.sh', import.meta.url)), 'utf8');
@@ -140,7 +141,7 @@ function accordes(dossier, acces) {
   return id === 'invite' && identifiant === 'invite' && r.stdout.trim() === empreinte;
 }
 
-test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots de passe internes accordés avec Caddy', { skip: skipExec }, () => {
+test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots de passe internes accordés avec Caddy', { skip: SEUL_LINUX || skipExec }, () => {
   const d = dossiers();
   const r = lancerInstances(d);
   assert.equal(r.code, 0, r.out);
@@ -221,7 +222,7 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.ok(accordes(d.normal, caddy3.MAVERICK_ACCES_NORMAL) && accordes(d.test, caddy3.MAVERICK_ACCES_TEST));
 });
 
-test('instances.sh : sans --bascule-2 le dossier des paquets n\'est pas monté ; avec lui (ou un .env qui le porte déjà) il est créé et monté en lecture-écriture, relançable', { skip: skipExec }, () => {
+test('instances.sh : sans --bascule-2 le dossier des paquets n\'est pas monté ; avec lui (ou un .env qui le porte déjà) il est créé et monté en lecture-écriture, relançable', { skip: SEUL_LINUX || skipExec }, () => {
   const d = dossiers();
   assert.equal(lancerInstances(d).code, 0);
   assert.ok(!existsSync(join(d.normal, 'paquets')));
@@ -244,7 +245,7 @@ test('instances.sh : sans --bascule-2 le dossier des paquets n\'est pas monté ;
   assert.match(r.out, /n'est pas un dossier ordinaire/);
 });
 
-test('instances.sh : domaine invalide ou Caddy absent refusés sans rien écrire', { skip: skipExec }, () => {
+test('instances.sh : domaine invalide ou Caddy absent refusés sans rien écrire', { skip: SEUL_LINUX || skipExec }, () => {
   const d = dossiers();
   const r = lancerInstances(d, ['--domaine', 'a b;rm']);
   assert.equal(r.code, 2, r.out);

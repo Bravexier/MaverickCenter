@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = process.env.UPDATE_SITE_SCRIPT ?? fileURLToPath(new URL('../../deploy/update-site.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
@@ -90,7 +91,7 @@ function serve(sha, files) {
   state.tarball = files ? tarball(files, sha) : null;
 }
 
-test('installation initiale, puis « à jour » sans retélécharger', { skip }, async () => {
+test('installation initiale, puis « à jour » sans retélécharger', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   const n = nas('initial');
   const first = await n.run();
@@ -112,7 +113,7 @@ test('installation initiale, puis « à jour » sans retélécharger', { skip },
 });
 
 for (const mode of ['auto', '0']) {
-  test(`nouvelle version : remplace tout et supprime les anciens fichiers (USE_RSYNC=${mode})`, { skip }, async () => {
+  test(`nouvelle version : remplace tout et supprime les anciens fichiers (USE_RSYNC=${mode})`, { skip: SEUL_LINUX || skip }, async () => {
     serve(SHA_A, site(25, 'v1'));
     const n = nas(`maj-${mode}`);
     assert.equal((await n.run([], { USE_RSYNC: mode })).code, 0);
@@ -130,7 +131,7 @@ for (const mode of ['auto', '0']) {
   });
 }
 
-test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
+test('jeton refusé : erreur claire, site inchangé', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   const n = nas('jeton-refuse');
   assert.equal((await n.run()).code, 0);
@@ -143,14 +144,14 @@ test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
   assert.equal(n.read('.installed-sha').trim(), SHA_A);
 });
 
-test('branche pas encore créée (404) : erreur claire', { skip }, async () => {
+test('branche pas encore créée (404) : erreur claire', { skip: SEUL_LINUX || skip }, async () => {
   serve(null, null);
   const res = await nas('sans-branche').run();
   assert.equal(res.code, 1);
   assert.match(res.out, /pas encore créée/);
 });
 
-test('archive sans index.html ou trop petite : refusée, site inchangé', { skip }, async () => {
+test('archive sans index.html ou trop petite : refusée, site inchangé', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   const n = nas('archive-invalide');
   assert.equal((await n.run()).code, 0);
@@ -172,7 +173,7 @@ test('archive sans index.html ou trop petite : refusée, site inchangé', { skip
   assert.equal(n.read('.installed-sha').trim(), SHA_A);
 });
 
-test('jeton absent ou mal formé : refus avant tout appel réseau', { skip }, async () => {
+test('jeton absent ou mal formé : refus avant tout appel réseau', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   state.auth.length = 0;
   let res = await nas('sans-jeton', { token: null }).run();
@@ -184,7 +185,7 @@ test('jeton absent ou mal formé : refus avant tout appel réseau', { skip }, as
   assert.equal(state.auth.length, 0, 'aucune requête ne doit partir');
 });
 
-test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip }, async () => {
+test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   const n = nas('verrou');
   mkdirSync(join(n.base, '.update.lock'));
@@ -202,7 +203,7 @@ test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou pé
   assert.ok(!n.has('.update.lock'), 'le verrou est retiré en fin de script');
 });
 
-test('SITE_DIR dangereux ou relatif : refusé', { skip }, async () => {
+test('SITE_DIR dangereux ou relatif : refusé', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   const n = nas('chemins');
   const protege = join(root, 'donnees-importantes');
@@ -217,7 +218,7 @@ test('SITE_DIR dangereux ou relatif : refusé', { skip }, async () => {
   assert.match(res.out, /chemin absolu/);
 });
 
-test('réglages : update-site.env à côté du script ; sans lui, l\'ancien update-nas.env est encore lu', { skip }, async () => {
+test('réglages : update-site.env à côté du script ; sans lui, l\'ancien update-nas.env est encore lu', { skip: SEUL_LINUX || skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   // Les réglages se lisent à côté du script : on en pose une copie dans un dossier à elle. L'environnement vise une adresse fermée,
   // que seul un fichier de réglages lu peut corriger.

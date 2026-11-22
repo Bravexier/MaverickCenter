@@ -20,6 +20,7 @@ import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { CLASSES_DE_TABLES, TABLES_PROPRES_AU_SITE, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SENTINELLES, marquesDesFiches, poserDesFiches } from './aide-fiches-sentinelles.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const REGLES = cheminBase({ sansExemples: false });
 const sha = (octets) => createHash('sha256').update(octets).digest('hex');
@@ -226,7 +227,7 @@ test('deux bases au même contenu, octets différents : mêmes empreintes, table
   assert.ok(metier);
 });
 
-test('clé de changement : bouge avec un lot d’édition, un état de modification et une reconstruction ; jamais avec une fiche', (t) => {
+test('clé de changement : bouge avec un lot d’édition, un état de modification et une reconstruction ; jamais avec une fiche', { skip: SEUL_LINUX }, (t) => {
   const { base, db, regles } = nouvelleBase(t, { fiches: false });
   const cle = () => cleDeChangement(db, base);
   const depart = cle();

@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -38,7 +39,7 @@ const dossier = (nom) => join(racine, nom);
 const lire = (...p) => readFileSync(join(...p), 'utf8');
 const champs = (d) => Object.fromEntries(lire(d, 'VERSION').trim().split('\n').map((l) => l.split(/=(.*)/s).slice(0, 2)));
 
-test('fabrication : un seul fichier, paramètres remplis, archive contrôlée par --verifier', { skip }, () => {
+test('fabrication : un seul fichier, paramètres remplis, archive contrôlée par --verifier', { skip: SEUL_LINUX || skip }, () => {
   const i = installateur({ pages: 7 });
   assert.match(i.fichier, /maverick-center-v0\.2-install\.sh$/);
   assert.equal(i.PAGES, '8');
@@ -61,7 +62,7 @@ test('fabrication : un seul fichier, paramètres remplis, archive contrôlée pa
   assert.ok(!existsSync(join(dossier('jamais'), 'site')));
 });
 
-test('paramètres refusés : étiquette de test en production et inversement, version invalide', () => {
+test('paramètres refusés : étiquette de test en production et inversement, version invalide', { skip: SEUL_LINUX }, () => {
   const s = site('x');
   const base = { site: s, version: '0.2.0', sha: 'b'.repeat(40), sortie: join(racine, 'sortie') };
   assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2.0' }), /étiquette de production/);
@@ -85,7 +86,7 @@ test('paramètres refusés : étiquette de test en production et inversement, ve
 });
 
 for (const rsync of ['auto', '0']) {
-  test(`production : première installation puis mise à jour (USE_RSYNC=${rsync})`, { skip }, () => {
+  test(`production : première installation puis mise à jour (USE_RSYNC=${rsync})`, { skip: SEUL_LINUX || skip }, () => {
     const prod = dossier(`prod-${rsync}`);
     const r1 = lancer(installateur({ label: 'v1' }).fichier, ['--dossier', prod], { USE_RSYNC: rsync });
     assert.equal(r1.code, 0, r1.out);
@@ -160,7 +161,7 @@ const noms = (d, fichier = 'maverick.db') => {
   try { return b.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom); } finally { b.close(); }
 };
 
-test('test : par défaut, aucune copie de la production ; db/ (rempli ou non, avec ou sans MAVERICK_BASE_TEST=conservee) n\'est jamais touché (R274)', { skip }, () => {
+test('test : par défaut, aucune copie de la production ; db/ (rempli ou non, avec ou sans MAVERICK_BASE_TEST=conservee) n\'est jamais touché (R274)', { skip: SEUL_LINUX || skip }, () => {
   const { prod, test_ } = productionEtTest('nas-defaut');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   const avantProd = empreinte(join(prod, 'db'));
@@ -209,7 +210,7 @@ test('test : aucun « rm » de l\'installateur ne vise db/ (garde sur le script)
   assert.ok(!lignes.some((l) => /find\s+"\$DOSSIER\/db\/?"[^|]*(-exec\s+rm|-delete)/.test(l)));
 });
 
-test('test : --copier-base-prod copie la production à l\'instant de l\'installation, dans un db/ vide seulement', { skip }, () => {
+test('test : --copier-base-prod copie la production à l\'instant de l\'installation, dans un db/ vide seulement', { skip: SEUL_LINUX || skip }, () => {
   const { prod, test_ } = productionEtTest('nas-copie');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   const r = lancer(i, ['--dossier', test_, '--copier-base-prod']); // dossier de la production : le voisin « maverick-center »
@@ -237,7 +238,7 @@ test('test : --copier-base-prod copie la production à l\'instant de l\'installa
   assert.deepEqual(noms(test_), ['Aldric', 'Brune', 'Essai']);
 });
 
-test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a pas encore de site ; db/ avec ses seules métriques : copie faite', { skip }, () => {
+test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a pas encore de site ; db/ avec ses seules métriques : copie faite', { skip: SEUL_LINUX || skip }, () => {
   const { test_ } = productionEtTest('nas-copie-refus');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   remplirLaBaseDeDev(test_);
@@ -274,7 +275,7 @@ test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a p
   assert.ok(!existsSync(join(dossier('nas-copie-refus'), 'sans', 'site')));
 });
 
-test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copie est refusée au moment de poser, rien n\'est écrasé', { skip }, () => {
+test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copie est refusée au moment de poser, rien n\'est écrasé', { skip: SEUL_LINUX || skip }, () => {
   const { test_ } = productionEtTest('nas-copie-course');
   // Un faux sqlite3, lancé par l'installateur pendant la copie : il écrit dans db/ de l'instance de test (comme le service qui crée sa base)
   // puis fait la sauvegarde en copiant le fichier.
@@ -293,7 +294,7 @@ test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copi
   assert.ok(!existsSync(join(test_, 'site')), 'le site n\'est pas posé : l\'installation s\'arrête avant');
 });
 
-test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossier) n\'est jamais écrasée : la copie s\'interrompt', { skip }, () => {
+test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossier) n\'est jamais écrasée : la copie s\'interrompt', { skip: SEUL_LINUX || skip }, () => {
   // Un faux « ln » (fichier) et un faux « mkdir » (dossier) créent l'entrée visée, comme le service qui écrit entre le contrôle et la pose,
   // puis laissent la vraie commande échouer dessus : la pose ne doit rien remplacer.
   for (const [cas, entree, fausse] of [['fichier', 'maverick.db', 'ln'], ['dossier', 'pieces', 'mkdir']]) {
@@ -315,7 +316,7 @@ test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossie
   }
 });
 
-test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip }, () => {
+test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip: SEUL_LINUX || skip }, () => {
   const { test_, prod } = productionEtTest('nas-copie-pose-droits');
   chmodSync(join(prod, 'db', 'pieces'), 0o750);
   chmodSync(join(prod, 'db', 'pieces', 'carte.txt'), 0o640);
@@ -327,7 +328,7 @@ test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip }
   assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'la copie provisoire est retirée');
 });
 
-test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip }, () => {
+test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip: SEUL_LINUX || skip }, () => {
   const parent = dossier('refus');
   const prod = join(parent, 'maverick-center');
   const test_ = join(parent, 'maverick-center-test');
@@ -371,7 +372,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   assert.equal(lancer(iProd, ['--dossier', ancienne]).code, 0, 'un installateur de production peut la reprendre');
 });
 
-test('verrou : une installation en cours bloque la suivante ; un verrou périmé est nettoyé', { skip }, () => {
+test('verrou : une installation en cours bloque la suivante ; un verrou périmé est nettoyé', { skip: SEUL_LINUX || skip }, () => {
   const prod = dossier('verrou');
   mkdirSync(join(prod, '.installation.lock'), { recursive: true });
   writeFileSync(join(prod, '.installation.lock', 'pid'), String(process.pid));
@@ -385,7 +386,7 @@ test('verrou : une installation en cours bloque la suivante ; un verrou périmé
   assert.ok(!existsSync(join(prod, '.installation.lock')));
 });
 
-test('test : base de production en cours d\'écriture (WAL non reporté) copiée complète', { skip }, () => {
+test('test : base de production en cours d\'écriture (WAL non reporté) copiée complète', { skip: SEUL_LINUX || skip }, () => {
   const parent = dossier('wal');
   const prod = join(parent, 'maverick-center');
   assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
@@ -403,7 +404,7 @@ test('test : base de production en cours d\'écriture (WAL non reporté) copiée
   copie.close();
 });
 
-test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui-même peut être un lien ; droits des fichiers conservés', { skip }, () => {
+test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui-même peut être un lien ; droits des fichiers conservés', { skip: SEUL_LINUX || skip }, () => {
   const parent = dossier('liens');
   const prod = join(parent, 'maverick-center');
   const iTest = installateur({ mode: 'test', label: 't' }).fichier;
@@ -436,7 +437,7 @@ test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui
   assert.equal(statSync(join(parent, 'maverick-center-test', 'db', 'maverick.db')).mode & 0o777, 0o640);
 });
 
-test('racine du système refusée, y compris « // » sous bash', { skip }, () => {
+test('racine du système refusée, y compris « // » sous bash', { skip: SEUL_LINUX || skip }, () => {
   const i = installateur().fichier;
   for (const shell of ['sh', 'bash']) {
     const r = spawnSync(shell, [i, '--dossier', '//'], { cwd: racine, encoding: 'utf8', env: { PATH: process.env.PATH } });
@@ -445,7 +446,7 @@ test('racine du système refusée, y compris « // » sous bash', { skip }, () =
   }
 });
 
-test('configuration : une version livrée non modifiée sur place est remplacée ; mise-a-jour.sh est remplacé par renommage', { skip }, () => {
+test('configuration : une version livrée non modifiée sur place est remplacée ; mise-a-jour.sh est remplacé par renommage', { skip: SEUL_LINUX || skip }, () => {
   const prod = dossier('configuration');
   const i = installateur().fichier;
   assert.equal(lancer(i, ['--dossier', prod]).code, 0);
@@ -462,7 +463,7 @@ test('configuration : une version livrée non modifiée sur place est remplacée
   assert.notEqual(statSync(join(prod, 'mise-a-jour.sh')).ino, inode, 'nouveau fichier : un mise-a-jour.sh en cours garde l\'ancien');
 });
 
-test('test : les métriques (db/metriques/, sans dossier des métriques réglé) ne sont ni copiées de la production, ni effacées du test, ni prises pour une base', { skip }, () => {
+test('test : les métriques (db/metriques/, sans dossier des métriques réglé) ne sont ni copiées de la production, ni effacées du test, ni prises pour une base', { skip: SEUL_LINUX || skip }, () => {
   // docs/serveur.md, « Métriques et volume » : une base de métriques par instance (prod.db, dev.db), jamais mêlées (décision du propriétaire du
   // 2026-10-15). Avec docker-compose.yml, elles sont hors de db/ ; sans dossier réglé, le service les range dans db/metriques/.
   const parent = dossier('metriques');
