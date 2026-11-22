@@ -93,7 +93,7 @@ function vocabulaireFutur(motsCles, elements, reclasses) {
 }
 
 /** Ce que la règle refuse dans ce vocabulaire : homonymes et clés (R232), écritures prises par un synonyme (R233 (4)) : [{ ids, base, raison }]. */
-function fautesDuVocabulaire(futurs, libelles, parId) {
+export function fautesDuVocabulaire(futurs, libelles, parId) {
   let cles;
   try {
     cles = clesDesMotsCles(futurs, libelles);

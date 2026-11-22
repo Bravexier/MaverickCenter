@@ -198,12 +198,12 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null, nat
   const interdire = (table) => {
     if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal ou des fiches, jamais modifiée par l'édition`);
   };
-  const lignes = []; // { table, cle, operation } : ce que le lot a touché, dans l'ordre
+  const lignes = []; // { table, cle, operation, colonnes } : ce que le lot a touché, dans l'ordre ; `colonnes` : celles qu'un 'modifier' a changées (null sinon)
   const note = (table, cle, operation, avant, apres, apercu = null) => {
     rang += 1;
     noter.run(id, rang, table, JSON.stringify(cle), operation, avant === null ? null : JSON.stringify(avant), apres === null ? null : JSON.stringify(apres),
       apercu === null ? null : JSON.stringify(apercu));
-    lignes.push({ table, cle, operation });
+    lignes.push({ table, cle, operation, colonnes: operation === 'modifier' ? Object.keys(apres) : null });
   };
   return {
     lire: (table, cle) => lireLigne(db, table, cle),

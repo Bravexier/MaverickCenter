@@ -6,10 +6,13 @@
 // Sans import de serveur/edition.mjs : ses outils sont donnés par outilsDeLAncrage (patron de edition-mots-cles.mjs#outilsDesMotsCles).
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import { mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { lireBalises, motCleDeLaRef, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
+import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
 
 const NOMS = Object.freeze({ page: 'Page', sort: 'Sort', type_sort: 'Type de sort' });
 /** La mention d'une décision dans un refus de la règle des clés (« (décision R232 (9)) »). */
@@ -90,8 +93,36 @@ export function lectureDesBalises(motsCles, clesDAvant = new Map(), clesDeFin = 
   };
 }
 
+/** Vrai si la table porte l'ancre d'un élément (une base d'avant la migration R309 ne l'a pas). */
+const aDesAncres = (db, table) => Boolean(db.prepare(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = 'mot_cle_id'`).get());
+/** Vrai si la ligne d'un texte (sa clé) appartient à l'un des éléments `ids` : elle part avec eux. */
+const partAvec = (cle, ids) => [cle.id, cle.page_id, cle.capacite_id, cle.metier_id, cle.sort_id, cle.entite_id].some((v) => ids.has(v));
+
 /**
- * Les outils de l'ancrage, liés au service : { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot }.
+ * Le mot-clé que chacun des éléments `ids` de `table` ancre : Map(id de l'élément → { id, libelle, verrou, mentions }), sans ceux qui n'en ont pas. `mentions` : les balises et
+ * étiquettes qui le citent (R196), hors textes de l'élément et de ceux qui partent avec lui (`avec`) ; une référence de la base n'est pas un texte à retoucher.
+ */
+export function motsClesPropres(db, table, ids, { avec = [] } = {}) {
+  const sortie = new Map();
+  if (!aDesAncres(db, table)) return sortie;
+  const sien = db.prepare(`SELECT k.id, k.libelle, k.verrou FROM "${table}" e JOIN mot_cle k ON k.id = e.mot_cle_id WHERE e.id = ?`);
+  for (const id of ids) {
+    const m = sien.get(id);
+    if (m) sortie.set(id, { id: m.id, libelle: m.libelle, verrou: m.verrou, mentions: [] });
+  }
+  if (!sortie.size) return sortie;
+  const mentions = mentionsDesMotsCles(db, [...sortie.values()].map((m) => m.id));
+  for (const [id, m] of sortie) {
+    const partent = new Set([id, ...avec]);
+    // verrouillé : citationsDesPages le cite déjà (R221), ses mentions ne se comptent pas deux fois
+    m.mentions = m.verrou ? [] : (mentions.get(m.id) ?? []).filter((c) => c.comment !== 'reference' && !partAvec(c.cle, partent));
+  }
+  return sortie;
+}
+
+/**
+ * Les outils de l'ancrage, liés au service : { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer,
+ * retirerLeMotCle }.
  * @param {{ ErreurEdition: Function, MOTS_CLES: object, creerMotCle: Function }} o la classe d'erreur, les outils du vocabulaire et la création d'un mot-clé
  */
 export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
@@ -151,6 +182,15 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     w.modifier(table, { id }, { mot_cle_id });
   }
 
+  /** L'élément que le mot-clé `id` ancre : { table, elementId } (la page, sinon le sort, sinon le type de sort), ou null. */
+  function ancreDuMotCle(db, id) {
+    for (const table of TABLES_ANCRABLES) {
+      const ligne = db.prepare(`SELECT id FROM "${table}" WHERE mot_cle_id = ?`).get(id);
+      if (ligne) return { table, elementId: ligne.id };
+    }
+    return null;
+  }
+
   /**
    * Recopie sur le mot-clé `id` le nom et l'adresse de son élément (la page, sinon le sort, sinon le type de sort : un mot-clé peut ancrer une page et un type).
    * Un type de sort n'a pas d'adresse : celle du mot-clé reste. La clé n'est pas recalculée ici : `recalculerEnFinDeLot`, une fois, après la dernière opération.
@@ -159,9 +199,9 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     const { db, w } = ctx;
     const m = lireLigne(db, 'mot_cle', { id });
     if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${JSON.stringify(id)}`);
-    const ancre = TABLES_ANCRABLES.map((table) => ({ table, ligne: db.prepare(`SELECT id FROM "${table}" WHERE mot_cle_id = ?`).get(id) })).find((a) => a.ligne);
+    const ancre = ancreDuMotCle(db, id);
     if (!ancre) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : il n’ancre aucun élément, il ne s’aligne sur rien.`);
-    const { table, ligne: { id: elementId } } = ancre;
+    const { table, elementId } = ancre;
     const e = elementDe(db, table, elementId);
     const libelle = nomDeLElement(e, table, elementId);
     const valeurs = {};
@@ -180,5 +220,128 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     return `Clés recalculées${MOTS_CLES.resumeDesCles(MOTS_CLES.recalculerLesCles(ctx))}`;
   }
 
-  return { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot };
+  /**
+   * Le mot-clé d'une page qu'on vient de créer, type de sa rubrique, ancre posée. Une création de page n'échoue jamais à cause de lui : rubrique sans type,
+   * catégorie pas encore créée, adresse déjà tenue par un mot-clé ou nom que la règle refuse rendent null, et la prochaine « Préparer l'ancrage » l'ancre ou le
+   * liste à trancher. Rend l'id du mot-clé, ou null.
+   */
+  function ancrerLaPage(ctx, { id, type, titre }) {
+    const { db, w } = ctx;
+    const nom = TYPE_DE_RUBRIQUE[type];
+    if (!nom || !aDesAncres(db, 'page')) return null;
+    const categorie = categoriesDesMotsCles(db).find((c) => normalize(c.libelle) === normalize(nom))?.id;
+    if (categorie === undefined) return null;
+    const url = adresseDeLaPage(id);
+    if (db.prepare('SELECT 1 FROM mot_cle WHERE url = ?').get(url)) return null;
+    ctx.adressesDuLot = null; // la page vient d'être créée : les adresses retenues par le lot ne la connaissent pas
+    try {
+      return w.isoler(() => ancrerNouveau(ctx, { table: 'page', id, libelle: titre, url, type: categorie }));
+    } catch (e) {
+      if (e instanceof ErreurEdition) return null;
+      throw e;
+    }
+  }
+
+  /** Parmi les mots-clés `ids`, ceux qui peuvent prendre le nom de leur élément sans que la règle refuse le vocabulaire (un échange de noms passe : on essaie jusqu'au point fixe). */
+  function nomsQuiPassent(db, ids) {
+    const motsCles = motsClesDeLaBase(db);
+    const parId = new Map(motsCles.map((m) => [m.id, m]));
+    const libelles = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
+    const voulus = new Map();
+    for (const id of ids) {
+      const ancre = ancreDuMotCle(db, id);
+      const nom = ancre ? elementDe(db, ancre.table, ancre.elementId)?.nom : null;
+      if (nom && normalize(nom) && nom !== parId.get(id)?.libelle) voulus.set(id, nom);
+    }
+    let futurs = motsCles;
+    const passent = [];
+    for (let avance = true; avance && voulus.size;) {
+      avance = false;
+      for (const [id, nom] of voulus) {
+        const essai = futurs.map((m) => (m.id === id ? { ...m, libelle: nom } : m));
+        if (fautesDuVocabulaire(essai, libelles, parId).length) continue;
+        futurs = essai;
+        passent.push(id);
+        voulus.delete(id);
+        avance = true;
+      }
+    }
+    return passent;
+  }
+
+  /**
+   * Fin d'un lot écrit par le service : le mot-clé suit ce que CE lot a changé (`w.lignes`, jamais l'état de la base : un renommage annulé ne revient pas). `page.titre`
+   * et `sort.nom` : nom suivi, clés recalculées ; un nom que la règle refuse laisse le mot-clé tel quel. `magie.nom` : la clé des sorts homonymes dépend de leur parent,
+   * clés recalculées ; le refus remonte (sans numéro de décision), car le vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal).
+   * Rend vrai s'il a recalculé les clés : l'appelant n'a pas à le refaire.
+   */
+  function suivreLesElements(ctx) {
+    if (ctx.annulation) return false;
+    const { db, w } = ctx;
+    const aSuivre = new Set();
+    let parentChange = false;
+    for (const { table, cle, colonnes } of w.lignes) {
+      if (!colonnes) continue;
+      if ((table === 'page' && colonnes.includes('titre')) || (table === 'sort' && colonnes.includes('nom'))) {
+        const motCle = db.prepare(`SELECT mot_cle_id AS id FROM "${table}" WHERE id = ?`).get(cle.id)?.id ?? null;
+        if (motCle !== null) aSuivre.add(motCle);
+      } else if (table === 'magie' && colonnes.includes('nom')) {
+        parentChange ||= Boolean(db.prepare('SELECT 1 FROM sort WHERE magie_id = ? AND mot_cle_id IS NOT NULL LIMIT 1').get(cle.id));
+      }
+    }
+    if (!aSuivre.size && !parentChange) return false;
+    const renommes = nomsQuiPassent(db, aSuivre);
+    if (!renommes.length && !parentChange) return false;
+    const ecrire = () => {
+      for (const id of renommes) alignerMotCle(ctx, id);
+      MOTS_CLES.recalculerLesCles(ctx);
+    };
+    if (parentChange) {
+      sansNumeroDeDecision(ecrire);
+      return true;
+    }
+    try {
+      w.isoler(ecrire);
+      return true;
+    } catch (e) {
+      if (e instanceof ErreurEdition) return false;
+      throw e;
+    }
+  }
+
+  /**
+   * Avant de supprimer l'élément : l'id du mot-clé qui part avec lui, ou null (pas de mot-clé, annulation d'un lot). Refus 409 s'il est verrouillé, ou si une balise ou une
+   * étiquette le cite encore (`details.citations` : les textes à retoucher). Sans numéro de décision (voir l'en-tête).
+   */
+  function motCleARetirer(ctx, { table, id }) {
+    if (ctx.annulation) return null;
+    const m = motsClesPropres(ctx.db, table, [id]).get(id);
+    if (!m) return null;
+    const nom = elementDe(ctx.db, table, id)?.nom ?? id;
+    if (m.verrou) throw new ErreurEdition(409, `« ${nom} » ne se supprime pas : son mot-clé « ${m.libelle} » est verrouillé.`, { mots_cles_verrouilles: [m.id] });
+    if (m.mentions.length) {
+      throw new ErreurEdition(409, `« ${nom} » ne se supprime pas : son mot-clé est cité à ${texteDesMentions(m.mentions)} ; retirez d’abord ces mentions.`, { citations: m.mentions });
+    }
+    return m.id;
+  }
+
+  /**
+   * Après l'élément : retire le mot-clé `id`, ses catégories, synonymes et clés quittées, puis recalcule les clés (un homonyme peut retrouver la sienne). Tenu par un autre
+   * élément (une ancre, une magie, un type de dégâts, une monnaie, un sort qui le porte : R289), il reste ; s'il menait à l'élément parti (`adresse`), son adresse se vide.
+   */
+  function retirerLeMotCle(ctx, id, { adresse = null } = {}) {
+    const { db, w } = ctx;
+    const m = lireLigne(db, 'mot_cle', { id });
+    if (!m) return;
+    if (m.verrou) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : il est verrouillé, il ne se retire pas.`);
+    if (estAncre(db, id) || db.prepare('SELECT 1 FROM sort_mot_cle WHERE mot_cle_id = ? LIMIT 1').get(id)) {
+      if (adresse !== null && m.url === adresse) w.modifier('mot_cle', { id }, { url: null });
+      return;
+    }
+    retirerLesFillesDuMotCle(db, w, id);
+    w.supprimer('mot_cle', { id });
+    sansNumeroDeDecision(() => MOTS_CLES.recalculerLesCles(ctx));
+  }
+
+  return { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle };
 }

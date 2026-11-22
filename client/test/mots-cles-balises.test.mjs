@@ -742,5 +742,8 @@ test('service : une page créée depuis le site ne porte que les mots-clés dont
   const P = IDS_DES_MOTS_CLES_PROTEGES;
   assert.deepEqual(tags(don), [P['capacite-de-classe']]);
   assert.deepEqual(tags(classe).sort((x, y) => x - y), [P.classe, P.magique].sort((x, y) => x - y));
-  assert.deepEqual(s.db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id), avant);
+  // les seuls mots-clés neufs : ceux que la classe et le don ancrent (R309), jamais posés en étiquette
+  const ancres = [classe, don].map((p) => s.db.prepare('SELECT mot_cle_id AS m FROM page WHERE id = ?').get(p).m);
+  assert.ok(ancres.every(Number.isInteger), JSON.stringify(ancres));
+  assert.deepEqual(s.db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((m) => m.id), [...avant, ...ancres].sort((x, y) => x - y));
 });

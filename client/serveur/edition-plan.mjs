@@ -16,6 +16,7 @@ import { ADRESSES_RENOMMEES_DU_GUIDE, adresseDuGuide, NOMS_RESERVES, PAGES_ABSOR
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { motsClesPropres } from './edition-ancrage.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
 /** Les groupes de races qu'une opération `ordonner` réordonne (lib/races-db.mjs#racesParNature). */
@@ -187,7 +188,8 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
       if (raisons.length) {
         throw new ErreurEdition(409, `« ${ligne.titre} » ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: id, raisons });
       }
-      const citations = citationsBloquantes(citationsDe(db, id));
+      // son propre mot-clé (R309) part avec elle, sauf s'il est verrouillé ; ses balises et étiquettes dans d'autres textes la retiennent
+      const citations = [...citationsBloquantes(citationsDe(db, id, { sansSonMotCle: true })), ...(motsClesPropres(db, 'page', [id]).get(id)?.mentions ?? [])];
       // un mot-clé verrouillé qui y mène : son lien ne se change ni ne se vide, la page reste (décision R221)
       const verrouilles = motsClesVerrouillesQuiYMenent(db, citations);
       if (verrouilles.length) throw new ErreurEdition(409, refusDuMotCleVerrouille(ligne.titre, verrouilles), { page: id, citations, mots_cles_verrouilles: verrouilles });
@@ -219,7 +221,9 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
 export function planVivant(db) {
   const onglets = db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all();
   const toutes = db.prepare(`SELECT e.*, p.titre AS page_titre FROM regles_onglet_entree e LEFT JOIN page p ON p.id = e.page_id ORDER BY e.onglet_id, e.rang, e.id`).all();
-  const citations = citationsDesPages(db, toutes.filter((e) => e.page_id !== null).map((e) => e.page_id));
+  const ids = toutes.filter((e) => e.page_id !== null).map((e) => e.page_id);
+  const citations = citationsDesPages(db, ids, { sansSonMotCle: true });
+  const propres = motsClesPropres(db, 'page', ids); // les textes qui citent le mot-clé d'une page la retiennent comme une citation (R309)
   return {
     onglets: onglets.map((o) => ({
       id: o.id,
@@ -231,6 +235,7 @@ export function planVivant(db) {
         const estPage = sorte === 'page';
         const protection = estPage ? raisonsDeProtection(db, e.page_id) : null;
         const cites = estPage ? citations.get(e.page_id) : null;
+        const mentions = estPage ? propres.get(e.page_id)?.mentions ?? [] : [];
         return {
           id: e.id,
           sorte,
@@ -240,8 +245,8 @@ export function planVivant(db) {
           libelle: e.libelle,
           adresse: estPage ? adresseDuGuide(e.page_id) : e.adresse,
           protection,
-          citations: cites,
-          supprimable: estPage && !protection.length && !citationsBloquantes(cites).length,
+          citations: estPage ? [...cites, ...mentions] : null,
+          supprimable: estPage && !protection.length && !citationsBloquantes(cites).length && !mentions.length,
         };
       }),
     })),

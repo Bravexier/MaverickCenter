@@ -348,7 +348,9 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
     // le recalcul différé : une fois, sur l'état final ; à l'essai, une opération refusée dit déjà ce qu'il faut corriger. Son refus n'est pas un verrou (il ne passe pas par ecrireLesOperations)
     const ecrites = sorties.operations.filter((s) => ['ecrite', 'applicable', 'verrouillee'].includes(s.etat));
-    if (ecrites.some((s) => changeUneCle(resolu.operations[s.rang - 1])) && !sorties.operations.some((s) => s.etat === 'refusee')) hote.executer({ op: 'recalculer_les_cles' });
+    const sansRefus = !sorties.operations.some((s) => s.etat === 'refusee');
+    // le mot-clé suit son élément (R309) avant ce recalcul : s'il a déjà recalculé les clés, on ne le refait pas
+    if (sansRefus && !hote.suivreLesElements() && ecrites.some((s) => changeUneCle(resolu.operations[s.rang - 1]))) hote.executer({ op: 'recalculer_les_cles' });
     if (!essai) {
       if (!hote.ecrites()) {
         throw new ErreurEdition(409, 'Rien à écrire : chaque opération du lot a changé entre-temps (le site prime). Le lot reste proposé : refusez-le, ou déposez-en un nouveau.', { operations: sorties.operations.map(resumerLOperation) });

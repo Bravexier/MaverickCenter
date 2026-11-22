@@ -513,7 +513,7 @@ test('une page supprimée par le site (métier) : le bloc de description qui la 
   assert.deepEqual({ ...ligne('SELECT page_id, section, texte FROM evenement_extrait WHERE evenement_id = ?', id) }, { page_id: null, section: null, texte: 'Texte.' });
 });
 
-test('spécialité créée puis renommée (migration 0056) : la fiche de son don ne porte que « capacité de classe », aucun mot-clé n’est créé ni retiré', () => {
+test('spécialité créée puis renommée (migration 0056) : la fiche de son don ne porte que « capacité de classe », seul le mot-clé qu’elle ancre (R309) s’ajoute', () => {
   const nomClasse = (() => {
     let n = 'Classe des mots-clés';
     for (let i = 2; ligne('SELECT 1 FROM classe WHERE nom = ?', n); i += 1) n = `Classe des mots-clés ${i}`;
@@ -533,7 +533,9 @@ test('spécialité créée puis renommée (migration 0056) : la fiche de son don
   const apres = motLibre('Voie seconde');
   ok(enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: specialite }, valeurs: { nom: apres } }]));
   assert.deepEqual(motsClesDuDon(), [ID['capacite-de-classe']]);
-  assert.deepEqual(lignes('SELECT id FROM mot_cle ORDER BY id').map((m) => m.id), vocabulaireAvant, 'le vocabulaire ne change pas');
+  const sienDuDon = ligne('SELECT mot_cle_id AS m FROM page WHERE id = ?', don).m;
+  assert.ok(Number.isInteger(sienDuDon), 'la fiche du don ancre son mot-clé');
+  assert.deepEqual(lignes('SELECT id FROM mot_cle ORDER BY id').map((m) => m.id), [...vocabulaireAvant, sienDuDon], 'le vocabulaire ne gagne que ce mot-clé');
 });
 
 test('rejeu du journal (livraison) : la chronologie et le vocabulaire reviennent à l’identique, sans conflit', () => {
