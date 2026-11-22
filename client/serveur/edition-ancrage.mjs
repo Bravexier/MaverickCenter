@@ -39,16 +39,18 @@ function elementDe(db, table, id) {
 
 /**
  * Lire les balises d'un texte pendant l'annulation d'un lot, sur le vocabulaire `motsCles` du moment. `clesDAvant` : Map(clé d'avant le lot → id), car une clé
- * d'avant peut être devenue le libellé ambigu de deux homonymes, ou la clé d'un autre mot-clé.
+ * d'avant peut être devenue le libellé ambigu de deux homonymes, ou la clé d'un autre mot-clé. `clesDeFin` : Map(clé à la fin du lot → id), pour la même raison.
  *   - `reecriturePure(origine, fin, markdown)` : `fin` ne diffère d'`origine` que par la clé des mêmes mots-clés (le recalcul la réécrira lui-même) ;
  *   - `revenu(origine, actuelle, markdown)` : les deux textes citent les mêmes mots-clés aux mêmes endroits, sur le vocabulaire du moment ;
+ *   - `commeFin(fin, actuelle, markdown)` : le texte actuel est celui du lot, à la clé réécrite d'une balise près ;
  *   - `enClesDuMoment(texte, markdown)` : le texte d'avant, ses balises écrites avec la clé actuelle de leur mot-clé (le service refuse une ref ambiguë ; le recalcul
  *     la ramènera à la clé finale).
  */
-export function lectureDesBalises(motsCles, clesDAvant = new Map()) {
+export function lectureDesBalises(motsCles, clesDAvant = new Map(), clesDeFin = new Map()) {
   const v = vocabulaireDesMotsCles(motsCles);
   const cible = (ref) => motCleDeLaRef(v, ref)?.id ?? v.parAncienneCle.get(normalize(ref))?.id ?? null;
   const cibleDAvant = (ref) => clesDAvant.get(normalize(ref)) ?? cible(ref);
+  const cibleDeFin = (ref) => clesDeFin.get(normalize(ref)) ?? cible(ref);
   const horsBalises = (texte, balises) => {
     let k = 0;
     const morceaux = balises.map((b) => {
@@ -73,6 +75,7 @@ export function lectureDesBalises(motsCles, clesDAvant = new Map()) {
   return {
     reecriturePure: (origine, fin, markdown) => memesMotsCles(origine, fin, cibleDAvant, markdown),
     revenu: (origine, actuelle, markdown) => memesMotsCles(origine, actuelle, cible, markdown),
+    commeFin: (fin, actuelle, markdown) => memesMotsCles(fin, actuelle, cibleDeFin, markdown),
     enClesDuMoment(texte, markdown) {
       if (typeof texte !== 'string' || !texte.includes('{{')) return texte;
       let sortie = '';

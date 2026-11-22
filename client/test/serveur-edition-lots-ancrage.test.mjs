@@ -487,21 +487,39 @@ test('annuler d’un bloc : le texte qui cite le mot-clé créé et celui d’un
 test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un reclassement R309 aussi ; deux homonymes l’un après l’autre ; l’ancre d’un mot-clé existant reste seule', async () => {
   const m = nouvelle();
   const { titre, sorts: [s1, s2] } = deuxSortsHomonymes(m, 'groupes');
-  const [c1, c2] = lesCategories(m);
+  const [c1, c2, c3] = lesCategories(m);
   const reclasse = unMotCle(m, nom('reclasse'), [c1]);
   const existant = unMotCle(m, nom('existant'), [c2]);
   // un homonyme d'un autre type, hors du lot : sa clé prend son type avec le lot et revient quand le dernier mot-clé du lot repart
   const voisin = unMotCle(m, titre, [c2]);
   const cleDuVoisin = motCle(m, voisin).cle;
   const page = unePage(m, 'ancre existante');
+  // des textes du lot : deux citent le voisin (annulés avant et après ses groupes), un cite un mot-clé reclassé, un est retouché par le site
+  const libelleCite = nom('reclasse cite');
+  const cite = unMotCle(m, libelleCite, [c1]);
+  unMotCle(m, libelleCite, [c2]);
+  const [tAvant, tApres, tCite, tSite, tPur] = m.db.prepare('SELECT id FROM metier ORDER BY id LIMIT 5').all().map((t) => t.id);
+  const texte = (id) => m.db.prepare('SELECT description FROM metier WHERE id = ?').get(id).description;
+  const cites = new Map([[tAvant, voisin], [tApres, voisin], [tCite, cite], [tSite, voisin]]);
+  const textesDAvant = new Map();
+  for (const [t, k] of cites) {
+    enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: t }, valeurs: { description: `Ancien texte {{${motCle(m, k).cle}}} ${process.pid}.` } }] });
+    textesDAvant.set(t, texte(t));
+  }
+  // un texte hors des opérations du lot : seul le recalcul y réécrit la clé du voisin
+  enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: tPur }, valeurs: { description: `Cité seulement {{${cleDuVoisin}}} ${process.pid}.` } }] });
+  const textePur = texte(tPur);
   const p = await proposer(m, [
+    ...[...cites].map(([t, k]) => ({ table: 'metier', cle: { id: t }, operation: 'modifier', avant: { description: textesDAvant.get(t) }, apres: { description: `Nouveau texte {{${motCle(m, k).cle}}} ${process.pid}.` } })),
     creer('a', 'sort', s1.id, titre, s1.url, c1),
     creer('b', 'sort', s2.id, titre, s2.url, c1),
     retirerCategorie(reclasse, c1), poserCategorie(reclasse, c2),
+    retirerCategorie(cite, c1), poserCategorie(cite, c3),
     ancrer('page', page.id, existant),
   ]);
   assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
   const fait = appliquer(m.db, p.id, {});
+  enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: tSite }, valeurs: { description: `Retouché par le site {{${motCle(m, voisin).cle}}} ${process.pid}.` } }] });
   const [a, b] = [ancreDe(m, 'sort', s1.id), ancreDe(m, 'sort', s2.id)];
   const cleDeB = motCle(m, b).cle;
   const rang = (table, cle) => rangDe(m, fait.lot_id, table, cle);
@@ -511,6 +529,25 @@ test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un 
   const [groupeA, groupeB] = [groupeDe(a, s1.id), groupeDe(b, s2.id)];
   const ligne = (numero) => lire(m.db, p.id).lignes.find((l) => l.n === numero);
   for (const numero of [...groupeA, ...groupeB]) assert.equal(ligne(numero).annulable_seule, true, `ligne ${numero} : ${ligne(numero).motif}`);
+  let notees = [];
+  const annulerEtNoter = (numero, emportees) => {
+    notees = croissant([...notees, ...emportees]);
+    const lotPresente = annulerUneLigne(m.db, p.id, numero);
+    assert.deepEqual(lignesNotees(lotPresente), notees);
+    return lotPresente;
+  };
+
+  // une ligne que le recalcul seul a réécrite n'a rien à remettre : la page ne propose pas de l'annuler
+  const nPur = rang('metier', { id: tPur });
+  assert.notEqual(texte(tPur), textePur);
+  assert.equal(ligne(nPur).etat, 'comme_avant', ligne(nPur).motif);
+  assert.equal(ligne(nPur).annulable_seule, false);
+
+  // un texte du lot, avant ses groupes : la clé d'avant du voisin est devenue ambiguë, il s'écrit avec sa clé du moment
+  const nAvant = rang('metier', { id: tAvant });
+  assert.equal(ligne(nAvant).annulable_seule, true, ligne(nAvant).motif);
+  annulerEtNoter(nAvant, [nAvant]);
+  assert.equal(texte(tAvant), textesDAvant.get(tAvant).replace(cleDuVoisin, motCle(m, voisin).cle));
 
   // l'aperçu, depuis la catégorie : toutes les lignes emportées, rien d'écrit
   const clic = rang('mot_cle_categorie', { mot_cle_id: a, categorie_id: c1 });
@@ -521,7 +558,7 @@ test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un 
   assert.equal(ancreDe(m, 'sort', s1.id), a);
 
   // le groupe du premier : le second reste, sa clé recalculée ne le fait pas passer pour « changé depuis »
-  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, rang('sort', { id: s1.id }))), groupeA);
+  annulerEtNoter(rang('sort', { id: s1.id }), groupeA);
   assert.equal(motCle(m, a), undefined);
   assert.equal(ancreDe(m, 'sort', s1.id), null);
   assert.notEqual(motCle(m, b).cle, cleDeB, 'sans son homonyme de même type, il perd le parent de sa clé');
@@ -530,24 +567,50 @@ test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un 
   assert.equal(ligne(rang('mot_cle', { id: b })).annulable_seule, true, ligne(rang('mot_cle', { id: b })).motif);
 
   // le groupe du second, depuis sa ligne de mot-clé
-  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, rang('mot_cle', { id: b }))), croissant([...groupeA, ...groupeB]));
+  annulerEtNoter(rang('mot_cle', { id: b }), groupeB);
   assert.equal(motCle(m, b), undefined);
   assert.equal(ancreDe(m, 'sort', s2.id), null);
   assert.deepEqual(categoriesDe(m, b), []);
   assert.equal(motCle(m, voisin).cle, cleDuVoisin, 'la clé du voisin est revenue');
   clesJustes(m);
 
+  // l'autre ordre : après ses groupes, le texte du lot reste en place, sa balise réécrite n'est pas un changement du site ; les deux ordres donnent le même texte
+  assert.equal(texte(tAvant), textesDAvant.get(tAvant));
+  assert.equal(texte(tPur), textePur, 'le recalcul a ramené le texte qu’il avait réécrit');
+  const nApres = rang('metier', { id: tApres });
+  assert.equal(ligne(nApres).etat, 'en_place', ligne(nApres).motif);
+  assert.equal(ligne(nApres).annulable_seule, true, ligne(nApres).motif);
+  annulerEtNoter(nApres, [nApres]);
+  assert.equal(texte(tApres), textesDAvant.get(tApres));
+
   // le reclassement R309 : ses deux lignes ensemble
   const reclassement = croissant([rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: c1 }), rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: c2 })]);
-  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, reclassement[1])), croissant([...groupeA, ...groupeB, ...reclassement]));
+  annulerEtNoter(reclassement[1], reclassement);
   assert.deepEqual(categoriesDe(m, reclasse), [c1]);
   clesJustes(m);
 
+  // le reclassement d'un mot-clé qu'un texte du lot cite : le texte reste en place et le lot appliqué, puis sa ligne remet le texte d'origine
+  const reclassementCite = croissant([rang('mot_cle_categorie', { mot_cle_id: cite, categorie_id: c1 }), rang('mot_cle_categorie', { mot_cle_id: cite, categorie_id: c3 })]);
+  assert.equal(annulerEtNoter(reclassementCite[0], reclassementCite).etat, 'applique');
+  assert.deepEqual(categoriesDe(m, cite), [c1]);
+  const nCite = rang('metier', { id: tCite });
+  assert.match(texte(tCite), /^Nouveau texte/);
+  assert.equal(ligne(nCite).etat, 'en_place', ligne(nCite).motif);
+  assert.equal(ligne(nCite).annulable_seule, true, ligne(nCite).motif);
+  annulerEtNoter(nCite, [nCite]);
+  assert.equal(texte(tCite), textesDAvant.get(tCite));
+  clesJustes(m);
+
+  // un texte vraiment changé par le site reste gardé
+  const nSite = rang('metier', { id: tSite });
+  assert.equal(ligne(nSite).etat, 'modifiee_depuis');
+  assert.equal(ligne(nSite).annulable_seule, false);
+
   // l'ancre d'un mot-clé existant : seule, et le lot n'a plus rien en place
-  const fin = annulerUneLigne(m.db, p.id, rang('page', { id: page.id }));
-  assert.deepEqual(lignesNotees(fin), croissant([...groupeA, ...groupeB, ...reclassement, rang('page', { id: page.id })]));
+  const fin = annulerEtNoter(rang('page', { id: page.id }), [rang('page', { id: page.id })]);
   assert.equal(ancreDe(m, 'page', page.id), null);
   assert.ok(motCle(m, existant));
   assert.equal(fin.etat, 'annule');
+  assert.match(texte(tSite), /^Retouché par le site/);
   clesJustes(m);
 });
