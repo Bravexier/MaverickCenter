@@ -53,6 +53,28 @@ export function refusDuVerrou(ctx, id, colonnes, { ancres = null } = {}) {
   return `${sujet} est relié à un élément : il ne se modifie plus à la main.`;
 }
 
+/** Les liens d'un élément à son mot-clé qu'`ancrerElement` ne garde pas, car un lot les écrit par la voie générique : table → colonne. */
+const LIENS_DE_LA_VOIE_GENERIQUE = Object.freeze({ magie: 'mot_cle_id', type_degats: 'mot_cle_id', type_sort: 'mot_cle_id', mot_cle: 'monnaie_id' });
+const NOM_DE_L_ELEMENT = Object.freeze({ magie: 'Cette magie', type_degats: 'Ce type de dégâts', type_sort: 'Ce type de sort' });
+
+/**
+ * Le refus d'un lot qui détacherait un mot-clé de son élément pour pouvoir écrire son nom ensuite, ou null (Ruling T8-detachement). Fermé sous le verrou, mot de passe compris, sans
+ * numéro de décision : retirer ou remplacer une valeur non nulle du lien, supprimer la ligne qui le porte, supprimer une monnaie citée par un mot-clé (`ON DELETE SET NULL` viderait
+ * son `monnaie_id`). Poser un lien sur une valeur nulle et créer une ligne ancrée restent permis. `valeurs` : les colonnes écrites ; null : la ligne `avant` est supprimée.
+ */
+export function refusDuDetachement(ctx, table, avant, valeurs = null) {
+  if (ctx.voie !== 'lot' || !sousLeVerrou(ctx) || !avant) return null;
+  if (table === 'monnaie') {
+    if (valeurs !== null) return null;
+    return ctx.db.prepare('SELECT 1 FROM mot_cle WHERE monnaie_id = ? LIMIT 1').get(avant.id) ? 'Cette monnaie a son mot-clé : un lot ne la supprime pas, il perdrait ce lien.' : null;
+  }
+  const colonne = LIENS_DE_LA_VOIE_GENERIQUE[table];
+  if (!colonne || (avant[colonne] ?? null) === null) return null;
+  if (valeurs !== null && (!Object.hasOwn(valeurs, colonne) || (valeurs[colonne] ?? null) === avant[colonne])) return null;
+  if (table === 'mot_cle') return `${motCleDansUnRefus(avant.libelle)} est relié à sa monnaie : un lot ne retire ni ne remplace ce lien.`;
+  return `${NOM_DE_L_ELEMENT[table]} garde son mot-clé : un lot ne retire ni ne remplace ce lien.`;
+}
+
 /** Les ids des mots-clés ancrés, en un seul passage (`estAncre` relit les tables à chaque appel). */
 export function motsClesAncres(db) {
   const motsCles = db.prepare('SELECT * FROM mot_cle').all();

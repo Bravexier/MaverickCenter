@@ -70,7 +70,7 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
-import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
+import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuDetachement, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -3583,6 +3583,9 @@ function supprimer(ctx, op) {
   if (!op.cle || typeof op.cle !== 'object') throw refus(`${entite.libelle} : clé attendue`);
   // le forçage n'est qu'une option de la suppression d'un mot-clé (décision R223 : serveur/edition-chronologie.mjs#MOT_CLE.supprimer), comme dans /api/v1/
   if (op.forcer !== undefined && entite.table !== 'mot_cle') throw refus(`${entite.libelle} : « forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).`);
+  // avant le gel, qui cite un numéro et que le mot de passe ouvre : supprimer la monnaie d'un mot-clé le détacherait (Ruling T8-detachement)
+  const detachee = entite.table === 'monnaie' ? refusDuDetachement(ctx, 'monnaie', lireLigne(ctx.db, 'monnaie', op.cle)) : null;
+  if (detachee) throw new ErreurEdition(409, detachee);
   // une table figée (TABLES_FIGEES : les monnaies) : 409 après le 404, comme une modification (raisonDuGel)
   if (TABLES_FIGEES[entite.table] && ctx.gel !== false) {
     const ligne = lireLigne(ctx.db, entite.table, op.cle);
@@ -3644,7 +3647,8 @@ const OPERATIONS_DU_LOT = {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
     // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, le mot de passe ne l'ouvre pas, contrairement à celui d'une colonne tenue
-    const ferme = op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null;
+    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null)
+      ?? refusDuDetachement(ctx, op.table, avant, op.valeurs);
     if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
@@ -3663,7 +3667,7 @@ const OPERATIONS_DU_LOT = {
   ecrire_supprimer(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
-    const ferme = op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null;
+    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null) ?? refusDuDetachement(ctx, op.table, avant);
     if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) : null;
     if (gelee) throw new ErreurEdition(409, gelee);

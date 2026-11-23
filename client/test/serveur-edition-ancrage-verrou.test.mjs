@@ -16,7 +16,7 @@ import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { baseDAncrage, idDeCategorie, poserMotCle, poserPage, recalculerLesCles } from './aide-ancrage.mjs';
+import { baseDAncrage, idDeCategorie, poserMagie, poserMotCle, poserPage, recalculerLesCles } from './aide-ancrage.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -525,5 +525,188 @@ test('R309 : l’annulation d’un lot qui renomme l’homonyme rend la clé du 
   assert.equal(motCle(m, m.ancre).cle, cleAvant);
   assert.equal(motCle(m, m.homonyme).libelle, libelleAvant);
   clesJustes(m);
+  m.db.close();
+});
+
+// Une ligne { libelle, cle } dont le nom a changé depuis, sans changer de clé : la clé du lot est encore en place, mais elle n'est pas à remettre (une clé se calcule)
+
+test('R309 : un renommage dont le nom a changé depuis ne propose aucun verrou sur la clé', async () => {
+  const m = monde();
+  const neuf = nom('renommé');
+  const cleDAvant = motCle(m, m.libre).cle;
+  const fait = await deposerDirect(m, [modifier(m, m.libre, { libelle: neuf })]);
+  const cleDuLot = motCle(m, m.libre).cle;
+  route(m, [{ op: 'modifier', table: 'mot_cle', cle: { id: m.libre }, valeurs: { libelle: neuf.toUpperCase() } }]);
+  assert.equal(motCle(m, m.libre).cle, cleDuLot, 'la nouvelle écriture a la même clé');
+  const apercu = await previsualiserLAnnulation(m.base, fait.id, { enArrierePlan: false, dossier: m.dossier });
+  assert.deepEqual(apercu.verrous_a_ouvrir, [], JSON.stringify(apercu.operations));
+  const ligne = lire(m.db, fait.id).lignes.find((l) => l.n === numeroDe(m, fait, m.libre));
+  assert.equal(ligne.annulable_seule, false, 'il ne reste que la clé : rien à remettre sur cette ligne');
+  assert.ok(ligne.motif);
+  assert.deepEqual(decisionsCitees(ligne.motif), []);
+  // le mot-clé n'a pas retrouvé sa clé d'avant : le renvoi depuis celle-ci reste, et il n'y a rien à remettre, même avec tous les verrous ouverts
+  assert.equal(apercu.verdict, 'rien_a_remettre', JSON.stringify(apercu.operations));
+  const renvoi = lire(m.db, fait.id).lignes.find((l) => l.n === m.db.prepare("SELECT rang FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle_ancienne_cle'").get(lire(m.db, fait.id).lot_id).rang);
+  assert.equal(renvoi.annulable_seule, false, renvoi.motif);
+  assert.throws(() => annuler(m.db, fait.id, { verrous_ouverts: TOUS_LES_VERROUS }), (e) => e instanceof ErreurEdition && e.statut === 409);
+  assert.ok(m.db.prepare('SELECT 1 AS x FROM mot_cle_ancienne_cle WHERE cle = ? AND mot_cle_id = ?').get(cleDAvant, m.libre), 'le renvoi de l’ancienne clé reste');
+  assert.equal(motCle(m, m.libre).libelle, neuf.toUpperCase());
+  assert.equal(motCle(m, m.libre).cle, cleDuLot);
+  clesJustes(m);
+  m.db.close();
+});
+
+test('R309 : le nom suivi d’une page renommée puis réécrite ne propose aucun verrou sur la clé', async () => {
+  const m = monde();
+  const neuf = nom('titre neuf');
+  const fait = await deposerDirect(m, [{ table: 'page', cle: { id: m.page }, operation: 'modifier', avant: { titre: motCle(m, m.ancre).libelle }, apres: { titre: neuf } }]);
+  const cleDuLot = motCle(m, m.ancre).cle;
+  await deposerDirect(m, [{ table: 'page', cle: { id: m.page }, operation: 'modifier', avant: { titre: neuf }, apres: { titre: neuf.toUpperCase() } }]);
+  assert.equal(motCle(m, m.ancre).libelle, neuf.toUpperCase());
+  assert.equal(motCle(m, m.ancre).cle, cleDuLot, 'la nouvelle écriture a la même clé');
+  const apercu = await previsualiserLAnnulation(m.base, fait.id, { enArrierePlan: false, dossier: m.dossier });
+  assert.deepEqual(apercu.verrous_a_ouvrir, [], JSON.stringify(apercu.operations));
+  assert.equal(motCle(m, m.ancre).cle, cleDuLot);
+  m.db.close();
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Détacher pour renommer (Ruling T8-detachement) : magie, type de dégâts, monnaie
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** La petite base, avec une magie, un type de dégâts, un type de sort et une monnaie ancrés chacun à son mot-clé. Les lignes respectent les CHECK : un lot les réécrit. */
+function mondeAuxAncres() {
+  return monde((db) => {
+    const idMagie = poserPage(db, 'magies/zephyrion-magie', nom('magie'));
+    const motDeMagie = poserMotCle(db, { libelle: nom('mot de magie'), categories: ['Magie'] });
+    poserMagie(db, idMagie, nom('magie'), { mot_cle_id: motDeMagie });
+    db.prepare("UPDATE magie SET origine = 'magies', mono_magie = 0 WHERE id = ?").run(idMagie);
+    const degats = poserMotCle(db, { libelle: nom('mot de dégâts'), categories: ['Dégâts'] });
+    db.prepare("INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('taille', ?, NULL)").run(degats);
+    const motDeType = poserMotCle(db, { libelle: nom('mot de type'), categories: ['Sort'] });
+    db.prepare("UPDATE type_sort SET mot_cle_id = ? WHERE id = 'soin'").run(motDeType);
+    const motDeMonnaie = poserMotCle(db, { libelle: nom('mot de monnaie'), categories: ['Équipement'] });
+    db.prepare("INSERT INTO monnaie (id, nom, abreviation, valeur_rf, origine, source_ref) VALUES ('zq', ?, 'ZQ', 1, 'equipement', 'essai')").run(nom('monnaie'));
+    db.prepare("UPDATE mot_cle SET monnaie_id = 'zq' WHERE id = ?").run(motDeMonnaie);
+    return { magie: { id: idMagie, mot_cle_id: motDeMagie }, monnaie: { id: motDeMonnaie, monnaie_id: 'zq' }, type: 'taille', degats, typeSort: 'soin', motDeType };
+  });
+}
+
+const ancreDe = (m, table, id) => m.db.prepare(`SELECT mot_cle_id AS k FROM "${table}" WHERE id = ?`).get(id)?.k ?? null;
+const changerLAncre = (table, id, avant, apres) => ({ table, cle: { id }, operation: 'modifier', avant: { mot_cle_id: avant }, apres: { mot_cle_id: apres } });
+const retirerLaLigne = (m, table, id) => ({ table, cle: { id }, operation: 'supprimer', avant: { ...m.db.prepare(`SELECT * FROM "${table}" WHERE id = ?`).get(id) } });
+const renommer = (m, id) => modifier(m, id, { libelle: nom('écrit par le lot'), url: '/races/' });
+
+/** Le lot est refusé à la clé de dépôt comme au mot de passe, sans numéro de décision, et rien n'est écrit. */
+async function refuseSansNumero(m, operations, id) {
+  const avant = motCle(m, id);
+  for (const [plus, par] of [[{}, 'cle_de_depot'], [{ verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe']]) {
+    const e = await deposerDirect(m, operations, plus, par).then(() => assert.fail('refus attendu'), (x) => x);
+    assert.ok(e instanceof ErreurEdition, String(e));
+    assert.equal(e.statut, 409, e.message);
+    assert.deepEqual(decisionsCitees(e.message), [], e.message);
+  }
+  assert.deepEqual(motCle(m, id), avant, 'rien n’est écrit');
+}
+
+for (const [quoi, faire] of [
+  ['retirer l’ancre d’une magie', (m) => ({ id: m.magie.mot_cle_id, table: 'magie', element: m.magie.id, ops: [changerLAncre('magie', m.magie.id, m.magie.mot_cle_id, null), renommer(m, m.magie.mot_cle_id)] })],
+  ['remplacer l’ancre d’une magie', (m) => ({ id: m.magie.mot_cle_id, table: 'magie', element: m.magie.id, ops: [changerLAncre('magie', m.magie.id, m.magie.mot_cle_id, m.libre), renommer(m, m.magie.mot_cle_id)] })],
+  ['supprimer une magie ancrée', (m) => ({ id: m.magie.mot_cle_id, table: 'magie', element: m.magie.id, ops: [retirerLaLigne(m, 'magie', m.magie.id), renommer(m, m.magie.mot_cle_id)] })],
+  ['retirer l’ancre d’un type de dégâts', (m) => ({ id: m.degats, table: 'type_degats', element: m.type, ops: [changerLAncre('type_degats', m.type, m.degats, null), renommer(m, m.degats)] })],
+  ['remplacer l’ancre d’un type de dégâts', (m) => ({ id: m.degats, table: 'type_degats', element: m.type, ops: [changerLAncre('type_degats', m.type, m.degats, m.libre), renommer(m, m.degats)] })],
+  ['supprimer un type de dégâts ancré', (m) => ({ id: m.degats, table: 'type_degats', element: m.type, ops: [retirerLaLigne(m, 'type_degats', m.type), renommer(m, m.degats)] })],
+]) {
+  test(`T8-detachement : un lot ne peut pas ${quoi}, mot de passe compris`, async () => {
+    const m = mondeAuxAncres();
+    const { id, table, element, ops } = faire(m);
+    await refuseSansNumero(m, ops, id);
+    assert.equal(ancreDe(m, table, element), id);
+    m.db.close();
+  });
+}
+
+test('T8-detachement : un lot ne peut pas supprimer un type de sort ancré, mot de passe compris', async () => {
+  const m = mondeAuxAncres();
+  await refuseSansNumero(m, [retirerLaLigne(m, 'type_sort', m.typeSort), renommer(m, m.motDeType)], m.motDeType);
+  assert.equal(ancreDe(m, 'type_sort', m.typeSort), m.motDeType);
+  m.db.close();
+});
+
+test('T8-detachement : un lot ne retire pas `monnaie_id`, mot de passe compris', async () => {
+  const m = mondeAuxAncres();
+  const { id, monnaie_id: monnaie } = m.monnaie;
+  await refuseSansNumero(m, [modifier(m, id, { monnaie_id: null }), renommer(m, id)], id);
+  assert.equal(motCle(m, id).monnaie_id, monnaie);
+  m.db.close();
+});
+
+test('T8-detachement : un lot ne supprime pas la monnaie d’un mot-clé (`ON DELETE SET NULL` le détacherait), mot de passe compris', async () => {
+  const m = mondeAuxAncres();
+  const { id, monnaie_id: monnaie } = m.monnaie;
+  const e = await deposerDirect(m, [retirerLaLigne(m, 'monnaie', monnaie), renommer(m, id)], { verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe').then(() => assert.fail('refus attendu'), (x) => x);
+  assert.ok(e instanceof ErreurEdition, String(e));
+  assert.equal(e.statut, 409, e.message);
+  assert.deepEqual(decisionsCitees(e.message), [], e.message);
+  assert.equal(motCle(m, id).monnaie_id, monnaie);
+  m.db.close();
+});
+
+test('T8-detachement : poser une ancre sur une valeur nulle reste permis, et son lot s’annule', async () => {
+  const m = mondeAuxAncres();
+  const { id: magie, mot_cle_id: k } = m.magie;
+  m.db.prepare('UPDATE magie SET mot_cle_id = NULL WHERE id = ?').run(magie);
+  const fait = await deposerDirect(m, [changerLAncre('magie', magie, null, k)]);
+  assert.equal(ancreDe(m, 'magie', magie), k);
+  annuler(m.db, fait.id);
+  assert.equal(ancreDe(m, 'magie', magie), null);
+  m.db.close();
+});
+
+test('T8-detachement : créer une ligne ancrée reste permis, et son lot s’annule', async () => {
+  const m = mondeAuxAncres();
+  const type = 'estoc'; // absent de la petite base ; le CHECK de la table n'accepte que ses codes
+  const fait = await deposerDirect(m, [{ table: 'type_degats', cle: { id: type }, operation: 'inserer', apres: { id: type, mot_cle_id: m.libre, magie_id: null } }]);
+  assert.equal(ancreDe(m, 'type_degats', type), m.libre);
+  annuler(m.db, fait.id);
+  assert.equal(m.db.prepare('SELECT 1 AS x FROM type_degats WHERE id = ?').get(type), undefined);
+  m.db.close();
+});
+
+test('T8-detachement : les autres colonnes d’une magie ancrée restent permises', async () => {
+  const m = mondeAuxAncres();
+  const { id: magie, mot_cle_id: k } = m.magie;
+  const { remarque } = m.db.prepare('SELECT remarque FROM magie WHERE id = ?').get(magie);
+  await deposerDirect(m, [{ table: 'magie', cle: { id: magie }, operation: 'modifier', avant: { remarque }, apres: { remarque: nom('remarque') } }]);
+  assert.equal(m.db.prepare('SELECT remarque FROM magie WHERE id = ?').get(magie).remarque, nom('remarque'));
+  assert.equal(ancreDe(m, 'magie', magie), k);
+  m.db.close();
+});
+
+test('T8-detachement : annuler un ancien lot qui avait retiré l’ancre d’une magie la remet', async () => {
+  const m = mondeAuxAncres();
+  const { id: magie, mot_cle_id: k } = m.magie;
+  m.db.prepare('UPDATE magie SET mot_cle_id = NULL WHERE id = ?').run(magie);
+  const fait = await deposerDirect(m, [changerLAncre('magie', magie, null, k)]);
+  // au journal, ce lot devient un lot d'avant le verrou, qui retirait l'ancre
+  const { lot_id: lot } = lire(m.db, fait.id);
+  m.db.prepare("UPDATE modification SET avant = apres, apres = avant WHERE lot_id = ? AND table_nom = 'magie'").run(lot);
+  m.db.prepare('UPDATE magie SET mot_cle_id = NULL WHERE id = ?').run(magie);
+  annuler(m.db, fait.id);
+  assert.equal(ancreDe(m, 'magie', magie), k);
+  m.db.close();
+});
+
+test('T8-detachement : annuler un ancien lot qui avait retiré `monnaie_id` la remet, le mot de passe ouvrant la colonne tenue', async () => {
+  const m = mondeAuxAncres();
+  const { id, monnaie_id: monnaie } = m.monnaie;
+  m.db.prepare('UPDATE mot_cle SET monnaie_id = NULL WHERE id = ?').run(id);
+  const fait = await deposerDirect(m, [modifier(m, id, { monnaie_id: monnaie })], { verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe');
+  assert.equal(motCle(m, id).monnaie_id, monnaie);
+  const { lot_id: lot } = lire(m.db, fait.id);
+  m.db.prepare("UPDATE modification SET avant = apres, apres = avant WHERE lot_id = ? AND table_nom = 'mot_cle'").run(lot);
+  m.db.prepare('UPDATE mot_cle SET monnaie_id = NULL WHERE id = ?').run(id);
+  annuler(m.db, fait.id, { verrous_ouverts: TOUS_LES_VERROUS });
+  assert.equal(motCle(m, id).monnaie_id, monnaie);
   m.db.close();
 });
