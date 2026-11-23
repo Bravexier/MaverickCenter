@@ -25,6 +25,14 @@ function depot(fichiers, r = regles) {
 const choisir = (graphe, fichiers, r = regles) => selectionner({ fichiers, graphe, regles: r });
 const noms = (resultat) => [...resultat.tests.keys()];
 
+/** Lance `travail` et rend ses millisecondes de CPU : l'attente (autres processus, disque) n'y compte pas, contrairement à l'horloge. */
+function cpuDe(travail) {
+  const avant = process.cpuUsage();
+  const resultat = travail();
+  const { user, system } = process.cpuUsage(avant);
+  return { resultat, ms: Math.round((user + system) / 1000) };
+}
+
 describe('briques', () => {
   test('globs : **, *, ?, {a,b}', () => {
     assert.ok(correspond('data/rows/sort.sql', ['data/rows/**']));
@@ -337,17 +345,23 @@ describe('rebase en pause et lecture seule', () => {
 describe('le script sur le dépôt', () => {
   const lancer = (...args) => spawnSync(process.execPath, ['--no-warnings', SCRIPT, ...args], { cwd: CLIENT, encoding: 'utf8', env: { ...process.env, INIT_CWD: CLIENT } });
 
-  test('graphe du dépôt en moins de 3 s, ce test choisi par la sélection elle-même', () => {
+  test('la durée du graphe se lit en CPU : une attente de 300 ms n’y compte pas, même si la machine est chargée', () => {
+    const { ms } = cpuDe(() => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300));
+    assert.ok(ms < 150, `${ms} ms de CPU`);
+  });
+
+  test('graphe du dépôt en moins de 3 s de CPU, ce test choisi par la sélection elle-même', () => {
     const tests = readdirSync(join(CLIENT, 'test')).filter((f) => f.endsWith('.test.mjs')).map((f) => `client/test/${f}`);
     const racine = join(CLIENT, '..');
-    const debut = Date.now();
-    const g = construireGraphe({
-      tests, regles,
-      lire: (c) => { try { return readFileSync(join(racine, c), 'utf8'); } catch { return null; } },
-      existe: (c) => { try { return statSync(join(racine, c)).isFile(); } catch { return false; } },
+    const { resultat: r, ms } = cpuDe(() => {
+      const g = construireGraphe({
+        tests, regles,
+        lire: (c) => { try { return readFileSync(join(racine, c), 'utf8'); } catch { return null; } },
+        existe: (c) => { try { return statSync(join(racine, c)).isFile(); } catch { return false; } },
+      });
+      return choisir(g, ['client/scripts/tests-cibles-lib.mjs', 'tools/flux-git/regles.mjs']);
     });
-    const r = choisir(g, ['client/scripts/tests-cibles-lib.mjs', 'tools/flux-git/regles.mjs']);
-    assert.ok(Date.now() - debut < 3000, `${Date.now() - debut} ms`);
+    assert.ok(ms < 3000, `${ms} ms de CPU`);
     assert.ok(r.tests.has('test/tests-cibles.test.mjs'));
     assert.ok(r.tests.has('test/flux-git.test.mjs'), 'flux-git.test.mjs importe tools/flux-git/regles.mjs');
   });
