@@ -487,6 +487,47 @@ test('annuler d’un bloc : le texte qui cite le mot-clé créé et celui d’un
   clesJustes(m);
 });
 
+test('annuler d’un bloc : un mot-clé du lot cité par le texte qu’une autre ligne remet part avec lui ; cité depuis le lot par un texte hors du lot, il refuse l’annulation et rien n’est écrit', async () => {
+  const m = nouvelle();
+  const [c1] = lesCategories(m);
+  const [t1, t2] = m.db.prepare('SELECT id FROM metier ORDER BY id LIMIT 2').all().map((t) => t.id);
+  const texte = (id) => m.db.prepare('SELECT description FROM metier WHERE id = ?').get(id).description;
+  const avant1 = texte(t1);
+  const cree = nom('lecteur');
+  const jeton = { $numero: 'k' };
+  const p = await proposer(m, [
+    { table: 'mot_cle', cle: { id: jeton }, operation: 'inserer', apres: { id: jeton, libelle: cree } },
+    poserCategorie(jeton, c1),
+    { table: 'metier', cle: { id: t1 }, operation: 'modifier', avant: { description: avant1 }, apres: { description: `Il cite {{${normalize(cree)}}} ${process.pid}.` } },
+  ]);
+  assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
+  appliquer(m.db, p.id, {});
+  const motCleCree = m.db.prepare('SELECT id, cle FROM mot_cle WHERE libelle = ?').get(cree);
+  // cité depuis le lot par un texte que le lot ne remet pas : la suppression est refusée, avec le motif de R196, le lot reste appliqué
+  const avant2 = texte(t2);
+  enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: t2 }, valeurs: { description: `Cité ensuite {{${motCleCree.cle}}} ${process.pid}.` } }] });
+  const ecrit = texte(t2);
+  const refus = (() => {
+    try {
+      annuler(m.db, p.id, {});
+    } catch (e) {
+      return e;
+    }
+    return null;
+  })();
+  assert.ok(refus instanceof ErreurEdition, 'refus attendu');
+  assert.equal(refus.statut, 409);
+  assert.match(refus.message, /mentionné/);
+  assert.equal(lire(m.db, p.id).etat, 'applique');
+  assert.equal(texte(t2), ecrit);
+  // la citation retirée, l'annulation passe : le mot-clé part et le texte du lot revient
+  enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: t2 }, valeurs: { description: avant2 } }] });
+  assert.equal(annuler(m.db, p.id, {}).etat, 'annule');
+  assert.equal(motCle(m, motCleCree.id), undefined);
+  assert.equal(texte(t1), avant1);
+  clesJustes(m);
+});
+
 test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un reclassement R309 aussi ; deux homonymes l’un après l’autre ; l’ancre d’un mot-clé existant reste seule', async () => {
   const m = nouvelle();
   const { titre, sorts: [s1, s2] } = deuxSortsHomonymes(m, 'groupes');

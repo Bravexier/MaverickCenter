@@ -459,7 +459,7 @@ export function domainesDeLaChronologie({
       verifierSansSort(db, m, 'supprime');
       verifierSansReference(db, m, 'supprime');
       if (op.forcer !== undefined && typeof op.forcer !== 'boolean') throw refus(`Mot-clé « ${m.libelle} » : « forcer » vaut true ou false.`);
-      const mentions = mentionsDe(db, m.id);
+      const mentions = ctx.mentionsDuLot?.de(m.id) ?? mentionsDe(db, m.id); // l'annulation d'un lot lit les mentions une fois (edition-lots.mjs#annulerLeLot)
       if (mentions.length && op.forcer !== true) {
         const empeche = refusDuForcage(db, m, mentions, { gel: ctx.gel !== false });
         throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » est mentionné à ${texteDesMentions(mentions)} : retirez d’abord ces mentions (décision R196)`

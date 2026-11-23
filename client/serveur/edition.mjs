@@ -3724,6 +3724,7 @@ const OPERATIONS_DU_LOT = {
  *   hote.isoler(faire) : `faire` sous un SAVEPOINT ; s'il lève, rien de ce qu'il a écrit (ni ses lignes du journal) ne reste.
  *   hote.ecrites() : le nombre de lignes du journal écrites jusqu'ici.
  *   hote.differerLesCles() : plus aucun recalcul des clés jusqu'à l'opération `recalculer_les_cles` (l'annulation d'un lot d'ancrage : seul l'état final se juge).
+ *   hote.lireLesMentionsPar(lecteur) : les suppressions de mots-clés lisent leurs mentions dans ce lecteur (lecteurDesMentions), que l'appelant tient à jour.
  * `annulation` : le lot du journal annule un lot de changements (`ctx.annulation` : seule voie qui retire une ancre) ; `ctx.voie` vaut « lot ».
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
  * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null, annulation?: boolean,
@@ -3767,6 +3768,10 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
       ecrites: () => w.nombre,
       differerLesCles: () => {
         ctx.clesEnAttente = true;
+      },
+      // une suite de suppressions de mots-clés lit leurs mentions une fois (lib/mentions-des-mots-cles.mjs#lecteurDesMentions) ; l'appelant l'oublie avant toute autre écriture
+      lireLesMentionsPar: (lecteur) => {
+        ctx.mentionsDuLot = lecteur;
       },
       // après la dernière opération, avant les contrôles du contenu (edition-lots.mjs#appliquerLeLot) : ils jugent les noms suivis et les clés qu'un mot-clé retiré
       // laisse à recalculer (un `travail` qui retire un élément l'appelle donc). Rend vrai s'il a recalculé les clés

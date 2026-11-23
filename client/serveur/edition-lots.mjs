@@ -36,6 +36,7 @@ import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-poti
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import { lecteurDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
@@ -642,8 +643,10 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     const gardes = groupesGardes(db, nets, depose.decision, lignesDejaAnnulees(ligneOuErreur(db, depose.id))); // un groupe s'annule entier ou reste en place
     let lectureFinale = null; // les balises sur le vocabulaire d'après le recalcul différé
     let place = 0;
+    let mentions = null; // au recalcul différé : les mentions lues une fois pour les mots-clés que le lot a créés (`lecteurDesMentions`)
     // `complet` : la ligne entière, quand `net` n'en porte qu'une partie ; `suite` : le second passage d'une ligne, après le recalcul différé
     const remettre = (net, { complet = net, suite = false } = {}) => {
+      if (!laisseLesMentions(net)) mentions?.oublier();
       const premiere = suite ? sorties.operations.find((s) => s.rang_du_lot === net.rang) : null;
       const rang = premiere?.rang ?? (place += 1);
       let actuelle = null;
@@ -701,6 +704,8 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       // l'état entre deux lignes n'a pas à satisfaire la règle des clés : on remet d'abord ce qui les fait (les textes avant les suppressions : un mot-clé cité ne se
       // supprime pas), on recalcule une fois, puis on juge ce que le recalcul a réécrit lui-même (la clé, les balises)
       hote.differerLesCles();
+      mentions = lecteurDesMentions(db);
+      hote.lireLesMentionsPar(mentions);
       plan.filter((n) => n.genre === 'supprimer').forEach((net) => remettre(net));
       const lecture = lectureDesBalises(motsClesDeLaBase(db, { elements: false }), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
       // une ligne d'un groupe gardé ne se coupe pas en deux : elle est notée une fois, entière
@@ -709,6 +714,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         : estUnRenvoiDeCle(nets, net) ? { net, dabord: null, ensuite: net } : { net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
+      mentions.oublier(); // le recalcul a pu réécrire des balises
       lectureFinale = lectureDesBalises(motsClesDeLaBase(db, { elements: false }));
       for (const { net, ensuite } of parties) if (ensuite) remettre(ensuite, { complet: net, suite: true });
     }
@@ -729,6 +735,12 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
   const resultat = appliquerUnLot(db, { titre: depose.titre, nature: depose.nature, decision: depose.decision, annulation: true, travail });
   return { lot: resultat.lot, sorties };
 }
+
+/**
+ * Retirer cette ligne insérée par le lot laisse-t-il les mentions des autres mots-clés comme elles sont ? Un mot-clé (le lecteur écarte sa définition), une catégorie et son
+ * rangement : ni texte, ni étiquette, ni synonyme, ni clé quittée d'un mot-clé qui reste. Toute autre ligne fait relire les mentions.
+ */
+const laisseLesMentions = (n) => n.genre === 'inserer' && ['mot_cle', 'mot_cle_categorie', 'categorie_mot_cle'].includes(n.table);
 
 /**
  * L'annulation remet-elle ce qui fait les clés sans passer par le service qui les recalcule ? Une ligne de `mot_cle_categorie`, une ancre, le nom d'une magie dont des sorts

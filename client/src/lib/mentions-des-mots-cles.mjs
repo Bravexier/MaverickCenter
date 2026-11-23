@@ -131,6 +131,27 @@ export function mentionsDesMotsCles(db, ids) {
 /** Les mentions du mot-clé `id` (mentionsDesMotsCles) : [{ table, cle, colonne, comment, page, libelle, exemple }]. */
 export const mentionsDe = (db, id) => mentionsDesMotsCles(db, [id]).get(id);
 
+/**
+ * Les mentions, lues une fois pour tout le vocabulaire, pour une suite de suppressions de mots-clés (l'annulation d'un lot d'ancrage en retire des centaines : relire tous les
+ * textes pour chacun prenait l'essentiel de sa durée). `de(id)` : comme `mentionsDe`, sans la définition d'un mot-clé retiré depuis la lecture. `oublier()` : à appeler avant toute
+ * autre écriture qui peut changer une mention (un texte, une étiquette, un synonyme, une clé quittée).
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function lecteurDesMentions(db) {
+  let carte = null;
+  const encore = db.prepare('SELECT 1 FROM mot_cle WHERE id = ?');
+  return {
+    oublier: () => {
+      carte = null;
+    },
+    de(id) {
+      carte ??= mentionsDesMotsCles(db, db.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
+      if (!carte.has(id)) return mentionsDe(db, id); // créé depuis la lecture
+      return carte.get(id).filter((x) => x.table !== 'mot_cle' || encore.get(x.cle.id));
+    },
+  };
+}
+
 /** Le texte d'un refus : les endroits qui mentionnent encore le mot-clé, nommés une fois chacun (cinq au plus, puis « … »). */
 export function texteDesMentions(mentions) {
   const noms = [...new Set(mentions.map((m) => m.libelle))];

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
-import { mentionsDe, referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
+import { lecteurDesMentions, mentionsDe, referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { CATEGORIES_NOUVELLES, estAncre, planDeLAncrage, REPRISES, TYPE_DE_RUBRIQUE, TYPE_UNIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { elementsDesMotsCles } from '../src/lib/mots-cles-db.mjs';
 import { appliquerEnSql, baseDAncrage, idDeCategorie, operationsDe, poserLesCategoriesNouvelles, poserMagie, poserMotCle, poserPage, poserSort } from './aide-ancrage.mjs';
@@ -409,6 +409,28 @@ test('un type de sort ancré suit l’écriture unique de ses sorts ; écrit de 
   assert.equal(alignementDe(plan, attaque), undefined);
   assert.match(aTrancher(plan, 'type_sort', 'attaque').raison, /Attaque, Attaques|Attaques, Attaque/);
   assert.equal(alignementDe(plan, meteo), undefined, 'il reprend un mot-clé : son nom ne suit pas');
+});
+
+test('le lecteur des mentions dit comme `mentionsDe` : sans la définition d’un mot-clé retiré depuis, et relit après `oublier`', () => {
+  const db = baseComplete();
+  const cite = poserMotCle(db, { libelle: 'Zéphyr cité', categories: ['Règles'] });
+  const citant = poserMotCle(db, { libelle: 'Zéphyr citant', categories: ['Règles'] });
+  const { cle } = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(cite);
+  db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${cle}}}.`, citant);
+  const page = poserPage(db, 'guide/zephyr', 'Guide de Zéphyr');
+  const lecteur = lecteurDesMentions(db);
+  assert.deepEqual(lecteur.de(cite), mentionsDe(db, cite));
+  assert.deepEqual(lecteur.de(cite).map((x) => x.cle.id), [citant]);
+  db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(citant); // clés étrangères coupées sur cette base : rien ne cascade
+  db.prepare('DELETE FROM mot_cle WHERE id = ?').run(citant);
+  assert.deepEqual(lecteur.de(cite), [], 'la définition retirée ne compte plus, sans relire');
+  db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`Voir {{${cle}}}.`, page);
+  assert.deepEqual(lecteur.de(cite), [], 'lu une fois : c’est à l’appelant d’oublier');
+  lecteur.oublier();
+  assert.deepEqual(lecteur.de(cite), mentionsDe(db, cite));
+  assert.deepEqual(lecteur.de(cite).map((x) => x.cle.id), [page]);
+  const apres = poserMotCle(db, { libelle: 'Zéphyr créé ensuite', categories: ['Règles'] });
+  assert.deepEqual(lecteur.de(apres), [], 'un mot-clé créé depuis la lecture se lit directement');
 });
 
 test('une clé écartée est sautée et listée', () => {
