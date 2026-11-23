@@ -132,9 +132,10 @@ export function recevoirLaFusion(db, w, source, cibleId, synonymes, { gel = true
 
 /**
  * Les outils du vocabulaire, liés aux erreurs du service : { recalculerLesCles, refuserLesSynonymes, poserLesCategories, poserLesSynonymes, operations,
- * domaines }. `ErreurEdition` : la classe d'erreur du service (statut HTTP, message, détails).
+ * domaines }. `ErreurEdition` : la classe d'erreur du service (statut HTTP, message, détails). `sousLeVerrou`, `refusDuVerrou`, `refusDeLaSecondeCategorie` : le verrou d'un
+ * mot-clé ancré (décision R309, serveur/edition-ancrage.mjs, qui importe ce module : donnés par serveur/edition.mjs).
  */
-export function outilsDesMotsCles({ ErreurEdition }) {
+export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie }) {
   const refus = (message, details) => new ErreurEdition(400, message, details);
   const nom = (m) => `« ${m.libelle} »`;
 
@@ -313,7 +314,8 @@ export function outilsDesMotsCles({ ErreurEdition }) {
   /**
    * `{ op: 'categories_mot_cle', mot_cle, categories: [ids], avant?: [ids] }` : les catégories d'un mot-clé (décision R232 (5) ; `avant` : celles que la
    * page a lues, 409 si elles ont changé entre-temps). Permis sur un mot-clé verrouillé (R232 (11) : « Les catégories ne sont pas couvertes par le
-   * verrou »). Les clés sont recalculées (un homonyme sans catégorie distinctive : 409, `champ: 'categories'`), et les textes réécrits.
+   * verrou »). Les clés sont recalculées (un homonyme sans catégorie distinctive : 409, `champ: 'categories'`), et les textes réécrits. Décision R309, qui remplace R232 (5) :
+   * refusée sur un mot-clé ancré, et quand la liste ajoute une catégorie et en laisse plusieurs ; dans un lot, c'est l'état de fin qui se juge (edition-ancrage.mjs#secondesCategories).
    */
   function categoriesMotCle(ctx, op) {
     const { db } = ctx;
@@ -325,6 +327,11 @@ export function outilsDesMotsCles({ ErreurEdition }) {
       throw new ErreurEdition(409, `Mot-clé ${nom(m)} : ses catégories ont changé entre-temps. Rechargez la page.`, { champ: 'categories' });
     }
     if (memeListe(ids, actuelles)) return `Mot-clé ${m.libelle} : catégories inchangées`;
+    const ferme = refusDuVerrou(ctx, m.id, ['categories']);
+    if (ferme) throw new ErreurEdition(409, ferme, { champ: 'categories' });
+    if (ctx.voie !== 'lot' && sousLeVerrou(ctx) && ids.length > 1 && ids.some((c) => !actuelles.includes(c))) {
+      throw new ErreurEdition(409, refusDeLaSecondeCategorie(m.libelle, ids.length), { champ: 'categories' });
+    }
     poserLesCategories(ctx, m.id, ids);
     const cles = recalculerLesCles(ctx);
     const noms = ids.map((id) => lireLigne(db, 'categorie_mot_cle', { id }).libelle);
@@ -348,6 +355,8 @@ export function outilsDesMotsCles({ ErreurEdition }) {
       throw new ErreurEdition(409, `Mot-clé ${nom(m)} : ses synonymes ont changé entre-temps. Rechargez la page.`, { champ: 'synonymes' });
     }
     if (memeListe(synonymes, actuels, { ordre: true })) return `Mot-clé ${m.libelle} : synonymes inchangés`;
+    const ferme = refusDuVerrou(ctx, m.id, ['synonymes']); // décision R309 : ceux d'un mot-clé ancré se corrigent par un lot
+    if (ferme) throw new ErreurEdition(409, ferme, { champ: 'synonymes' });
     refuserLesSynonymes(db, m, synonymes);
     poserLesSynonymes(ctx, m.id, synonymes);
     return `Mot-clé ${m.libelle} : ${synonymes.length ? `synonymes ${synonymes.join(', ')}` : 'sans synonyme'}`;

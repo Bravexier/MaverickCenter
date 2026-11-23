@@ -346,6 +346,12 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
       return ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o, noter, refuser, etats: { ecrite: essai ? 'applicable' : 'ecrite', verrouillee: essai ? 'verrouillee' : 'ecrite' } });
     });
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+    // R309 : un type unique ; seul l'état de fin se juge, sur les mots-clés auxquels ce lot a ajouté une catégorie (le refus ne cite aucun numéro : ce n'est pas un verrou)
+    for (const { id, message } of hote.secondesCategories()) {
+      const lignes = sorties.operations.filter((s) => s.table === 'mot_cle_categorie' && s.operation === 'inserer' && s.cle.mot_cle_id === id && ['ecrite', 'applicable', 'verrouillee'].includes(s.etat));
+      if (!essai || !lignes.length) throw new ErreurEdition(409, lignes.length ? `Opération ${lignes[0].rang} refusée : ${message}` : message, { table: 'mot_cle_categorie', mot_cle: id });
+      for (const s of lignes) Object.assign(s, { etat: 'refusee', message });
+    }
     // le recalcul différé : une fois, sur l'état final ; à l'essai, une opération refusée dit déjà ce qu'il faut corriger. Son refus n'est pas un verrou (il ne passe pas par ecrireLesOperations)
     const ecrites = sorties.operations.filter((s) => ['ecrite', 'applicable', 'verrouillee'].includes(s.etat));
     const sansRefus = !sorties.operations.some((s) => s.etat === 'refusee');
@@ -672,6 +678,8 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         if (essai) return noter('refusee', { message, ...reste });
         throw new ErreurEdition(409, `Ligne ${rang} refusée : ${message}`, { rang, table: net.table, cle: net.cle, ...reste });
       };
+      // une clé se calcule (R232) : demandée seule, elle n'a rien à écrire ; sans numéro de décision, ce n'est pas un verrou à ouvrir
+      if (depose.lignes && estUneCleRecalculee(net)) return refuser(MOTIF_DE_LA_CLE_RECALCULEE);
       const { ops, refus } = operationsDeLAnnulation(db, vu, jugement);
       if (refus) return refuser(refus);
       // une colonne que le service recalcule depuis une autre (la clé d'un mot-clé, après son libellé) est déjà revenue quand on la remet : on ne l'écrit pas
@@ -716,9 +724,15 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
  */
 function annulationAuRecalculDiffere(db, depose, plan) {
   if (plan.some((n) => n.table === 'mot_cle_categorie' || estUneAncre(n))) return true;
+  // la clé d'un voisin ne s'écrit jamais : l'annulation du lot la laisse au recalcul (une ligne seule est refusée dans `remettre`)
+  if (!depose.lignes && plan.some(estUneCleRecalculee)) return true;
   if (!plan.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'libelle'))) return false;
   return (jsonOuNull(ligneDuLot(db, depose.id)?.contenu)?.operations ?? []).some((o) => o.ancrage?.aligner === true);
 }
+
+/** Une ligne de `mot_cle` dont seule la clé a changé : celle d'un voisin, recalculée. Elle revient avec la ligne qui l'a causée, ou avec l'annulation du lot. */
+const estUneCleRecalculee = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.keys(n.fin).length === 1 && Object.hasOwn(n.fin, 'cle');
+const MOTIF_DE_LA_CLE_RECALCULEE = 'Seule sa clé a changé, recalculée par le site : elle revient avec la ligne qui l’a causée, ou avec l’annulation du lot.';
 
 /** Une ligne de l'effet net qui a posé l'ancre d'une page, d'un sort ou d'un type de sort. */
 const estUneAncre = (n) => n.genre === 'modifier' && TABLES_ANCRABLES.includes(n.table) && Object.hasOwn(n.fin, 'mot_cle_id');
@@ -1179,11 +1193,13 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
       const motifDuGroupe = gardes.get(net.rang) ?? null;
       const cleSeule = ligne.etat === 'applique' && !motifDuGroupe && juge.seuleLaCle(net, actuelle);
+      const cleRecalculee = ligne.etat === 'applique' && !motifDuGroupe && jugement.remises.length > 0 && estUneCleRecalculee(net);
       const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length || cleSeule ? 'en_place' : 'comme_avant';
-      const tenue = motifDuGroupe || cleSeule ? [] : tenueDe(net.rang);
+      const tenue = motifDuGroupe || cleSeule || cleRecalculee ? [] : tenueDe(net.rang);
       let motif = null;
       if (motifDuGroupe) motif = motifDuGroupe;
       else if (cleSeule) motif = MOTIF_DE_LA_CLE_SEULE;
+      else if (cleRecalculee) motif = MOTIF_DE_LA_CLE_RECALCULEE;
       else if (!jugement.remises.length) motif = motifSansRemise(etat);
       else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
       else if (tenue.length) motif = `Cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}.`;

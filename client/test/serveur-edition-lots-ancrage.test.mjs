@@ -190,17 +190,20 @@ test('le second homonyme de même type reçoit sa clé par le parent (ancre écr
 
 test('une catégorie créée par le lot est citée par jeton dans la clé composée', async () => {
   const m = nouvelle();
-  const id = unMotCle(m, nom('categorie'), [lesCategories(m)[0]]);
+  const [ancienne] = lesCategories(m);
+  const id = unMotCle(m, nom('categorie'), [ancienne]);
   const libelle = nom('Type neuf');
   const jeton = { $numero: 'c1' };
+  // un seul type à la fin du lot (R309, qui remplace R232 (5)) : la catégorie neuve prend la place de l'ancienne
   const p = await proposer(m, [
+    retirerCategorie(id, ancienne),
     { table: 'categorie_mot_cle', cle: { id: jeton }, operation: 'inserer', apres: { id: jeton, libelle } },
     { table: 'mot_cle_categorie', cle: { mot_cle_id: id, categorie_id: jeton }, operation: 'inserer', apres: { mot_cle_id: id, categorie_id: jeton } },
   ]);
   assert.equal(p.verdict, 'applicable', JSON.stringify(refusees(m, p)));
   appliquer(m.db, p.id, {});
   const c = m.db.prepare('SELECT id FROM categorie_mot_cle WHERE libelle = ?').get(libelle).id;
-  assert.deepEqual(categoriesDe(m, id), [lesCategories(m)[0], c]);
+  assert.deepEqual(categoriesDe(m, id), [c]);
   clesJustes(m);
 });
 

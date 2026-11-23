@@ -70,7 +70,7 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
-import { motsClesPropres, outilsDeLAncrage } from './edition-ancrage.mjs';
+import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -139,7 +139,7 @@ export class ErreurEdition extends ErreurHttp {}
 const refus = (message, details) => new ErreurEdition(400, message, details);
 
 /** Les catégories, les synonymes et la clé recalculée des mots-clés (décisions R232, R233 : serveur/edition-mots-cles.mjs). */
-const MOTS_CLES = outilsDesMotsCles({ ErreurEdition });
+const MOTS_CLES = outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie });
 
 /** Créer un mot-clé ancré, poser une ancre, aligner un mot-clé sur son élément (décision R309 : serveur/edition-ancrage.mjs) ; seuls les lots s'en servent. */
 const ANCRAGE = outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle });
@@ -501,8 +501,8 @@ function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
       if (!Object.keys(valeurs).length) continue;
       // un texte gelé (raisonDuGel) n'est jamais réécrit depuis le site (décision R222 (1)) : la fusion qui toucherait la définition d'un mot-clé
       // verrouillé est refusée avant (definitionsVerrouilleesQuiCitent) ; un autre texte gelé (une monnaie) la refuse ici, en 409, le lot annulé ; au
-      // rejeu (`ctx.gel` faux), il est réécrit comme les autres (R219 (6))
-      modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, l), valeurs });
+      // rejeu (`ctx.gel` faux), il est réécrit comme les autres (R219 (6)). La définition d'un mot-clé ancré suit la balise : ce n'est pas un geste sur lui (R309)
+      modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, l), valeurs }, { reecriture: true });
       n += 1;
     }
   }
@@ -539,7 +539,7 @@ function remplacerLesMentions(ctx, m, mentions) {
       const texte = remplace(table, c, ligne[c]);
       if (texte !== ligne[c]) valeurs[c] = texte;
     }
-    if (Object.keys(valeurs).length) modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, ligne), valeurs });
+    if (Object.keys(valeurs).length) modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, ligne), valeurs }, { reecriture: true });
   }
   const etiquettes = mentions.filter((x) => x.comment === 'etiquette');
   for (const x of etiquettes) w.supprimer('page_tag', x.cle);
@@ -620,7 +620,8 @@ function mentionsQueLeSiteNeReecritPas(db, mentions, { gel = true } = {}) {
 export function refusDesForcages(db, motsCles) {
   const verrouilles = definitionsVerrouilleesQuiCitentChacun(db);
   const adresses = indexDesAdresses(db);
-  return new Map(motsCles.map((m) => [m.id, CHRONOLOGIE.refusDuForcage(db, m, m.mentions ?? [], { verrouilles: verrouilles.get(m.id) ?? [], adresses })?.message ?? null]));
+  const ancres = motsClesAncres(db);
+  return new Map(motsCles.map((m) => [m.id, CHRONOLOGIE.refusDuForcage(db, m, m.mentions ?? [], { verrouilles: verrouilles.get(m.id) ?? [], adresses, ancres })?.message ?? null]));
 }
 
 /**
@@ -1860,6 +1861,7 @@ const CHRONOLOGIE = domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLeLien, refuserLaCouleur, refuserLIcone, reecrireLesBalises,
   definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste,
   recalculerLesCles: (ctx) => MOTS_CLES.recalculerLesCles(ctx), resumeDesCles: (c) => MOTS_CLES.resumeDesCles(c),
+  sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie, refusDesSynonymesTransmis,
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -3474,9 +3476,10 @@ export function raisonDuGel(table, ligne) {
  * L'opération « modifier ». `exiger` faux (la résolution d'un lot en conflit, OUTILS_DE_RESOLUTION) : le domaine reçoit `annexes` null, rien de ce que
  * le lot porte lui-même dans ses lignes n'est exigé (la magie d'un don qui passe à « Variable » : suivreLaMagieDuDon). Une ligne gelée (raisonDuGel :
  * un mot-clé verrouillé, une monnaie) est refusée en 409 avant tout contrôle de ses valeurs, sauf `gel` faux (la résolution, qui refait un lot
- * ancien) ou `ctx.gel` faux (enregistrer ; le rejeu).
+ * ancien) ou `ctx.gel` faux (enregistrer ; le rejeu). Un mot-clé ancré (décision R309 : ANCRAGE.refusDuVerrou) est refusé de même sur les colonnes qui changent, sauf `gel`
+ * faux et `reecriture` (une balise de sa définition suit un autre mot-clé qu'on fusionne ou supprime : le service réécrit, personne ne touche à ce mot-clé).
  */
-function modifier(ctx, op, { exiger = true, gel = true } = {}) {
+function modifier(ctx, op, { exiger = true, gel = true, reecriture = false } = {}) {
   const { db, w } = ctx;
   const { table } = op;
   if (!TABLES[table]) throw refus(`table « ${table} » : pas modifiable depuis le site`);
@@ -3484,6 +3487,10 @@ function modifier(ctx, op, { exiger = true, gel = true } = {}) {
   if (!op.valeurs || typeof op.valeurs !== 'object' || Array.isArray(op.valeurs)) throw refus(`${table} : valeurs attendues`);
   const avant = lireLigne(db, table, op.cle);
   if (!avant) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(op.cle)}`);
+  if (table === 'mot_cle' && gel && !reecriture) {
+    const ferme = ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null)));
+    if (ferme) throw new ErreurEdition(409, ferme);
+  }
   const gelee = gel && ctx.gel !== false ? raisonDuGel(table, avant) : null;
   if (gelee) throw new ErreurEdition(409, gelee);
   const { colonnes: envoyees, annexes } = separerLesAnnexes(table, op.valeurs);
@@ -3636,6 +3643,9 @@ const OPERATIONS_DU_LOT = {
   ecrire_modifier(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, le mot de passe ne l'ouvre pas, contrairement à celui d'une colonne tenue
+    const ferme = op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null;
+    if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
     ctx.w.modifier(op.table, op.cle, op.valeurs);
@@ -3653,6 +3663,8 @@ const OPERATIONS_DU_LOT = {
   ecrire_supprimer(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    const ferme = op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null;
+    if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
     // le mot-clé d'un sort (R309) : même règle qu'une page, contrôlé avant, retiré après
@@ -3749,6 +3761,8 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
       // après la dernière opération, avant les contrôles du contenu (edition-lots.mjs#appliquerLeLot) : ils jugent les noms suivis et les clés qu'un mot-clé retiré
       // laisse à recalculer (un `travail` qui retire un élément l'appelle donc). Rend vrai s'il a recalculé les clés
       suivreLesElements: () => ANCRAGE.suivreLesElements(ctx),
+      // l'état de fin d'un lot : les mots-clés auxquels il a ajouté une catégorie et qui en ont plusieurs (R309)
+      secondesCategories: () => ANCRAGE.secondesCategories(ctx),
     };
     const resultat = travail(hote);
     if (!w.nombre) {

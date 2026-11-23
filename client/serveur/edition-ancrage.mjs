@@ -6,7 +6,7 @@
 // Sans import de serveur/edition.mjs : ses outils sont donnés par outilsDeLAncrage (patron de edition-mots-cles.mjs#outilsDesMotsCles).
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
-import { mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { lireBalises, motCleDeLaRef, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
@@ -17,6 +17,49 @@ import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
 const NOMS = Object.freeze({ page: 'Page', sort: 'Sort', type_sort: 'Type de sort' });
 /** La mention d'une décision dans un refus de la règle des clés (« (décision R232 (9)) »). */
 const MENTION_D_UNE_DECISION = / ?\(décisions? R[0-9]+(?: \([0-9]+\))?(?:, R[0-9]+(?: \([0-9]+\))?)*\)/g;
+
+/** Ce qu'aucun lot ne fait à un mot-clé ancré, mot de passe compris : écrire son nom, son adresse ou sa clé, le supprimer, le fondre dans un autre. */
+const FERME_AUX_LOTS = new Set(['libelle', 'url', 'cle', 'suppression', 'fusion']);
+const CITE_UN_NUMERO = /\bR[0-9]+\b/;
+
+/** Le sujet d'un refus du verrou : un libellé qui s'écrit comme un numéro de décision n'y entre pas (voir l'en-tête). */
+const motCleDansUnRefus = (libelle) => (libelle && !CITE_UN_NUMERO.test(libelle) ? `Le mot-clé « ${libelle} »` : 'Ce mot-clé');
+
+/** Le refus d'une seconde catégorie : `nombre`, celles qu'il aurait. */
+export const refusDeLaSecondeCategorie = (libelle, nombre) => `${motCleDansUnRefus(libelle)} n’a qu’un seul type : il en aurait ${nombre}.`;
+
+/** Le refus d'une fusion dont la cible est ancrée et la source a des synonymes : une cible ancrée ne reçoit que la clé. */
+export const refusDesSynonymesTransmis = (source) => `${motCleDansUnRefus(source)} ne se fusionne pas dans un mot-clé relié à un élément : celui-ci ne reçoit que sa clé, pas ses synonymes. Retirez-les d’abord, ou choisissez une autre cible.`;
+
+/**
+ * Le verrou s'applique-t-il à cette écriture ? Une route du site et tout lot, oui ; l'annulation d'un lot et le rejeu (`gel` faux : R219 (6)), non. Sur un lot, `gel` faux
+ * ne le lève pas : c'est ce qu'ouvre le mot de passe, et il n'ouvre pas ce verrou.
+ */
+export const sousLeVerrou = (ctx) => !ctx.annulation && (ctx.voie === 'lot' || ctx.gel !== false);
+
+/**
+ * Le refus d'un geste sur le mot-clé `id` s'il est ancré, ou null. `colonnes` : les colonnes écrites, ou le geste (`categories`, `synonymes`, `suppression`, `fusion`). Une route
+ * ne fait aucun de ces gestes ; un lot corrige le type, la couleur, l'icône, les synonymes et la définition (décision 17), pas le reste. Le texte ne cite jamais de numéro de
+ * décision. `ancres` : l'ensemble déjà lu (`motsClesAncres`), pour un appel par mot-clé du vocabulaire.
+ */
+export function refusDuVerrou(ctx, id, colonnes, { ancres = null } = {}) {
+  if (!sousLeVerrou(ctx)) return null;
+  const visees = ctx.voie === 'lot' ? colonnes.filter((c) => FERME_AUX_LOTS.has(c)) : colonnes;
+  if (!visees.length || !(ancres ? ancres.has(id) : estAncre(ctx.db, id))) return null;
+  const sujet = motCleDansUnRefus(ctx.db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle);
+  if (visees.includes('suppression')) return `${sujet} est relié à un élément : il ne se supprime pas seul, il part avec son élément.`;
+  if (visees.includes('fusion')) return `${sujet} est relié à un élément : il ne se fusionne pas dans un autre.`;
+  if (ctx.voie === 'lot') return `${sujet} est relié à un élément : son nom, son adresse et sa clé viennent de lui, aucun lot ne les écrit.`;
+  return `${sujet} est relié à un élément : il ne se modifie plus à la main.`;
+}
+
+/** Les ids des mots-clés ancrés, en un seul passage (`estAncre` relit les tables à chaque appel). */
+export function motsClesAncres(db) {
+  const motsCles = db.prepare('SELECT * FROM mot_cle').all();
+  const sortie = new Set(referencesDesMotsCles(db, motsCles.map((m) => m.id)).map((r) => r.mot_cle_id));
+  for (const m of motsCles) if ((m.monnaie_id ?? null) !== null) sortie.add(m.id);
+  return sortie;
+}
 
 /**
  * L'élément `id` de `table` : { nom, adresse, parent, mot_cle_id }, ou null. `nom` : le titre d'une page, le nom d'un sort, l'écriture d'un type de sort dans
@@ -122,7 +165,7 @@ export function motsClesPropres(db, table, ids, { avec = [] } = {}) {
 
 /**
  * Les outils de l'ancrage, liés au service : { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer,
- * retirerLeMotCle }.
+ * retirerLeMotCle, sousLeVerrou, refusDuVerrou, secondesCategories }. Les écritures de ce module ne passent jamais sous le verrou : elles vont directement par `w`.
  * @param {{ ErreurEdition: Function, MOTS_CLES: object, creerMotCle: Function }} o la classe d'erreur, les outils du vocabulaire et la création d'un mot-clé
  */
 export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
@@ -352,5 +395,23 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     ctx.clesDues = true;
   }
 
-  return { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle };
+  /**
+   * Fin d'un lot : les mots-clés auxquels CE lot a ajouté une catégorie et qui en ont plusieurs à la fin, [{ id, message }]. Seul l'état final se juge : un lot peut écrire
+   * « ajouter B » puis « retirer A », ou retirer une catégorie à un ancien mot-clé qui en garde plusieurs. Ni en annulation ni au rejeu.
+   */
+  function secondesCategories(ctx) {
+    if (!sousLeVerrou(ctx)) return [];
+    const { db, w } = ctx;
+    const ajoutees = new Set(w.lignes.filter((l) => l.table === 'mot_cle_categorie' && l.operation === 'inserer').map((l) => l.cle.mot_cle_id));
+    const sortie = [];
+    for (const id of ajoutees) {
+      const { n } = db.prepare('SELECT count(*) AS n FROM mot_cle_categorie WHERE mot_cle_id = ?').get(id);
+      if (n > 1) sortie.push({ id, message: refusDeLaSecondeCategorie(db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, n) });
+    }
+    return sortie;
+  }
+
+  return {
+    ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle, sousLeVerrou, refusDuVerrou, secondesCategories,
+  };
 }
