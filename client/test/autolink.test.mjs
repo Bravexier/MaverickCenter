@@ -53,6 +53,32 @@ test('les cibles : chaque mot-clé à adresse ; le titre et les alias de sa page
   assert.equal(autolink('Lancer un sort de Magie du feu.', t, 'x').body, 'Lancer un sort de {{magie-du-feu}}.');
 });
 
+test('une page de magie garde ses termes malgré les mots-clés de ses sorts (R309 : l\'adresse d\'un sort mène à la page de sa magie, il n\'en est pas le mot-clé)', () => {
+  const motsCles = [
+    { id: 9101, cle: 'magie-des-brumes', libelle: 'Magie des brumes', url: '/magies/magie-des-brumes/', parent: null },
+    // un sort ancré : `parent` est le nom de sa magie, son adresse mène à l'ancre de sa ligne sur la page de la magie
+    { id: 9102, libelle: 'Voile de brume d’essai', url: '/magies/magie-des-brumes/#sort-voile', parent: 'Magie des brumes' },
+    { id: 9103, libelle: 'Écran de brume d’essai', url: '/magies/magie-des-brumes/#sort-ecran', parent: 'Magie des brumes' },
+    // même sort, lu sans `parent` (vocabulaire d'une copie dont `parent` manque) : `element` le dit
+    { id: 9104, libelle: 'Nappe de brume d’essai', url: '/magies/magie-des-brumes/#sort-nappe', element: { table: 'sort', id: 'magies/magie-des-brumes#sort:nappe', adresse: '/magies/magie-des-brumes/#sort-nappe', texte: 'x' } },
+    // une page qui n'a QUE des sorts pour mots-clés n'a pas de mot-clé à elle
+    { id: 9105, libelle: 'Éclair d’essai', url: '/magies/magie-des-orages/#sort-eclair', parent: 'Magie des orages' },
+  ];
+  const pages = [
+    { id: 'magies/magie-des-brumes', title: 'Magie des brumes', aliases: ['Brumes'] },
+    { id: 'magies/magie-des-orages', title: 'Magie des orages', aliases: [] },
+  ];
+  const pageDuMotCle = new Map([[9101, 'magies/magie-des-brumes'], [9102, 'magies/magie-des-brumes'], [9103, 'magies/magie-des-brumes'], [9104, 'magies/magie-des-brumes'], [9105, 'magies/magie-des-orages']]);
+  const { cibles: c, sansMotCle } = ciblesDuVocabulaire(motsCles, pages, pageDuMotCle);
+  const parId = new Map(c.map((x) => [x.id, x]));
+  assert.deepEqual(parId.get(9101).termes, ['Magie des brumes', 'Brumes'], 'le mot-clé de la magie reste seul de sa page : le titre et l\'alias sont ses termes');
+  for (const id of [9102, 9103, 9104, 9105]) assert.deepEqual(parId.get(id).termes, [], `le sort ${id} n'emprunte pas le titre de la page de sa magie`);
+  assert.equal(parId.get(9102).page, 'magies/magie-des-brumes', 'un sort reste une cible qui mène à la page de sa magie');
+  assert.deepEqual(sansMotCle, ['magies/magie-des-orages'], 'les mots-clés de ses sorts ne font pas de la page de la magie une page qui a un mot-clé');
+  const { terms } = buildTerms(c);
+  assert.equal(autolink('Voir la Brumes ici.', terms, 'guide/x').body, 'Voir la {{magie-des-brumes|Brumes}} ici.', 'l’alias de la page mène au mot-clé de la magie');
+});
+
 test('fold garde la longueur du texte (indices valides) et ignore casse, accents, apostrophes', () => {
   for (const text of ['Éleveur d’œufs', 'İstanbul 😀 Forgeron', 'a b']) assert.equal(fold(text).length, text.length);
   assert.equal(fold('Éleveur d’Hôtel'), "eleveur d'hotel");

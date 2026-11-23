@@ -269,9 +269,20 @@ def protected_tag(ident):
     return maverick.libelle_protege(ident, VOCABULAIRE)
 
 
+def etiquettes_non_posees():
+    """tools/db/homonymes.py#ETIQUETTES_NON_POSEES (décisions R183 (11) et R309 : étiquettes d'un mot-clé que l'import n'écrit pas : ici « chasseur » et
+    « gladiateur », spécialités de l'Olwman et du Minotaure que porte le mot-clé du métier), chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ETIQUETTES_NON_POSEES
+
+
 def present(tags):
-    """Les étiquettes écrites : sans celles d'un mot-clé protégé absent du vocabulaire (None)."""
-    return [t for t in tags if t is not None]
+    """Les étiquettes écrites : sans celles d'un mot-clé protégé absent du vocabulaire (None), ni celles que l'import ne pose pas."""
+    non_posees = etiquettes_non_posees()
+    return [t for t in tags if t is not None and t not in non_posees]
 # Catégories dont les classes portent le nom d'une race : leur titre peut être celui de la page de la race (aucun suffixe).
 SHARED_WITH_RACE_CATEGORIES = {"Classe Hybride Animal"}
 

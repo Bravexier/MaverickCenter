@@ -65,3 +65,24 @@ test('T10-ponctuation-de-tete : parLibelle range sans la ponctuation de tête, p
   // un libellé de ponctuation seule se range comme avant (sa propre écriture), sans lever
   assert.doesNotThrow(() => [m('...', 1), m('Armure', 2)].sort(parLibelle));
 });
+
+// T13 (R309) : le site de dev trie tout le vocabulaire à chaque GET edition/listes/ (serveur/edition.mjs) ; à 1 764 mots-clés, un `localeCompare` avec options par
+// comparaison coûtait ~100 ms au chargement de chaque page (mesuré dans Chrome : +143 ms avant que le vocabulaire arrive). Un seul `Intl.Collator`, même ordre.
+test('T13 : parLibelle garde l’ordre de localeCompare sur 1 764 libellés inventés, et en coûte au plus un tiers', () => {
+  const syllabes = ['ba', 'dé', 'fi', 'gor', 'hé', 'ju', 'ka', 'lo', 'mi', 'nu', 'ou', 'pé', 'qui', 'ré', 'sa', 'tou', 'vi', 'ze'];
+  const articles = ['', '', '', 'Le ', 'La ', 'Les ', 'L’', '... ', '« '];
+  let graine = 7;
+  const alea = (n) => { graine = (graine * 1103515245 + 12345) % 2147483648; return graine % n; };
+  const mots = Array.from({ length: 1764 }, (_, id) => {
+    const nom = Array.from({ length: 2 + alea(3) }, () => syllabes[alea(syllabes.length)]).join('');
+    return { id: id + 1, libelle: `${articles[alea(articles.length)]}${alea(2) ? nom : nom[0].toUpperCase() + nom.slice(1)}${alea(4) ? '' : ` (${alea(50)})`}`, cle: `cle-${id + 1}` };
+  });
+  // la référence : le comparateur d'avant, `localeCompare` avec ses options à chaque appel
+  const comparer = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' });
+  const avant = (a, b) => comparer(cleDeTri(a.libelle), cleDeTri(b.libelle)) || comparer(a.libelle, b.libelle)
+    || String(a.cle ?? '').localeCompare(String(b.cle ?? '')) || (typeof a.id === 'number' && typeof b.id === 'number' ? a.id - b.id : String(a.id).localeCompare(String(b.id)));
+  const duree = (tri) => Math.min(...[1, 2].map(() => { const t0 = performance.now(); [...mots].sort(tri); return performance.now() - t0; }));
+  assert.deepEqual([...mots].sort(parLibelle).map((m) => m.id), [...mots].sort(avant).map((m) => m.id));
+  const [maintenant, anciennement] = [duree(parLibelle), duree(avant)];
+  assert.ok(maintenant * 3 < anciennement, `${maintenant.toFixed(1)} ms contre ${anciennement.toFixed(1)} ms`);
+});

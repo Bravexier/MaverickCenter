@@ -2046,7 +2046,7 @@ Le texte du deuxième.
 ## Maillage automatique
 
 Après un import, `npm run autolink` (depuis `client/`) propose de baliser les mentions d'un **mot-clé à adresse** dans le texte des pages : son
-libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{clé}}` (le libellé) ou
+libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener (le mot-clé d'un sort ancré, R309, ne compte pas : son adresse mène à la page de sa magie, qui garde ses termes). La mention devient `{{clé}}` (le libellé) ou
 `{{clé|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés, leurs adresses et le corps des pages (`page.corps_md`) sont lus dans la base de `lib/donnees.mjs#ouvrirBase` : le contenu fourni
 (`MAVERICK_CONTENU`, l'extrait du jour du site de dev) ou, sans lui, la base reconstruite depuis `data/rows` ; une page
 sans mot-clé n'est pas une cible (le maillage ne crée jamais de mot-clé ; l'aperçu les compte, `--verbose` les liste). **Sans option, il n'écrit

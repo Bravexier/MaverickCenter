@@ -87,7 +87,10 @@ export function cleDeTri(libelle) {
   return sansArticle(sans || texte);
 }
 
-const comparer = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' });
+// un seul collateur : `localeCompare` avec ses options en recrée un à chaque appel (~100 ms pour trier 1 764 mots-clés, ce que fait chaque GET edition/listes/) ;
+// même ordre (String.prototype.localeCompare passe par Intl.Collator avec ces mêmes langue et options)
+const collateur = new Intl.Collator('fr', { sensitivity: 'base' });
+const comparer = (a, b) => collateur.compare(String(a ?? ''), String(b ?? ''));
 
 /**
  * Mots-clés triés par libellé, à la française, sans compter l'article de tête (« Les postures » se range à P : sansArticle ; pastilles d'un événement,
