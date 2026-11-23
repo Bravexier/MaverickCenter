@@ -242,7 +242,10 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     }
   }
 
-  /** Parmi les mots-clés `ids`, ceux qui peuvent prendre le nom de leur élément sans que la règle refuse le vocabulaire (un échange de noms passe : on essaie jusqu'au point fixe). */
+  /**
+   * Parmi les mots-clés `ids`, ceux qui peuvent prendre le nom de leur élément sans que la règle refuse le vocabulaire (essayés jusqu'au point fixe). Ne juge pas l'écriture
+   * des clés : deux homonymes qui échangent leur nom passent ici, puis `recalculerLesCles` refuse leurs clés croisées (`suivreLesElements` les écarte alors).
+   */
   function nomsQuiPassent(db, ids) {
     const motsCles = motsClesDeLaBase(db);
     const parId = new Map(motsCles.map((m) => [m.id, m]));
@@ -271,13 +274,16 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
 
   /**
    * Fin d'un lot écrit par le service : le mot-clé suit ce que CE lot a changé (`w.lignes`, jamais l'état de la base : un renommage annulé ne revient pas). `page.titre`
-   * et `sort.nom` : nom suivi, clés recalculées ; un nom que la règle refuse laisse le mot-clé tel quel. `magie.nom` : la clé des sorts homonymes dépend de leur parent,
-   * clés recalculées ; le refus remonte (sans numéro de décision), car le vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal).
-   * Rend vrai s'il a recalculé les clés : l'appelant n'a pas à le refaire.
+   * et `sort.nom` : nom suivi, clés recalculées ; un nom que la règle refuse laisse le mot-clé tel quel, comme ceux dont les clés se croiseraient (un échange de noms : le
+   * refus les cite, `details.mots_cles`), et les autres suivent. `magie.nom` : la clé des sorts homonymes dépend de leur parent ; un mot-clé retiré (`ctx.clesDues`) : un
+   * homonyme peut retrouver sa clé. Dans ces deux cas le recalcul est dû : s'il est refusé sans renommage à écarter, le refus remonte (sans numéro de décision), car le
+   * vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal). Rend vrai s'il a recalculé les clés : l'appelant n'a pas à le refaire.
    */
   function suivreLesElements(ctx) {
     if (ctx.annulation) return false;
     const { db, w } = ctx;
+    const clesDues = ctx.clesDues === true;
+    ctx.clesDues = false;
     const aSuivre = new Set();
     let parentChange = false;
     for (const { table, cle, colonnes } of w.lignes) {
@@ -289,24 +295,26 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
         parentChange ||= Boolean(db.prepare('SELECT 1 FROM sort WHERE magie_id = ? AND mot_cle_id IS NOT NULL LIMIT 1').get(cle.id));
       }
     }
-    if (!aSuivre.size && !parentChange) return false;
-    const renommes = nomsQuiPassent(db, aSuivre);
-    if (!renommes.length && !parentChange) return false;
-    const ecrire = () => {
-      for (const id of renommes) alignerMotCle(ctx, id);
-      MOTS_CLES.recalculerLesCles(ctx);
-    };
-    if (parentChange) {
-      sansNumeroDeDecision(ecrire);
-      return true;
+    const recalculDu = parentChange || clesDues;
+    let renommes = aSuivre.size ? nomsQuiPassent(db, aSuivre) : [];
+    while (renommes.length || recalculDu) {
+      try {
+        w.isoler(() => {
+          for (const id of renommes) alignerMotCle(ctx, id);
+          MOTS_CLES.recalculerLesCles(ctx);
+        });
+        return true;
+      } catch (e) {
+        if (!(e instanceof ErreurEdition)) throw e;
+        const cites = new Set(e.details?.mots_cles ?? []);
+        const restants = renommes.filter((id) => !cites.has(id));
+        if (restants.length < renommes.length) renommes = restants; // les mots-clés que le refus cite gardent leur nom, les autres suivent
+        else if (!recalculDu) return false;
+        else if (renommes.length) renommes = []; // un autre refus d'un nom : le recalcul dû se tente sans aucun renommage
+        else return sansNumeroDeDecision(() => { throw e; });
+      }
     }
-    try {
-      w.isoler(ecrire);
-      return true;
-    } catch (e) {
-      if (e instanceof ErreurEdition) return false;
-      throw e;
-    }
+    return false;
   }
 
   /**
@@ -326,8 +334,9 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
   }
 
   /**
-   * Après l'élément : retire le mot-clé `id`, ses catégories, synonymes et clés quittées, puis recalcule les clés (un homonyme peut retrouver la sienne). Tenu par un autre
-   * élément (une ancre, une magie, un type de dégâts, une monnaie, un sort qui le porte : R289), il reste ; s'il menait à l'élément parti (`adresse`), son adresse se vide.
+   * Après l'élément : retire le mot-clé `id`, ses catégories, synonymes et clés quittées. Le recalcul des clés (un homonyme peut retrouver la sienne) est noté dû, et fait une
+   * fois en fin de lot par `suivreLesElements` : un état entre deux opérations n'a pas à satisfaire la règle. Tenu par un autre élément (une ancre, une magie, un type de
+   * dégâts, une monnaie, un sort qui le porte : R289), il reste ; s'il menait à l'élément parti (`adresse`), son adresse se vide.
    */
   function retirerLeMotCle(ctx, id, { adresse = null } = {}) {
     const { db, w } = ctx;
@@ -340,7 +349,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     }
     retirerLesFillesDuMotCle(db, w, id);
     w.supprimer('mot_cle', { id });
-    sansNumeroDeDecision(() => MOTS_CLES.recalculerLesCles(ctx));
+    ctx.clesDues = true;
   }
 
   return { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle };

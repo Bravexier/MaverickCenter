@@ -455,7 +455,13 @@ test('un lot qui supprime un sort retire son mot-clé, sauf s’il est cité', (
   try {
     const { libre, cite, motsCles: [motCleLibre, motCleCite] } = m.monde;
     // l'opération d'un lot, seule : ces sorts d'essai n'ont pas les colonnes qu'exigent les contrôles du contenu
-    const supprimer = (id) => appliquerUnLot(m.db, { titre: 'Essai', nature: 'decision', decision: 'R309', travail: (hote) => hote.executer({ op: 'ecrire_supprimer', table: 'sort', cle: { id } }) });
+    const supprimer = (id) => appliquerUnLot(m.db, {
+      titre: 'Essai', nature: 'decision', decision: 'R309',
+      travail: (hote) => {
+        hote.executer({ op: 'ecrire_supprimer', table: 'sort', cle: { id } });
+        hote.suivreLesElements();
+      },
+    });
     const e = refusDe(() => supprimer(cite));
     assert.equal(e.statut, 409);
     assert.doesNotMatch(e.message, /\bR[0-9]+\b/, 'un refus du suivi n’est jamais un verrou à ouvrir');
@@ -761,6 +767,129 @@ test('R291 : un lot sans suppression qui a corrigé un problème du contenu ne s
     assert.match(e.message, /contrôles du contenu/);
     assert.equal(pageDeLEntite(m, faute.id), faute.juste, 'rien n’est écrit');
     assert.equal(etatDuLot(m, applique.id), 'applique');
+  } finally {
+    m.db.close();
+  }
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Les clés en fin de lot : un retrait ne les juge pas entre deux opérations ; un échange de noms n'empêche pas les autres mots-clés de suivre
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+test('un lot qui reclasse un homonyme et retire un élément entre les deux passe : la règle ne juge que l’état final', async () => {
+  const m = reelle();
+  m.base = () => m.db;
+  m.dossier = join(racine, `essais${(n += 1)}`);
+  try {
+    const [c1, c2, c3] = m.db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 3').all().map((c) => c.id);
+    const titre = nom('homonyme reclassé');
+    const [a, b] = [c1, c2].map((c) => ecrire(m, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: titre, categories: [c] } }]).crees[0].id);
+    const metier = creerMetier(m, nom('métier entre deux'));
+    const motCleDuMetier = ancre(m, 'page', metier);
+    const categorieDe = (categorie_id) => ({ mot_cle_id: a, categorie_id });
+    await deposerLeLot(m, [
+      { table: 'mot_cle_categorie', cle: categorieDe(c1), operation: 'supprimer', avant: categorieDe(c1) },
+      retraitDuMetier(m.db, metier),
+      { table: 'mot_cle_categorie', cle: categorieDe(c3), operation: 'inserer', apres: categorieDe(c3) },
+    ]);
+    assert.equal(m.db.prepare('SELECT 1 FROM metier WHERE id = ?').get(metier), undefined);
+    assert.equal(motCle(m, motCleDuMetier), undefined);
+    assert.deepEqual(categoriesDe(m, a), [c3]);
+    assert.deepEqual(categoriesDe(m, b), [c2]);
+    clesJustes(m);
+  } finally {
+    m.db.close();
+  }
+});
+
+/** Trois sorts de magies différentes, de noms différents, chacun ancré à son mot-clé (posés en SQL : le service les renomme ensuite). */
+function troisSortsAncres(m) {
+  const vus = new Set();
+  const sorts = m.db.prepare('SELECT min(id) AS id, nom, nom_cle, magie_id FROM sort WHERE lower(nom) NOT IN (SELECT lower(libelle) FROM mot_cle) GROUP BY magie_id ORDER BY magie_id').all()
+    .filter((s) => !vus.has(s.nom_cle) && vus.add(s.nom_cle)).slice(0, 3).map((s) => ({ ...s }));
+  assert.equal(sorts.length, 3);
+  const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
+  for (const s of sorts) {
+    s.motCle = poserMotCle(m.db, { libelle: s.nom, url: adresseDuSort(s.id), categories: [type] });
+    m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(s.motCle, s.id);
+  }
+  recalculerLesCles(m.db);
+  return sorts;
+}
+const nomDuSort = (m, id) => m.db.prepare('SELECT nom FROM sort WHERE id = ?').get(id).nom;
+
+test('un échange de noms : ces deux mots-clés gardent leur nom, les autres renommages suivent', () => {
+  const m = reelle();
+  try {
+    const [a, b, c] = troisSortsAncres(m);
+    const neuf = nom('sort neuf');
+    ecrire(m, [
+      { op: 'modifier', table: 'sort', cle: { id: a.id }, valeurs: { nom: b.nom } },
+      { op: 'modifier', table: 'sort', cle: { id: b.id }, valeurs: { nom: a.nom } },
+      { op: 'modifier', table: 'sort', cle: { id: c.id }, valeurs: { nom: neuf } },
+    ]);
+    assert.deepEqual([a, b, c].map((s) => nomDuSort(m, s.id)), [b.nom, a.nom, neuf], 'les sorts sont renommés');
+    assert.equal(motCle(m, c.motCle).libelle, neuf, 'le troisième suit');
+    assert.equal(motCle(m, c.motCle).cle, normalize(neuf));
+    assert.equal(motCle(m, a.motCle).libelle, a.nom, 'le cycle est écarté');
+    assert.equal(motCle(m, b.motCle).libelle, b.nom, 'le cycle est écarté');
+    clesJustes(m);
+  } finally {
+    m.db.close();
+  }
+});
+
+test('un échange de noms dans un lot qui renomme aussi une magie : le lot passe, les autres mots-clés suivent', async () => {
+  const m = reelle();
+  m.base = () => m.db;
+  m.dossier = join(racine, `essais${(n += 1)}`);
+  try {
+    const [a, b, c] = troisSortsAncres(m);
+    const neuf = nom('sort neuf du lot');
+    const magie = { ...m.db.prepare('SELECT id, nom, nom_cle FROM magie WHERE id = ?').get(c.magie_id) };
+    const nouvelle = nom('magie du lot');
+    const renommer = (s, vers) => ({ table: 'sort', cle: { id: s.id }, operation: 'modifier', avant: { nom: s.nom }, apres: { nom: vers } });
+    await deposerLeLot(m, [
+      renommer(a, b.nom), renommer(b, a.nom), renommer(c, neuf),
+      { table: 'magie', cle: { id: magie.id }, operation: 'modifier', avant: { nom: magie.nom, nom_cle: magie.nom_cle }, apres: { nom: nouvelle, nom_cle: normalize(nouvelle) } },
+    ]);
+    assert.equal(m.db.prepare('SELECT nom FROM magie WHERE id = ?').get(magie.id).nom, nouvelle);
+    assert.equal(motCle(m, c.motCle).libelle, neuf);
+    assert.equal(motCle(m, a.motCle).libelle, a.nom);
+    assert.equal(motCle(m, b.motCle).libelle, b.nom);
+    clesJustes(m);
+  } finally {
+    m.db.close();
+  }
+});
+
+test('deux magies qui échangent leur nom croisent les clés de leurs sorts : sans renommage à écarter, le refus remonte, sans numéro de décision', () => {
+  const m = reelle();
+  try {
+    const [s1, s2] = m.db.prepare('SELECT min(id) AS id, magie_id FROM sort GROUP BY magie_id ORDER BY magie_id LIMIT 2').all().map((s) => ({ ...s }));
+    const titre = nom('sort des deux magies');
+    const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
+    for (const s of [s1, s2]) {
+      m.db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run(titre, s.id);
+      const k = poserMotCle(m.db, { libelle: titre, url: adresseDuSort(s.id), categories: [type] });
+      m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(k, s.id);
+    }
+    recalculerLesCles(m.db);
+    const [m1, m2] = [s1, s2].map((s) => ({ ...m.db.prepare('SELECT id, nom, nom_cle FROM magie WHERE id = ?').get(s.magie_id) }));
+    const provisoire = nom('magie de passage');
+    const poser = (id, valeurs) => ({ op: 'ecrire_modifier', table: 'magie', cle: { id }, valeurs });
+    const e = refusDe(() => appliquerUnLot(m.db, {
+      titre: 'Essai', nature: 'decision', decision: 'R309',
+      travail: (hote) => {
+        hote.executer(poser(m1.id, { nom: provisoire, nom_cle: normalize(provisoire) }));
+        hote.executer(poser(m2.id, { nom: m1.nom, nom_cle: m1.nom_cle }));
+        hote.executer(poser(m1.id, { nom: m2.nom, nom_cle: m2.nom_cle }));
+        hote.suivreLesElements();
+      },
+    }));
+    assert.equal(e.statut, 409);
+    assert.match(e.message, /s’échangeraient/);
+    assert.doesNotMatch(e.message, /\bR[0-9]+\b/, 'un refus du suivi n’est jamais un verrou à ouvrir');
+    assert.equal(m.db.prepare('SELECT nom FROM magie WHERE id = ?').get(m1.id).nom, m1.nom, 'rien n’est écrit');
   } finally {
     m.db.close();
   }

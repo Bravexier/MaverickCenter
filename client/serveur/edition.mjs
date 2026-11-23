@@ -3746,7 +3746,8 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
       differerLesCles: () => {
         ctx.clesEnAttente = true;
       },
-      // après la dernière opération, avant les contrôles du contenu (edition-lots.mjs#appliquerLeLot) : ils jugent les noms suivis. Rend vrai s'il a recalculé les clés
+      // après la dernière opération, avant les contrôles du contenu (edition-lots.mjs#appliquerLeLot) : ils jugent les noms suivis et les clés qu'un mot-clé retiré
+      // laisse à recalculer (un `travail` qui retire un élément l'appelle donc). Rend vrai s'il a recalculé les clés
       suivreLesElements: () => ANCRAGE.suivreLesElements(ctx),
     };
     const resultat = travail(hote);
