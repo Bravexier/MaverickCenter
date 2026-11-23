@@ -104,7 +104,7 @@ def cles_des_mots_cles(mots_cles, categories, strict=True, parents=None):
                     if autre != ident and cats <= cats_autre:
                         inclus = True
                         if not parent:  # R309 : le parent le départage
-                            fautes.append((base, [ident, autre], 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)'))
+                            fautes.append((base, [ident, autre], 'aucune catégorie propre ni parent face à un homonyme (catégories incluses ou égales)'))
             propres = sorted(cats - communes)
             cles[ident] = '-'.join([base] + [normalize(categories[c]) for c in propres] + ([parent] if inclus and parent else []))
     par_cle = {}

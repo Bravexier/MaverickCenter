@@ -116,9 +116,9 @@ Quatre chantiers, chacun une PR à part, conçu quand le précédent est livré 
 | Magie (8) | Bi-magie, Chakra, Emplacement de sort, Magie innée, Mono-magie, Puissance magique, Super Magie, Tour de charge |
 | Métier (3) | Artisanat, Métier, S'entraîner |
 
-## 4. Les 18 mots-clés dont le nom change
+## 4. Les 20 mots-clés dont le nom change
 
-Le nom devient le titre de la page, la clé suit (décision 11). **100 balises dans 40 textes sont réécrites vers la nouvelle clé.** Elles gardent le texte qu'elles affichent, sauf **3 balises sans texte écrit** : Mode Hyper devient Le Mode Hyper (2), Rater ses sortilèges devient Rater ses sorts (1). L'ancienne clé reste reconnue (`mot_cle_ancienne_cle`) : une balise écrite avec l'ancien nom mène au bon mot-clé, sauf si un nouveau mot-clé reprend cette clé (R233 (11)) ou si l'écriture devient ambiguë (R232 (4) : `{{Force}}` quand deux mots-clés s'appellent Force, il faut alors écrire la clé).
+Le nom devient le titre de la page (décision 12). **18 changent aussi de clé** (la clé suit, décision 11) : **100 balises dans 40 textes sont réécrites vers la nouvelle clé.** Les deux autres changent seulement de nom, leur clé reste la même (tableau ci-dessous, deux dernières lignes). Les balises gardent le texte qu'elles affichent, sauf **5 balises sans texte écrit**, dont l'affichage change : Mode Hyper devient Le Mode Hyper (2), Rater ses sortilèges devient Rater ses sorts (1), Mode Hyper 100% devient Mode Hyper 100 % (2, dans `guide/fiche-experience-niveau-global`). L'ancienne clé reste reconnue (`mot_cle_ancienne_cle`) : une balise écrite avec l'ancien nom mène au bon mot-clé, sauf si un nouveau mot-clé reprend cette clé (R233 (11)) ou si l'écriture devient ambiguë (R232 (4) : `{{Force}}` quand deux mots-clés s'appellent Force, il faut alors écrire la clé).
 
 | # | Nom actuel | Nouveau nom | Nouvelle clé | Balises |
 | --- | --- | --- | --- | --- |
@@ -140,6 +140,8 @@ Le nom devient le titre de la page, la clé suit (décision 11). **100 balises d
 | 290 | Posture | Les postures | `les-postures` | 18 |
 | 300 | Rater ses sortilèges | Rater ses sorts | `rater-ses-sorts` | 1 |
 | 350 | Tenaille | La prise en tenaille et zone d'influence | `la-prise-en-tenaille-et-zone-dinfluence` | 4 |
+| 71 | codex | Codex | `codex` (inchangée) | 0 |
+| 420 | Mode Hyper 100% | Mode Hyper 100 % | `mode-hyper-100` (inchangée) | 0 (2 balises sans texte, dont l'affichage gagne l'espace) |
 
 **Effet visible** : sept noms commencent désormais par un article (Les attaques discrètes, Les attaques d'opportunité, Les dégâts, L'embuscade, Le Mode Hyper, Les postures, La prise en tenaille…). Le tri du Glossaire ignore l'article de tête pour qu'ils restent à leur place alphabétique. Pour un autre nom, il suffit de renommer la page : le mot-clé suit.
 
@@ -204,14 +206,15 @@ Une règle, un module (`serveur/edition-ancrage.mjs`), utilisée par la mise en 
 
 La page Mise à jour sert au patch note et compare la base de dev à la production (R291). Sans précaution, elle afficherait une ligne par mot-clé créé, soit 1 322.
 
-- **Note de version** : une ligne par famille (« 1 322 mots-clés ajoutés : 690 capacités, 204 autres pages, 420 sorts, 8 types de sort »). Les **18 renommages du §4 restent détaillés**, car aucun autre changement ne les dit, ainsi que les quatre catégories nouvelles.
+- **Note de version** : une ligne par famille (« 1 322 mots-clés ajoutés : 690 capacités, 204 autres pages, 420 sorts, 8 types de sort »). Les **20 renommages du §4 restent détaillés** (les 18 dont la clé change, plus « codex » et « Mode Hyper 100% », dont la clé ne change pas), car aucun autre changement ne les dit, ainsi que les quatre catégories nouvelles.
 - **Ensuite**, un mot-clé créé ou renommé avec son élément n'a pas de ligne à lui : celle de l'élément suffit. Les colonnes `mot_cle_id` n'entrent pas dans les colonnes listées.
-- **« Modifications de l'équipe »** : chaque lot d'ancrage est replié derrière son titre et son nombre de lignes. Ses lignes restent consultables et annulables une à une (R291).
+- **« Modifications de l'équipe »** : chaque lot d'ancrage est replié derrière son titre et son nombre de lignes. Ses lignes restent consultables et annulables une à une (R291). **Le détail d'un lot R309 appliqué ne se lit qu'à la première ouverture de son repli**, ni au chargement de la page ni après chaque clic : le nombre du titre vient de la liste (les nets, déjà calculés pour l'écart), le décompte exact des lignes en écart coûterait 1 135 ms à chaque chargement (mesuré sur la copie ancrée). Le nombre du titre peut donc différer d'une ligne ou deux de celui du détail, corrigé à l'ouverture.
 
 ## 11. Effets de bord à traiter
 
-- `ciblesDuVocabulaire` (`autolink`, `db-derive`) retire les termes d'une page visée par plusieurs mots-clés : les mots-clés de sorts ne doivent pas compter comme mots-clés de la page de leur magie.
-- Le vocabulaire chargé sur le site de dev (`mots-cles-vivants`) est multiplié par quatre et doit porter le texte des éléments (environ 114 Ko) : à mesurer, et à alléger si la page en souffre.
+- `ciblesDuVocabulaire` retire les termes d'une page visée par plusieurs mots-clés : les mots-clés de sorts ne doivent pas compter comme mots-clés de la page de leur magie. **Seul `client/scripts/autolink.mjs` l'appelle** ; `scripts/db-derive.mjs` ne l'appelle pas (il construit seulement `pageDuMotCle` pour la table `lien`, où une balise de sort mène à la page de sa magie : voulu). Fait : un mot-clé de sort reste une cible par son libellé, mais n'emprunte plus le titre de la page de sa magie. Sur la copie ancrée, 3 termes de magie sur 20 se perdaient (les magies dont un sort partage l'adresse) ; après le correctif, les mêmes 20 qu'en base non ancrée, aucun terme perdu.
+- Le vocabulaire chargé sur le site de dev (`mots-cles-vivants`) devait porter le texte des éléments. **Mesuré** (copie ancrée, `GET /api/edition/listes/`) : 1 127 204 o (190 781 gzip) contre 452 923 o (76 096 gzip) avant l'ancrage ; la liste `motsClesDeLaBase` pèse 806 834 o contre 138 626 o, dont 339 572 o d'`element` (1 600 mots-clés en portent un). L'estimation de 114 Ko était fausse : +668 Ko de JSON pour les mots-clés. Le décodage reste de 4 ms contre 1,6. Ce qui coûtait vraiment était le **tri** du vocabulaire côté service (`localeCompare` avec options à chaque comparaison : 106 ms pour 1 764 libellés contre 10 pour 442). Fait : `lib/mots-cles.mjs#parLibelle` compare par **un seul `Intl.Collator`** (même ordre, vérifié sur 1 764 libellés ; 145 ms contre 10 ms), et `mots-cles-vivants.mjs` n'est pas changé. Résultat : `GET edition/listes/` en 53 ms contre 30 ms (150 contre 45 avant), le vocabulaire arrive 25 à 48 ms plus tard sur les pages ordinaires (118 à 164 ms avant), aucune tâche longue de plus de 100 ms due à lui.
+- **Journal en attente** : tant que les quatre lots ne sont pas livrés, `GET edition/en-attente/` rendait 4 403 lignes (3,6 Mo, 0,9 s) que chaque page rejouait une à une : jusqu'à 28 à 42 s de blocage sur le Glossaire. Fait : la route ne rend plus les lignes qui n'écrivent que `mot_cle_id` ni celles des tables du vocabulaire (`lignesEnAttente(db, { pourLesPages: true })`), soit 26 lignes (127 817 o, 26 ms de service), et le navigateur rejoue en un seul passage (`lib/edition-rejeu.mjs#rejouerLesLignes` : extensions actives et `cadres()` calculés une fois). Plus de blocage ; reste une tâche de 242 ms au Glossaire, le redessin des 1 764 lignes (`mots-cles.mjs`), accepté. Le mode modification du Glossaire s'ouvre en 3 s environ (2,85 s en base non ancrée).
 - La règle de clé a deux jumelles à garder d'accord (`lib/mots-cles-cles.mjs`, `tools/db/maverick.py`), contrôlées par `db:check` : le parent s'ajoute aux deux.
 - Compteurs de tables et de colonnes épinglés par les tests, `tables-de-la-base`, registre de l'API, `libelles-de-la-base`, doc `db:doc`.
 - **Importeurs** (R183 (11), réponse du propriétaire : « Les exclure de l'import »). Un import ne crée jamais de mot-clé, mais il pose ceux qui existent. Une fois les mots-clés créés, le prochain import poserait six étiquettes qui n'en ont jamais eu, soit 83 poses, mesurées en rejouant les sept importeurs de classeurs et le Codex : « invocation » (66 créatures, vers le type de sort), « chasseur » (7 capacités de l'Olwman, vers le métier), « gladiateur » (7 capacités du Minotaure, vers le métier), « maison » et « construction » (page Maison, vers elle-même et vers le type de sort), « malédiction » (page Accessoires, vers le sort). Elles rejoignent `ETIQUETTES_NON_POSEES` (`tools/db/homonymes.py`), et `importeurs-etiquettes.test.mjs` rejoue aussi les importeurs des classes et des invocations. Le filtre reste dans les importeurs, pas dans `mots_cles_poses` : une étiquette posée à la main sur le site doit survivre à l'aller-retour des pages. L'importeur des magies a été rejoué sur la V8 du classeur, car sa propre garde refuse la V10.
@@ -220,7 +223,7 @@ La page Mise à jour sert au patch note et compare la base de dev à la producti
 
 - `db-0131-…` : structure, index, codes de `type_sort` égaux au CHECK de `sort_type`.
 - `serveur-edition-ancrage` : les quatre lots sur une copie, dépôt direct et proposition, arrêt au premier refus, reprises, homonymes, parent, type unique, « à trancher », rejouable, ligne annulée écartée puis reprise ; créer, renommer, supprimer (cité ou non, verrouillé).
-- Note de version : une ligne par famille, les 18 renommages détaillés, aucune ligne pour un mot-clé qui suit son élément ; lot d'ancrage replié, lignes annulables.
+- Note de version : une ligne par famille, les 20 renommages détaillés, aucune ligne pour un mot-clé qui suit son élément ; lot d'ancrage replié, lignes annulables.
 - Verrou : chaque geste refusé sur un mot-clé ancré, permis sur un mot-clé sans élément, permis au module d'ancrage. Un lot corrige type, couleur, icône, synonymes et définition ; son écriture du nom, de l'adresse ou de la clé est refusée, mot de passe compris ; au rejeu, un ancien lot repasse (R219 (6)). Fusion : source ancrée refusée, cible ancrée qui ne reçoit que la clé.
 - Suppression : page protégée (R221), page citée refusée avec la liste des textes, mot-clé tenu par un autre élément qui reste (R289), forçage sans effet sur une page.
 - Importeurs : les six étiquettes ne sont plus écrites, les autres sont intactes.
@@ -242,7 +245,7 @@ Validés avec la conception le 2026-11-22.
 8. **La pagination** : 50 lignes au Glossaire, 100 pastilles à la Recherche.
 9. **Un seul lancement enchaîne les quatre lots** (§5, R306), au lieu d'un clic par lot.
 10. **Une ligne annulée ne revient pas seule** (§5) : elle attend le geste « Reprendre les lignes annulées ».
-11. **La note de version condense l'ancrage** (§10) en une ligne par famille et garde le détail des 18 renommages.
+11. **La note de version condense l'ancrage** (§10) en une ligne par famille et garde le détail des 20 renommages.
 12. **Les six étiquettes d'import sont exclues** (§11) : le prochain import ne pose que ce qu'il posait déjà.
 
 ## Laissé au constructeur

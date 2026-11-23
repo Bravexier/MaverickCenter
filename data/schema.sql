@@ -159,9 +159,9 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- balises « {{<cle>}} » et l'adresse /recherche/?mot-cle=<cle>, et elle SUIT le libellé et les catégories (réponse du propriétaire : chaque renommage
 -- ou changement de catégorie réécrit les textes qui citent le mot-clé). Règle (réponse du propriétaire) : sans homonyme, cle = normalize(libelle) ;
 -- des homonymes (même normalize(libelle)) ont chacun au moins une catégorie propre face à chacun des autres (refusés : un homonyme sans catégorie,
--- ou dont les catégories sont incluses dans celles d'un autre), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
+-- ou dont les catégories sont incluses dans celles d'un autre, sauf si son parent le distingue : R309), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
 -- libellé de chacune de SES catégories qui n'est pas commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race »,
--- « namazu-classe ») ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
+-- « namazu-classe »), puis, pour un homonyme de même type, du normalize du nom de son parent (la magie d'un sort ancré : « contre-sort-arcane », R309) ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
 -- tools/db/maverick.py#cles_des_mots_cles. Aucun écart admis depuis la migration 0114 (catégories assignées, R232 (7) : les 13 races homonymes
 -- des classes raciales, sans catégorie à la 0113, ont reçu Race et la clé « x-race », la classe garde « x-classe »). Le libellé
 -- n'est plus unique : une écriture que portent plusieurs homonymes est ambiguë, la saisie écrit alors la clé. Une clé quittée (renommage,

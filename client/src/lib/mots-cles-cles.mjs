@@ -7,7 +7,7 @@
 //   - des homonymes : normalize(libellé), puis, chacune précédée d'un tiret, le normalize du libellé de chacune de SES catégories qui n'est pas
 //     commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race », « namazu-classe » ; trois homonymes ou plus, de même).
 // Refus (`strict`) : un homonyme sans catégorie, ou dont les catégories sont incluses dans celles d'un autre (mêmes catégories comprises : il n'a pas
-// au moins une catégorie propre face à chacun des autres, R232 (9)) ; deux mots-clés de même clé (« Namazu race » face à namazu-race, R232 (10)).
+// au moins une catégorie propre face à chacun des autres, R232 (9)) et qui n'a pas de parent pour le distinguer (R309, plus bas) ; deux mots-clés de même clé (« Namazu race » face à namazu-race, R232 (10)).
 // Sans `strict`, un homonyme sans catégorie propre prend normalize(libellé) seul ; deux clés égales restent refusées (mot_cle.cle est UNIQUE).
 // Le parent (décision R309, migration 0131) : deux homonymes de même type (leurs catégories sont incluses l'une dans l'autre) ne se distinguent plus
 // seulement par une catégorie propre ; un mot-clé ancré sur un sort a pour parent la magie de ce sort (`parent`, le nom de la magie, lu par
@@ -30,7 +30,7 @@ export class HomonymesRefuses extends Error {
 /** Le texte de chaque raison d'un refus (le même sens que celui de maverick.py). */
 export const RAISONS = Object.freeze({
   'sans-categorie': 'homonyme sans catégorie',
-  incluses: 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)',
+  incluses: 'aucune catégorie propre ni parent face à un homonyme (catégories incluses ou égales)',
   'cle-prise': 'clé déjà prise',
 });
 

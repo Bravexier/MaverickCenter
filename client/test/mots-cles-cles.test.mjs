@@ -34,7 +34,7 @@ print(json.dumps(sortie))`], { input: JSON.stringify(cas), encoding: 'utf8', max
 /** La même chose en JavaScript, sous la même forme (les raisons dites comme maverick.py). */
 const RAISONS_PY = {
   'sans-categorie': 'homonyme sans catégorie',
-  incluses: 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)',
+  incluses: 'aucune catégorie propre ni parent face à un homonyme (catégories incluses ou égales)',
   'cle-prise': 'clé déjà prise',
 };
 function javascript(c) {
