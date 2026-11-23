@@ -158,6 +158,11 @@
 .nv-lot__essai--pret { border-left-color: var(--good); }
 .nv-lot__essai--accord, .nv-lot__essai--attention { border-left-color: var(--accent); background: var(--warn-bg); color: var(--warn-text); }
 .nv-lot__essai--erreur { border-left-color: var(--danger); }
+/* Un changement d'ancrage (R309) : des centaines de lignes, repliées derrière leur titre et leur nombre de lignes */
+.nv-lot__repli > summary { cursor: pointer; }
+.nv-lot__repli > summary > .nv-lot__titre { display: inline; margin: 0; }
+.nv-lot__repli[open] > summary { margin-bottom: 0.4rem; }
+.nv-lot__compte { color: var(--muted); font-size: var(--fs-md); }
 .nv-lot__apercu { margin: 0.5rem 0; }
 .nv-lot__apercu > summary { cursor: pointer; }
 .nv-lot__verrous { margin: 0.5rem 0; }

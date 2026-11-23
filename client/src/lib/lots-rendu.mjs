@@ -19,6 +19,8 @@ import { instantLisible, texteDeValeur } from './conflits-rendu.mjs';
 import { replierLeDiff } from './diff-replie.mjs';
 import { diffMots, echapper } from './notes-de-version-rendu.mjs';
 
+/** La décision qui donne un mot-clé à chaque page, sort et type de sort (R309, chantier de l'ancrage) : ses changements se replient (htmlDuLot). */
+const DECISION_DE_L_ANCRAGE = 'R309';
 /** Les lignes d'un aperçu montrées d'abord ; « Tout montrer » donne le reste. */
 export const PLAFOND_DES_LIGNES = 30;
 /** Au-delà, deux textes se montrent par leurs différences. */
@@ -365,8 +367,18 @@ export function htmlDuLot(lot, vue = {}) {
   const quand = applique ? `Appliqué${direct ? ' aussitôt' : ''} le ${jour(lot.decide_le)}` : null;
   const meta = [quand, ligneDeLOrigine(lot, { sansDepot: direct })].filter(Boolean).join(' · ');
   const corps = lot.etat === 'propose' ? htmlDuLotProposeAttend(lot, vue) : `${htmlDuLotApplique(lot)}${Array.isArray(lot.lignes) ? htmlDesLignesDuLot(lot, vue) : ''}`;
-  return `<article class="nv-lot nv-lot--${echapper(lot.etat)}" data-nv-lot-id="${echapper(lot.id)}" data-nv-etat="${echapper(lot.etat)}">`
-    + `<h4 class="nv-lot__titre">${decision}${echapper(lot.titre)}</h4><p class="nv-lot__meta">${echapper(meta)}</p>${corps}${htmlDuMessage(vue.messages?.get(lot.id) ?? null)}</article>`;
+  const titre = `<h4 class="nv-lot__titre">${decision}${echapper(lot.titre)}</h4>`;
+  const message = htmlDuMessage(vue.messages?.get(lot.id) ?? null);
+  const entete = `<article class="nv-lot nv-lot--${echapper(lot.etat)}" data-nv-lot-id="${echapper(lot.id)}" data-nv-etat="${echapper(lot.etat)}">`;
+  // R309 : un changement d'ancrage porte des centaines de lignes (une par page, sort et type de sort) : replié derrière son titre et son nombre de lignes ; ses
+  // lignes restent dedans, consultables, chacune avec « Annuler cette modification ». Une proposition qui attend son clic reste ouverte (ses boutons ne se cachent
+  // pas) ; le message d'un clic reste dehors, lisible replié. Sans le détail des lignes (journal indisponible), le titre seul : aucun nombre inventé.
+  if (lot.decision === DECISION_DE_L_ANCRAGE) {
+    const nombre = applique && Array.isArray(lot.lignes) ? ` <span class="nv-lot__compte">${echapper(pluriel(lignesEnEcart(lot).length, 'ligne', 'lignes'))}</span>` : '';
+    return `${entete}<details class="nv-lot__repli" data-nv-ouvert="${echapper(lot.id)}:lot"${lot.etat === 'propose' || vue.ouverts?.has(`${lot.id}:lot`) ? ' open' : ''}>`
+      + `<summary>${titre}${nombre}</summary><p class="nv-lot__meta">${echapper(meta)}</p>${corps}</details>${message}</article>`;
+  }
+  return `${entete}${titre}<p class="nv-lot__meta">${echapper(meta)}</p>${corps}${message}</article>`;
 }
 
 /**

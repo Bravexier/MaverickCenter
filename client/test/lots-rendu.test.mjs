@@ -425,3 +425,44 @@ test('l’accord au pluriel : « sa valeur » pour une ligne gardée, « leur va
   assert.equal(sans.niveau, 'accord');
   assert.doesNotMatch(sans.texte, /\?|\bR\d+\b/);
 });
+
+test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de lignes ; ses lignes restent consultables et annulables une à une, les autres lots ne sont pas repliés', () => {
+  const lignes = [ligne(1), ligne(2), ligne(3, { annulable_seule: false, motif: 'Une autre ligne la tient.', depend_de: [1] }), ligne(4, { ecart_production: false }), ligne(5, { etat: 'annulee', annulable_seule: false })];
+  const ancrage = applique('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai', auteur: 'préparer l’ancrage' });
+  const article = lire(htmlDesLots({ lots: [ancrage] })).querySelector('[data-nv-lots-appliques] [data-nv-lot-id="anc"]');
+  const repli = article.querySelector('details.nv-lot__repli');
+  assert.ok(repli, 'le lot est dans un bloc dépliant');
+  assert.equal(repli.hasAttribute('open'), false, 'replié au départ');
+  assert.equal(repli.getAttribute('data-nv-ouvert'), 'anc:lot', 'la page garde ce que le propriétaire déplie');
+  // le titre et le nombre de lignes (celles en écart avec la production : 4 sur 5) sont ce qui déplie
+  const resume = repli.querySelector('summary');
+  assert.ok(resume.textContent.includes('Ancrage d’essai') && resume.textContent.includes('R309'));
+  assert.equal(resume.querySelectorAll('h4.nv-lot__titre').length, 1);
+  assert.match(resume.querySelector('.nv-lot__compte').textContent, /^4 lignes$/);
+  // les lignes restent consultables (valeurs avant et après) et chacune garde son geste d'annulation, ou la raison pour laquelle elle n'en a pas
+  assert.deepEqual([...repli.querySelectorAll('li.nv-lot-ligne')].map((l) => l.getAttribute('data-nv-ligne')), ['1', '2', '3', '5']);
+  assert.deepEqual([...repli.querySelectorAll('button[data-nv-annuler-ligne]')].map((b) => b.getAttribute('data-nv-annuler-ligne')), ['1', '2']);
+  assert.ok(repli.querySelector('li[data-nv-ligne="3"] [data-nv-motif]').textContent.includes('Une autre ligne la tient.'));
+  assert.deepEqual(textes(repli.querySelectorAll('li[data-nv-ligne="1"] .nv-version__texte')), ['avant 1', 'après 1']);
+  assert.match(repli.querySelector('[data-nv-bilan]').textContent, /^4 modifications, dont 1 annulée\.$/);
+  // « Tout montrer » et le message d'une ligne restent dans le bloc ; le message du changement reste visible replié
+  const long = applique('long', Array.from({ length: PLAFOND_DES_LIGNES + 5 }, (_, i) => ligne(i + 1)), { decision: 'R309' });
+  const vueLongue = lire(htmlDuLot(long, { messages: new Map([['long', { texte: 'Dit au clic', erreur: false }]]) })).querySelector('article');
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli li.nv-lot-ligne').length, PLAFOND_DES_LIGNES);
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli button[data-nv-toutes="long:lignes"]').length, 1);
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli [data-nv-lot-message]').length, 0, 'le message du changement n’est pas dans le bloc replié');
+  assert.equal(vueLongue.querySelector('[data-nv-lot-message]').textContent.includes('Dit au clic'), true);
+  assert.equal(lire(htmlDuLot(long, { toutes: new Set(['long:lignes']) })).querySelectorAll('details.nv-lot__repli button[data-nv-annuler-ligne]').length, PLAFOND_DES_LIGNES + 5, 'toutes les lignes, chacune annulable');
+  // déplié par le propriétaire : il le reste d'un rendu à l'autre
+  assert.equal(lire(htmlDuLot(ancrage, { ouverts: new Set(['anc:lot']) })).querySelector('details.nv-lot__repli').hasAttribute('open'), true);
+  // une proposition d'ancrage qui attend son clic reste ouverte : ses boutons ne se cachent pas
+  const attente = lire(htmlDuLot(lot('att', { decision: 'R309' }))).querySelector('article');
+  assert.equal(attente.querySelector('details.nv-lot__repli').hasAttribute('open'), true);
+  assert.equal(attente.querySelectorAll('details.nv-lot__repli button[data-nv-appliquer]').length, 1);
+  // un autre changement n'est pas replié ; un changement d'ancrage dont le détail manque n'a ni bloc ni nombre inventé
+  assert.equal(lire(htmlDuLot(applique('autre', [ligne(1)], { decision: 'R275' }))).querySelectorAll('details.nv-lot__repli').length, 0);
+  assert.equal(lire(htmlDuLot(applique('autre', [ligne(1)], { decision: null }))).querySelectorAll('details.nv-lot__repli').length, 0);
+  const sansDetail = lire(htmlDuLot({ ...ancrage, lignes: null })).querySelector('article');
+  assert.equal(sansDetail.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
+  assert.equal(sansDetail.querySelectorAll('.nv-lot__compte').length, 0, 'sans le détail, aucun nombre inventé');
+});

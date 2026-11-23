@@ -539,3 +539,38 @@ test('un échec de relecture de la page après un clic réussi ne se dit pas com
   assert.equal(message.classList.contains('nv-message--erreur'), false, 'ce n’est pas un refus du lot');
   assert.equal(page.section().querySelectorAll('[data-nv-lot-message].nv-message--erreur').length, 0);
 });
+
+test('R309 : les lignes d’un lot d’ancrage replié restent branchées : « Annuler cette modification » dans le bloc dépliant, « Tout montrer », et le bloc déplié le reste après le clic', async () => {
+  const lignes = Array.from({ length: 35 }, (_, i) => ligne(i + 1));
+  const apercu = { verdict: 'applicable', verrous_a_ouvrir: [], ligne: { n: 2 }, comptes: { remises: 1, gardees: 0, deja: 0, verrouillees: 0, refusees: 0 }, operations: [] };
+  const page = await monter([direct('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai' })], {
+    'GET edition/lots/anc/lignes/2/annulation/': apercu,
+    'POST edition/lots/anc/lignes/2/annuler/': (corps, etat) => {
+      etat.lots = etat.lots.map((l) => (l.id === 'anc' ? { ...l, lignes: l.lignes.map((x) => (x.n === 2 ? { ...x, etat: 'annulee', annulable_seule: false, annulee: { annule_le: '2026-11-15T09:00:00Z', lot_id: 'L2' } } : x)) } : l));
+      return etat.lots[0];
+    },
+  });
+  const repli = () => page.article('anc').querySelector('details.nv-lot__repli');
+  assert.ok(repli(), 'le lot est replié sous son titre');
+  assert.equal(repli().hasAttribute('open'), false);
+  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 30, 'les trente premières lignes sont dans le bloc');
+  // le propriétaire déplie : la page le retient (évènement `toggle`, écouté à la descente sur la section)
+  repli().open = true;
+  const e = new Event('toggle');
+  Object.defineProperty(e, 'target', { value: repli() });
+  page.section().dispatchEvent(e);
+  // « Annuler cette modification » d'une ligne du bloc : l'aperçu, la confirmation, le POST de cette ligne seule
+  await page.clic(repli().querySelector('button[data-nv-annuler-ligne="2"]'));
+  assert.ok(page.envois.some(([k]) => k === 'GET edition/lots/anc/lignes/2/annulation/'));
+  assert.ok(page.dialogue()?.ouvert, 'la confirmation');
+  assert.equal(page.ecritures().length, 0, 'rien n’est envoyé avant la confirmation');
+  await page.confirmer();
+  assert.deepEqual(page.ecritures(), [['POST edition/lots/anc/lignes/2/annuler/', { verrous_ouverts: [] }]]);
+  assert.equal(repli().querySelector('li[data-nv-ligne="2"]').dataset.nvEtatLigne, 'annulee');
+  assert.equal(repli().hasAttribute('open'), true, 'le bloc déplié par le propriétaire le reste après le rendu');
+  // « Tout montrer » dans le bloc : les cinq dernières lignes s'ajoutent, annulables elles aussi
+  await page.clic(repli().querySelector('button[data-nv-toutes="anc:lignes"]'));
+  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 35);
+  assert.equal(repli().querySelectorAll('li[data-nv-ligne="35"] button[data-nv-annuler-ligne]').length, 1);
+  assert.equal(repli().hasAttribute('open'), true);
+});
