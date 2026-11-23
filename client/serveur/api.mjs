@@ -601,7 +601,7 @@ function traiterEdition(requete, service, action, reste, permis, lecture = () =>
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
 
-  if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
+  if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db, { pourLesPages: true }).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
   if (action === 'mots-cles') return json(200, vocabulaireEtFeuille(db, { refusDesForcages }));

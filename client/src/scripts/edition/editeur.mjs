@@ -3,7 +3,8 @@
 //     remplie avec la valeur actuelle de la base (POST /api/edition/lignes/) ;
 //   - un bouton de confirmation flottant à droite enregistre les modifications en cours (POST /api/edition/, un lot d'un bloc) et repasse en lecture ;
 //   - décocher le crayon abandonne les modifications non enregistrées (après confirmation).
-// Au chargement, la page reçoit les lignes modifiées depuis sa construction (GET /api/edition/en-attente/) et réécrit leurs champs : la page statique
+// Au chargement, la page reçoit les lignes modifiées depuis sa construction (GET /api/edition/en-attente/ : sans le vocabulaire des mots-clés, que la page lit en
+// direct, ni les pages, sorts et types de sort dont seul `mot_cle_id` a changé, R309) et réécrit leurs champs en un passage (lib/edition-rejeu.mjs) : la page statique
 // montre donc toujours l'état de la base du site de dev. Les extensions (src/scripts/edition/*.mjs) ajoutent ce qui est propre à une famille de pages :
 // lignes ajoutées ou supprimées, création d'une race ou d'une classe, relations entre peuples, règle des niveaux de maîtrise, éditeur du guide.
 // Les mots-clés du glossaire suivent le vocabulaire vivant, et le HTML posé après le chargement (rendus des champs, extensions) a ses balises rendues
@@ -11,6 +12,7 @@
 import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
+import { rejouerLesLignes } from '../../lib/edition-rejeu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
 import { couleurDuCercle, decocherLesAutres, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
@@ -595,7 +597,10 @@ export function demarrer(racine, etatService) {
       await glossaireVivant(ed);
       // une extension après l'autre, chacune seulement si elle s'applique à la page telle que les précédentes l'ont laissée
       for (const x of EXTENSIONS) if (x.actif(document)) await x.surcouche?.(ed, enAttente.lignes);
-      for (const l of enAttente.lignes) appliquerLigne(l.table, l.cle, l.ligne);
+      // en un passage : les extensions actives et les cadres ne sont relus qu'une fois (lib/edition-rejeu.mjs) ; aucun `x.ligne` ne crée le marqueur d'une autre extension
+      rejouerLesLignes(enAttente.lignes, ed, {
+        extensions: EXTENSIONS, document, elementsDe, estEdite: (el) => editeurs.has(el), rendre: rendreElement, cadres: () => cadres(),
+      });
       for (const x of actives()) x.pret?.(ed);
     } catch (e) {
       annoncer(`Les modifications du site de dev n’ont pas pu être affichées : ${e.message}`, 'erreur');

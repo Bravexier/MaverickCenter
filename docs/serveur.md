@@ -662,7 +662,7 @@ règle sans rendre l'élément à la fiche ; la date de la note est le jour UTC 
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
 depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
-(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini ; sans aperçu, le texte actuel rendu dans le navigateur, ci-dessous « Limites ») ; une race ou une classe
+(`GET /api/edition/en-attente/` ; sans les lignes du vocabulaire des mots-clés, que les pages lisent en direct, ni celles d'une page, d'un sort ou d'un type de sort dont seul `mot_cle_id` a changé : l'ancrage R309 en laissait 4 403 en attente, 3,6 Mo, rejouées une à une) et les réaffiche en un passage (`lib/edition-rejeu.mjs` : les extensions actives et les cadres ne sont relus qu'une fois) (pour une page du guide : l'aperçu HTML noté avec le texte, assaini ; sans aperçu, le texte actuel rendu dans le navigateur, ci-dessous « Limites ») ; une race ou une classe
 créée a sa page provisoire sur la page 404 du site de dev, jusqu'à la livraison suivante.
 
 **Quand une livraison change les règles**, la base vivante est refaite (ci-dessus) et le journal y est **rejoué**, lot par lot : une modification
@@ -840,7 +840,7 @@ qu'une ligne a portés) lit toutes les natures. Tests : `historique-site`, `aide
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`) |
+| `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`), sans les tables du vocabulaire (`mot_cle`, `mot_cle_categorie`, `mot_cle_synonyme`, `mot_cle_ancienne_cle`, `categorie_mot_cle` : `GET edition/listes/` et `edition/mots-cles/`) ni les lignes de `page`, `sort`, `type_sort` dont toutes les modifications ne font qu'écrire `mot_cle_id` (R309) |
 | `POST /api/edition/lignes/` | `{ lignes: [{ table, cle }] }` → la ligne actuelle de chacune (passage en mode modification) |
 | `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale, onglets des Règles `onglets: [{ valeur, libelle }]`…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |

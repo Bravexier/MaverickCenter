@@ -36,11 +36,11 @@ const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.
 /**
  * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043), par
  * lequel la nature d'une race et la catégorie d'une classe se lisent (décision R195 : jamais par l'écriture ; le nom protégé d'un mot-clé,
- * lib/mots-cles-proteges.mjs#nomDuProtege, d'après son id entier, migration 0113, ou la clé de `race-hybride`) ; son libellé et sa clé viennent d'une
- * ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ id, libelle, cle, nom (protégé, ou null) }]
+ * lib/mots-cles-proteges.mjs#nomDuProtege, d'après son id entier, migration 0113, ou la clé de `race-hybride`) ; son libellé et sa clé viennent de la liste du
+ * service (`ed.listes.motsCles`, lue dans la base vivante : GET /api/edition/en-attente/ ne porte plus les lignes du vocabulaire). [{ id, libelle, cle, nom (protégé, ou null) }]
  */
 function motsClesDeLaPage(lignes, id, vocabulaire = []) {
-  const connus = new Map([...vocabulaire.map((m) => [m.id, m]), ...lignesDe(lignes, 'mot_cle').map((l) => [l.cle.id, l.ligne])]);
+  const connus = new Map(vocabulaire.map((m) => [m.id, m]));
   return lignesDe(lignes, 'page_tag')
     .filter((l) => l.ligne.page_id === id)
     .sort((a, b) => a.ligne.ordre - b.ligne.ordre)

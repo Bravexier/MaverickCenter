@@ -454,7 +454,7 @@ function cheminsDuService() {
         responses: { 200: { description: 'L’image.' }, 304: ref('responses', 'NonModifie'), 404: ref('responses', 'Introuvable') },
       },
     },
-    '/edition/en-attente/': lectureDuService('edition_en_attente', 'Lignes modifiées depuis la construction', `Ce que les pages statiques doivent montrer à la place de leur contenu construit.${SITE_DE_DEV}`),
+    '/edition/en-attente/': lectureDuService('edition_en_attente', 'Lignes modifiées depuis la construction', `Ce que les pages statiques doivent montrer à la place de leur contenu construit, sans le vocabulaire des mots-clés (lu en direct) ni les pages, sorts et types de sort dont seul mot_cle_id a changé (R309).${SITE_DE_DEV}`),
     '/edition/lignes/': ecritureDuService('edition_lignes', 'Lire des lignes (mode modification)', `{ lignes: [{ table, cle }] } → la ligne actuelle de chacune (images résumées).${SITE_DE_DEV}`, { lignes: [{ table: 'metier', cle: { id: '<identifiant>' } }] }),
     '/edition/listes/': lectureDuService('edition_listes', 'Listes des formulaires', `Compétences, catégories de classe, races hybrides, espèces de monstres…${SITE_DE_DEV}`),
     '/edition/pages/': lectureDuService('edition_pages', 'Pages du wiki', `Les pages (id, titre) : cibles d’un lien posé dans un texte.${SITE_DE_DEV}`),

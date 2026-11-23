@@ -1057,6 +1057,11 @@ export function rompuesDuLot(db, entrees, { horsControle = [], tables: autres = 
   return sortie;
 }
 
+/** Les tables du vocabulaire : les pages et le Glossaire les lisent en direct (GET edition/listes/, GET edition/mots-cles/), la surcouche des pages ne les rejoue pas. */
+const TABLES_DU_VOCABULAIRE = new Set(['mot_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle', 'categorie_mot_cle']);
+/** Les tables dont l'ancrage (R309, migration 0131) pose `mot_cle_id` : une page construite ne montre pas cette colonne. */
+const TABLES_ANCREES = new Set(['page', 'sort', 'type_sort']);
+
 /**
  * L'état net des lignes que le journal a en attente : une entrée par ligne (table, clé), avec la ligne telle qu'elle est maintenant dans la base
  * (null si elle a été supprimée) et `creee` si elle n'existait pas dans les règles livrées (sa première modification en attente est une insertion).
@@ -1064,9 +1069,11 @@ export function rompuesDuLot(db, entrees, { horsControle = [], tables: autres = 
  * la dernière modification de son corps (null si elle n'en a pas noté, ou s'il ne décrit plus le corps en place — un corps fusionné au rejeu, ou celui
  * d'un lot gardé où le site ne gagne que sur les passages en conflit — : la page ne peut pas montrer son nouveau texte avant la prochaine livraison).
  * Les lignes d'un lot gardé (en conflit, la valeur du site en place : rejouer, `garder`) y sont, comme celles d'un lot en attente.
- * @param {{ tables?: string[] }} [filtre]
+ * @param {{ tables?: string[], pourLesPages?: boolean }} [filtre]  `pourLesPages` : ce que la surcouche des pages a à réécrire (GET /api/edition/en-attente/), sans les
+ *   lignes que les pages lisent en direct (TABLES_DU_VOCABULAIRE : GET edition/listes/ et edition/mots-cles/) ni celles qui ne changent que `mot_cle_id` (l'ancrage R309 :
+ *   page, sort, type_sort) ; une insertion, une suppression, un conflit à reprendre ou une autre colonne sur la même ligne la garde. Le tri se fait avant lireLigne.
  */
-export function lignesEnAttente(db, { tables } = {}) {
+export function lignesEnAttente(db, { tables, pourLesPages = false } = {}) {
   const vues = new Map();
   // les lots gardés (la valeur du site écrite, en conflit jusqu'à leur résolution : rejouer) sont dans la base comme les autres
   const toutes = db
@@ -1077,17 +1084,22 @@ export function lignesEnAttente(db, { tables } = {}) {
     .all(MARQUE_DE_REPRISE);
   for (const m of toutes) {
     if (tables && !tables.includes(m.table_nom)) continue;
-    const k = `${m.table_nom}\u0000${m.cle}`;
-    if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer' });
-    if (m.table_nom === 'page' && m.apres && 'corps_md' in JSON.parse(m.apres)) {
+    if (pourLesPages && TABLES_DU_VOCABULAIRE.has(m.table_nom)) continue;
+    const k = `${m.table_nom} ${m.cle}`;
+    if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer', seulementMotCle: true });
+    const apres = m.apres ? JSON.parse(m.apres) : null;
+    if (!(m.operation === 'modifier' && m.etat === 'en_attente' && apres && Object.keys(apres).join() === 'mot_cle_id')) vues.get(k).seulementMotCle = false;
+    if (m.table_nom === 'page' && apres && 'corps_md' in apres) {
       // un lot gardé : l'aperçu ne vaut que si le rejeu a écrit le corps du site tel quel (pas la fusion où le site gagne sur les passages en conflit)
       const reprise = m.etat === 'conflit' ? lireLaTrace(m.detail).reprise : null;
-      const perime = reprise && reprise.apres?.corps_md !== JSON.parse(m.apres).corps_md;
+      const perime = reprise && reprise.apres?.corps_md !== apres.corps_md;
       vues.get(k).apercu = m.apercu === null || perime ? null : JSON.parse(m.apercu);
     }
   }
-  return [...vues.values()].map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
+  const aEnvoyer = [...vues.values()].filter((v) => !(pourLesPages && v.seulementMotCle && TABLES_ANCREES.has(v.table))).map(({ seulementMotCle, ...v }) => v);
+  return aEnvoyer.map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
 }
+
 
 /**
  * Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 » : GET /api/edition/journal/, lot figé de « Effectuer

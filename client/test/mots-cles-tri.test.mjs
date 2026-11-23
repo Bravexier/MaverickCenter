@@ -68,21 +68,35 @@ test('T10-ponctuation-de-tete : parLibelle range sans la ponctuation de tête, p
 
 // T13 (R309) : le site de dev trie tout le vocabulaire à chaque GET edition/listes/ (serveur/edition.mjs) ; à 1 764 mots-clés, un `localeCompare` avec options par
 // comparaison coûtait ~100 ms au chargement de chaque page (mesuré dans Chrome : +143 ms avant que le vocabulaire arrive). Un seul `Intl.Collator`, même ordre.
-test('T13 : parLibelle garde l’ordre de localeCompare sur 1 764 libellés inventés, et en coûte au plus un tiers', () => {
+// Sans chronomètre (stable sur tout poste) : on compte les appels à String.prototype.localeCompare pendant le tri.
+test('T13 : parLibelle garde l’ordre de localeCompare sur 1 764 libellés inventés, sans appeler localeCompare pendant le tri', () => {
   const syllabes = ['ba', 'dé', 'fi', 'gor', 'hé', 'ju', 'ka', 'lo', 'mi', 'nu', 'ou', 'pé', 'qui', 'ré', 'sa', 'tou', 'vi', 'ze'];
-  const articles = ['', '', '', 'Le ', 'La ', 'Les ', 'L’', '... ', '« '];
+  const articles = ['', '', '', 'le ', 'la ', 'les ', 'l’', '... ', '« '];
   let graine = 7;
   const alea = (n) => { graine = (graine * 1103515245 + 12345) % 2147483648; return graine % n; };
-  const mots = Array.from({ length: 1764 }, (_, id) => {
+  const vus = new Set();
+  const mots = [];
+  while (mots.length < 1764) {
     const nom = Array.from({ length: 2 + alea(3) }, () => syllabes[alea(syllabes.length)]).join('');
-    return { id: id + 1, libelle: `${articles[alea(articles.length)]}${alea(2) ? nom : nom[0].toUpperCase() + nom.slice(1)}${alea(4) ? '' : ` (${alea(50)})`}`, cle: `cle-${id + 1}` };
-  });
+    const libelle = `${articles[alea(articles.length)]}${nom}${alea(4) ? '' : ` (${alea(50)})`}`;
+    if (vus.has(libelle)) continue; // pas d'égalité : le départage par la clé n'est pas l'objet
+    vus.add(libelle);
+    mots.push({ id: mots.length + 1, libelle, cle: `cle-${mots.length + 1}` });
+  }
   // la référence : le comparateur d'avant, `localeCompare` avec ses options à chaque appel
   const comparer = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' });
   const avant = (a, b) => comparer(cleDeTri(a.libelle), cleDeTri(b.libelle)) || comparer(a.libelle, b.libelle)
     || String(a.cle ?? '').localeCompare(String(b.cle ?? '')) || (typeof a.id === 'number' && typeof b.id === 'number' ? a.id - b.id : String(a.id).localeCompare(String(b.id)));
-  const duree = (tri) => Math.min(...[1, 2].map(() => { const t0 = performance.now(); [...mots].sort(tri); return performance.now() - t0; }));
-  assert.deepEqual([...mots].sort(parLibelle).map((m) => m.id), [...mots].sort(avant).map((m) => m.id));
-  const [maintenant, anciennement] = [duree(parLibelle), duree(avant)];
-  assert.ok(maintenant * 3 < anciennement, `${maintenant.toFixed(1)} ms contre ${anciennement.toFixed(1)} ms`);
+  const attendu = [...mots].sort(avant).map((m) => m.id);
+  const original = String.prototype.localeCompare;
+  let appels = 0;
+  String.prototype.localeCompare = function compteur(...args) { appels += 1; return original.apply(this, args); };
+  let obtenu;
+  try {
+    obtenu = [...mots].sort(parLibelle).map((m) => m.id);
+  } finally {
+    String.prototype.localeCompare = original;
+  }
+  assert.deepEqual(obtenu, attendu);
+  assert.equal(appels, 0, 'le tri passe par un Intl.Collator posé une fois');
 });
