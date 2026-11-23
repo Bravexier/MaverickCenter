@@ -755,11 +755,12 @@ const resteSeulementLaCle = (n, jugement) => n.table === 'mot_cle' && n.genre ==
 const porteLaCleSansLeNom = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'cle') && !Object.hasOwn(n.fin, 'libelle');
 
 /**
- * Le renvoi noté par le recalcul quand un mot-clé du lot a quitté sa clé. Il suit cette clé : le recalcul le retire quand elle revient ; tant qu'il est là, le mot-clé ne l'a
- * pas retrouvée et le renvoi reste utile. Une ligne de `mot_cle_ancienne_cle` que le lot a écrite pour elle-même n'en est pas un.
+ * Le renvoi noté par le recalcul quand un mot-clé du lot a quitté la clé qu'il avait avant le lot. Il suit cette clé : le recalcul le retire quand elle revient ; tant qu'il est
+ * là, le mot-clé ne l'a pas retrouvée et le renvoi reste utile. Toute autre ligne insérée dans `mot_cle_ancienne_cle` (écrite par le lot pour elle-même, ou clé intermédiaire
+ * du lot) n'en est pas un : elle part avec l'annulation.
  */
 const estUnRenvoiDeCle = (nets, net) => net.table === 'mot_cle_ancienne_cle' && net.genre === 'inserer'
-  && nets.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && n.cle.id === net.fin.mot_cle_id && Object.hasOwn(n.fin, 'cle'));
+  && nets.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && n.cle.id === net.fin.mot_cle_id && Object.hasOwn(n.fin, 'cle') && n.origine.cle === net.fin.cle);
 const MOTIF_DU_RENVOI = 'Ce renvoi suit la clé du mot-clé : il part quand elle revient, et reste tant qu’elle n’est pas revenue.';
 
 /** Une ligne de l'effet net qui a posé l'ancre d'une page, d'un sort ou d'un type de sort. */

@@ -834,3 +834,54 @@ test('T8-annulation-recalcul : la clé qu’un autre renommage du lot ramène n�
   clesJustes(m);
   m.db.close();
 });
+
+// Seul le renvoi de la clé que le mot-clé a quittée suit cette clé : toute autre ligne insérée par le lot dans cette table part avec son annulation
+
+const renvoiEcrit = (cle, motCleId) => ({ table: 'mot_cle_ancienne_cle', cle: { cle }, operation: 'inserer', apres: { cle, mot_cle_id: motCleId } });
+const aLeRenvoi = (m, cle) => Boolean(m.db.prepare('SELECT 1 AS x FROM mot_cle_ancienne_cle WHERE cle = ?').get(cle));
+
+test('T8-annulation-recalcul : un renvoi écrit par le lot part avec lui, même si son mot-clé a changé de clé', async () => {
+  const m = monde();
+  const avant = motCle(m, m.libre);
+  const renvoi = `zephyrion-renvoi-du-lot-${process.pid}`;
+  const fait = await deposerDirect(m, [modifier(m, m.libre, { couleur: '#112233' }), modifier(m, m.autre, { libelle: avant.libelle }), renvoiEcrit(renvoi, m.libre)]);
+  assert.notEqual(motCle(m, m.libre).cle, avant.cle, 'la clé du mot-clé a changé dans ce lot');
+  assert.ok(aLeRenvoi(m, renvoi));
+  annuler(m.db, fait.id);
+  assert.equal(lire(m.db, fait.id).etat, 'annule');
+  assert.equal(aLeRenvoi(m, renvoi), false, 'une insertion intacte du lot ne survit pas à son annulation');
+  assert.equal(motCle(m, m.libre).cle, avant.cle);
+  clesJustes(m);
+  m.db.close();
+});
+
+test('T8-annulation-recalcul : le renvoi d’une clé intermédiaire du lot part avec lui', async () => {
+  // Chaque homonyme garde une catégorie à lui (R232) : le premier renommage fait passer la clé de `jumele` par `-combat`, le second par `-regles-combat`
+  const m = monde((db) => ({
+    jumele: poserMotCle(db, { libelle: nom('jumelé'), categories: ['Règles', 'Combat'] }),
+    parRegles: poserMotCle(db, { libelle: nom('par règles'), categories: ['Règles', 'Don'] }),
+    parCombat: poserMotCle(db, { libelle: nom('par combat'), categories: ['Combat', 'Race'] }),
+  }));
+  const avant = motCle(m, m.jumele);
+  const fait = await deposerDirect(m, [modifier(m, m.parRegles, { libelle: avant.libelle }), modifier(m, m.parCombat, { libelle: avant.libelle })]);
+  const intermediaires = m.db.prepare('SELECT cle FROM mot_cle_ancienne_cle WHERE mot_cle_id = ? AND cle <> ?').all(m.jumele, avant.cle).map((l) => l.cle);
+  assert.equal(intermediaires.length, 1, `une clé intermédiaire : ${JSON.stringify(intermediaires)}, clé finale ${motCle(m, m.jumele).cle}`);
+  annuler(m.db, fait.id);
+  assert.equal(lire(m.db, fait.id).etat, 'annule');
+  assert.equal(aLeRenvoi(m, intermediaires[0]), false, 'cette clé n’est pas celle que le mot-clé doit retrouver');
+  assert.equal(motCle(m, m.jumele).cle, avant.cle);
+  clesJustes(m);
+  m.db.close();
+});
+
+test('T8-annulation-recalcul : témoin, un renvoi écrit par le lot sur un mot-clé dont la clé ne change pas part avec lui', async () => {
+  const m = monde();
+  const avant = motCle(m, m.libre);
+  const renvoi = `zephyrion-renvoi-temoin-${process.pid}`;
+  const fait = await deposerDirect(m, [renvoiEcrit(renvoi, m.libre)]);
+  assert.ok(aLeRenvoi(m, renvoi));
+  annuler(m.db, fait.id);
+  assert.equal(aLeRenvoi(m, renvoi), false);
+  assert.equal(motCle(m, m.libre).cle, avant.cle);
+  m.db.close();
+});
