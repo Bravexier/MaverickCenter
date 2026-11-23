@@ -12,7 +12,7 @@ import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { motsClesPropres } from '../serveur/edition-ancrage.mjs';
 import { appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
-import { annuler, annulerUneLigne, deposerEtAppliquer, lire, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
+import { annuler, annulerUneLigne, deposerEtAppliquer, lire, netsDuLot, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
@@ -486,6 +486,14 @@ function unSortSansCitation(db) {
   return db.prepare(`SELECT s.id, s.nom FROM sort s WHERE s.mot_cle_id IS NULL AND ${[...citantes, sansNote, nomLibre].join(' AND ')} ORDER BY s.id LIMIT 1`).get();
 }
 const entiteDuSort = (db, id) => db.prepare("SELECT * FROM page_entite WHERE entite_table = 'sort' AND entite_id = ?").all(id);
+const retraitDe = (db, table, ligne) => ({ table, cle: cleDeLaLigne(db, table, ligne), operation: 'supprimer', avant: { ...ligne } });
+const retraitDuMetier = (db, id) => retraitDe(db, 'metier', db.prepare('SELECT * FROM metier WHERE id = ?').get(id));
+/** Retirer un sort : ses lignes de détail, puis lui. */
+const retraitDuSort = (db, id) => [
+  ...FILLES_D_UN_SORT.flatMap((t) => db.prepare(`SELECT * FROM ${t} WHERE sort_id = ?`).all(id).map((l) => retraitDe(db, t, l))),
+  ...entiteDuSort(db, id).map((l) => retraitDe(db, 'page_entite', l)),
+  retraitDe(db, 'sort', db.prepare('SELECT * FROM sort WHERE id = ?').get(id)),
+];
 
 /** Ce que le lot retire, ligne par ligne : ce que l'annulation doit remettre à l'identique. */
 function photo(db, s) {
@@ -519,13 +527,7 @@ async function supprimesParUnLot() {
     const ids = { metier, sort, motCleMetier: ancre(m, 'page', metier), motCleSort };
     const avant = photo(m.db, ids);
     const problemes = controlerLeContenu(m.db).problemes;
-    const retirer = (table, ligne) => ({ table, cle: cleDeLaLigne(m.db, table, ligne), operation: 'supprimer', avant: { ...ligne } });
-    const applique = await deposerLeLot(m, [
-      ...FILLES_D_UN_SORT.flatMap((t) => m.db.prepare(`SELECT * FROM ${t} WHERE sort_id = ?`).all(sort).map((l) => retirer(t, l))),
-      ...entiteDuSort(m.db, sort).map((l) => retirer('page_entite', l)),
-      retirer('sort',m.db.prepare('SELECT * FROM sort WHERE id = ?').get(sort)),
-      retirer('metier', m.db.prepare('SELECT * FROM metier WHERE id = ?').get(metier)),
-    ]);
+    const applique = await deposerLeLot(m, [...retraitDuSort(m.db, sort), retraitDuMetier(m.db, metier)]);
     assert.equal(motCle(m, ids.motCleMetier), undefined);
     assert.equal(motCle(m, motCleSort), undefined);
     const copie = join(racine, `apres-le-lot${(n += 1)}.db`);
@@ -623,6 +625,142 @@ test('R291 : annuler la ligne d’un mot-clé retiré remet son élément, ses c
     assert.deepEqual({ ...motCle(m, s.motCleMetier) }, s.avant.motsCles.find((x) => x.id === s.motCleMetier));
     assert.deepEqual(categoriesDe(m, s.motCleMetier), s.avant.categories.filter((c) => c.mot_cle_id === s.motCleMetier).map((c) => c.categorie_id));
     assert.equal(motCle(m, s.motCleSort), undefined, 'l’autre élément du lot reste retiré');
+  } finally {
+    m.db.close();
+  }
+});
+
+// Un second lot : une page au mot-clé gardé (R289), un mot-clé tenu par une page et un sort tous deux retirés, et la correction d'un défaut du contenu.
+/** Un défaut que le service laisse écrire et que les contrôles voient : un sort rattaché à une autre page que la sienne. Rend l'opération du lot qui le corrige. */
+function fausserUneEntite(db, sauf = '') {
+  const { entite_id: id, page_id: juste } = db.prepare("SELECT entite_id, page_id FROM page_entite WHERE entite_table = 'sort' AND principale = 0 AND entite_id <> ? ORDER BY entite_id LIMIT 1").get(sauf);
+  const fausse = db.prepare('SELECT id FROM page WHERE id <> ? ORDER BY id LIMIT 1').get(juste).id;
+  db.prepare("UPDATE page_entite SET page_id = ? WHERE entite_table = 'sort' AND entite_id = ?").run(fausse, id);
+  return { id, juste, fausse, correction: { table: 'page_entite', cle: { entite_table: 'sort', entite_id: id }, operation: 'modifier', avant: { page_id: fausse }, apres: { page_id: juste } } };
+}
+const pageDeLEntite = (m, id) => m.db.prepare("SELECT page_id AS p FROM page_entite WHERE entite_table = 'sort' AND entite_id = ?").get(id).p;
+const etatDuLot = (m, id) => m.db.prepare('SELECT etat FROM lot_de_changements WHERE id = ?').get(id).etat;
+const apercuDe = (m, lotId, options = {}) => previsualiserLAnnulation(() => m.db, lotId, { enArrierePlan: false, dossier: join(racine, `essais${(n += 1)}`), ...options });
+
+let groupes = null;
+async function groupesParUnLot() {
+  if (groupes) return groupes;
+  const m = reelle();
+  m.base = () => m.db;
+  m.dossier = join(racine, `essais${(n += 1)}`);
+  try {
+    const garde = creerMetier(m, nom('métier au mot-clé gardé'));
+    const motCleGarde = ancre(m, 'page', garde);
+    const typeDeSort = m.db.prepare('SELECT id FROM type_sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1').get().id;
+    m.db.prepare('UPDATE type_sort SET mot_cle_id = ? WHERE id = ?').run(motCleGarde, typeDeSort);
+    const double = creerMetier(m, nom('métier au mot-clé double'));
+    const motCleDouble = ancre(m, 'page', double);
+    const { id: sortDouble } = unSortSansCitation(m.db);
+    m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(motCleDouble, sortDouble);
+    const faute = fausserUneEntite(m.db, sortDouble);
+    // la page d'abord : son mot-clé reste tenu par le sort (son adresse se vide), puis il part avec le sort
+    const applique = await deposerLeLot(m, [faute.correction, retraitDuMetier(m.db, garde), retraitDuMetier(m.db, double), ...retraitDuSort(m.db, sortDouble)]);
+    assert.equal(motCle(m, motCleGarde).url, null, 'le type de sort garde le mot-clé, son adresse se vide');
+    assert.equal(motCle(m, motCleDouble), undefined);
+    const copie = join(racine, `apres-le-lot${(n += 1)}.db`);
+    m.db.exec(`VACUUM INTO '${copie.replaceAll("'", "''")}'`);
+    const lotDuJournal = m.db.prepare('SELECT lot_id FROM lot_de_changements WHERE id = ?').get(applique.id).lot_id;
+    groupes = { garde, motCleGarde, double, motCleDouble, sortDouble, faute, lot: applique.id, lotDuJournal, copie };
+    return groupes;
+  } finally {
+    m.db.close();
+  }
+}
+const rangDe = (m, s, trouver) => netsDuLot(m.db, s.lotDuJournal).find(trouver).rang;
+
+for (const [quoi, trouver] of [
+  ['la page', (s) => (x) => x.table === 'page' && x.cle.id === s.garde],
+  ['le mot-clé', (s) => (x) => x.table === 'mot_cle' && x.cle.id === s.motCleGarde],
+]) {
+  test(`R289 : annuler la ligne de ${quoi} remet ensemble la page et l’adresse de son mot-clé gardé`, async () => {
+    const s = await groupesParUnLot();
+    const m = copieApresLeLot(s);
+    try {
+      annulerUneLigne(m.db, s.lot, rangDe(m, s, trouver(s)));
+      assert.equal(ancre(m, 'page', s.garde), s.motCleGarde);
+      assert.equal(motCle(m, s.motCleGarde).url, adresseDeLaPage(s.garde));
+    } finally {
+      m.db.close();
+    }
+  });
+}
+
+test('un mot-clé tenu par deux éléments retirés : un seul groupe, quelle que soit la ligne annulée', async () => {
+  const s = await groupesParUnLot();
+  const m = copieApresLeLot(s);
+  try {
+    const nets = netsDuLot(m.db, s.lotDuJournal);
+    const k = s.motCleDouble;
+    const duGroupe = (x) => (x.table === 'page' && x.cle.id === s.double) || (x.table === 'sort' && x.cle.id === s.sortDouble) || (x.table === 'mot_cle' && x.cle.id === k)
+      || (x.table.startsWith('mot_cle_') && x.origine?.mot_cle_id === k);
+    const attendu = nets.filter(duGroupe).map((x) => x.rang).sort((a, b) => a - b);
+    // l'aperçu liste ce que la ligne emporte : les contrôles refusent ensuite ce sort sans sa `page_entite`, hors du groupe, sans rien écrire
+    for (const table of ['page', 'sort', 'mot_cle']) {
+      const numero = nets.find((x) => x.table === table && duGroupe(x)).rang;
+      const apercu = await apercuDe(m, s.lot, { ligne: numero });
+      assert.deepEqual(apercu.operations.map((o) => o.rang_du_lot).sort((a, b) => a - b), attendu, `la ligne de ${table}`);
+    }
+  } finally {
+    m.db.close();
+  }
+});
+
+test('R291 : annuler ce lot entier remet les deux éléments, le mot-clé partagé, l’adresse du mot-clé gardé ; le défaut d’avant revient avec eux', async () => {
+  const s = await groupesParUnLot();
+  const m = copieApresLeLot(s);
+  try {
+    annuler(m.db, s.lot);
+    assert.equal(ancre(m, 'page', s.garde), s.motCleGarde);
+    assert.equal(motCle(m, s.motCleGarde).url, adresseDeLaPage(s.garde));
+    assert.equal(ancre(m, 'page', s.double), s.motCleDouble);
+    assert.equal(ancre(m, 'sort', s.sortDouble), s.motCleDouble);
+    assert.ok(categoriesDe(m, s.motCleDouble).length > 0, 'ses catégories reviennent');
+    assert.deepEqual(m.db.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.equal(pageDeLEntite(m, s.faute.id), s.faute.fausse);
+    clesJustes(m);
+  } finally {
+    m.db.close();
+  }
+});
+
+test('R291 : dans un lot qui retire un élément, une correction annulée seule reste refusée si elle ramène son défaut', async () => {
+  const s = await groupesParUnLot();
+  const m = copieApresLeLot(s);
+  try {
+    const numero = rangDe(m, s, (x) => x.table === 'page_entite' && x.cle.entite_id === s.faute.id);
+    const apercu = await apercuDe(m, s.lot, { ligne: numero });
+    assert.equal(apercu.verdict, 'refusee');
+    assert.ok(apercu.problemes_nouveaux.length > 0, 'refusée par les contrôles du contenu');
+    const e = refusDe(() => annulerUneLigne(m.db, s.lot, numero));
+    assert.equal(e.statut, 409);
+    assert.match(e.message, /contrôles du contenu/);
+    assert.equal(pageDeLEntite(m, s.faute.id), s.faute.juste, 'rien n’est écrit');
+    assert.equal(etatDuLot(m, s.lot), 'applique');
+  } finally {
+    m.db.close();
+  }
+});
+
+test('R291 : un lot sans suppression qui a corrigé un problème du contenu ne s’annule pas', async () => {
+  const m = reelle();
+  m.base = () => m.db;
+  m.dossier = join(racine, `essais${(n += 1)}`);
+  try {
+    const faute = fausserUneEntite(m.db);
+    const applique = await deposerLeLot(m, [faute.correction]);
+    const apercu = await apercuDe(m, applique.id);
+    assert.equal(apercu.verdict, 'refusee');
+    assert.ok(apercu.problemes_nouveaux.length > 0, 'refusée par les contrôles du contenu');
+    const e = refusDe(() => annuler(m.db, applique.id));
+    assert.equal(e.statut, 409);
+    assert.match(e.message, /contrôles du contenu/);
+    assert.equal(pageDeLEntite(m, faute.id), faute.juste, 'rien n’est écrit');
+    assert.equal(etatDuLot(m, applique.id), 'applique');
   } finally {
     m.db.close();
   }
