@@ -8,10 +8,11 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { motsClesPropres } from '../serveur/edition-ancrage.mjs';
 import { appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
-import { annuler, deposerEtAppliquer } from '../serveur/edition-lots.mjs';
+import { annuler, annulerUneLigne, deposerEtAppliquer, lire, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
@@ -464,6 +465,164 @@ test('un lot qui supprime un sort retire son mot-clé, sauf s’il est cité', (
     assert.equal(m.db.prepare('SELECT 1 FROM sort WHERE id = ?').get(libre), undefined);
     assert.equal(motCle(m, motCleLibre), undefined);
     assert.notEqual(motCle(m, motCleCite), undefined);
+  } finally {
+    m.db.close();
+  }
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Annuler un lot qui a supprimé un élément et son mot-clé (R291) : un seul dépôt, chaque scénario part d'une copie de la base juste après le lot
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+const FILLES_D_UN_SORT = ['sort_type', 'sort_mode', 'sort_bonus_maitrise', 'sort_etat'];
+const cleDeLaLigne = (db, table, ligne) => Object.fromEntries(db.prepare(`PRAGMA table_info("${table}")`).all().filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => [c.name, ligne[c.name]]));
+
+/** Le premier sort que seules ses lignes de détail citent : il se retire par un lot sans toucher à rien d'autre. */
+function unSortSansCitation(db) {
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE '%VIRTUAL%'").all().map((t) => t.name);
+  const citantes = tables.flatMap((t) => db.prepare(`PRAGMA foreign_key_list("${t}")`).all().filter((f) => f.table === 'sort' && !FILLES_D_UN_SORT.includes(t))
+    .map((f) => `NOT EXISTS (SELECT 1 FROM "${t}" x WHERE x."${f.from}" = s.id)`));
+  const sansNote = "NOT EXISTS (SELECT 1 FROM note_cellule x WHERE x.entite_table = 'sort' AND x.entite_id = s.id)";
+  const nomLibre = 'lower(s.nom) NOT IN (SELECT lower(libelle) FROM mot_cle)';
+  return db.prepare(`SELECT s.id, s.nom FROM sort s WHERE s.mot_cle_id IS NULL AND ${[...citantes, sansNote, nomLibre].join(' AND ')} ORDER BY s.id LIMIT 1`).get();
+}
+const entiteDuSort = (db, id) => db.prepare("SELECT * FROM page_entite WHERE entite_table = 'sort' AND entite_id = ?").all(id);
+
+/** Ce que le lot retire, ligne par ligne : ce que l'annulation doit remettre à l'identique. */
+function photo(db, s) {
+  const toutes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
+  return {
+    page: toutes('SELECT * FROM page WHERE id = ?', s.metier),
+    metier: toutes('SELECT * FROM metier WHERE id = ?', s.metier),
+    sort: toutes('SELECT * FROM sort WHERE id = ?', s.sort),
+    entiteDuSort: entiteDuSort(db, s.sort).map((l) => ({ ...l })),
+    fillesDuSort: FILLES_D_UN_SORT.map((t) => toutes(`SELECT * FROM ${t} WHERE sort_id = ? ORDER BY 1, 2`, s.sort)),
+    motsCles: toutes('SELECT * FROM mot_cle WHERE id IN (?, ?) ORDER BY id', s.motCleMetier, s.motCleSort),
+    categories: toutes('SELECT * FROM mot_cle_categorie WHERE mot_cle_id IN (?, ?) ORDER BY 1, 2', s.motCleMetier, s.motCleSort),
+  };
+}
+
+let suppression = null;
+/** La base juste après un lot qui a retiré un métier (sa page) et un sort, chacun avec son mot-clé. */
+async function supprimesParUnLot() {
+  if (suppression) return suppression;
+  const m = reelle();
+  m.base = () => m.db;
+  m.dossier = join(racine, `essais${(n += 1)}`);
+  try {
+    const metier = creerMetier(m, nom('métier retiré'));
+    // son nom reste le sien : le tableau de sa page de magie le cite, un renommage en SQL le perdrait
+    const { id: sort, nom: titreDuSort } = unSortSansCitation(m.db);
+    const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
+    const motCleSort = poserMotCle(m.db, { libelle: titreDuSort, url: adresseDuSort(sort), categories: [type] });
+    m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(motCleSort, sort);
+    recalculerLesCles(m.db);
+    const ids = { metier, sort, motCleMetier: ancre(m, 'page', metier), motCleSort };
+    const avant = photo(m.db, ids);
+    const problemes = controlerLeContenu(m.db).problemes;
+    const retirer = (table, ligne) => ({ table, cle: cleDeLaLigne(m.db, table, ligne), operation: 'supprimer', avant: { ...ligne } });
+    const applique = await deposerLeLot(m, [
+      ...FILLES_D_UN_SORT.flatMap((t) => m.db.prepare(`SELECT * FROM ${t} WHERE sort_id = ?`).all(sort).map((l) => retirer(t, l))),
+      ...entiteDuSort(m.db, sort).map((l) => retirer('page_entite', l)),
+      retirer('sort',m.db.prepare('SELECT * FROM sort WHERE id = ?').get(sort)),
+      retirer('metier', m.db.prepare('SELECT * FROM metier WHERE id = ?').get(metier)),
+    ]);
+    assert.equal(motCle(m, ids.motCleMetier), undefined);
+    assert.equal(motCle(m, motCleSort), undefined);
+    const copie = join(racine, `apres-le-lot${(n += 1)}.db`);
+    m.db.exec(`VACUUM INTO '${copie.replaceAll("'", "''")}'`);
+    suppression = { ...ids, avant, problemes, lot: applique.id, copie };
+    return suppression;
+  } finally {
+    m.db.close();
+  }
+}
+
+function copieApresLeLot(s) {
+  const dossier = join(racine, `c${(n += 1)}`);
+  mkdirSync(dossier, { recursive: true });
+  const chemin = join(dossier, 'vivante.db');
+  copyFileSync(s.copie, chemin);
+  return { db: ouvrirBaseVivante(chemin) };
+}
+
+/** Ce qu'une annulation partielle ne doit jamais laisser : un élément sans le mot-clé de son ancre, un mot-clé sans son élément ou sans catégorie, une clé étrangère rompue. */
+function incoherences(db, s) {
+  const fautes = db.prepare('PRAGMA foreign_key_check').all().map((f) => `clé étrangère rompue : ${f.table} → ${f.parent}`);
+  for (const [table, id, k] of [['page', s.metier, s.motCleMetier], ['sort', s.sort, s.motCleSort]]) {
+    const element = db.prepare(`SELECT mot_cle_id AS a FROM "${table}" WHERE id = ?`).get(id);
+    const present = db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(k);
+    if (element && !present) fautes.push(`${table} remis sans son mot-clé`);
+    if (present && !element) fautes.push(`mot-clé remis sans ${table}`);
+    if (element && present && element.a !== k) fautes.push(`${table} : ancre perdue`);
+    if (present && !db.prepare('SELECT 1 FROM mot_cle_categorie WHERE mot_cle_id = ?').get(k)) fautes.push(`mot-clé de ${table} sans catégorie`);
+  }
+  return fautes;
+}
+
+test('R291 : annuler un lot qui a supprimé une page, un sort et leurs mots-clés remet tout à l’identique ; le mot-clé suit de nouveau son élément', async () => {
+  const s = await supprimesParUnLot();
+  const m = copieApresLeLot(s);
+  try {
+    // l'aperçu dit la même chose que le clic : un problème d'avant le lot qui revient avec sa ligne ne refuse pas l'annulation
+    const apercu = await previsualiserLAnnulation(() => m.db, s.lot, { enArrierePlan: false, dossier: join(racine, `essais${(n += 1)}`) });
+    assert.equal(apercu.verdict, 'applicable', JSON.stringify(apercu.problemes_nouveaux));
+    annuler(m.db, s.lot);
+    assert.deepEqual(photo(m.db, s), s.avant);
+    // triés : une ligne remise reprend sa place à la fin de sa table, ses problèmes se lisent plus loin
+    assert.deepEqual([...controlerLeContenu(m.db).problemes].sort(), [...s.problemes].sort(), 'les contrôles du contenu');
+    clesJustes(m);
+    const [titrePage, titreSort] = [nom('métier revenu'), nom('sort revenu')];
+    ecrire(m, [{ op: 'modifier', table: 'metier', cle: { id: s.metier }, valeurs: { nom: titrePage } }, { op: 'modifier', table: 'sort', cle: { id: s.sort }, valeurs: { nom: titreSort } }]);
+    assert.equal(motCle(m, s.motCleMetier).libelle, titrePage);
+    assert.equal(motCle(m, s.motCleSort).libelle, titreSort);
+    clesJustes(m);
+  } finally {
+    m.db.close();
+  }
+});
+
+test('R291 : aucune annulation d’une seule ligne de ce lot ne sépare un élément de son mot-clé', async () => {
+  const s = await supprimesParUnLot();
+  const lecture = copieApresLeLot(s);
+  const lignes = lire(lecture.db, s.lot).lignes;
+  lecture.db.close();
+  assert.ok(lignes.length > 4, 'le lot a plusieurs lignes');
+  const essayees = new Set();
+  let remises = 0;
+  for (const { n: numero, annulable_seule: seule } of lignes) {
+    if (!seule || essayees.has(numero)) continue;
+    const m = copieApresLeLot(s);
+    try {
+      // un refus des contrôles du contenu n'écrit rien : l'état reste celui d'après le lot
+      try {
+        annulerUneLigne(m.db, s.lot, numero);
+        remises += 1;
+        const bilan = JSON.parse(m.db.prepare('SELECT bilan FROM lot_de_changements WHERE id = ?').get(s.lot).bilan);
+        for (const k of Object.keys(bilan.lignes_annulees)) essayees.add(Number(k));
+      } catch (e) {
+        assert.ok(e instanceof ErreurEdition, String(e));
+      }
+      assert.deepEqual(incoherences(m.db, s), [], `après la ligne ${numero}`);
+    } finally {
+      m.db.close();
+    }
+  }
+  assert.ok(remises >= 1, 'une ligne au moins s’annule');
+});
+
+test('R291 : annuler la ligne d’un mot-clé retiré remet son élément, ses catégories et l’ancre', async () => {
+  const s = await supprimesParUnLot();
+  const m = copieApresLeLot(s);
+  try {
+    const lignes = lire(m.db, s.lot).lignes;
+    const ligne = lignes.find((l) => l.table === 'Mot-clé' && String(l.ligne).includes('métier retiré'));
+    assert.ok(ligne, JSON.stringify(lignes.map((l) => [l.n, l.table, l.ligne])));
+    assert.equal(ligne.annulable_seule, true, ligne.motif);
+    annulerUneLigne(m.db, s.lot, ligne.n);
+    assert.equal(ancre(m, 'page', s.metier), s.motCleMetier);
+    assert.deepEqual({ ...motCle(m, s.motCleMetier) }, s.avant.motsCles.find((x) => x.id === s.motCleMetier));
+    assert.deepEqual(categoriesDe(m, s.motCleMetier), s.avant.categories.filter((c) => c.mot_cle_id === s.motCleMetier).map((c) => c.categorie_id));
+    assert.equal(motCle(m, s.motCleSort), undefined, 'l’autre élément du lot reste retiré');
   } finally {
     m.db.close();
   }
