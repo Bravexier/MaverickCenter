@@ -286,18 +286,14 @@ async function chargerLesLots() {
   }
   lots.erreur = '';
   // le détail d'un changement d'ancrage (R309) ne se lit pas au chargement : à l'ouverture de son repli (`lireLeDetailDuRepli`) ; un repli déjà ouvert est relu,
-  // sauf si sa lecture est en cours ou a échoué (seul « Réessayer » la relance) ; un repli fermé déjà lu garde ce qu'il avait lu
+  // sauf si sa lecture est en cours ou a échoué (seul « Réessayer » la relance) ; un repli fermé oublie ce qu'il avait lu (la liste relue peut le
+  // changer : états et boutons d'annulation périmés) : son titre reprend le nombre de la liste, et il relit son détail à sa prochaine ouverture
   const dAncrage = (l) => estUnLotDAncrage(l);
   const aLire = [...liste.filter((l) => l.etat === 'propose'),
     ...lotsAppliques(liste).filter((l) => !dAncrage(l) || (lots.ouverts.has(`${l.id}:lot`) && !lots.lectures.has(l.id)))];
-  const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch((e) => (dAncrage(l) ? { echec: e } : null))]))));
-  const gardes = (l) => {
-    const avant = lotParId(l.id);
-    return dAncrage(l) && l.etat === 'applique' && !details.has(l.id) && Array.isArray(avant?.lignes)
-      ? { lignes: avant.lignes, contenu: avant.contenu, essai: avant.essai, bilan: avant.bilan, verrous_ouverts: avant.verrous_ouverts } : {};
-  };
+  const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch((e) => (dAncrage(l) && l.etat === 'applique' ? { echec: e } : null))]))));
   for (const [id, d] of details) if (d?.echec) lots.lectures.set(id, { etat: 'echec', texte: messageDErreur(d.echec).texte });
-  lots.reponse = { lots: liste.map((l) => ({ ...l, ...gardes(l), ...(details.get(l.id)?.echec ? {} : details.get(l.id) ?? {}) })) };
+  lots.reponse = { lots: liste.map((l) => ({ ...l, ...(details.get(l.id)?.echec ? {} : details.get(l.id) ?? {}) })) };
   // ce qui ne vaut plus pour l'état d'une proposition (cases d'une proposition décidée) s'oublie
   for (const id of [...lots.coches.keys()]) if (lotParId(id)?.etat !== 'propose') lots.coches.delete(id);
   rendreLesLots();
