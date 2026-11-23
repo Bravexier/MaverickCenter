@@ -540,37 +540,129 @@ test('un échec de relecture de la page après un clic réussi ne se dit pas com
   assert.equal(page.section().querySelectorAll('[data-nv-lot-message].nv-message--erreur').length, 0);
 });
 
-test('R309 : les lignes d’un lot d’ancrage replié restent branchées : « Annuler cette modification » dans le bloc dépliant, « Tout montrer », et le bloc déplié le reste après le clic', async () => {
+test('R309 : le détail d’un changement d’ancrage se lit à l’ouverture de son repli, une seule fois ; ses lignes restent branchées (annulation, « Tout montrer »), et seuls les replis ouverts sont relus après un clic', async () => {
   const lignes = Array.from({ length: 35 }, (_, i) => ligne(i + 1));
   const apercu = { verdict: 'applicable', verrous_a_ouvrir: [], ligne: { n: 2 }, comptes: { remises: 1, gardees: 0, deja: 0, verrouillees: 0, refusees: 0 }, operations: [] };
-  const page = await monter([direct('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai' })], {
+  let liberer;
+  const attente = new Promise((r) => { liberer = r; });
+  const page = await monter([
+    direct('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 36, lignes_annulees: 1 }),
+    direct('aut', [ligne(1)], { decision: 'R309', titre: 'Autre ancrage', lignes_nettes: 7, lignes_annulees: 0 }),
+    direct('ord', [ligne(1)], { decision: 'R275', titre: 'Changement ordinaire' }),
+  ], {
+    'GET edition/lots/anc/': async (_corps, etat) => {
+      await attente;
+      return etat.lots.find((l) => l.id === 'anc');
+    },
     'GET edition/lots/anc/lignes/2/annulation/': apercu,
     'POST edition/lots/anc/lignes/2/annuler/': (corps, etat) => {
       etat.lots = etat.lots.map((l) => (l.id === 'anc' ? { ...l, lignes: l.lignes.map((x) => (x.n === 2 ? { ...x, etat: 'annulee', annulable_seule: false, annulee: { annule_le: '2026-11-15T09:00:00Z', lot_id: 'L2' } } : x)) } : l));
-      return etat.lots[0];
+      return etat.lots.find((l) => l.id === 'anc');
     },
   });
-  const repli = () => page.article('anc').querySelector('details.nv-lot__repli');
-  assert.ok(repli(), 'le lot est replié sous son titre');
-  assert.equal(repli().hasAttribute('open'), false);
-  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 30, 'les trente premières lignes sont dans le bloc');
-  // le propriétaire déplie : la page le retient (évènement `toggle`, écouté à la descente sur la section)
-  repli().open = true;
-  const e = new Event('toggle');
-  Object.defineProperty(e, 'target', { value: repli() });
-  page.section().dispatchEvent(e);
-  // « Annuler cette modification » d'une ligne du bloc : l'aperçu, la confirmation, le POST de cette ligne seule
-  await page.clic(repli().querySelector('button[data-nv-annuler-ligne="2"]'));
-  assert.ok(page.envois.some(([k]) => k === 'GET edition/lots/anc/lignes/2/annulation/'));
+  const lectures = (id) => page.envois.filter(([k]) => k === `GET edition/lots/${id}/`).length;
+  const repli = (id) => page.article(id).querySelector('details.nv-lot__repli');
+  const compte = (id) => repli(id).querySelector('.nv-lot__compte').textContent;
+  const ouvrir = (id, oui = true) => {
+    repli(id).open = oui;
+    const e = new Event('toggle');
+    Object.defineProperty(e, 'target', { value: repli(id) });
+    page.section().dispatchEvent(e);
+  };
+  // au chargement : aucune lecture du détail d'un changement d'ancrage replié ; le nombre vient de la liste (36 lignes nettes moins 1 annulée) ; l'autre changement est lu
+  assert.equal(lectures('anc'), 0);
+  assert.equal(lectures('aut'), 0);
+  assert.equal(lectures('ord'), 1, 'un changement ordinaire se lit comme avant');
+  assert.equal(compte('anc'), '35 lignes');
+  assert.equal(compte('aut'), '7 lignes');
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne, [data-nv-bilan-indisponible]').length, 0);
+  // l'ouverture : « Lecture des lignes… » dans le repli, une seule requête même ouvert deux fois de suite
+  ouvrir('anc');
+  await fini();
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.match(repli('anc').querySelector('[data-nv-lecture]').textContent, /Lecture des lignes/);
+  assert.equal(repli('anc').hasAttribute('open'), true);
+  liberer();
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 30, 'les trente premières lignes');
+  assert.equal(repli('anc').querySelectorAll('[data-nv-lecture]').length, 0);
+  assert.equal(compte('anc'), '35 lignes', 'le nombre exact des lignes en écart, une fois le détail lu');
+  // fermer puis rouvrir ne relit pas, et le rendu qui repose le repli ouvert (le navigateur refait `toggle`) non plus
+  ouvrir('anc', false);
+  ouvrir('anc');
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 30);
+  // « Annuler cette modification » d'une ligne du repli : l'aperçu, la confirmation, le POST de cette ligne seule
+  await page.clic(repli('anc').querySelector('button[data-nv-annuler-ligne="2"]'));
   assert.ok(page.dialogue()?.ouvert, 'la confirmation');
   assert.equal(page.ecritures().length, 0, 'rien n’est envoyé avant la confirmation');
   await page.confirmer();
   assert.deepEqual(page.ecritures(), [['POST edition/lots/anc/lignes/2/annuler/', { verrous_ouverts: [] }]]);
-  assert.equal(repli().querySelector('li[data-nv-ligne="2"]').dataset.nvEtatLigne, 'annulee');
-  assert.equal(repli().hasAttribute('open'), true, 'le bloc déplié par le propriétaire le reste après le rendu');
-  // « Tout montrer » dans le bloc : les cinq dernières lignes s'ajoutent, annulables elles aussi
-  await page.clic(repli().querySelector('button[data-nv-toutes="anc:lignes"]'));
-  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 35);
-  assert.equal(repli().querySelectorAll('li[data-nv-ligne="35"] button[data-nv-annuler-ligne]').length, 1);
-  assert.equal(repli().hasAttribute('open'), true);
+  assert.equal(repli('anc').querySelector('li[data-nv-ligne="2"]').dataset.nvEtatLigne, 'annulee');
+  assert.equal(repli('anc').hasAttribute('open'), true, 'le repli ouvert le reste');
+  // après le clic : seul le repli ouvert est relu ; l'autre changement d'ancrage jamais ouvert ne l'est pas
+  assert.equal(lectures('anc'), 2, 'le repli ouvert est relu');
+  assert.equal(lectures('aut'), 0, 'un repli fermé ne se lit pas');
+  // « Tout montrer » : les cinq dernières lignes s'ajoutent, annulables elles aussi, sans nouvelle lecture
+  await page.clic(repli('anc').querySelector('button[data-nv-toutes="anc:lignes"]'));
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 35);
+  assert.equal(repli('anc').querySelectorAll('li[data-nv-ligne="35"] button[data-nv-annuler-ligne]').length, 1);
+  assert.equal(lectures('anc'), 2);
+  // un repli fermé après sa lecture garde ses lignes à travers « Actualiser » sans relire ; l'autre reste à lire
+  ouvrir('anc', false);
+  await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
+  assert.equal(lectures('anc'), 2);
+  assert.equal(lectures('aut'), 0);
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 2, 'rouvert : déjà lu');
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 35);
+});
+
+test('R309 : une lecture du détail en échec le dit dans le repli avec « Réessayer » ; ni un rendu, ni un nouveau `toggle`, ni « Actualiser » ne la relancent, seul le bouton', async () => {
+  let tentatives = 0;
+  const page = await monter([direct('anc', [ligne(1), ligne(2)], { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 2, lignes_annulees: 0 })], {
+    'GET edition/lots/anc/': (_corps, etat) => {
+      tentatives += 1;
+      return tentatives < 3 ? [503, { erreur: 'Service occupé' }] : etat.lots.find((l) => l.id === 'anc');
+    },
+  });
+  const repli = () => page.article('anc').querySelector('details.nv-lot__repli');
+  const ouvrir = () => {
+    repli().open = true;
+    const e = new Event('toggle');
+    Object.defineProperty(e, 'target', { value: repli() });
+    page.section().dispatchEvent(e);
+  };
+  assert.equal(tentatives, 0, 'rien au chargement');
+  ouvrir();
+  await fini();
+  assert.equal(tentatives, 1);
+  assert.ok(repli().querySelector('[data-nv-lecture-erreur]').textContent.includes('Service occupé'));
+  assert.equal(repli().querySelectorAll('button[data-nv-relire]').length, 1);
+  assert.equal(repli().querySelectorAll('[data-nv-bilan-indisponible], [data-nv-lecture]').length, 0, 'l’échec n’est pas dit « indisponible »');
+  assert.equal(repli().querySelector('.nv-lot__compte').textContent, '2 lignes', 'le nombre de la liste reste');
+  // le rendu repose le repli ouvert, le navigateur refait `toggle` (plusieurs fois) : aucune requête de plus ; « Actualiser » non plus
+  ouvrir();
+  ouvrir();
+  await fini();
+  await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
+  ouvrir();
+  await fini();
+  assert.equal(tentatives, 1, 'pas de boucle de requêtes');
+  assert.equal(repli().querySelectorAll('button[data-nv-relire]').length, 1);
+  // « Réessayer » : une lecture, qui échoue encore (le message reste), puis une qui réussit
+  await page.clic(repli().querySelector('button[data-nv-relire]'));
+  assert.equal(tentatives, 2);
+  assert.ok(repli().querySelector('[data-nv-lecture-erreur]'));
+  await page.clic(repli().querySelector('button[data-nv-relire]'));
+  assert.equal(tentatives, 3);
+  assert.equal(repli().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
+  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 2);
+  assert.equal(page.ecritures().length, 0);
 });

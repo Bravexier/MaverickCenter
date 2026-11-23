@@ -473,7 +473,7 @@ function cheminsDuService() {
     '/edition/lots/': {
       get: {
         operationId: 'edition_lots', tags: [SERVICE], summary: 'Les lots de changements proposés',
-        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc ; un lot appliqué dit « lignes_nettes » (le nombre de ses lignes, sans lire son détail ; absent si son journal est illisible) et, la référence de la production lisible, « ecart_production ». Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
         responses: { 200: reponse('Les propositions.', objet), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
       },
       post: {

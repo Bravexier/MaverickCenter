@@ -210,3 +210,38 @@ test('R309 : le service lit type_sort avec les tables décrites, jamais avec les
   // la production ne l'a pas, le dev oui, avec ses mots-clés posés : ni « Table type_sort ajoutée » ni colonne mot_cle_id dans la note
   assert.deepEqual(comparerBases(avant, apres).filter((l) => l.table_nom === 'type_sort' || mentionne(l)), []);
 });
+
+test('R309 : dans les « autres tables », une colonne mot_cle_id hors de la clé n’est ni comparée ni listée (« Structure changée » compris) ; une table dont la clé la contient garde ses lignes', () => {
+  const table = (colonnes, cle, lignes) => ({ colonnes, cle, lignes });
+  const degats = (lignes, colonnes = ['id', 'nom', 'mot_cle_id']) => table(colonnes, ['id'], lignes);
+  const comparer = (autresRef, autresDev) => comparerBases({ tables: {}, autres: autresRef }, { tables: {}, autres: autresDev }).filter((l) => l.domaine === 'autres-tables');
+  const dits = (lignes) => lignes.map((l) => [l.table_nom, l.entite, l.champ, l.nature]);
+  // seul mot_cle_id change : rien (posé, changé ou retiré)
+  const avant = degats([{ id: 'taille', nom: 'Taille', mot_cle_id: null }, { id: 'estoc', nom: 'Estoc', mot_cle_id: 5 }, { id: 'frappe', nom: 'Frappe', mot_cle_id: 6 }]);
+  const apres = degats([{ id: 'taille', nom: 'Taille', mot_cle_id: 9 }, { id: 'estoc', nom: 'Estoc', mot_cle_id: 7 }, { id: 'frappe', nom: 'Frappe', mot_cle_id: null }]);
+  assert.deepEqual(comparer({ type_degats: avant }, { type_degats: apres }), []);
+  // une autre colonne de la même ligne qui change garde sa ligne, sans citer mot_cle_id
+  apres.lignes[0].nom = 'Taillant';
+  const lignes = comparer({ type_degats: avant }, { type_degats: apres });
+  assert.deepEqual(dits(lignes), [['type_degats', 'taille', 'nom', 'modifie']]);
+  assert.ok(!lignes.some(mentionne));
+  // la colonne ajoutée ou retirée de la structure : pas de « Structure changée » pour elle seule, mais pour une autre colonne oui
+  const sans = degats([{ id: 'taille', nom: 'Taille' }], ['id', 'nom']);
+  const avec = degats([{ id: 'taille', nom: 'Taille', mot_cle_id: 4 }]);
+  assert.deepEqual(comparer({ type_degats: sans }, { type_degats: avec }), []);
+  assert.deepEqual(comparer({ type_degats: avec }, { type_degats: sans }), []);
+  const autre = degats([{ id: 'taille', nom: 'Taille', mot_cle_id: 4, poids: 1 }], ['id', 'nom', 'mot_cle_id', 'poids']);
+  const structure = comparer({ type_degats: sans }, { type_degats: autre });
+  assert.deepEqual(dits(structure), [['type_degats', 'Table type_degats', 'Structure changée', 'modifie']]);
+  assert.ok(!structure.some((l) => /mot_cle_id/.test(`${l.avant} ${l.apres}`)), 'la structure ne cite que la colonne qui compte');
+  // une table dont la clé contient mot_cle_id : ses lignes ajoutées et retirées restent dites
+  const etiquettes = (lignes) => table(['sort_id', 'mot_cle_id'], ['sort_id', 'mot_cle_id'], lignes);
+  const ajoutee = comparer({ sort_mot_cle: etiquettes([{ sort_id: 's1', mot_cle_id: 1 }]) }, { sort_mot_cle: etiquettes([{ sort_id: 's1', mot_cle_id: 1 }, { sort_id: 's1', mot_cle_id: 2 }]) });
+  assert.deepEqual(dits(ajoutee), [['sort_mot_cle', 's1 · 2', null, 'ajoute']]);
+  const retiree = comparer({ sort_mot_cle: etiquettes([{ sort_id: 's1', mot_cle_id: 1 }, { sort_id: 's1', mot_cle_id: 2 }]) }, { sort_mot_cle: etiquettes([{ sort_id: 's1', mot_cle_id: 1 }]) });
+  assert.deepEqual(dits(retiree), [['sort_mot_cle', 's1 · 2', null, 'retire']]);
+  // une table sans clé primaire garde mot_cle_id dans son identité : ses lignes ne se confondent pas
+  const sansCle = (lignes) => table(['mot_cle_id', 'libelle'], [], lignes);
+  const nouvelle = comparer({ liste: sansCle([{ mot_cle_id: 1, libelle: 'a' }]) }, { liste: sansCle([{ mot_cle_id: 1, libelle: 'a' }, { mot_cle_id: 2, libelle: 'b' }]) });
+  assert.deepEqual(nouvelle.map((l) => [l.table_nom, l.nature]), [['liste', 'ajoute']]);
+});

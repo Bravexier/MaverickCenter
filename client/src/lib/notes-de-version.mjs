@@ -1020,9 +1020,12 @@ function comparerAutresTables(ref, dev) {
       ligne(table, i, `Table ${table}`, null, a ? 'retire' : 'ajoute', a ? `${a.lignes.length} ligne(s)` : null, b ? `${b.lignes.length} ligne(s)` : null);
       return;
     }
-    const communes = b.colonnes.filter((c) => a.colonnes.includes(c));
-    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c));
-    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c));
+    // R309 : une colonne `mot_cle_id` hors de la clé de la table est l'ancre d'un élément (type_degats, les ancres à venir) : le mot-clé est dit par la ligne
+    // condensée des mots-clés, jamais par une colonne, ni par « Structure changée ». Une table dont la clé la contient (sort_mot_cle) garde ses lignes.
+    const ancre = (c) => c === 'mot_cle_id' && b.cle.length > 0 && !b.cle.includes(c) && !a.cle.includes(c);
+    const communes = b.colonnes.filter((c) => a.colonnes.includes(c) && !ancre(c));
+    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c) && !ancre(c));
+    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c) && !ancre(c));
     if (ajoutees.length || retirees.length) {
       ligne(table, i, `Table ${table}`, 'Structure changée', 'modifie', retirees.length ? `colonnes retirées : ${retirees.join(', ')}` : null,
         ajoutees.length ? `colonnes ajoutées : ${ajoutees.join(', ')}` : null);

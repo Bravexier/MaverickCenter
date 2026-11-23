@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  PLAFOND_DES_LIGNES, corpsDuClic, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  PLAFOND_DES_LIGNES, corpsDuClic, estUnLotDAncrage, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, motDeLEtat, origineDuLot, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLAnnulation, phraseDeLEssai, verrousDuLot,
 } from '../src/lib/lots-rendu.mjs';
 import { el } from './aide-faux-dom.mjs';
@@ -465,4 +465,42 @@ test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de
   const sansDetail = lire(htmlDuLot({ ...ancrage, lignes: null })).querySelector('article');
   assert.equal(sansDetail.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
   assert.equal(sansDetail.querySelectorAll('.nv-lot__compte').length, 0, 'sans le détail, aucun nombre inventé');
+});
+
+test('R309 : un changement d’ancrage dont le détail n’est pas lu dit le nombre de la liste, la lecture en cours ou son échec avec « Réessayer », jamais « indisponible » ; lu, le nombre exact', () => {
+  const { lignes: _l, ...nonLu } = applique('anc', [], { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 12, lignes_annulees: 2 });
+  assert.equal('lignes' in nonLu, false);
+  const article = (lot, vue) => lire(htmlDuLot(lot, vue)).querySelector('article');
+  // le nombre de la liste, moins les lignes annulées ; rien dans le bloc : ni lecture, ni indisponible, ni bilan
+  const ferme = article(nonLu, {});
+  assert.match(ferme.querySelector('.nv-lot__compte').textContent, /^10 lignes$/);
+  assert.equal(ferme.querySelector('details.nv-lot__repli').hasAttribute('open'), false);
+  assert.equal(ferme.querySelectorAll('[data-nv-bilan-indisponible], [data-nv-bilan], [data-nv-lecture], [data-nv-lecture-erreur], li.nv-lot-ligne').length, 0);
+  assert.equal(ferme.textContent.includes('pas disponible'), false);
+  // sans nombre dans la liste (journal illisible) : le titre seul
+  assert.equal(article({ ...nonLu, lignes_nettes: undefined }, {}).querySelectorAll('.nv-lot__compte').length, 0);
+  // la lecture en cours, puis son échec : le message et « Réessayer » dans le repli (c'est tout ce qui relance), le nombre de la liste reste
+  const ouverts = new Set(['anc:lot']);
+  const enCours = article(nonLu, { ouverts, lectures: new Map([['anc', { etat: 'en_cours' }]]) });
+  assert.equal(enCours.querySelectorAll('details.nv-lot__repli [data-nv-lecture]').length, 1);
+  assert.match(enCours.querySelector('[data-nv-lecture]').textContent, /Lecture des lignes/);
+  assert.equal(enCours.querySelectorAll('button[data-nv-relire]').length, 0);
+  const echec = article(nonLu, { ouverts, lectures: new Map([['anc', { etat: 'echec', texte: 'Service occupé' }]]) });
+  assert.ok(echec.querySelector('details.nv-lot__repli [data-nv-lecture-erreur]').textContent.includes('Service occupé'));
+  assert.equal(echec.querySelectorAll('details.nv-lot__repli button[data-nv-relire]').length, 1);
+  assert.match(echec.querySelector('.nv-lot__compte').textContent, /^10 lignes$/);
+  // lu : le nombre exact des lignes en écart (3 sur 4), plus rien de la lecture ; les lignes ont chacune leur bouton
+  const lu = article({ ...nonLu, lignes: [ligne(1), ligne(2), ligne(3, { ecart_production: false }), ligne(4)] }, { lectures: new Map([['anc', { etat: 'echec', texte: 'périmé' }]]) });
+  assert.match(lu.querySelector('.nv-lot__compte').textContent, /^3 lignes$/);
+  assert.equal(lu.querySelectorAll('[data-nv-lecture], [data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
+  assert.equal(lu.querySelectorAll('button[data-nv-annuler-ligne]').length, 3);
+  // le service dit le détail indisponible (`lignes: null`) : c'est dit, sans nombre de la liste ; une proposition n'est pas concernée
+  const indispo = article({ ...nonLu, lignes: null, lignes_indisponibles: 'journal retiré' }, {});
+  assert.equal(indispo.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
+  assert.equal(indispo.querySelectorAll('.nv-lot__compte').length, 0);
+  assert.equal(article(lot('prop', { decision: 'R309', lignes_nettes: 9 }), {}).querySelectorAll('.nv-lot__compte').length, 0);
+  // les autres changements ne changent pas : leur bilan se lit comme avant
+  assert.equal(article(applique('autre', [ligne(1)], { decision: 'R275' }), {}).querySelectorAll('[data-nv-bilan]').length, 1);
+  assert.equal(estUnLotDAncrage({ decision: 'R309' }), true);
+  assert.equal(estUnLotDAncrage({ decision: 'R275' }), false);
 });

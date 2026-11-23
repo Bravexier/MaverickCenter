@@ -21,6 +21,8 @@ import { diffMots, echapper } from './notes-de-version-rendu.mjs';
 
 /** La décision qui donne un mot-clé à chaque page, sort et type de sort (R309, chantier de l'ancrage) : ses changements se replient (htmlDuLot). */
 const DECISION_DE_L_ANCRAGE = 'R309';
+/** Le changement vient-il de l'ancrage ? Son détail ne se lit qu'à l'ouverture de son repli (la page : `<id>:lot` dans `ouverts`). */
+export const estUnLotDAncrage = (lot) => lot?.decision === DECISION_DE_L_ANCRAGE;
 /** Les lignes d'un aperçu montrées d'abord ; « Tout montrer » donne le reste. */
 export const PLAFOND_DES_LIGNES = 30;
 /** Au-delà, deux textes se montrent par leurs différences. */
@@ -355,10 +357,20 @@ function htmlDuLotApplique(lot) {
   return `<p class="nv-lot__bilan" data-nv-bilan>${echapper(texte)}</p>`;
 }
 
+/** Le corps d'un changement d'ancrage dont le détail n'est pas lu : « Lecture des lignes… », ou l'échec et « Réessayer » (seul ce bouton relance la lecture). */
+function htmlDeLaLecture(lot, vue) {
+  const lecture = vue.lectures?.get(lot.id);
+  if (lecture?.etat === 'echec') {
+    return `<div class="nv-message nv-message--erreur" role="alert" data-nv-lecture-erreur><p>${echapper(lecture.texte)}</p></div>`
+      + `<div class="nv-dev__actions"><button type="button" data-nv-relire>Réessayer</button></div>`;
+  }
+  return lecture?.etat === 'en_cours' ? '<p class="nv-conflit__aide" data-nv-lecture>Lecture des lignes…</p>' : '';
+}
+
 /**
  * Un lot, selon son état (`propose` : attend le clic ; `applique` : ses lignes, chacune annulable seule).
  * @param {object} lot la proposition (GET /api/edition/lots/<id>/ : `essai`, `bilan`, `lignes`…, ou son résumé de la liste)
- * @param {{ coches?: Map<string, Set<string>>, messages?: Map<string, object>, ouverts?: Set<string>, toutes?: Set<string> }} [vue] l'état de la page
+ * @param {{ coches?: Map<string, Set<string>>, messages?: Map<string, object>, ouverts?: Set<string>, toutes?: Set<string>, lectures?: Map<string, { etat: 'en_cours' | 'echec', texte?: string }> }} [vue] l'état de la page
  */
 export function htmlDuLot(lot, vue = {}) {
   const decision = lot.decision ? `<span class="nv-lot__decision" data-nv-decision>${echapper(lot.decision)}</span> ` : '';
@@ -366,15 +378,23 @@ export function htmlDuLot(lot, vue = {}) {
   const direct = applique && lot.application?.directe === true;
   const quand = applique ? `Appliqué${direct ? ' aussitôt' : ''} le ${jour(lot.decide_le)}` : null;
   const meta = [quand, ligneDeLOrigine(lot, { sansDepot: direct })].filter(Boolean).join(' · ');
-  const corps = lot.etat === 'propose' ? htmlDuLotProposeAttend(lot, vue) : `${htmlDuLotApplique(lot)}${Array.isArray(lot.lignes) ? htmlDesLignesDuLot(lot, vue) : ''}`;
+  const replie = estUnLotDAncrage(lot);
+  // un changement d'ancrage dont le détail n'est pas encore lu (`lignes` absent) : la lecture en cours ou en échec (« Réessayer »), jamais « indisponible » ;
+  // `lignes: null` : c'est le service qui dit que le détail l'est
+  const nonLu = replie && applique && lot.lignes === undefined;
+  const corps = lot.etat === 'propose' ? htmlDuLotProposeAttend(lot, vue)
+    : nonLu ? htmlDeLaLecture(lot, vue) : `${htmlDuLotApplique(lot)}${Array.isArray(lot.lignes) ? htmlDesLignesDuLot(lot, vue) : ''}`;
   const titre = `<h4 class="nv-lot__titre">${decision}${echapper(lot.titre)}</h4>`;
   const message = htmlDuMessage(vue.messages?.get(lot.id) ?? null);
   const entete = `<article class="nv-lot nv-lot--${echapper(lot.etat)}" data-nv-lot-id="${echapper(lot.id)}" data-nv-etat="${echapper(lot.etat)}">`;
   // R309 : un changement d'ancrage porte des centaines de lignes (une par page, sort et type de sort) : replié derrière son titre et son nombre de lignes ; ses
   // lignes restent dedans, consultables, chacune avec « Annuler cette modification ». Une proposition qui attend son clic reste ouverte (ses boutons ne se cachent
-  // pas) ; le message d'un clic reste dehors, lisible replié. Sans le détail des lignes (journal indisponible), le titre seul : aucun nombre inventé.
-  if (lot.decision === DECISION_DE_L_ANCRAGE) {
-    const nombre = applique && Array.isArray(lot.lignes) ? ` <span class="nv-lot__compte">${echapper(pluriel(lignesEnEcart(lot).length, 'ligne', 'lignes'))}</span>` : '';
+  // pas) ; le message d'un clic reste dehors, lisible replié. Le nombre : celui des lignes en écart une fois le détail lu ; avant, celui de la liste
+  // (`lignes_nettes`, moins les lignes annulées) ; sans l'un ni l'autre, le titre seul : aucun nombre inventé.
+  if (replie) {
+    const n = Array.isArray(lot.lignes) ? lignesEnEcart(lot).length
+      : applique && lot.lignes === undefined && Number.isInteger(lot.lignes_nettes) ? Math.max(0, lot.lignes_nettes - (lot.lignes_annulees ?? 0)) : null;
+    const nombre = n === null ? '' : ` <span class="nv-lot__compte">${echapper(pluriel(n, 'ligne', 'lignes'))}</span>`;
     return `${entete}<details class="nv-lot__repli" data-nv-ouvert="${echapper(lot.id)}:lot"${lot.etat === 'propose' || vue.ouverts?.has(`${lot.id}:lot`) ? ' open' : ''}>`
       + `<summary>${titre}${nombre}</summary><p class="nv-lot__meta">${echapper(meta)}</p>${corps}</details>${message}</article>`;
   }

@@ -1146,10 +1146,13 @@ function differeDeLaProduction(db, production, net) {
   return Object.keys({ ...net.origine, ...net.fin }).some((c) => !isDeepStrictEqual(ici[c] ?? null, enProduction[c] ?? null));
 }
 
-/** Le lot appliqué change-t-il encore quelque chose par rapport à la production ? null quand son journal est illisible : on ne peut pas le dire, il reste montré. */
-function lotDiffereDeLaProduction(db, production, ligne) {
+/** Le lot appliqué (ses lignes nettes `nets`) change-t-il encore quelque chose par rapport à la production ? */
+const lotDiffereDeLaProduction = (db, production, nets) => nets.some((net) => differeDeLaProduction(db, production, net));
+
+/** Les lignes nettes d'un lot appliqué, ou null quand son journal est illisible (`ErreurEdition` : on ne peut rien en dire). */
+function netsOuNull(db, ligne) {
   try {
-    return netsDuLot(db, ligne.lot_id).some((net) => differeDeLaProduction(db, production, net));
+    return netsDuLot(db, ligne.lot_id);
   } catch (e) {
     if (e instanceof ErreurEdition) return null;
     throw e;
@@ -1595,7 +1598,14 @@ export function lister(db, { production = null } = {}) {
   const lots = db.prepare('SELECT * FROM lot_de_changements ORDER BY depose_le DESC, id').all();
   return avecLaProduction(production, (base) => lots.map((l) => {
     const lot = presenter(l, { resume: true });
-    return base && l.etat === 'applique' ? { ...lot, ecart_production: lotDiffereDeLaProduction(db, base, l) } : lot;
+    if (l.etat !== 'applique') return lot;
+    // les lignes nettes, calculées une fois : leur nombre (le titre d'un changement replié le dit sans lire son détail) et, avec la production, l'écart ;
+    // `ecart_production` vaut null (on ne peut pas dire) et `lignes_nettes` est absent quand le journal est illisible
+    const nets = netsOuNull(db, l);
+    return {
+      ...lot, ...(nets ? { lignes_nettes: nets.length } : {}),
+      ...(base ? { ecart_production: nets ? lotDiffereDeLaProduction(db, base, nets) : null } : {}),
+    };
   }));
 }
 

@@ -30,7 +30,7 @@ import {
 } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
-  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, MESSAGE_ANCRAGE_INJOIGNABLE, MESSAGE_ANCRAGE_INTERROMPU, messageDeLAncrage, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  corpsDuClic, estUnLotDAncrage, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, MESSAGE_ANCRAGE_INJOIGNABLE, MESSAGE_ANCRAGE_INTERROMPU, messageDeLAncrage, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, verrousDuLot,
 } from '../lib/lots-rendu.mjs';
 
@@ -81,7 +81,7 @@ const conflits = { section: null, reponse: null, listes: null, choisis: new Map(
  * récents (leurs lignes), ce que le propriétaire a coché (décisions à ouvrir, par proposition), les messages (clés `<lot>` ou `<lot>#<ligne>`), ce qu'il a
  * déplié, le message d'en tête, et un verrou contre le double clic.
  */
-const lots = { section: null, reponse: null, erreur: '', coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false, ancrageAReprendre: false };
+const lots = { section: null, reponse: null, erreur: '', coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), lectures: new Map(), message: null, occupe: false, ancrageAReprendre: false };
 
 function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
@@ -249,13 +249,16 @@ function sectionDesLots() {
     if (!cle) return;
     if (e.target.open) lots.ouverts.add(cle);
     else lots.ouverts.delete(cle);
+    // R309 : le détail d'un changement d'ancrage se lit à l'ouverture de son repli (le rendu repose un repli ouvert, et le navigateur refait un `toggle` :
+    // `lireLeDetailDuRepli` ne relance jamais une lecture déjà faite, en cours ou en échec)
+    if (e.target.open && cle.endsWith(':lot')) lireLeDetailDuRepli(cle.slice(0, -':lot'.length)).catch(() => {});
   }, true);
   lots.section = section;
   return section;
 }
 
 /** L'état de la page pour le rendu (`lib/lots-rendu.mjs`). */
-const vueDesLots = () => ({ coches: lots.coches, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message, ancrageAReprendre: lots.ancrageAReprendre });
+const vueDesLots = () => ({ coches: lots.coches, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, lectures: lots.lectures, message: lots.message, ancrageAReprendre: lots.ancrageAReprendre });
 
 function rendreLesLots() {
   const section = sectionDesLots();
@@ -282,12 +285,49 @@ async function chargerLesLots() {
     return;
   }
   lots.erreur = '';
-  const aLire = [...liste.filter((l) => l.etat === 'propose'), ...lotsAppliques(liste)];
-  const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch(() => null)]))));
-  lots.reponse = { lots: liste.map((l) => ({ ...l, ...(details.get(l.id) ?? {}) })) };
+  // le détail d'un changement d'ancrage (R309) ne se lit pas au chargement : à l'ouverture de son repli (`lireLeDetailDuRepli`) ; un repli déjà ouvert est relu,
+  // sauf si sa lecture est en cours ou a échoué (seul « Réessayer » la relance) ; un repli fermé déjà lu garde ce qu'il avait lu
+  const dAncrage = (l) => estUnLotDAncrage(l);
+  const aLire = [...liste.filter((l) => l.etat === 'propose'),
+    ...lotsAppliques(liste).filter((l) => !dAncrage(l) || (lots.ouverts.has(`${l.id}:lot`) && !lots.lectures.has(l.id)))];
+  const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch((e) => (dAncrage(l) ? { echec: e } : null))]))));
+  const gardes = (l) => {
+    const avant = lotParId(l.id);
+    return dAncrage(l) && l.etat === 'applique' && !details.has(l.id) && Array.isArray(avant?.lignes)
+      ? { lignes: avant.lignes, contenu: avant.contenu, essai: avant.essai, bilan: avant.bilan, verrous_ouverts: avant.verrous_ouverts } : {};
+  };
+  for (const [id, d] of details) if (d?.echec) lots.lectures.set(id, { etat: 'echec', texte: messageDErreur(d.echec).texte });
+  lots.reponse = { lots: liste.map((l) => ({ ...l, ...gardes(l), ...(details.get(l.id)?.echec ? {} : details.get(l.id) ?? {}) })) };
   // ce qui ne vaut plus pour l'état d'une proposition (cases d'une proposition décidée) s'oublie
   for (const id of [...lots.coches.keys()]) if (lotParId(id)?.etat !== 'propose') lots.coches.delete(id);
   rendreLesLots();
+}
+
+/**
+ * Lit le détail d'un changement d'ancrage (R309) à l'ouverture de son repli : « Lecture des lignes… » dans le repli, puis les lignes. Une seule lecture par
+ * changement : rien si le détail est lu (ou dit indisponible par le service), si une lecture est en cours (deux ouvertures rapprochées) ou si elle a échoué
+ * (le repli dit l'échec, seul « Réessayer » la relance : un rendu qui refait `toggle` ne boucle pas sur des requêtes).
+ */
+async function lireLeDetailDuRepli(id) {
+  const lot = lotParId(id);
+  if (!lot || lot.etat !== 'applique' || !estUnLotDAncrage(lot) || lot.lignes !== undefined || lots.lectures.has(id)) return;
+  lots.lectures.set(id, { etat: 'en_cours' });
+  rendreLesLots();
+  try {
+    const detail = await appel('GET', adresseDuLot(id));
+    // la liste a pu être relue pendant la lecture : le détail se pose sur le changement d'aujourd'hui ; `lignes: null` si le service n'en dit pas
+    if (lots.reponse) lots.reponse = { lots: lots.reponse.lots.map((l) => (l.id === id ? { ...l, lignes: null, ...detail } : l)) };
+    lots.lectures.delete(id);
+  } catch (e) {
+    lots.lectures.set(id, { etat: 'echec', texte: messageDErreur(e).texte });
+  }
+  rendreLesLots();
+}
+
+/** « Réessayer » : relance la lecture en échec du détail d'un changement d'ancrage. */
+async function relireLeDetailDuRepli(id) {
+  lots.lectures.delete(id);
+  await lireLeDetailDuRepli(id);
 }
 
 /** Relit un seul lot (après un essai, un refus du service) : sa place dans la liste est remplacée. */
@@ -344,7 +384,7 @@ async function clicSurLesLots(bouton) {
   }
   const id = bouton.closest('[data-nv-lot-id]')?.dataset.nvLotId ?? null;
   const sansLot = ['data-nv-recalcul', 'data-nv-ancrage', 'data-nv-ancrage-reprendre', 'data-nv-lots-actualiser'];
-  const action = [...sansLot, 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler-ligne'].find((a) => bouton.hasAttribute(a));
+  const action = [...sansLot, 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-relire', 'data-nv-annuler-ligne'].find((a) => bouton.hasAttribute(a));
   if (!action || (!sansLot.includes(action) && !id)) return;
   lots.occupe = true;
   try {
@@ -356,6 +396,7 @@ async function clicSurLesLots(bouton) {
     else if (action === 'data-nv-appliquer') await appliquerUnLot(id);
     else if (action === 'data-nv-refuser') await refuserUnLot(id);
     else if (action === 'data-nv-essai') await refaireLEssai(id);
+    else if (action === 'data-nv-relire') await relireLeDetailDuRepli(id);
     else await annulerUneLigne(id, Number(bouton.getAttribute('data-nv-annuler-ligne')));
   } finally {
     lots.occupe = false;
