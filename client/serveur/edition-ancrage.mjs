@@ -7,7 +7,7 @@
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
-import { estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
+import { categorieDuType, estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { lireBalises, motCleDeLaRef, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -294,8 +294,8 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     const { db, w } = ctx;
     const nom = TYPE_DE_RUBRIQUE[type];
     if (!nom || !aDesAncres(db, 'page')) return null;
-    const categorie = categoriesDesMotsCles(db).find((c) => normalize(c.libelle) === normalize(nom))?.id;
-    if (categorie === undefined) return null;
+    const categorie = categorieDuType(db, nom); // même renommée au Glossaire
+    if (categorie === null) return null;
     const url = adresseDeLaPage(id);
     if (db.prepare('SELECT 1 FROM mot_cle WHERE url = ?').get(url)) return null;
     ctx.adressesDuLot = null; // la page vient d'être créée : les adresses retenues par le lot ne la connaissent pas

@@ -55,19 +55,54 @@ export function estAncre(db, id) {
 }
 
 /**
- * Les catégories, celles à créer comprises : `idDe(libellé)` (celle en base, ou un id provisoire au-delà des existants, pour que la règle des clés les lise
+ * Les noms qu'ont quittés les catégories renommées : Map(nom normalisé → ids, du plus ancien renommage au plus récent), lus dans l'historique puis le journal. Une catégorie
+ * n'a pas de colonne qui dise son rôle ; son renommage est permis (conception, §7) et sa trace suffit à la retrouver, sans numéro écrit en dur.
+ */
+function nomsQuittesDesCategories(db) {
+  const sortie = new Map();
+  const requetes = [
+    ['historique_modification', "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'categorie_mot_cle' AND operation = 'modifier' ORDER BY fait_le, lot_id, rang"],
+    ['modification', `SELECT m.cle, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+      WHERE m.table_nom = 'categorie_mot_cle' AND m.operation = 'modifier' AND m.etat <> 'conflit' ORDER BY l.fait_le, m.lot_id, m.rang`],
+  ];
+  for (const [table, sql] of requetes) {
+    if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) continue;
+    for (const l of db.prepare(sql).all()) {
+      const quitte = l.avant ? JSON.parse(l.avant).libelle : undefined;
+      if (typeof quitte !== 'string' || quitte === (l.apres ? JSON.parse(l.apres).libelle : undefined)) continue;
+      const nom = normalize(quitte);
+      if (!sortie.has(nom)) sortie.set(nom, []);
+      sortie.get(nom).push(JSON.parse(l.cle).id);
+    }
+  }
+  return sortie;
+}
+
+/** Les catégories en base et `idDe(libellé)` : celle qui porte ce nom, sinon la première qui l'a quitté en étant renommée et qui existe encore ; null sinon. */
+function categoriesEnPlace(db) {
+  const enPlace = categoriesDesMotsCles(db);
+  const parNom = new Map(enPlace.map((c) => [normalize(c.libelle), c.id]));
+  const ids = new Set(enPlace.map((c) => c.id));
+  const quittes = nomsQuittesDesCategories(db);
+  return { enPlace, idDe: (libelle) => parNom.get(normalize(libelle)) ?? quittes.get(normalize(libelle))?.find((id) => ids.has(id)) ?? null };
+}
+
+/** L'id de la catégorie d'un type (`Guide`, `Sort`, un type de rubrique…), même renommée au Glossaire ; null si elle n'existe pas. */
+export const categorieDuType = (db, libelle) => categoriesEnPlace(db).idDe(libelle);
+
+/**
+ * Les catégories, celles à créer comprises : `idDe(libellé)` (celle en base, même renommée, ou un id provisoire au-delà des existants, pour que la règle des clés les lise
  * dans le même ordre), `valeur(id)` (ce qu'un lot écrit : l'id, ou le jeton d'une catégorie à créer), `libelles` (Map id → libellé).
  */
 function lesCategories(db) {
-  const enPlace = categoriesDesMotsCles(db);
-  const parNom = new Map(enPlace.map((c) => [normalize(c.libelle), c.id]));
+  const { enPlace, idDe: idEnPlace } = categoriesEnPlace(db);
   const plusHaut = Math.max(0, ...enPlace.map((c) => c.id));
-  const nouvelles = CATEGORIES_NOUVELLES.filter((l) => !parNom.has(normalize(l))).map((libelle, i) => ({ libelle, jeton: `c${i + 1}`, id: plusHaut + i + 1 }));
-  for (const c of nouvelles) parNom.set(normalize(c.libelle), c.id);
+  const nouvelles = CATEGORIES_NOUVELLES.filter((l) => idEnPlace(l) === null).map((libelle, i) => ({ libelle, jeton: `c${i + 1}`, id: plusHaut + i + 1 }));
+  const nouvelleDe = new Map(nouvelles.map((c) => [normalize(c.libelle), c.id]));
   const jetons = new Map(nouvelles.map((c) => [c.id, { $numero: c.jeton }]));
   return {
     nouvelles,
-    idDe: (libelle) => parNom.get(normalize(libelle)) ?? null,
+    idDe: (libelle) => idEnPlace(libelle) ?? nouvelleDe.get(normalize(libelle)) ?? null,
     valeur: (id) => jetons.get(id) ?? id,
     libelles: new Map([...enPlace, ...nouvelles].map((c) => [c.id, c.libelle])),
   };
