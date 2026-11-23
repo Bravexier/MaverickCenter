@@ -660,7 +660,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         return consigner({ ...base, etat: 'refusee', message: illisible });
       }
       const vu = suite ? net : juge.vu(net, actuelle); // la ligne à la forme actuelle de ses balises : l'écriture compare à ce que le juge a vu
-      const jugement = suite ? jugerApresLeRecalcul(net, actuelle, lectureFinale) : jugerLAnnulation(vu, actuelle);
+      const jugement = suite && net.genre === 'modifier' ? jugerApresLeRecalcul(net, actuelle, lectureFinale) : jugerLAnnulation(vu, actuelle);
       const imprevues = new Map(); // colonnes que le service a recalculées vers une troisième valeur pendant la remise : gardées aussi
       const plus = () => {
         const ecarts = [...jugement.gardees, ...imprevues.values()];
@@ -689,7 +689,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         imprevues.set('cle', { colonne: 'cle', ecrite: net.fin.cle ?? null, avant: net.origine.cle ?? null, trouvee: actuelle.cle ?? null });
         return noter('gardee');
       }
-      if (renvoiDUneCleGardee(db, juge, nets, net)) return noter('gardee', { raison: 'cle_gardee', message: 'Le mot-clé garde sa clé : le renvoi depuis l’ancienne reste.' });
+      if (estUnRenvoiDeCle(nets, net)) return noter('gardee', { raison: 'cle_gardee', message: MOTIF_DU_RENVOI }); // encore là : sa clé n'est pas revenue
       const { ops, refus } = operationsDeLAnnulation(db, vu, jugement);
       if (refus) return refuser(refus);
       // une colonne que le service recalcule depuis une autre (la clé d'un mot-clé, après son libellé) est déjà revenue quand on la remet : on ne l'écrit pas
@@ -704,7 +704,9 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       plan.filter((n) => n.genre === 'supprimer').forEach((net) => remettre(net));
       const lecture = lectureDesBalises(motsClesDeLaBase(db), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
       // une ligne d'un groupe gardé ne se coupe pas en deux : elle est notée une fois, entière
-      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) ? { net, dabord: net, ensuite: null } : { net, ...partiesDeLaRemise(net, lecture) }));
+      // le renvoi d'une clé quittée se juge après le recalcul, qui le retire si la clé revient
+      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) ? { net, dabord: net, ensuite: null }
+        : estUnRenvoiDeCle(nets, net) ? { net, dabord: null, ensuite: net } : { net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
       lectureFinale = lectureDesBalises(motsClesDeLaBase(db));
@@ -729,13 +731,17 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
 }
 
 /**
- * L'annulation remet-elle ce qui fait les clés sans passer par le service qui les recalcule ? Une ligne de `mot_cle_categorie`, une ancre, ou le nom d'un mot-clé
- * dans un lot qui a aligné : ses lignes se remettent alors sans recalcul, et les clés une seule fois ensuite (`changeUneCle`, à l'aller).
+ * L'annulation remet-elle ce qui fait les clés sans passer par le service qui les recalcule ? Une ligne de `mot_cle_categorie`, une ancre, le nom d'une magie dont des sorts
+ * sont ancrés, une ligne de `mot_cle` qui porte sa clé sans son nom (Ruling T8-annulation-recalcul), ou le nom d'un mot-clé dans un lot qui a aligné : ses lignes se remettent
+ * alors sans recalcul, et les clés une seule fois ensuite (`changeUneCle`, à l'aller). La clé n'est jamais écrite.
  */
 function annulationAuRecalculDiffere(db, depose, plan) {
   if (plan.some((n) => n.table === 'mot_cle_categorie' || estUneAncre(n))) return true;
-  // la clé d'un voisin ne s'écrit jamais : l'annulation du lot la laisse au recalcul (une ligne seule est refusée dans `remettre`)
-  if (!depose.lignes && plan.some(estUneCleRecalculee)) return true;
+  // une ligne de clé seule, demandée seule, est refusée dans `remettre` : elle n'a rien à recalculer
+  if (plan.some((n) => porteLaCleSansLeNom(n) && !(depose.lignes && estUneCleRecalculee(n)))) return true;
+  // même condition que `parentChange` à l'aller (edition-ancrage.mjs#suivreLesElements) : la clé des sorts homonymes dépend du nom de leur magie
+  if (plan.some((n) => n.table === 'magie' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'nom')
+    && db.prepare('SELECT 1 FROM sort WHERE magie_id = ? AND mot_cle_id IS NOT NULL LIMIT 1').get(n.cle.id))) return true;
   if (!plan.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'libelle'))) return false;
   return (jsonOuNull(ligneDuLot(db, depose.id)?.contenu)?.operations ?? []).some((o) => o.ancrage?.aligner === true);
 }
@@ -745,14 +751,16 @@ const estUneCleRecalculee = (n) => n.table === 'mot_cle' && n.genre === 'modifie
 const MOTIF_DE_LA_CLE_RECALCULEE = 'Seule sa clé a changé, recalculée par le site : elle revient avec la ligne qui l’a causée, ou avec l’annulation du lot.';
 /** Une ligne de `mot_cle` qui portait plus que la clé, et dont il ne reste que la clé à remettre : son nom a changé depuis, la clé suit le nom du moment. */
 const resteSeulementLaCle = (n, jugement) => n.table === 'mot_cle' && n.genre === 'modifier' && !estUneCleRecalculee(n) && jugement.remises.length === 1 && jugement.remises[0] === 'cle';
+/** Une ligne de `mot_cle` dont la clé a changé sans son nom : un voisin ou un parent l'a causé, seul le recalcul la ramène. */
+const porteLaCleSansLeNom = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'cle') && !Object.hasOwn(n.fin, 'libelle');
 
-/** Le renvoi depuis la clé qu'un mot-clé a quittée, quand ce mot-clé garde sa clé du lot (`resteSeulementLaCle`) : il ne l'a pas retrouvée, le renvoi reste utile. */
-function renvoiDUneCleGardee(db, juge, nets, net) {
-  if (net.table !== 'mot_cle_ancienne_cle' || net.genre !== 'inserer') return false;
-  const motCle = nets.find((n) => n.table === 'mot_cle' && n.genre === 'modifier' && n.cle.id === net.fin.mot_cle_id);
-  const actuelle = motCle ? lireLigne(db, 'mot_cle', motCle.cle) : null;
-  return Boolean(actuelle) && resteSeulementLaCle(motCle, jugerLAnnulation(juge.vu(motCle, actuelle), actuelle));
-}
+/**
+ * Le renvoi noté par le recalcul quand un mot-clé du lot a quitté sa clé. Il suit cette clé : le recalcul le retire quand elle revient ; tant qu'il est là, le mot-clé ne l'a
+ * pas retrouvée et le renvoi reste utile. Une ligne de `mot_cle_ancienne_cle` que le lot a écrite pour elle-même n'en est pas un.
+ */
+const estUnRenvoiDeCle = (nets, net) => net.table === 'mot_cle_ancienne_cle' && net.genre === 'inserer'
+  && nets.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && n.cle.id === net.fin.mot_cle_id && Object.hasOwn(n.fin, 'cle'));
+const MOTIF_DU_RENVOI = 'Ce renvoi suit la clé du mot-clé : il part quand elle revient, et reste tant qu’elle n’est pas revenue.';
 
 /** Une ligne de l'effet net qui a posé l'ancre d'une page, d'un sort ou d'un type de sort. */
 const estUneAncre = (n) => n.genre === 'modifier' && TABLES_ANCRABLES.includes(n.table) && Object.hasOwn(n.fin, 'mot_cle_id');
@@ -1216,13 +1224,13 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       const cleRecalculee = ligne.etat === 'applique' && !motifDuGroupe && jugement.remises.length > 0 && estUneCleRecalculee(net);
       const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length || cleSeule ? 'en_place' : 'comme_avant';
       const sansRemise = !jugement.remises.length || resteSeulementLaCle(net, jugement); // une clé ne se remet pas : il ne reste rien à remettre sur cette ligne
-      const renvoiGarde = ligne.etat === 'applique' && !motifDuGroupe && renvoiDUneCleGardee(db, juge, nets, net);
+      const renvoiGarde = ligne.etat === 'applique' && !motifDuGroupe && Boolean(actuelle) && estUnRenvoiDeCle(nets, net);
       const tenue = motifDuGroupe || cleSeule || cleRecalculee || renvoiGarde ? [] : tenueDe(net.rang);
       let motif = null;
       if (motifDuGroupe) motif = motifDuGroupe;
       else if (cleSeule) motif = MOTIF_DE_LA_CLE_SEULE;
       else if (cleRecalculee) motif = MOTIF_DE_LA_CLE_RECALCULEE;
-      else if (renvoiGarde) motif = 'Le mot-clé garde sa clé : le renvoi depuis l’ancienne reste.';
+      else if (renvoiGarde) motif = MOTIF_DU_RENVOI;
       else if (sansRemise) motif = motifSansRemise(etat);
       else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
       else if (tenue.length) motif = `Cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}.`;
