@@ -1085,7 +1085,7 @@ export function lignesEnAttente(db, { tables, pourLesPages = false } = {}) {
   for (const m of toutes) {
     if (tables && !tables.includes(m.table_nom)) continue;
     if (pourLesPages && TABLES_DU_VOCABULAIRE.has(m.table_nom)) continue;
-    const k = `${m.table_nom} ${m.cle}`;
+    const k = `${m.table_nom}\u0000${m.cle}`;
     if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer', seulementMotCle: true });
     const apres = m.apres ? JSON.parse(m.apres) : null;
     if (!(m.operation === 'modifier' && m.etat === 'en_attente' && apres && Object.keys(apres).join() === 'mot_cle_id')) vues.get(k).seulementMotCle = false;

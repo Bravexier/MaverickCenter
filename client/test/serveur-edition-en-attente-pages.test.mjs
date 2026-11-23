@@ -1,7 +1,7 @@
-// GET /api/edition/en-attente/ (R309, T13) : ce que la surcouche des pages a Ã  rÃ©Ã©crire. Les quatre lots d'ancrage laissent 4 403 lignes en attente (3,6 Mo) ; chaque
-// page les rejouait une Ã  une (28 Ã  42 s de blocage sur le Glossaire). N'en partent plus : les lignes du vocabulaire (les pages les lisent en direct : GET
-// edition/listes/, edition/mots-cles/) et celles de `page`, `sort`, `type_sort` dont toutes les modifications ne font qu'Ã©crire `mot_cle_id`. Base d'essai minimale,
-// ids inventÃ©s ; `lignesEnAttente(db)` sans option garde son sens (les autres tests du journal).
+// GET /api/edition/en-attente/ (R309, T13) : ce que la surcouche des pages a à réécrire. Les quatre lots d'ancrage laissent 4 403 lignes en attente (3,6 Mo) ; chaque
+// page les rejouait une à une (28 à 42 s de blocage sur le Glossaire). N'en partent plus : les lignes du vocabulaire (les pages les lisent en direct : GET
+// edition/listes/, edition/mots-cles/) et celles de `page`, `sort`, `type_sort` dont toutes les modifications ne font qu'écrire `mot_cle_id`. Base d'essai minimale,
+// ids inventés ; `lignesEnAttente(db)` sans option garde son sens (les autres tests du journal).
 //   node --test test/serveur-edition-en-attente-pages.test.mjs
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -41,17 +41,17 @@ function base() {
 const cles = (lignes) => lignes.map((l) => `${l.table}:${JSON.stringify(l.cle)}`).sort();
 const pourLesPages = (db) => lignesEnAttente(db, { pourLesPages: true });
 
-test('une ligne dont la seule modification Ã©crit mot_cle_id ne part pas, pour page, sort et type_sort', () => {
+test('une ligne dont la seule modification écrit mot_cle_id ne part pas, pour page, sort et type_sort', () => {
   const { db, noter } = base();
   noter('L1', 'page', { id: 'essai/a' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 1 } });
   noter('L1', 'sort', { id: 'essai#sort:s1' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 7 } });
   noter('L1', 'type_sort', { id: 1 }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 9 } });
   assert.deepEqual(pourLesPages(db), []);
-  assert.equal(lignesEnAttente(db).length, 3, 'sans lâ€™option, le sens dâ€™avant : les trois lignes sont lÃ ');
+  assert.equal(lignesEnAttente(db).length, 3, 'sans l’option, le sens d’avant : les trois lignes sont là');
   assert.equal(lignesEnAttente(db, { tables: ['page'] }).length, 1);
 });
 
-test('la mÃªme ligne avec une autre colonne, dans le mÃªme lot ou un autre, part, avec son aperÃ§u pour une page du guide', () => {
+test('la même ligne avec une autre colonne, dans le même lot ou un autre, part, avec son aperçu pour une page du guide', () => {
   const { db, noter } = base();
   noter('L1', 'page', { id: 'guide/essai-d' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 4 } });
   noter('L2', 'page', { id: 'guide/essai-d' }, 'modifier', { avant: { corps_md: 'avant' }, apres: { corps_md: 'd' }, apercu: ['<p>d</p>'] });
@@ -67,14 +67,14 @@ test('la mÃªme ligne avec une autre colonne, dans le mÃªme lot ou un autre, 
   assert.equal(page.creee, false);
 });
 
-test('une page crÃ©Ã©e puis ancrÃ©e part ; une page supprimÃ©e part avec ligne: null ; un conflit Ã  reprendre part', () => {
+test('une page créée puis ancrée part ; une page supprimée part avec ligne: null ; un conflit à reprendre part', () => {
   const { db, noter } = base();
   noter('L1', 'page', { id: 'essai/a' }, 'inserer', { apres: { id: 'essai/a', titre: 'A' } });
   noter('L2', 'page', { id: 'essai/a' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 1 } });
   db.prepare("DELETE FROM page WHERE id = 'essai/b'").run();
   noter('L1', 'page', { id: 'essai/b' }, 'supprimer', { avant: { id: 'essai/b' } });
-  noter('L2', 'page', { id: 'essai/c' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 3 }, etat: 'conflit', detail: `la valeur a changÃ©${MARQUE_DE_REPRISE}{"issue":"garde"}}` });
-  // un conflit sans reprise (lot annulÃ©) n'est pas Ã  rejouer
+  noter('L2', 'page', { id: 'essai/c' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 3 }, etat: 'conflit', detail: `la valeur a changé${MARQUE_DE_REPRISE}{"issue":"garde"}}` });
+  // un conflit sans reprise (lot annulé) n'est pas à rejouer
   noter('L2', 'page', { id: 'essai/e' }, 'modifier', { avant: { mot_cle_id: null }, apres: { mot_cle_id: 5 }, etat: 'conflit', detail: 'conflit simple' });
   const lignes = pourLesPages(db);
   assert.deepEqual(cles(lignes), ['page:{"id":"essai/a"}', 'page:{"id":"essai/b"}', 'page:{"id":"essai/c"}']);
@@ -83,7 +83,7 @@ test('une page crÃ©Ã©e puis ancrÃ©e part ; une page supprimÃ©e part avec
   assert.equal(lignes.find((l) => l.cle.id === 'essai/c').ligne.mot_cle_id, 3);
 });
 
-test('aucune ligne des cinq tables du vocabulaire ne part, crÃ©Ã©e, modifiÃ©e ou supprimÃ©e', () => {
+test('aucune ligne des cinq tables du vocabulaire ne part, créée, modifiée ou supprimée', () => {
   const { db, noter } = base();
   noter('L1', 'mot_cle', { id: 1 }, 'modifier', { avant: { libelle: 'x' }, apres: { libelle: 'M1' } });
   noter('L1', 'mot_cle', { id: 3 }, 'inserer', { apres: { id: 3, libelle: 'M3' } });

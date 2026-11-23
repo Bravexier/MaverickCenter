@@ -18,5 +18,5 @@ export function rejouerLesLignes(lignes, ed, { extensions, document, elementsDe,
     if (ligne) for (const el of elementsDe(table, cle)) if (!estEdite(el)) rendre(el, ligne);
     for (const x of actives) x.ligne?.(ed, table, cle, ligne);
   }
-  if (!ed.enEdition) cadres();
+  if (lignes.length && !ed.enEdition) cadres(); // aucune ligne en attente : rien n'a changé, les cadres restent comme la page les a construits
 }

@@ -77,3 +77,10 @@ test('l’éditeur rejoue ses lignes en attente par ce module, et lui seul (appl
   assert.doesNotMatch(editeur, /for \(const l of enAttente\.lignes\) appliquerLigne/);
   assert.match(editeur, /for \(const l of r\.lignes\) appliquerLigne\(l\.table, l\.cle, l\.ligne\)/, 'après un enregistrement : comportement d’avant');
 });
+
+test('une liste vide n’appelle pas cadres (l’ancien rejeu n’y touchait pas)', () => {
+  const { ed, compte, sorties } = essai({ extensions: [{}] });
+  rejouerLesLignes([], ed, sorties);
+  assert.equal(compte.cadres, 0);
+  assert.equal(compte.elementsDe, 0);
+});
