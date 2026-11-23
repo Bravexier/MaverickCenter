@@ -28,6 +28,7 @@ import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { retirerLeMotCleDeLaPage } from './aide-ancrage.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -83,8 +84,10 @@ test('créer une page des Règles : corps « À compléter. », brouillon, famil
   assert.match(page.source_ref, /^Site de dev › édition du \d{4}-\d{2}-\d{2}$/);
   assert.equal(db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?').get(id).texte, page.source_ref);
   assert.deepEqual({ ...entreeDe(db, id) }, { id: `page:${id}`, onglet_id: 'combats', rang: fin + 1, page_id: id, libelle: null, adresse: null });
+  // sur un contenu ancré (R309), la page reçoit aussi son mot-clé, dans le même lot
+  const sonMotCle = page.mot_cle_id === null ? [] : ['mot_cle inserer', 'mot_cle_categorie inserer', 'page modifier'];
   assert.deepEqual(db.prepare('SELECT table_nom, operation FROM modification WHERE lot_id = ? ORDER BY rang').all(r.lot).map((m) => `${m.table_nom} ${m.operation}`).filter((m) => !m.startsWith('source ')),
-    ['page inserer', 'page_source inserer', 'regles_onglet_entree inserer'], 'un lot : la page, sa source, son entrée');
+    ['page inserer', 'page_source inserer', ...sonMotCle, 'regles_onglet_entree inserer'], 'un lot : la page, sa source, son mot-clé s’il y a lieu, son entrée');
 
   const nombre = db.prepare('SELECT count(*) AS n FROM modification').get().n;
   const refus = [
@@ -198,6 +201,7 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   // une page créée, citée par une autre page créée : refusée tant que le lien reste. Depuis la migration 0098, un lien est la balise d'un mot-clé qui
   // mène à la page : le mot-clé (son adresse) et la balise la citent tous les deux
   const cible = ok(creer(lot, { titre: titreLibre(db, 'Page citée d’essai'), onglet_id: 'combats', resume: 'Citée.' })).crees[0].id;
+  retirerLeMotCleDeLaPage(db, cible); // ce test pose lui-même le mot-clé qui mène à la page
   const titreCible = db.prepare('SELECT titre FROM page WHERE id = ?').get(cible).titre;
   const citante = ok(creer(lot, { titre: titreLibre(db, 'Page qui cite d’essai'), onglet_id: 'combats', resume: 'Cite.' })).crees[0].id;
   assert.equal(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]).statut, 400, 'aucun mot-clé ne mène à la page');

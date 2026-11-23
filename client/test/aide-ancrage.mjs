@@ -80,6 +80,15 @@ export function poserSort(db, magieId, nom, { effets = null, types = ['attaque']
   return id;
 }
 
+/** Sur un contenu ancré, une page créée sur le site reçoit son mot-clé (R309) : le retire de cette copie, pour un test qui parle d'une page sans mot-clé. Sans effet sur une base sans ancre. */
+export function retirerLeMotCleDeLaPage(db, pageId) {
+  const motCle = db.prepare('SELECT mot_cle_id AS id FROM page WHERE id = ?').get(pageId)?.id ?? null;
+  if (motCle === null) return;
+  db.prepare('UPDATE page SET mot_cle_id = NULL WHERE id = ?').run(pageId);
+  db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(motCle);
+  db.prepare('DELETE FROM mot_cle WHERE id = ?').run(motCle);
+}
+
 /** Les opérations de la famille `famille` du plan (vide si le lot est absent). */
 export const operationsDe = (plan, famille) => plan.lots.find((l) => l.famille === famille)?.operations ?? [];
 

@@ -143,7 +143,10 @@ testDeLaMixte('anciennes graphies disparues des textes (hors traces de la source
       // un portrait (migration 0033) est une image en base64, pas un texte
       .filter((c) => c.type === 'TEXT' && !/(_id|^id|_cle|^cle|^slug|^source_ref|^origine|^onglet|^portrait)$/.test(c.name) && !TRACES.includes(`${t}.${c.name}`));
     for (const col of cols) {
-      for (const { v } of db.prepare(`SELECT "${col.name}" AS v FROM "${t}" WHERE "${col.name}" IS NOT NULL`).all()) {
+      // l'adresse d'un mot-clé ancré (R309) est la copie de celle de son élément, figée jusqu'au chantier 2 ; celle d'un mot-clé sans élément reste contrôlée
+      const sansCopie = t === 'mot_cle' && col.name === 'url'
+        ? ' AND id NOT IN (SELECT mot_cle_id FROM page WHERE mot_cle_id IS NOT NULL UNION SELECT mot_cle_id FROM sort WHERE mot_cle_id IS NOT NULL)' : '';
+      for (const { v } of db.prepare(`SELECT "${col.name}" AS v FROM "${t}" WHERE "${col.name}" IS NOT NULL${sansCopie}`).all()) {
         // les tableaux d'écarts des races citent la fiche telle quelle ; « Veilliessement » reste le nom écrit dans la liste de la momie (sort_nom_brut, non rapproché)
         const texte = t === 'page' && col.name === 'corps_md' ? v.split('\n').filter((l) => !/^\| .*\| .*\| .*\|$/.test(l) || !/V15\.2\.2|fiche :/.test(l)).join('\n') : v;
         for (const f of fautes) {

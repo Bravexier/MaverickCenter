@@ -75,9 +75,9 @@ test('mentions : chaque référence de la base est une mention du mot-clé (`ref
     assert.deepEqual(m.map((x) => x.cle), [{ id: g.id }]);
     assert.equal(m[0].page?.id, g.id, 'la page de la magie nomme la mention');
   }
-  // la liste des références est celle des mentions, sans écart
+  // la liste des références est celle des mentions, sans écart (sur un contenu ancré, ces mots-clés sont aussi référencés par leurs pages : R309)
   const ids = [...new Set([...types, ...magies].map((x) => x.mot_cle_id))];
-  assert.equal(referencesDesMotsCles(s.db, ids).length, types.length + magies.length);
+  assert.equal(referencesDesMotsCles(s.db, ids).filter((r) => r.table === 'type_degats' || r.table === 'magie').length, types.length + magies.length);
   assert.deepEqual(referencesDesMotsCles(s.db, []), []);
   s.db.close();
 });
@@ -104,8 +104,9 @@ test('suppression d’un mot-clé de magie : refusée (verrou ou référence), l
   const s = nouvelle();
   const g = s.ligne('SELECT id, mot_cle_id FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id');
   refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: g.mot_cle_id }, forcer: true }]), 'forcée');
-  // un mot-clé de magie déverrouillé dans la copie est refusé pour sa référence, par un message qui nomme la magie
+  // un mot-clé de magie déverrouillé dans la copie est refusé pour sa référence, par un message qui nomme la magie (l'ancre de sa page, R309, retirée pour ne lire que celle-là)
   s.db.prepare('UPDATE mot_cle SET verrou = 0 WHERE id = ?').run(g.mot_cle_id);
+  s.db.prepare('UPDATE page SET mot_cle_id = NULL WHERE mot_cle_id = ?').run(g.mot_cle_id);
   const corps = refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: g.mot_cle_id } }]), 'sans verrou');
   assert.deepEqual(corps.references.map((r) => [r.table, r.id]), [['magie', g.id]]);
   assert.equal(s.ligne('SELECT mot_cle_id FROM magie WHERE id = ?', g.id).mot_cle_id, g.mot_cle_id);
