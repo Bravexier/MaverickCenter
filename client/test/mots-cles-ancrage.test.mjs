@@ -354,6 +354,63 @@ test('un renommage annulé revient au plan d’une page déjà ancrée, sauf si 
   assert.deepEqual(ecarte.ecartees, [`nom:${m}`]);
 });
 
+test('un sort ancré dont le nom a quitté son mot-clé (retiré, renommé, remis) : l’alignement est proposé, puis plus rien', () => {
+  const db = baseComplete();
+  const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
+  const sort = poserSort(db, magie, 'Souffle nouveau', { types: ['soin'] });
+  const m = poserMotCle(db, { libelle: 'Souffle ancien', url: adresseDuSort(sort), categories: ['Sort'] });
+  const t = poserMotCle(db, { libelle: 'Soin', categories: ['Type de sort'] });
+  db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(m, sort);
+  db.prepare("UPDATE type_sort SET mot_cle_id = ? WHERE id = 'soin'").run(t);
+  const plan = planDeLAncrage(db);
+  assert.deepEqual(alignementDe(plan, m).apres, { libelle: 'Souffle nouveau' });
+  assert.equal(ancreDe(plan, 'sort', sort), undefined, 'déjà ancré');
+  assert.equal(plan.comptes.renommes, 1);
+  appliquerEnSql(db, plan.lots[0]);
+  assert.deepEqual(planDeLAncrage(db).lots, []);
+  const ecarte = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
+  assert.deepEqual(ecarte.lots, [], 'aligné : plus rien à écarter');
+  db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run('Souffle encore', sort);
+  const ecarteApres = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
+  assert.deepEqual([ecarteApres.lots, ecarteApres.ecartees], [[], [`sort:${sort}`]], 'une ligne annulée reste écartée');
+});
+
+test('un sort ancré dont le nom est le synonyme d’un autre mot-clé : à trancher, son mot-clé ne bouge pas', () => {
+  const db = baseComplete();
+  poserMotCle(db, { libelle: 'Zéphyr règle', categories: ['Règles'], synonymes: ['Souffle pris'] });
+  const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
+  const sort = poserSort(db, magie, 'Souffle pris', { types: ['soin'] });
+  const m = poserMotCle(db, { libelle: 'Souffle ancien', url: adresseDuSort(sort), categories: ['Sort'] });
+  const t = poserMotCle(db, { libelle: 'Soin', categories: ['Type de sort'] });
+  db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(m, sort);
+  db.prepare("UPDATE type_sort SET mot_cle_id = ? WHERE id = 'soin'").run(t);
+  const plan = planDeLAncrage(db);
+  assert.equal(alignementDe(plan, m), undefined);
+  assert.ok(aTrancher(plan, 'sort', sort), JSON.stringify(plan.a_trancher));
+  assert.deepEqual(plan.lots, []);
+});
+
+test('un type de sort ancré suit l’écriture unique de ses sorts ; écrit de deux façons : à trancher ; celui qui reprend un mot-clé garde son nom', () => {
+  const db = baseComplete();
+  const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
+  const s1 = poserSort(db, magie, 'Souffle un', { types: ['soin', 'attaque', 'meteo'] });
+  const s2 = poserSort(db, magie, 'Souffle deux', { types: ['attaque'] });
+  for (const s of [s1, s2]) {
+    const n = db.prepare('SELECT nom FROM sort WHERE id = ?').get(s).nom;
+    db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(poserMotCle(db, { libelle: n, url: adresseDuSort(s), categories: ['Sort'] }), s);
+  }
+  const soin = poserMotCle(db, { libelle: 'Soin ancien', categories: ['Type de sort'] });
+  const attaque = poserMotCle(db, { libelle: 'Attaque', categories: ['Type de sort'] });
+  const meteo = poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', url: '/regles/zephyr-meteo/', categories: ['Type de sort'] });
+  for (const [code, id] of [['soin', soin], ['attaque', attaque], ['meteo', meteo]]) db.prepare('UPDATE type_sort SET mot_cle_id = ? WHERE id = ?').run(id, code);
+  db.prepare("UPDATE sort_type SET libelle = 'Attaques' WHERE sort_id = ? AND type = 'attaque'").run(s2);
+  const plan = planDeLAncrage(db);
+  assert.deepEqual(alignementDe(plan, soin).apres, { libelle: 'Soin' });
+  assert.equal(alignementDe(plan, attaque), undefined);
+  assert.match(aTrancher(plan, 'type_sort', 'attaque').raison, /Attaque, Attaques|Attaques, Attaque/);
+  assert.equal(alignementDe(plan, meteo), undefined, 'il reprend un mot-clé : son nom ne suit pas');
+});
+
 test('une clé écartée est sautée et listée', () => {
   const db = baseComplete();
   const page = poserPage(db, 'capacites/zephyr-un', 'Frappe de Zéphyr');

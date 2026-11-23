@@ -326,7 +326,14 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
 
   const typeDesSorts = categories.idDe(TYPE_D_UN_SORT);
   for (const s of db.prepare('SELECT s.id, s.nom, s.mot_cle_id, m.nom AS parent FROM sort s JOIN magie m ON m.id = s.magie_id ORDER BY s.id').all()) {
-    if (s.mot_cle_id !== null) continue;
+    if (s.mot_cle_id !== null) {
+      // un sort ancré se relit comme une page ancrée : son mot-clé reprend son nom et son adresse, sauf si la règle le refuse (à trancher) ; une page qui le tient décide de son nom
+      const m = parId.get(s.mot_cle_id);
+      const adresse = adresseDuSort(s.id);
+      if (!m || !normalize(s.nom) || pris.has(m.id) || (m.libelle === s.nom && (m.url ?? null) === adresse) || !retenu(`sort:${s.id}`)) continue;
+      elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse, mot_cle: m.id, ancrer: false, aligner: retenu(`nom:${m.id}`), famille: 'noms' });
+      continue;
+    }
     if (typeDesSorts === null || !normalize(s.nom)) trancher('sort', s.id, s.nom, typeDesSorts === null ? `le type « ${TYPE_D_UN_SORT} » n’existe plus` : 'son nom n’a ni lettre ni chiffre');
     else if (retenu(`sort:${s.id}`)) elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse: adresseDuSort(s.id), mot_cle: null, type: typeDesSorts, parent: s.parent, famille: 'sorts' });
   }
@@ -335,8 +342,18 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
   const typeDesTypes = categories.idDe(TYPE_D_UN_TYPE_DE_SORT);
   for (const t of db.prepare('SELECT id, mot_cle_id FROM type_sort ORDER BY id').all()) {
     const noms = ecritures.get(t.id);
-    if (t.mot_cle_id !== null || !noms) continue;
+    if (!noms) continue;
     const cle = `type_sort:${t.id}`;
+    if (t.mot_cle_id !== null) {
+      // un type ancré se relit de même, sauf celui qui reprend un mot-clé (il garde son nom, décision 3) ; il n'a pas d'adresse : celle du mot-clé reste
+      const m = parId.get(t.mot_cle_id);
+      if (!m || t.id === TYPE_REPRIS.code || pris.has(m.id)) continue;
+      if (noms.length > 1) trancher('type_sort', t.id, m.libelle, `ses sorts l’écrivent de plusieurs façons : ${noms.join(', ')}`);
+      else if (m.libelle !== noms[0] && normalize(noms[0]) && retenu(cle)) {
+        elements.push({ cle, table: 'type_sort', id: t.id, nom: noms[0], adresse: m.url ?? null, mot_cle: m.id, ancrer: false, aligner: retenu(`nom:${m.id}`), famille: 'noms' });
+      }
+      continue;
+    }
     if (t.id === TYPE_REPRIS.code) {
       const m = parId.get(TYPE_REPRIS.mot_cle);
       if (!m) trancher('type_sort', t.id, noms[0], `le mot-clé repris #${TYPE_REPRIS.mot_cle} a disparu`);
