@@ -274,7 +274,7 @@ function compter(texte) {
 const vocabulaire = (elements = {}) => new Map(items.map((m) => [m.id, { libelle: m.libelle, synonymes: m.synonymes, definition: m.definition, element: elements[m.id] ?? null }]));
 
 /** La vue d'un mot-clé (lib/recherche-mots-cles.mjs#vueDuMotCle) : son titre, sa définition, son élément et ses pages ; ou « Ce mot-clé n'existe plus ». */
-function montrer(v, id) {
+function montrer(v, id, { detail = true } = {}) {
   vuePages.hidden = true;
   definir(id, v.existe ? v.definition : '');
   if (!v.existe) {
@@ -288,8 +288,10 @@ function montrer(v, id) {
   montrerLElement(v.element);
   vuePages.replaceChildren(...v.pages.map(ligneDElement));
   vuePages.hidden = v.pages.length === 0;
-  // l'élément dit d'où vient le mot-clé : sans page qui le cite, rien de plus à compter (jamais « Aucune page » pour un sort ou une page ancrés)
-  compter(v.pages.length ? `${nombre(v.pages.length, 'page', 'pages')}.` : v.element ? '' : 'Aucune page ne porte ni ne cite ce mot-clé.');
+  // l'élément dit d'où vient le mot-clé : sans page qui le cite, rien de plus à compter (jamais « Aucune page » pour un sort ou une page ancrés) ; sans le
+  // fichier des éléments (`detail` faux), on ne sait pas s'il en a un : jamais « Aucune page » non plus
+  compter(v.pages.length ? `${nombre(v.pages.length, 'page', 'pages')}.`
+    : v.element ? '' : detail ? 'Aucune page ne porte ni ne cite ce mot-clé.' : 'Le détail de ce mot-clé n’a pas pu être chargé.');
   document.title = `${titreVue.textContent.replace(/\s+/g, ' ')} — ${titreDeLaPage}`; // une icône n'a pas de texte
 }
 
@@ -305,16 +307,18 @@ async function afficherLeMotCle() {
   montrerLElement(null);
   compter('Chargement…');
   vuePages.hidden = true;
+  // les deux fichiers se chargent ensemble ; l'élément complète la vue, il ne l'empêche pas : sans lui, les pages s'affichent (le prochain essai le relira)
+  const lesElements = chargerLesElements().catch(() => null);
   let donnees;
-  let elements;
   try {
-    [donnees, elements] = await Promise.all([chargerIndex(), chargerLesElements()]);
+    donnees = await chargerIndex();
   } catch {
     if (demande === demandes) compter('Impossible de charger l’index de recherche.');
     return;
   }
+  const elements = await lesElements;
   if (demande !== demandes || motCle !== cle) return;
-  montrer(vueDuMotCle(donnees, id, vocabulaire(elements)), id);
+  montrer(vueDuMotCle(donnees, id, vocabulaire(elements ?? {})), id, { detail: elements !== null });
 }
 
 /** Affiche l'état de l'adresse : la vue d'un mot-clé, ou la liste des mots-clés et la recherche. */

@@ -2170,7 +2170,7 @@ exactement la taille du disque. Deux mesures, **avec les mêmes clés** :
 | `mises-a-jour` | Mises à jour | Lots figés de la page « Mise à jour » (`db/mise-a-jour/`) | Oui | Oui |
 | `metriques` | Métriques | Le dossier des métriques (`prod.db`, `dev.db`, leur `-wal`, `volume-hote.json`) | Oui | Oui (une fois, sans instance) |
 | `site-code` | Code du site | `_serveur/` et `.html`, `.js`, `.mjs`, `.cjs`, `.css`, `.json`, `.map` | Oui | Oui |
-| `site-donnees` | Données du site | `donnees/` hors pages `.html` (bases des règles et de la production), toute `.db`, `search-index.json`, `fiche/regles.json` | Oui | Oui |
+| `site-donnees` | Données du site | `donnees/` hors pages `.html` (bases des règles et de la production), toute `.db`, `search-index.json`, `search-elements.json`, `fiche/regles.json` | Oui | Oui |
 | `site-images` | Images du site | `.png`, `.webp`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.ico`, `.avif` hors portraits | Oui | Oui |
 | `site-autres` | Autres fichiers du site | Polices, textes… ; l'hôte y ajoute le reste du dossier de l'instance (`docker-compose.yml`, `nginx.conf`, `.env`, scripts, dossiers) | Oui | Oui |
 | `docker` | Docker (images et conteneurs) | Le dossier de Docker (`docker info` : `DockerRootDir`, `/var/lib/docker`), sans changer de disque, moins les journaux des conteneurs | — | Oui |

@@ -927,7 +927,7 @@ export function octetsSurDisque(stat) {
 /**
  * La catégorie d'un fichier du site construit (REPARTITION), d'après son chemin relatif au dossier du site (« / » comme séparateur) :
  * _serveur/… → site-code ; une image sous un dossier « portraits » (bestiaire/portraits/<empreinte>.webp : lib/portraits-publies.mjs) → images
- * (importées) ; donnees/ hors pages .html, un .db, search-index.json, fiche/regles.json → site-donnees ; une autre image → site-images ; .html, .js,
+ * (importées) ; donnees/ hors pages .html, un .db, search-index.json, search-elements.json, fiche/regles.json → site-donnees ; une autre image → site-images ; .html, .js,
  * .mjs, .cjs, .css, .json, .map → site-code ; le reste → site-autres.
  */
 export function categorieDuFichierDuSite(relatif) {
@@ -937,7 +937,7 @@ export function categorieDuFichierDuSite(relatif) {
   const point = nomFichier.lastIndexOf('.');
   const extension = point > 0 ? nomFichier.slice(point + 1).toLowerCase() : '';
   if (EXTENSIONS_IMAGES.has(extension) && /(^|\/)portraits\//.test(chemin)) return 'images';
-  if ((chemin.startsWith('donnees/') && extension !== 'html') || extension === 'db' || nomFichier === 'search-index.json' || chemin === 'fiche/regles.json') return 'site-donnees';
+  if ((chemin.startsWith('donnees/') && extension !== 'html') || extension === 'db' || nomFichier === 'search-index.json' || nomFichier === 'search-elements.json' || chemin === 'fiche/regles.json') return 'site-donnees';
   if (EXTENSIONS_IMAGES.has(extension)) return 'site-images';
   if (EXTENSIONS_CODE.has(extension)) return 'site-code';
   return 'site-autres';

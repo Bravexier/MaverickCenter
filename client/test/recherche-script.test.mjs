@@ -38,9 +38,10 @@ const motCle = (id, cle, n, libelle, extra = {}) => el('li', { 'data-id': String
 let numero = 0;
 /**
  * Charge la page /recherche/ à l'adresse `adresse` et y lance le script ; rend les éléments utiles et l'historique (`pile()` : les adresses jusqu'à
- * l'entrée actuelle ; `retour()` : le bouton Précédent). `avant(document)` complète la page construite avant le script (il la lit au chargement) ; `elementsHs` : le fichier des éléments ne se charge pas.
+ * l'entrée actuelle ; `retour()` : le bouton Précédent). `avant(document)` complète la page construite avant le script (il la lit au chargement) ; `elementsHs`, `indexHs` : le fichier des éléments, ou l'index, ne se charge pas (`p.pannes` : à changer en cours de test).
  */
-async function charger(adresse, { avant, elementsHs = false } = {}) {
+async function charger(adresse, { avant, elementsHs = false, indexHs = false } = {}) {
+  const pannes = { elements: elementsHs, index: indexHs };
   let url = new URL(adresse, 'http://site/');
   // l'historique de session : des entrées { href, state }, la position actuelle ; back() est asynchrone (popstate au tour suivant), comme dans un navigateur
   let entrees = [{ href: url.href, state: null }];
@@ -94,17 +95,17 @@ async function charger(adresse, { avant, elementsHs = false } = {}) {
     fetch: async (adresseDemandee) => {
       if (adresseDemandee === '/search-elements.json') {
         chargements.elements += 1;
-        return elementsHs ? { ok: false, status: 404 } : { ok: true, json: async () => elements };
+        return pannes.elements ? { ok: false, status: 404 } : { ok: true, json: async () => elements };
       }
       chargements.n += 1;
-      return { ok: true, json: async () => index };
+      return pannes.index ? { ok: false, status: 500 } : { ok: true, json: async () => index };
     },
   });
   const retour = () => globalThis.history.back();
   await import(`../src/scripts/recherche.mjs?page=${(numero += 1)}`);
   await attendre();
   const $ = (id) => document.getElementById(id);
-  return { $, liste, vue, adresse: () => url.pathname + url.search, pile, retour, chargements, document };
+  return { pannes, $, liste, vue, adresse: () => url.pathname + url.search, pile, retour, chargements, document };
 }
 const titres = (ul) => ul.children.map((li) => li.children[0].textContent);
 
@@ -396,11 +397,43 @@ test('R309 §8 : un mot-clé de sort sans page qui le cite montre son élément,
   assert.equal(peuple.$('vue-du-mot-cle-element-liste').children.length, 0);
 });
 
-test('R309 §8 : des éléments qui ne se chargent pas : la vue le dit, sans inventer d’élément ni de « Aucune page »', async () => {
-  const p = await charger('/recherche/?mot-cle=peuple', { elementsHs: true });
+test('R309 §8 : si seul le fichier des éléments ne se charge pas, la vue montre quand même ses pages ; sans page, elle dit que le détail n’a pas pu être chargé (jamais « Aucune page »)', async () => {
+  const cite = await charger('/recherche/?mot-cle=peuple', { elementsHs: true });
+  assert.deepEqual(titres(cite.$('vue-du-mot-cle-pages')), ['Elfe'], 'l’index est là : ses pages');
+  assert.equal(cite.$('vue-du-mot-cle-pages').hidden, false);
+  assert.equal(cite.$('vue-du-mot-cle-compte').textContent, '1 page.');
+  assert.equal(cite.$('vue-du-mot-cle-element').hidden, true, 'sans l’élément');
+  assert.doesNotMatch(cite.vue.textContent, /Impossible de charger l’index/);
+  // sans page : on ne sait pas s'il a un élément
+  const sans = await charger('/recherche/?mot-cle=demo', { elementsHs: true });
+  assert.equal(sans.$('vue-du-mot-cle-compte').hidden, false);
+  assert.equal(sans.$('vue-du-mot-cle-compte').textContent, 'Le détail de ce mot-clé n’a pas pu être chargé.');
+  assert.doesNotMatch(sans.vue.textContent, /Aucune page|Impossible de charger l’index/);
+  assert.equal(sans.$('vue-du-mot-cle-pages').hidden, true);
+  assert.equal(sans.$('titre-mot-cle').textContent, 'Mot-clé « démo »');
+  // un nouvel essai à la vue suivante : le fichier revient, l'élément s'affiche
+  const p = await charger('/recherche/', { elementsHs: true, avant: ancres });
+  cliquer(p.liste.children.find((li) => li.dataset.id === '4').children[0], p.liste);
+  await attendre();
+  assert.equal(p.$('vue-du-mot-cle-compte').textContent, 'Le détail de ce mot-clé n’a pas pu être chargé.');
+  p.pannes.elements = false;
+  cliquer(p.$('tous-les-mots-cles'));
+  await attendre();
+  cliquer(p.liste.children.find((li) => li.dataset.id === '4').children[0], p.liste);
+  await attendre();
+  assert.equal(p.chargements.elements, 2, 'relu à la vue suivante');
+  assert.equal(p.$('vue-du-mot-cle-element').hidden, false);
+  assert.equal(p.$('vue-du-mot-cle-element-liste').children[0].children[0].textContent, 'Boule de feu');
+  assert.equal(p.$('vue-du-mot-cle-compte').hidden, true);
+});
+
+test('R309 §8 : si c’est l’index qui ne se charge pas, la vue le dit, sans élément ni page', async () => {
+  const p = await charger('/recherche/?mot-cle=peuple', { indexHs: true });
   assert.equal(p.$('vue-du-mot-cle-compte').textContent, 'Impossible de charger l’index de recherche.');
   assert.equal(p.$('vue-du-mot-cle-element').hidden, true);
   assert.equal(p.$('vue-du-mot-cle-pages').hidden, true);
+  const les2 = await charger('/recherche/?mot-cle=peuple', { indexHs: true, elementsHs: true });
+  assert.equal(les2.$('vue-du-mot-cle-compte').textContent, 'Impossible de charger l’index de recherche.');
 });
 
 test('R309 §8 : la pastille mène à ?mot-cle=, jamais à l’adresse de l’élément du mot-clé (Q12)', async () => {

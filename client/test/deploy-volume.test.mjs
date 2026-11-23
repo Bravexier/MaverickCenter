@@ -167,7 +167,7 @@ const FICHIERS_DU_SITE = {
   'index.html': 9_000, '_astro/page.Ab12.js': 30_000, '_astro/style.css': 7_000, '_astro/page.js.map': 3_000, 'modules/x.mjs': 2_000,
   '_serveur/serveur/index.mjs': 12_000, '_serveur/version.json': 300, '_serveur/serveur/notes.txt': 500,
   'donnees/maverick.db': 60_000, 'donnees/reference.db': 40_000, 'donnees/reference.json': 4_000, 'donnees/metier/index.html': 6_000,
-  'search-index.json': 20_000, 'fiche/regles.json': 15_000, 'fiche/index.html': 8_000, 'autre/copie.db': 4_500,
+  'search-index.json': 20_000, 'search-elements.json': 6_000, 'fiche/regles.json': 15_000, 'fiche/index.html': 8_000, 'autre/copie.db': 4_500,
   'logo.webp': 11_000, 'favicon.png': 1_500, 'galerie/IMAGE.JPG': 25_000, 'icone.svg': 900, 'apple-touch-icon.ico': 700, 'photo.avif': 2_200,
   'bestiaire/portraits/0123abcd.webp': 18_000, 'portraits/x.png': 3_000, 'polices/titre.woff2': 22_000, 'robots.txt': 50, '.htaccess': 80,
   'LISEZMOI': 120, 'page.': 60,
