@@ -111,7 +111,7 @@ test('R234 (3), réponse T3 : la définition, dans sa ligne — ses balises gard
   const definition = ligne(ELFE).querySelector('.glossaire-mot__definition');
   const attendue = el('div');
   attendue.innerHTML = htmlAvecMonnaies(ELFE.description);
-  assert.equal(definition.innerHTML, attendue.innerHTML);
+  assert.equal(definition.querySelector('.glossaire-mot__texte').innerHTML, attendue.innerHTML);
   assert.ok(definition.textContent.includes('{{nain|voisin}}'), 'la balise, rendue ensuite par le middleware');
   assert.ok(definition.querySelector('.piece.piece--ro'));
   const vide = ligne({ ...ELFE, description: null }).querySelector('.glossaire-mot__definition');
@@ -165,6 +165,28 @@ test('R309 §8 : sans définition écrite, la sous-ligne montre le texte de l’
   assert.equal(vide.querySelector('.glossaire-mot__origine'), null);
   // le texte de l'élément n'est jamais dans data-definition (la définition écrite, que lit l'éditeur : T9)
   assert.equal(ligne(ANCRE).hasAttribute('data-definition'), false);
+});
+
+test('F1 (360 px) : le texte de la sous-ligne est dans `div.glossaire-mot__texte`, que la feuille borne à la largeur visible du cadre et colle à son bord ; un mot d’un titre de lien ne se coupe pas lettre par lettre', () => {
+  for (const m of [ELFE, ANCRE, { ...ELFE, description: null }, { ...ANCRE, description: 'Écrite.' }]) {
+    const td = ligne(m).querySelector('.glossaire-mot__definition');
+    assert.deepEqual(td.children.map((c) => c.className), ['glossaire-mot__texte'], 'la cellule ne contient que le bloc du texte');
+    assert.ok(td.querySelector('.glossaire-mot__texte'));
+  }
+  const css = readFileSync(new URL('../src/styles/glossaire/glossaire.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const regle = (selecteur) => new RegExp(`${selecteur.replace(/[.>\[\]()]/g, '\$&')} \{([^}]*)\}`).exec(css)?.[1] ?? '';
+  // le cadre du gabarit commun est un conteneur (sa largeur visible = 100cqw) sans que tableaux.css change
+  assert.match(regle('.glossaire-tableau .tableau__defile'), /container-type: inline-size/);
+  const texte = regle('.glossaire-mot__texte');
+  assert.match(texte, /position: sticky/, 'reste à l’écran quand le cadre défile sur le côté');
+  assert.match(texte, /inset-inline-start: 0\.75rem/);
+  assert.match(texte, /max-inline-size: calc\(100cqw - 1\.5rem\)/, 'jamais plus large que le cadre, moins le remplissage de la cellule');
+  assert.match(texte, /overflow-wrap: break-word/);
+  // le lien : un mot entier (`anywhere` laissait la colonne se réduire et casser les mots lettre par lettre) ; une adresse brute se coupe encore
+  assert.match(regle('.glossaire-mot__lien a'), /overflow-wrap: break-word/);
+  assert.doesNotMatch(regle('.glossaire-mot__lien a'), /anywhere/);
+  assert.match(regle('.glossaire-mot__adresse'), /overflow-wrap: anywhere/);
+  assert.doesNotMatch(readFileSync(new URL('../src/styles/global/tableaux.css', import.meta.url), 'utf8'), /glossaire|container-type/, 'le gabarit commun ne change pas');
 });
 
 test('R234 (1) : la couleur du mot-clé en liseré, comme les armes — ses deux lignes sont des lignes colorées du gabarit (`ligne-couleur` et la classe de sa couleur) ; sans couleur, aucune', () => {

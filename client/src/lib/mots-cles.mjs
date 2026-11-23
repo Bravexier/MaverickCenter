@@ -77,11 +77,21 @@ export function sansArticle(libelle) {
   return reste ? reste[1] : texte;
 }
 
+/**
+ * La clé de tri d'un libellé : sans sa ponctuation de tête (« ... la destruction » → « la destruction », « « Campagne » ou… » → « Campagne » ou… »), puis sans son
+ * article (sansArticle : « destruction »). Un libellé fait seulement de ponctuation garde la sienne.
+ */
+export function cleDeTri(libelle) {
+  const texte = String(libelle ?? '').trim();
+  const sans = texte.replace(/^[^\p{L}\p{N}]+/u, '');
+  return sansArticle(sans || texte);
+}
+
 const comparer = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' });
 
 /**
  * Mots-clés triés par libellé, à la française, sans compter l'article de tête (« Les postures » se range à P : sansArticle ; pastilles d'un événement,
- * listes, Glossaire) ; à égalité, le libellé complet, puis la clé, puis l'id (des homonymes).
+ * listes, Glossaire), ni sa ponctuation de tête (« ... Brutale » se range à B : cleDeTri) ; à égalité, le libellé complet, puis la clé, puis l'id (des homonymes).
  */
-export const parLibelle = (a, b) => comparer(sansArticle(a.libelle), sansArticle(b.libelle)) || comparer(a.libelle, b.libelle)
+export const parLibelle = (a, b) => comparer(cleDeTri(a.libelle), cleDeTri(b.libelle)) || comparer(a.libelle, b.libelle)
   || String(a.cle ?? '').localeCompare(String(b.cle ?? '')) || (typeof a.id === 'number' && typeof b.id === 'number' ? a.id - b.id : String(a.id).localeCompare(String(b.id)));

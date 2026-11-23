@@ -14,8 +14,8 @@ let essais = 0;
 /** Une ligne du tableau (un <tbody>), avec, si `element` est donné, le texte de l'élément dans sa sous-ligne ; `vide` : la sous-ligne « Pas encore de définition. ». */
 function ligne(id, libelle, { categories = [1], element = null, vide = false, hidden = false } = {}) {
   const attributs = { 'data-id': String(id), 'data-libelle': libelle, ...(categories.length ? { 'data-categories': JSON.stringify(categories) } : {}), ...(hidden ? { hidden: '' } : {}) };
-  const sousLigne = element !== null ? el('td', { class: 'glossaire-mot__definition' }, el('span', { class: 'glossaire-mot__element' }, element), el('span', { class: 'glossaire-mot__origine' }, 'Texte de la page'))
-    : vide ? el('td', { class: 'glossaire-mot__definition glossaire-mot__definition--vide' }, 'Pas encore de définition.') : null;
+  const sousLigne = element !== null ? el('td', { class: 'glossaire-mot__definition' }, el('div', { class: 'glossaire-mot__texte' }, el('span', { class: 'glossaire-mot__element' }, element), el('span', { class: 'glossaire-mot__origine' }, 'Texte de la page')))
+    : vide ? el('td', { class: 'glossaire-mot__definition glossaire-mot__definition--vide' }, el('div', { class: 'glossaire-mot__texte' }, 'Pas encore de définition.')) : null;
   return el('tbody', attributs, el('tr', {}, el('th', {}, libelle)), ...(sousLigne ? [el('tr', {}, sousLigne)] : []));
 }
 

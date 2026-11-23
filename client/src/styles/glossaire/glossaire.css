@@ -24,14 +24,20 @@
 .glossaire-mot__nom { display: block; font-weight: 700; }
 .glossaire-mot__synonymes { display: block; font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
 .glossaire-mot__vide { color: var(--muted); }
-.glossaire-mot__lien a { overflow-wrap: anywhere; }
-.glossaire-mot__adresse { font-size: var(--fs-sm); }
+/* un mot d'un titre de lien ne se coupe pas lettre par lettre (`anywhere` laissait la colonne se réduire à rien) : le cadre défile sur le côté ; seule une adresse
+   brute, un seul long mot sans espace, se coupe où elle doit */
+.glossaire-mot__lien a { overflow-wrap: break-word; }
+.glossaire-mot__adresse { font-size: var(--fs-sm); overflow-wrap: anywhere; }
 /* le menu des pages qui mentionnent le mot-clé (R234 (3)) : sa liste ouverte défile au-delà d'une hauteur (la molette passe à la page au bout : pas
    d'overscroll-behavior, skill ui-defilement) */
 .glossaire-mot__menu > summary { cursor: pointer; color: var(--muted); white-space: nowrap; }
 .glossaire-mot__menu > ul { max-height: 14rem; overflow: auto; margin: 0.2rem 0 0; padding-left: 1.1rem; font-size: var(--fs-md); }
 .glossaire-mot__menu li[data-exemple] { font-style: italic; }
 .glossaire-mot__definition { white-space: pre-line; font-size: var(--fs-md); }
+/* la sous-ligne occupe toute la largeur du tableau, plus large que son cadre quand les colonnes font défiler : son texte, lui, ne dépasse pas la largeur visible
+   du cadre (100cqw, le cadre est un conteneur) et reste collé à son bord gauche quand on balaie sur le côté (sticky). Le tableau de gabarit commun garde son défilement. */
+.glossaire-tableau .tableau__defile { container-type: inline-size; }
+.glossaire-mot__texte { position: sticky; inset-inline-start: 0.75rem; max-inline-size: calc(100cqw - 1.5rem); overflow-wrap: break-word; }
 .glossaire-mot__definition--vide { color: var(--muted); font-style: italic; }
 /* le texte de l'élément d'un mot-clé ancré, puis la mention qui le signale et mène à l'endroit où il se modifie (R309 §8) */
 .glossaire-mot__element, .glossaire-mot__origine { display: block; }

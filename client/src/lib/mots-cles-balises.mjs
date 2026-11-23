@@ -826,7 +826,9 @@ function htmlDeLOrigineDuTexte(element, base) {
  *     « Seulement les pages » : une mention qu'aucune page ne montre n'y est pas, et le total au résumé ne compte que les pages ; il remplace l'ancien
  *     nombre de pages et l'ancien lien vers /recherche/) ;
  *   - la ligne de sa définition (`tr.glossaire-mot__suite`, toute la largeur : réponse T3, « dans une ligne en plus au sein de la ligne du tableau »),
- *     ses balises gardées (le middleware, ou mots-cles-vivants.mjs sur le site de dev, les rendent), ses monnaies en icônes (R63). Sans définition écrite,
+ *     ses balises gardées (le middleware, ou mots-cles-vivants.mjs sur le site de dev, les rendent), ses monnaies en icônes (R63) ; le texte est dans
+ *     `div.glossaire-mot__texte`, que la feuille (styles/glossaire/glossaire.css) borne à la largeur visible du cadre et colle à son bord quand le cadre
+ *     défile sur le côté (la cellule, elle, prend la largeur du tableau). Sans définition écrite,
  *     le texte de son élément (R309) : `span.glossaire-mot__element` — le filtre (lib/glossaire-filtre.mjs) lit ce texte seul — puis la mention
  *     `span.glossaire-mot__origine` (« Texte de la page — le modifier », un lien vers l'endroit où il se modifie) ; une définition écrite n'a ni l'un ni l'autre.
  * Un mot-clé coloré (`couleur`) : ses deux lignes sont des lignes colorées du gabarit (`ligne-couleur` et la classe de sa couleur,
@@ -878,8 +880,8 @@ export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [], masqu
     + `<td class="glossaire-mot__pages">${menu}</td>`
     + '</tr>'
     + `<tr${ligne('glossaire-mot__suite')}><td colspan="${COLONNES_DU_GLOSSAIRE.length}" class="glossaire-mot__definition${affichee ? '' : ' glossaire-mot__definition--vide'}">`
-    + `${!affichee ? 'Pas encore de définition.' : definition ? htmlDeLaDefinition(affichee)
-      : `<span class="glossaire-mot__element">${htmlDeLaDefinition(affichee)}</span>${htmlDeLOrigineDuTexte(m.element, base)}`}</td></tr>`
+    + `<div class="glossaire-mot__texte">${!affichee ? 'Pas encore de définition.' : definition ? htmlDeLaDefinition(affichee)
+      : `<span class="glossaire-mot__element">${htmlDeLaDefinition(affichee)}</span>${htmlDeLOrigineDuTexte(m.element, base)}`}</div></td></tr>`
     + '</tbody>';
 }
 

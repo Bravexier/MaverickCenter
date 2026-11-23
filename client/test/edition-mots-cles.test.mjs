@@ -730,7 +730,7 @@ test('R233 (8), R235 : les synonymes sans étiquette dans la ligne et en data-sy
   const definition = ro.querySelector('.glossaire-mot__definition');
   assert.ok(definition.querySelector('.piece.piece--ro') && definition.querySelector('.piece.piece--rf'), 'les monnaies en icônes (R63)');
   assert.doesNotMatch(definition.textContent, /R[OF]/, 'plus d’abréviation visible');
-  assert.equal(am.querySelector('.glossaire-mot__definition').innerHTML, 'Protège des sorts.');
+  assert.equal(am.querySelector('.glossaire-mot__texte').innerHTML, 'Protège des sorts.');
   p.ed.enEdition = true;
   p.motsCles.debut(p.ed);
   await attendre();

@@ -3,7 +3,7 @@
 //   node --test test/mots-cles-tri.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parLibelle, sansArticle } from '../src/lib/mots-cles.mjs';
+import { cleDeTri, parLibelle, sansArticle } from '../src/lib/mots-cles.mjs';
 
 test('sansArticle ne retire qu’un article entier de tête : Le, La, Les, L’ (apostrophe droite ou courbe), sans casse', () => {
   assert.equal(sansArticle('Les postures'), 'postures');
@@ -39,4 +39,29 @@ test('parLibelle : à égalité après le retrait de l’article, l’ordre rest
   assert.deepEqual(ordre(h), [7, 8, 9]);
   // un libellé réduit à son article se range sous cet article, sans planter
   assert.deepEqual(ordre([m('Les', 2), m('Armure', 1)]), [1, 2]);
+});
+
+test('T10-ponctuation-de-tete : parLibelle range sans la ponctuation de tête, puis sans l’article — « ... la destruction » à D, « « Campagne » ou… » à C', () => {
+  assert.equal(cleDeTri('... la destruction (Arbalétrier)'), 'destruction (Arbalétrier)');
+  assert.equal(cleDeTri('« Campagne » ou « Scénario one shot » ?'), 'Campagne » ou « Scénario one shot » ?');
+  assert.equal(cleDeTri('. de coquelicot (Goleois)'), 'de coquelicot (Goleois)');
+  assert.equal(cleDeTri('… Toi ! (Moine)'), 'Toi ! (Moine)');
+  assert.equal(cleDeTri('...'), '...', 'un libellé fait seulement de ponctuation garde sa place');
+  assert.equal(cleDeTri('« »'), '« »');
+  assert.equal(cleDeTri(''), '');
+  assert.equal(cleDeTri('L’embuscade'), 'embuscade', 'sans ponctuation de tête : comme sansArticle');
+  assert.equal(cleDeTri('Les'), 'Les');
+  assert.equal(sansArticle('... la destruction'), '... la destruction', 'sansArticle garde son contrat : un article de tête, rien d’autre');
+  const m = (libelle, id) => ({ id, libelle, cle: libelle.toLowerCase() });
+  const noms = ['Zèbre', '... la destruction (Arbalétrier)', '« Campagne » ou « Scénario one shot » ?', '. de coquelicot (Goleois)', '... Brutale (Mage Vert)', 'Armure', '… Toi ! (Moine)', 'Les postures'];
+  assert.deepEqual(noms.map(m).sort(parLibelle).map((x) => x.libelle), [
+    'Armure', '... Brutale (Mage Vert)', '« Campagne » ou « Scénario one shot » ?', '. de coquelicot (Goleois)', '... la destruction (Arbalétrier)', 'Les postures', '… Toi ! (Moine)', 'Zèbre',
+  ]);
+  // le départage ne change pas : à clé égale, le libellé complet, puis la clé, puis l'id
+  const egaux = [m('... Feu', 3), m('Feu', 1), m('. Feu', 2)];
+  const ordre = [...egaux].sort(parLibelle).map((x) => x.id);
+  assert.deepEqual([...egaux].reverse().sort(parLibelle).map((x) => x.id), ordre, 'même clé de tri : l’ordre reste déterminé');
+  assert.equal(new Set(ordre).size, 3);
+  // un libellé de ponctuation seule se range comme avant (sa propre écriture), sans lever
+  assert.doesNotThrow(() => [m('...', 1), m('Armure', 2)].sort(parLibelle));
 });

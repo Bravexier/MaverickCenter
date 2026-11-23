@@ -100,11 +100,11 @@ test('la bulle, le mode complet et la sous-ligne du Glossaire montrent le même 
     assert.match(htmlDeLaBalise(lireUneBalise(`{{${cle}:}}`), v).html, new RegExp(`<span class="mot-cle-definition__texte">${voulu}</span>`), `mode complet de ${cle}`);
     assert.equal(texteSansBalises(`{{${cle}:}}`, v), `${m.libelle} : ${voulu}`, `texte simple du mode complet de ${cle}`);
     // le texte de l'élément est signalé comme tel (T10 : `__element`, puis sa mention) ; une définition écrite est seule
-    const attendu = m.description ? `${voulu}</td>` : `<span class="glossaire-mot__element">${voulu}</span><span class="glossaire-mot__origine">Texte d`;
+    const attendu = m.description ? `<div class="glossaire-mot__texte">${voulu}</div></td>` : `<div class="glossaire-mot__texte"><span class="glossaire-mot__element">${voulu}</span><span class="glossaire-mot__origine">Texte d`;
     assert.match(htmlDeLaLigneDuGlossaire(m), new RegExp(`<td colspan="\\d+" class="glossaire-mot__definition">${attendu}`), `sous-ligne de ${cle}`);
   }
   // sans rien à montrer : la ligne le dit, comme avant
-  assert.match(htmlDeLaLigneDuGlossaire(motDe(v, 'notus')), /glossaire-mot__definition--vide">Pas encore de définition\.</);
+  assert.match(htmlDeLaLigneDuGlossaire(motDe(v, 'notus')), /glossaire-mot__definition--vide"><div class="glossaire-mot__texte">Pas encore de définition\.<\/div>/);
 });
 
 test('une balise dans le texte de l’élément se rend comme dans une définition', () => {
@@ -117,7 +117,7 @@ test('une balise dans le texte de l’élément se rend comme dans une définiti
   const ecrite = vocabulaireDesMotsCles([{ id: 1, cle: 'levant', libelle: 'Levant', description: 'Voir {{boree|le vent du nord}} : coûte 5 RO.' }, ...motsClesDeLaBase(db).filter((m) => m.cle === 'boree')]);
   assert.equal(texteDeLaBulle(bulle), texteDeLaBulle(htmlDeLaBulle(1, ecrite)));
   // la sous-ligne garde la balise telle qu'écrite (le middleware, ou mots-cles-vivants.mjs, la rend) et met le montant en icônes
-  assert.match(htmlDeLaLigneDuGlossaire(motDe(v, 'levant')), /glossaire-mot__definition"><span class="glossaire-mot__element">Voir \{\{boree\|le vent du nord\}\} : coûte <span class="montant"/);
+  assert.match(htmlDeLaLigneDuGlossaire(motDe(v, 'levant')), /glossaire-mot__definition"><div class="glossaire-mot__texte"><span class="glossaire-mot__element">Voir \{\{boree\|le vent du nord\}\} : coûte <span class="montant"/);
 });
 
 test('la définition écrite reste distincte : aucun champ de l’éditeur ne se pré-remplit avec le texte de l’élément', () => {
