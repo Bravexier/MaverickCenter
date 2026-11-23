@@ -3243,9 +3243,10 @@ function ancienneEcritureDesMotsCles(db) {
  *     13 races « orios » → « orios-race », « pp » → « pierre-precieuse ») ; une ref qui est déjà une clé courante reste ;
  *   - l'abréviation (colonne retirée par la 0115, devenue un synonyme) : une modification qui en écrit une autre que les synonymes du mot-clé est une
  *     forme sans équivalent (`conflit`, choix 2 seul à la résolution), retirée sinon.
- * Une modification d'après la 0113 (ids entiers) passe telle quelle. Limite admise (réponse du leader-technique, 2026-11-08) : la traduction d'une ref se
- * lit dans les règles au début du rejeu ; un lot récent en attente qui citerait une ancienne clé texte reprise entre-temps, dans le même journal, par
- * un mot-clé créé, serait traduit vers le mot-clé de la correspondance, pas vers celui-là.
+ * Une modification d'après la 0113 (ids entiers) passe telle quelle. Une clé qu'une ligne de `mot_cle` du journal a écrite, lue dans l'ordre du rejeu, est une clé du moment
+ * et plus un ancien id, même si elle s'écrit comme lui (R309 : « Caractéristiques », #56, reprend la clé `caracteristiques`, son id d'avant la 0113) : elle ne se traduit
+ * plus, sinon le rejeu défait la réécriture de ses balises. Limite admise (réponse du leader-technique, 2026-11-08) : avant cette ligne, la traduction se lit dans les règles
+ * du début du rejeu.
  */
 export function ancienneEcritureDesIds(db) {
   const registre = registreDes0113();
@@ -3262,8 +3263,9 @@ export function ancienneEcritureDesIds(db) {
     prochain += 1;
     return crees.get(x);
   };
+  const clesDuJournal = new Set(); // les clés écrites par les lignes de mot_cle déjà lues
   const cleCourante = (ref) => {
-    if (db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(ref)) return null;
+    if (clesDuJournal.has(ref) || db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(ref)) return null;
     const id = registre.get(ref) ?? crees.get(ref);
     return id === undefined ? null : lireLigne(db, 'mot_cle', { id })?.cle ?? null;
   };
@@ -3293,6 +3295,10 @@ export function ancienneEcritureDesIds(db) {
     return sortie;
   };
   return (m) => {
+    if (m.table_nom === 'mot_cle' && m.operation !== 'supprimer') {
+      const ecrite = jsonOuNull(m.apres)?.cle;
+      if (typeof ecrite === 'string') clesDuJournal.add(ecrite);
+    }
     const ancienne = (x) => typeof x === 'string' && (x.includes('{{') || x.includes('"libelle_cle"') || x.includes('"abreviation"')
       || (m.table_nom in ETIQUETTES && /"(tag_id|mot_cle_id)":"/.test(x)) || (m.table_nom === 'mot_cle' && /"id":"/.test(x)));
     if (![m.cle, m.avant, m.apres].some(ancienne) && !m.aCreer?.some((c) => c.table === 'mot_cle' && typeof c.valeurs?.id === 'string')) return m;

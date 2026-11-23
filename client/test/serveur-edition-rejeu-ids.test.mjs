@@ -9,11 +9,15 @@ import { test } from 'node:test';
 import { join } from 'node:path';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { adaptateurDuJournal, FUSIONS_DE_MIGRATION, registreDes0113, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { mentionsDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -126,5 +130,46 @@ test('rejeu de bout en bout : un lot noté avant la 0113 (étiquette par id text
   assert.deepEqual(formesNonCanoniques(corps, vocabulaireDesMotsCles(motsClesDeLaBase(neuve)), { markdown: true }), []);
   assert.equal(neuve.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(page.id, ordre)?.tag_id, etiquette.id, 'l’étiquette par l’id entier');
   assert.deepEqual(neuve.prepare('PRAGMA foreign_key_check').all(), []);
+  neuve.close();
+});
+
+test('rejeu (R309) : un mot-clé renommé vers la clé égale à son ancien id garde ses balises réécrites, 0 problème de contenu', (t) => {
+  const dossier = dossierTemporaire('rejeu-ids-cle-reprise', { t });
+  // un mot-clé de la correspondance, sans élément, non verrouillé et que rien ne cite : sa clé d'essai est posée dans les deux bases
+  const candidats = REGISTRE.motsCles.filter(({ ancienId, id }) => cleDe(id) === ancienId && normalize(ancienId) === ancienId
+    && db.prepare('SELECT verrou FROM mot_cle WHERE id = ?').get(id)?.verrou === 0 && !estAncre(db, id));
+  const mentions = mentionsDesMotsCles(db, candidats.map((c) => c.id));
+  const vise = candidats.find((c) => !(mentions.get(c.id)?.length));
+  assert.ok(vise, 'un mot-clé d’essai');
+  const vivante = (n) => {
+    const base = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossier, n) }).chemin);
+    base.prepare("UPDATE mot_cle SET libelle = 'Zq essai reprise', cle = 'zq-essai-reprise' WHERE id = ?").run(vise.id);
+    return base;
+  };
+  const site = vivante('site');
+  const page = site.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '{{') = 0 ORDER BY id LIMIT 1").get();
+  const enregistrer = (operations) => {
+    const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: `${page.id}/`, operations }) },
+      { base: () => site, etat: () => ({}), edition: true });
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  };
+  enregistrer([{ op: 'modifier', table: 'page', cle: { id: page.id }, valeurs: { corps_md: `${page.corps_md}\n\nEssai : {{zq-essai-reprise|Zq}}.\n` } }]);
+  enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: vise.id }, valeurs: { libelle: vise.ancienId } }]);
+  assert.equal(site.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(vise.id).cle, vise.ancienId);
+  const journal = journalExporte(site);
+  site.close();
+
+  const neuve = vivante('neuve');
+  const connus = new Set(controlerLeContenu(neuve).problemes);
+  neuve.exec('PRAGMA foreign_keys = OFF');
+  neuve.exec('BEGIN');
+  chargerJournal(neuve, journal);
+  const bilan = rejouerLeJournal(neuve, {});
+  neuve.exec('COMMIT');
+  neuve.exec('PRAGMA foreign_keys = ON');
+  assert.equal(bilan.conflits, 0, JSON.stringify(neuve.prepare("SELECT table_nom, detail FROM modification WHERE etat = 'conflit'").all()));
+  assert.equal(neuve.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(vise.id).cle, vise.ancienId);
+  assert.ok(neuve.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md.includes(`{{${vise.ancienId}|Zq}}`), 'la balise suit la clé');
+  assert.deepEqual(controlerLeContenu(neuve).problemes.filter((p) => !connus.has(p)), []);
   neuve.close();
 });
