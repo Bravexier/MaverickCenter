@@ -1,4 +1,4 @@
-/* Le Glossaire (/regles/glossaire/) : les filtres (texte, catégorie : décision R234 (4)), puis le tableau des mots-clés, au gabarit commun
+/* Le Glossaire (/regles/glossaire/) : les filtres (texte, type : décision R234 (4)), puis le tableau des mots-clés, au gabarit commun
    (styles/global/tableaux.css : décision R234 (1), « dans le même style que les autres »). Un mot-clé : un <tbody> de deux lignes
    (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire) — ses noms, ses catégories, son lien, le menu des pages qui le mentionnent ; puis sa définition,
    sur toute la largeur (réponse T3 : « dans une ligne en plus au sein de la ligne du tableau »), sans filet entre les deux. Un mot-clé coloré : ses deux
@@ -33,4 +33,15 @@
 .glossaire-mot__menu li[data-exemple] { font-style: italic; }
 .glossaire-mot__definition { white-space: pre-line; font-size: var(--fs-md); }
 .glossaire-mot__definition--vide { color: var(--muted); font-style: italic; }
+/* le texte de l'élément d'un mot-clé ancré, puis la mention qui le signale et mène à l'endroit où il se modifie (R309 §8) */
+.glossaire-mot__element, .glossaire-mot__origine { display: block; }
+.glossaire-mot__origine { margin-top: 0.15rem; font-size: var(--fs-sm); color: var(--muted); }
+/* la navigation par pages (R309 §9), créée par le script : elle passe à la ligne plutôt que de déborder (36 pages, 360 px de large) */
+.glossaire-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem 0.6rem; margin: 0.8rem 0; }
+.glossaire-pages[hidden] { display: none; }
+.glossaire-pages__numeros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+.glossaire-pages__bouton { min-inline-size: 2.5rem; min-block-size: 2.5rem; padding-block: 0; }
+.glossaire-pages__bouton[aria-current='page'] { color: var(--surface); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.glossaire-pages__trou { min-inline-size: 1.5rem; text-align: center; color: var(--muted); }
+.glossaire-pages__etat { flex-basis: 100%; margin: 0; text-align: center; font-size: var(--fs-sm); }
 .glossaire-voir-aussi { margin-top: 1.5rem; }

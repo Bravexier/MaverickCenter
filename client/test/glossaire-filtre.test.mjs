@@ -7,7 +7,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { categorieChoisie, compteDuFiltre, correspond, motCleDeLaLigne, normaliser, SANS_CATEGORIE, sansBalises, texteDuMotCle } from '../src/lib/glossaire-filtre.mjs';
+import {
+  categorieChoisie, compteDuFiltre, correspond, motCleDeLaLigne, normaliser, numerosDePage, pageDeLaListe, pageDeLAdresse, rechercheAvecPage, SANS_CATEGORIE,
+  sansBalises, TAILLE_DE_PAGE_DU_GLOSSAIRE, texteDuMotCle,
+} from '../src/lib/glossaire-filtre.mjs';
 import { LIBELLES_DES_DEGATS } from '../src/lib/arme-champs.mjs';
 import { choixDesCouleurs, libelleDeCle, NOMS_DES_FAMILLES } from '../src/lib/glossaire-couleurs.mjs';
 import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../src/lib/mots-cles-edition.mjs';
@@ -24,7 +27,7 @@ test('normaliser est lib/text.mjs#normalize (recopiée : le script de la page n�
     assert.equal(normaliser(t), normalize(t), t);
   }
   assert.doesNotMatch(readFileSync(new URL('../src/lib/glossaire-filtre.mjs', import.meta.url), 'utf8'), /^import /m, 'sans import');
-  assert.deepEqual([...readFileSync(new URL('../src/scripts/glossaire.mjs', import.meta.url), 'utf8').matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]),
+  assert.deepEqual([...readFileSync(new URL('../src/scripts/glossaire.mjs', import.meta.url), 'utf8').matchAll(/^import [\s\S]*? from '([^']+)';$/gm)].map((m) => m[1]),
     ['../lib/glossaire-filtre.mjs'], 'le script de la page : ce module seul');
 });
 
@@ -70,11 +73,11 @@ test('le script de la page : la saisie et la catégorie filtrent le tableau (com
     ligne('2', 'Feu', { 'data-definition': 'Ce qui {{brule|brûle}}.', 'data-categories': '[2]' }),
     ligne('3', 'Nain', { 'data-categories': '[3]' }));
   const champ = el('input', { id: 'filtre-glossaire' });
-  const categorie = el('select', { id: 'filtre-categorie' }, el('option', { value: '' }, 'Toutes les catégories'), el('option', { value: 'sans' }, 'Sans catégorie'),
+  const categorie = el('select', { id: 'filtre-categorie' }, el('option', { value: '' }, 'Tous les types'), el('option', { value: 'sans' }, 'Sans catégorie'),
     el('option', { value: '2' }, 'Magie'),
     el('option', { value: '3' }, 'Race'));
   const document = fauxDocument(el('form', {}, champ, categorie, el('span', { id: 'glossaire-compte' })), tableau, el('p', { id: 'aucun-mot-cle', hidden: '' }));
-  Object.assign(globalThis, { document, location: { search: '?q=brûle' } });
+  Object.assign(globalThis, { document, location: { search: '?q=brûle', pathname: '/regles/glossaire/', hash: '' }, history: { state: null, replaceState() {} } });
   await import('../src/scripts/glossaire.mjs');
   const visibles = () => tableau.children.filter((x) => x.tagName === 'TBODY' && !x.hidden).map((x) => x.dataset.id);
   assert.equal(champ.value, 'brûle', '?q= dans l’adresse');
@@ -115,7 +118,7 @@ test('le script de la page : la saisie et la catégorie filtrent le tableau (com
     detail: { gestion: false, categories: [{ id: 2, libelle: 'Magies' }, { id: 3, libelle: 'Race' }, { id: 9, libelle: 'Nouvelle' }] },
   }));
   await attendre();
-  assert.deepEqual(categorie.children.map((o) => [o.value || o.getAttribute('value'), o.textContent]), [['', 'Toutes les catégories'], ['sans', 'Sans catégorie'], ['2', 'Magies'], ['3', 'Race'], ['9', 'Nouvelle']], '« Toutes » et « Sans catégorie » gardées en tête');
+  assert.deepEqual(categorie.children.map((o) => [o.value || o.getAttribute('value'), o.textContent]), [['', 'Tous les types'], ['sans', 'Sans catégorie'], ['2', 'Magies'], ['3', 'Race'], ['9', 'Nouvelle']], '« Toutes » et « Sans catégorie » gardées en tête');
   assert.equal(categorie.value, '2');
   assert.deepEqual(visibles(), ['1', '2', '4']);
   assert.equal(document.getElementById('glossaire-compte').textContent, '3 sur 5');
@@ -202,4 +205,70 @@ test('Q3, Q4 : les options de la liste (aucune, puis les familles) ; une couleur
   assert.equal(couleurDuCercle(groupes, ''), '#808080');
   assert.equal(couleurDuCercle(groupes, 'x:y', '#000000'), '#000000');
   assert.deepEqual(['#ABCDEF', ' race:pure ', '', null].map(valeurDeCouleur), ['#abcdef', 'race:pure', '', '']);
+});
+
+test('R309 §9 : pageDeLaListe — 120 lignes par 50 donnent 3 pages, une page trop haute est ramenée à la dernière, 0 ligne donne 1 page', () => {
+  assert.equal(TAILLE_DE_PAGE_DU_GLOSSAIRE, 50);
+  assert.deepEqual(pageDeLaListe(120, 1, 50), { page: 1, pages: 3, debut: 0, fin: 50 });
+  assert.deepEqual(pageDeLaListe(120, 2, 50), { page: 2, pages: 3, debut: 50, fin: 100 });
+  assert.deepEqual(pageDeLaListe(120, 3, 50), { page: 3, pages: 3, debut: 100, fin: 120 }, 'la dernière page, plus courte');
+  assert.deepEqual(pageDeLaListe(120, 9, 50), { page: 3, pages: 3, debut: 100, fin: 120 }, 'la page 9 est ramenée à 3');
+  assert.deepEqual(pageDeLaListe(120, 0, 50), { page: 1, pages: 3, debut: 0, fin: 50 });
+  assert.deepEqual(pageDeLaListe(120, -4, 50), { page: 1, pages: 3, debut: 0, fin: 50 });
+  assert.deepEqual(pageDeLaListe(120, Number.NaN, 50), { page: 1, pages: 3, debut: 0, fin: 50 });
+  assert.deepEqual(pageDeLaListe(0, 1, 50), { page: 1, pages: 1, debut: 0, fin: 0 }, 'aucune ligne : une page vide');
+  assert.deepEqual(pageDeLaListe(0, 7, 50), { page: 1, pages: 1, debut: 0, fin: 0 });
+  assert.deepEqual(pageDeLaListe(50, 1, 50), { page: 1, pages: 1, debut: 0, fin: 50 }, 'pile une page');
+  assert.deepEqual(pageDeLaListe(51, 2, 50), { page: 2, pages: 2, debut: 50, fin: 51 });
+  assert.equal(pageDeLaListe(1764, 1, 50).pages, 36, '1 764 mots-clés : 36 pages');
+});
+
+test('R309 §9 : pageDeLAdresse — ?page=2 donne 2 ; absent, 0, -1, abc, 2.5 donnent 1 ; les autres paramètres sont ignorés', () => {
+  assert.equal(pageDeLAdresse('?page=2'), 2);
+  assert.equal(pageDeLAdresse('?q=feu&page=12&x=1'), 12);
+  assert.equal(pageDeLAdresse(''), 1);
+  assert.equal(pageDeLAdresse('?q=feu'), 1);
+  for (const faux of ['0', '-1', 'abc', '2.5', '', ' 3', '1e2', '99999999999999999999']) assert.equal(pageDeLAdresse(`?page=${faux}`), 1, faux);
+  assert.equal(pageDeLAdresse('page=4'), 4, 'sans le « ? »');
+});
+
+test('R309 §9 : rechercheAvecPage — le numéro de page se pose dans l’adresse, les autres paramètres restent tels qu’écrits, la page 1 retire « page »', () => {
+  assert.equal(rechercheAvecPage('', 3), '?page=3');
+  assert.equal(rechercheAvecPage('?q=br%C3%BBle', 3), '?q=br%C3%BBle&page=3', 'q garde son écriture');
+  assert.equal(rechercheAvecPage('?page=2&q=feu', 5), '?q=feu&page=5');
+  assert.equal(rechercheAvecPage('?q=feu&page=2', 1), '?q=feu', 'la page 1 : sans « page »');
+  assert.equal(rechercheAvecPage('?page=2', 1), '');
+  assert.equal(rechercheAvecPage('', 1), '');
+  assert.equal(rechercheAvecPage('?page=abc&q=a', 1), '?q=a', 'un « page » invalide disparaît');
+  assert.equal(rechercheAvecPage('?', 1), '');
+});
+
+test('R309 §9 : numerosDePage — la première, la dernière, la page courante et ses voisines ; « … » (null) pour un trou ; jamais 36 numéros', () => {
+  assert.deepEqual(numerosDePage(1, 1), [1]);
+  assert.deepEqual(numerosDePage(1, 3), [1, 2, 3]);
+  assert.deepEqual(numerosDePage(1, 36), [1, 2, null, 36]);
+  assert.deepEqual(numerosDePage(2, 36), [1, 2, 3, null, 36]);
+  assert.deepEqual(numerosDePage(4, 36), [1, 2, 3, 4, 5, null, 36], 'un trou d’un seul numéro est écrit, pas remplacé par « … »');
+  assert.deepEqual(numerosDePage(18, 36), [1, null, 17, 18, 19, null, 36]);
+  assert.deepEqual(numerosDePage(35, 36), [1, null, 34, 35, 36]);
+  assert.deepEqual(numerosDePage(36, 36), [1, null, 35, 36]);
+  for (let p = 1; p <= 36; p += 1) {
+    const n = numerosDePage(p, 36);
+    const numeros = n.filter((x) => x !== null);
+    assert.ok(n.length <= 7, `page ${p} : ${n.length} entrées`);
+    assert.ok(numeros.includes(1) && numeros.includes(36) && numeros.includes(p), `page ${p}`);
+    assert.deepEqual(numeros, [...new Set(numeros)].sort((a, b) => a - b), `page ${p} : croissant, sans doublon`);
+  }
+});
+
+test('R309 §8, T10 : le texte où se cherche un mot-clé comprend le texte montré de son élément (sans balises) ; « Pas encore de définition. » n’en fait pas partie', () => {
+  const m = { libelle: 'Zéphyra', synonymes: ['Zeph'], definition: '', element: 'Une {{brise|brise}} du matin.' };
+  assert.equal(texteDuMotCle(m), 'zephyra|zeph||une-brise-du-matin');
+  assert.equal(correspond(m, 'brise du matin'), true, 'le texte de l’élément');
+  assert.equal(correspond(m, 'pas encore'), false, 'la mention d’une sous-ligne vide n’est pas un texte');
+  assert.equal(correspond({ libelle: 'Notus' }, 'definition'), false);
+  assert.equal(correspond({ libelle: 'Notus', element: '' }, 'notus'), true);
+  // le texte précalculé d'une ligne (`recherche`) est celui qui sert
+  assert.equal(correspond({ libelle: 'X', recherche: 'abc|def' }, 'def'), true);
+  assert.equal(correspond({ libelle: 'def', recherche: 'abc' }, 'def'), false, 'le texte précalculé fait foi');
 });

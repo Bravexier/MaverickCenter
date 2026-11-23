@@ -35,8 +35,8 @@ const ligne = (m, options = { base: '/M/', categories: CATEGORIES }) => {
   return t.children[0];
 };
 
-test('R234 (2), (3), R235 (2) : les colonnes — l’icône en premier, noms, catégories, lien, pages — puis la ligne de la définition sur toute la largeur, dans un <tbody> par mot-clé', () => {
-  assert.deepEqual([...COLONNES_DU_GLOSSAIRE], ['Icône', 'Mot-clé', 'Catégories', 'Lien', 'Pages']);
+test('R234 (2), (3), R235 (2) : les colonnes — l’icône en premier, noms, type, lien, pages — puis la ligne de la définition sur toute la largeur, dans un <tbody> par mot-clé', () => {
+  assert.deepEqual([...COLONNES_DU_GLOSSAIRE], ['Icône', 'Mot-clé', 'Type', 'Lien', 'Pages'], 'R309 : « Type », plus « Catégories »');
   const t = ligne(ELFE);
   assert.equal(t.tagName, 'TBODY');
   assert.ok(t.classList.contains('glossaire-mot'));
@@ -68,6 +68,8 @@ test('R234 (2), R233 (8), (9), R235 (2) : les noms — le libellé seul, puis se
   assert.equal(ligne(ELFE).querySelector('.glossaire-mot__categories').textContent, 'Race, Classe', 'R232 (5) : dans l’ordre de leur id');
   assert.deepEqual(libellesDesCategories([6, 3, 99], new Map([[3, 'Race'], [6, 'Classe']])), ['Race', 'Classe'], 'une catégorie inconnue : rien');
   assert.equal(ligne({ ...ELFE, categories: [] }).querySelector('.glossaire-mot__categories .glossaire-mot__vide').textContent, '—');
+  // un mot-clé qui n'a pas encore son type unique (avant le premier lot d'ancrage) les montre tous
+  assert.equal(ligne({ ...ELFE, categories: [1] }).querySelector('.glossaire-mot__categories').textContent, 'Règles', 'un seul type');
 });
 
 test('R234 (2), réponse T5 : la colonne Lien — le titre de la page où mène l’adresse, en lien (préfixé de la base du site) ; sinon l’adresse brute ; sans adresse, rien', () => {
@@ -115,6 +117,54 @@ test('R234 (3), réponse T3 : la définition, dans sa ligne — ses balises gard
   const vide = ligne({ ...ELFE, description: null }).querySelector('.glossaire-mot__definition');
   assert.ok(vide.classList.contains('glossaire-mot__definition--vide'));
   assert.equal(vide.textContent, 'Pas encore de définition.');
+});
+
+/** Un mot-clé ancré à sa page (R309) : sans définition écrite, la sous-ligne montre le texte de l'élément. */
+const ANCRE = {
+  id: 21, cle: 'zephyra', libelle: 'Zéphyra', categories: [3], description: null, url: null, couleur: null, mentions: [],
+  element: { table: 'page', id: 'guide/zephyra', adresse: '/guide/zephyra/', texte: 'Le résumé de la page, avec {{nain|un nain}} et 5 RO.' },
+};
+
+test('R309 : un mot-clé ancré porte `data-ancre` (la table de son élément) ; un mot-clé sans élément, aucun', () => {
+  assert.equal(ligne(ANCRE).dataset.ancre, 'page');
+  assert.equal(ligne({ ...ANCRE, element: { ...ANCRE.element, table: 'sort', texte: null } }).dataset.ancre, 'sort');
+  assert.equal(ligne({ ...ANCRE, element: { table: 'type_sort', id: 4, adresse: null, texte: null } }).dataset.ancre, 'type_sort');
+  assert.equal(ligne(ELFE).hasAttribute('data-ancre'), false);
+  assert.equal(ligne({ ...ELFE, element: null }).hasAttribute('data-ancre'), false);
+});
+
+test('R309 §8 : sans définition écrite, la sous-ligne montre le texte de l’élément, signalé comme tel, avec un lien vers l’endroit où il se modifie (préfixe de déploiement compris)', () => {
+  const definition = ligne(ANCRE).querySelector('.glossaire-mot__definition');
+  assert.equal(definition.classList.contains('glossaire-mot__definition--vide'), false);
+  const texte = definition.querySelector('.glossaire-mot__element');
+  assert.ok(texte.textContent.startsWith('Le résumé de la page, avec {{nain|un nain}} et '), 'le texte, balises gardées (le middleware les rend)');
+  assert.ok(texte.querySelector('.piece.piece--ro'), 'ses monnaies en icônes (R63)');
+  const origine = definition.querySelector('.glossaire-mot__origine');
+  assert.match(origine.textContent, /^Texte de la page/);
+  assert.equal(origine.querySelector('a').href, '/M/guide/zephyra/', 'le lien vers la page, avec la base du site');
+  assert.equal(ligne(ANCRE, { base: '/', categories: CATEGORIES }).querySelector('.glossaire-mot__origine a').href, '/guide/zephyra/');
+  assert.equal(texte.querySelector('a'), null, 'le lien n’est pas dans le texte de l’élément (le filtre lit ce texte seul)');
+  // un sort : « Texte du sort » ; une adresse à ancre est gardée
+  const sort = ligne({ ...ANCRE, element: { table: 'sort', id: 9, adresse: '/magies/m/#sort-b', texte: 'Les effets.' } }).querySelector('.glossaire-mot__origine');
+  assert.match(sort.textContent, /^Texte du sort/);
+  assert.equal(sort.querySelector('a').href, '/M/magies/m/#sort-b');
+  // sans adresse à donner : la mention, pas de lien
+  const sansAdresse = ligne({ ...ANCRE, element: { ...ANCRE.element, adresse: null } }).querySelector('.glossaire-mot__origine');
+  assert.equal(sansAdresse.querySelector('a'), null);
+  assert.match(sansAdresse.textContent, /^Texte de la page/);
+  // une définition écrite : ni mention, ni lien, et `data-definition` la garde seule
+  const ecrite = ligne({ ...ANCRE, description: 'Écrite à la main.' });
+  assert.equal(ecrite.querySelector('.glossaire-mot__definition').textContent, 'Écrite à la main.');
+  assert.equal(ecrite.querySelector('.glossaire-mot__origine'), null);
+  assert.equal(ecrite.querySelector('.glossaire-mot__element'), null);
+  assert.equal(ecrite.dataset.definition, 'Écrite à la main.');
+  // rien à montrer (type de sort, magie : sans texte) : la sous-ligne le dit, sans mention
+  const vide = ligne({ ...ANCRE, element: { table: 'type_sort', id: 1, adresse: null, texte: null } }).querySelector('.glossaire-mot__definition');
+  assert.equal(vide.textContent, 'Pas encore de définition.');
+  assert.ok(vide.classList.contains('glossaire-mot__definition--vide'));
+  assert.equal(vide.querySelector('.glossaire-mot__origine'), null);
+  // le texte de l'élément n'est jamais dans data-definition (la définition écrite, que lit l'éditeur : T9)
+  assert.equal(ligne(ANCRE).hasAttribute('data-definition'), false);
 });
 
 test('R234 (1) : la couleur du mot-clé en liseré, comme les armes — ses deux lignes sont des lignes colorées du gabarit (`ligne-couleur` et la classe de sa couleur) ; sans couleur, aucune', () => {

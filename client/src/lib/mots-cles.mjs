@@ -61,6 +61,27 @@ export const estVerrouille = (m) => m?.verrou === 1;
 /** Ce que le verrou empêche, tel que le refus du service le dit après « Le mot-clé « X » est verrouillé : » (et l'infobulle du Glossaire peut le reprendre). */
 export const RAISON_DU_VERROU = 'il ne se supprime pas depuis le site (décisions R218, R219) ; ses champs se modifient, il se pose encore sur une page, se cite par une balise et reçoit la fusion d’un autre mot-clé';
 
-/** Mots-clés triés par libellé, à la française (pastilles d'un événement, listes) ; à libellé égal (des homonymes), par clé, puis par id. */
-export const parLibelle = (a, b) => a.libelle.localeCompare(b.libelle, 'fr', { sensitivity: 'base' })
+/**
+ * Un mot-clé « ancré » : il renvoie à un élément du site (page, sort, type de sort, magie, type de dégâts, monnaie : `element` du vocabulaire,
+ * lib/mots-cles-db.mjs#motsClesDeLaBase, décision R309). Le Glossaire ne le modifie plus (docs/chantier-ancrage-mots-cles.md, §7).
+ */
+export const aUnElement = (m) => Boolean(m?.element);
+
+/**
+ * Le libellé sans son article de tête, quand c'est un article entier suivi d'autre chose (« Les postures » → « postures », « L’embuscade » → « embuscade »,
+ * « Lame » reste « Lame ») ; un libellé réduit à son article reste entier. L'apostrophe peut être droite ou courbe.
+ */
+export function sansArticle(libelle) {
+  const texte = String(libelle ?? '').trim();
+  const reste = /^(?:l['’]|(?:le|la|les)\s+)(.+)$/i.exec(texte);
+  return reste ? reste[1] : texte;
+}
+
+const comparer = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'fr', { sensitivity: 'base' });
+
+/**
+ * Mots-clés triés par libellé, à la française, sans compter l'article de tête (« Les postures » se range à P : sansArticle ; pastilles d'un événement,
+ * listes, Glossaire) ; à égalité, le libellé complet, puis la clé, puis l'id (des homonymes).
+ */
+export const parLibelle = (a, b) => comparer(sansArticle(a.libelle), sansArticle(b.libelle)) || comparer(a.libelle, b.libelle)
   || String(a.cle ?? '').localeCompare(String(b.cle ?? '')) || (typeof a.id === 'number' && typeof b.id === 'number' ? a.id - b.id : String(a.id).localeCompare(String(b.id)));

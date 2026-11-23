@@ -1,0 +1,42 @@
+// Le tri des mots-clés par libellé (lib/mots-cles.mjs#parLibelle, décision R309 : « Les postures » se range à P) : un article de tête entier (Le, La, Les, L')
+// ne compte pas, ni dans la liste du Glossaire ni dans les pastilles. Des libellés inventés.
+//   node --test test/mots-cles-tri.test.mjs
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { parLibelle, sansArticle } from '../src/lib/mots-cles.mjs';
+
+test('sansArticle ne retire qu’un article entier de tête : Le, La, Les, L’ (apostrophe droite ou courbe), sans casse', () => {
+  assert.equal(sansArticle('Les postures'), 'postures');
+  assert.equal(sansArticle('La garde'), 'garde');
+  assert.equal(sansArticle('Le feu'), 'feu');
+  assert.equal(sansArticle('L’embuscade'), 'embuscade');
+  assert.equal(sansArticle("L'embuscade"), 'embuscade');
+  assert.equal(sansArticle('LES POSTURES'), 'POSTURES');
+  assert.equal(sansArticle('Le  feu'), 'feu', 'plusieurs espaces');
+  // un mot qui commence comme un article n'en est pas un
+  for (const t of ['Lame', 'Lesbos', 'Lemme', 'Laine', 'Lune']) assert.equal(sansArticle(t), t, t);
+  // un libellé réduit à son article reste entier
+  for (const t of ['Le', 'La', 'Les', 'L’', "L'", 'Les ', '  La']) assert.equal(sansArticle(t), t.trim(), JSON.stringify(t));
+  assert.equal(sansArticle(null), '');
+  assert.equal(sansArticle(undefined), '');
+});
+
+test('parLibelle range sur le libellé sans son article : « Les postures » à P, « L’embuscade » à E, « Lame » à L', () => {
+  const m = (libelle, id) => ({ id, libelle, cle: libelle.toLowerCase() });
+  const tri = ['Lame', 'Les postures', 'Garde', 'L’embuscade', 'Zèbre', 'Armure'].map(m).sort(parLibelle).map((x) => x.libelle);
+  assert.deepEqual(tri, ['Armure', 'L’embuscade', 'Garde', 'Lame', 'Les postures', 'Zèbre']);
+});
+
+test('parLibelle : à égalité après le retrait de l’article, l’ordre reste déterminé (le libellé complet départage, puis la clé, puis l’id)', () => {
+  const m = (libelle, id, cle = libelle) => ({ id, libelle, cle });
+  // mêmes lettres après l'article : le libellé complet les range
+  const a = [m('Le feu', 3), m('Feu', 1), m('La feu', 2), m('Les feu', 4)];
+  const ordre = (l) => [...l].sort(parLibelle).map((x) => x.id);
+  assert.deepEqual(ordre(a), [1, 2, 3, 4]);
+  assert.deepEqual(ordre([...a].reverse()), [1, 2, 3, 4], 'quel que soit l’ordre de départ');
+  // deux libellés identiques : par clé, puis par id
+  const h = [m('Garde', 9, 'garde-b'), m('Garde', 8, 'garde-a'), m('Garde', 7, 'garde-a')];
+  assert.deepEqual(ordre(h), [7, 8, 9]);
+  // un libellé réduit à son article se range sous cet article, sans planter
+  assert.deepEqual(ordre([m('Les', 2), m('Armure', 1)]), [1, 2]);
+});

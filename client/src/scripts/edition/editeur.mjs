@@ -12,7 +12,7 @@ import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
-import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
+import { couleurDuCercle, decocherLesAutres, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
 import { libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
@@ -439,7 +439,8 @@ export function demarrer(racine, etatService) {
   /**
    * Les champs de formulaire à part (lib/edition-modele.mjs) : { element, lire() } ; `lire` rend la valeur à envoyer, ou lève une erreur (affichée).
    *   categories plusieurs catégories (`c.choix` : celles des mots-clés, sur le Glossaire ; sinon `ed.listes.categoriesChronologie`) : une case à cocher
-   *              chacune ; sans catégorie, le texte `c.vide` (par défaut : le bouton « Catégories » de la chronologie) ; rend la liste des ids cochés
+   *              chacune, `c.valeur` cochées au départ ; `c.exclusif` : un seul choix (en cocher une décoche les autres : le type d'un mot-clé, R309) ;
+   *              sans catégorie, le texte `c.vide` (par défaut : le bouton « Catégories » de la chronologie) ; rend la liste des ids cochés
    *   page       une page du wiki (GET /api/edition/pages/, lue à la première saisie), saisie à suggestions ; rend son id, ou '' (aucune)
    *   couleur    une couleur (controleDeCouleur) : la liste des couleurs du site et le cercle ; rend « famille:id », « #rrggbb » ou ''
    */
@@ -494,6 +495,7 @@ export function demarrer(racine, etatService) {
       caseACocher.checked = choisies.has(cat.id);
       label.append(caseACocher, ` ${cat.libelle}`);
       element.append(label);
+      if (c.exclusif) caseACocher.addEventListener('change', () => decocherLesAutres(caseACocher, element.querySelectorAll('input[type="checkbox"]')));
     }
     // une catégorie cochée qui n'existe plus (supprimée entre-temps) n'est pas renvoyée : la case a disparu
     if (!categories.length) {

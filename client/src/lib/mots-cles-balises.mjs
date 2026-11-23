@@ -793,7 +793,7 @@ const adresseDUnePage = (id, base = '/') => `${String(base ?? '/').replace(/\/+$
 const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 
 /** Les colonnes du tableau des mots-clés du Glossaire (décision R234 (2)), dans l'ordre : leur nombre fait la largeur de la ligne de la définition. */
-export const COLONNES_DU_GLOSSAIRE = Object.freeze(['Icône', 'Mot-clé', 'Catégories', 'Lien', 'Pages']);
+export const COLONNES_DU_GLOSSAIRE = Object.freeze(['Icône', 'Mot-clé', 'Type', 'Lien', 'Pages']);
 
 /** Le libellé des catégories `ids` (ids de categorie_mot_cle), dans l'ordre de leur id ; `categories` : [{ id, libelle }] ou Map(id → libellé). */
 export function libellesDesCategories(ids, categories) {
@@ -801,28 +801,45 @@ export function libellesDesCategories(ids, categories) {
   return [...(ids ?? [])].map(Number).sort((a, b) => a - b).map((id) => parId.get(id)).filter((x) => typeof x === 'string' && x);
 }
 
+/** Ce que dit la mention du texte d'un élément (sous-ligne du Glossaire), par table de l'élément : seuls une page (son résumé) et un sort (ses effets) ont un texte. */
+const ORIGINES_DU_TEXTE = Object.freeze({ page: 'de la page', sort: 'du sort' });
+
+/**
+ * La mention qui signale, dans la sous-ligne du Glossaire, un texte venu de l'élément du mot-clé (R309, §8) : « Texte de la page — le modifier », le lien
+ * menant à l'endroit où il se modifie (`element.adresse`, préfixée de `base`) ; sans adresse, la mention seule.
+ */
+function htmlDeLOrigineDuTexte(element, base) {
+  const lien = typeof element?.adresse === 'string' && element.adresse
+    ? ` — <a href="${echapper(`${String(base ?? '/').replace(/\/+$/, '')}${element.adresse}`)}">le modifier</a>` : '';
+  return `<span class="glossaire-mot__origine">Texte ${ORIGINES_DU_TEXTE[element?.table] ?? 'de l’élément'}${lien}</span>`;
+}
+
 /**
  * La ligne d'un mot-clé dans le tableau du Glossaire (/regles/glossaire/ ; décision R234 : « dans le même style que les autres », le gabarit commun des
  * tableaux, skill ui-tableaux), un `<tbody>` de deux lignes :
  *   - la ligne du mot-clé (`tr.glossaire-mot__ligne`) : son icône seule, dans une colonne étroite, en premier (décision R235 (2) ; vide sans icône),
  *     ses noms (R234 (2) : le libellé principal, seul, R233 (9) ; puis
- *     ses synonymes, R233 (8)), ses catégories (leurs libellés, R232), son lien (R234 (2), réponse T5 : le titre de la page où il
+ *     ses synonymes, R233 (8)), son type (sous l'en-tête « Type » : le libellé de sa catégorie, R309 ; un mot-clé qui en a encore plusieurs, avant le premier
+ *     lot d'ancrage, les liste), son lien (R234 (2), réponse T5 : le titre de la page où il
  *     mène, en lien, sinon l'adresse brute ; `m.lien` = { page, titre } | null, lib/mots-cles-db.mjs#pagesDesLiens), puis le menu déroulant des pages
  *     qui le mentionnent (R234 (3), réponse T2 : ses mentions au sens de R196, étiquettes et balises, une ligne par page, sans doublon : pagesDesMentions ;
  *     « Seulement les pages » : une mention qu'aucune page ne montre n'y est pas, et le total au résumé ne compte que les pages ; il remplace l'ancien
  *     nombre de pages et l'ancien lien vers /recherche/) ;
  *   - la ligne de sa définition (`tr.glossaire-mot__suite`, toute la largeur : réponse T3, « dans une ligne en plus au sein de la ligne du tableau »),
- *     ses balises gardées (le middleware, ou mots-cles-vivants.mjs sur le site de dev, les rendent), ses monnaies en icônes (R63).
+ *     ses balises gardées (le middleware, ou mots-cles-vivants.mjs sur le site de dev, les rendent), ses monnaies en icônes (R63). Sans définition écrite,
+ *     le texte de son élément (R309) : `span.glossaire-mot__element` — le filtre (lib/glossaire-filtre.mjs) lit ce texte seul — puis la mention
+ *     `span.glossaire-mot__origine` (« Texte de la page — le modifier », un lien vers l'endroit où il se modifie) ; une définition écrite n'a ni l'un ni l'autre.
  * Un mot-clé coloré (`couleur`) : ses deux lignes sont des lignes colorées du gabarit (`ligne-couleur` et la classe de sa couleur,
  * lib/mots-cles-liens.mjs#classeDuMotCle), le liseré de sa couleur comme les matériaux des armes (R234 (1)). Le `<tbody>` porte ce que lisent le
  * script de la page (src/scripts/glossaire.mjs, lib/glossaire-filtre.mjs : le filtre) et l'extension de l'éditeur : data-id (l'id entier), data-cle,
- * data-n (le nombre de pages du menu), data-libelle, data-synonymes et data-categories (JSON), data-definition, data-url, data-couleur (absents sans
- * valeur). Le même HTML au build (pages/regles/glossaire.astro) et dans l'extension (src/scripts/edition/mots-cles.mjs). `m` : { id, libelle, cle,
+ * data-n (le nombre de pages du menu), data-libelle, data-synonymes et data-categories (JSON), data-definition, data-url, data-couleur, data-ancre (la
+ * table de son élément : un mot-clé ancré, R309) — absents sans valeur. Le même HTML au build (pages/regles/glossaire.astro) et dans l'extension (src/scripts/edition/mots-cles.mjs). `m` : { id, libelle, cle,
  * synonymes, categories, monnaie_id, icone, description, element, url, couleur, mentions, lien } (la sous-ligne montre `definitionDuMotCle` : la définition
  * écrite, sinon le texte de `element` ; `data-definition` reste la définition écrite) ; `base` : le préfixe de déploiement des adresses ; `categories` : les
- * catégories des mots-clés ([{ id, libelle }], lib/mots-cles-db.mjs#categoriesDesMotsCles).
+ * catégories des mots-clés ([{ id, libelle }], lib/mots-cles-db.mjs#categoriesDesMotsCles) ; `masquee` : la ligne porte `hidden` (une ligne d'une page du
+ * tableau qui n'est pas affichée, R309 §9 : src/scripts/glossaire.mjs la montre ou la cache ensuite).
  */
-export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}) {
+export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [], masquee = false } = {}) {
   const definition = m.description ?? m.definition ?? '';
   // la sous-ligne montre ce que montre la bulle (définition écrite, sinon le texte de l'élément) ; `data-definition`, que lit l'éditeur, reste la définition écrite
   const affichee = definitionDuMotCle({ description: definition, element: m.element });
@@ -835,7 +852,7 @@ export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}
   const ids = [...(m.categories ?? [])].map(Number).sort((a, b) => a - b);
   const attributs = [['data-id', String(m.id)], ['data-cle', cle], ['data-n', String(pages?.length ?? 0)], ['data-libelle', m.libelle],
     ['data-synonymes', synonymes.length ? JSON.stringify(synonymes) : null], ['data-categories', ids.length ? JSON.stringify(ids) : null],
-    ['data-definition', definition || null], ['data-url', m.url || null], ['data-couleur', m.couleur || null]]
+    ['data-definition', definition || null], ['data-url', m.url || null], ['data-couleur', m.couleur || null], ['data-ancre', m.element?.table ?? null]]
     .filter(([, v]) => v !== null && v !== undefined).map(([k, v]) => ` ${k}="${echapper(v)}"`).join('');
   const ligne = (nom) => ` class="${nom}${classe ? ` ligne-couleur ${classe}` : ''}"`;
   const vide = '<span class="glossaire-mot__vide" aria-label="aucun">—</span>';
@@ -852,7 +869,7 @@ export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}
     const items = pages.map((x) => `<li${x.exemple ? ' data-exemple' : ''}>${x.page ? `<a href="${echapper(adresseDUnePage(x.page, base))}">${echapper(x.libelle)}</a>` : echapper(x.libelle)}</li>`);
     menu = `<details class="glossaire-mot__menu"><summary>${nombre(pages.length, 'page', 'pages')}</summary><ul>${items.join('')}</ul></details>`;
   } else if (pages) menu = '<span class="glossaire-mot__vide">Aucune page</span>';
-  return `<tbody class="glossaire-mot"${attributs}>`
+  return `<tbody class="glossaire-mot"${masquee ? ' hidden' : ''}${attributs}>`
     + `<tr${ligne('glossaire-mot__ligne')}>`
     + `<td class="glossaire-mot__icone">${htmlDeLIcone(m.icone)}</td>`
     + `<th scope="row" class="glossaire-mot__noms">${noms}</th>`
@@ -861,7 +878,8 @@ export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}
     + `<td class="glossaire-mot__pages">${menu}</td>`
     + '</tr>'
     + `<tr${ligne('glossaire-mot__suite')}><td colspan="${COLONNES_DU_GLOSSAIRE.length}" class="glossaire-mot__definition${affichee ? '' : ' glossaire-mot__definition--vide'}">`
-    + `${affichee ? htmlDeLaDefinition(affichee) : 'Pas encore de définition.'}</td></tr>`
+    + `${!affichee ? 'Pas encore de définition.' : definition ? htmlDeLaDefinition(affichee)
+      : `<span class="glossaire-mot__element">${htmlDeLaDefinition(affichee)}</span>${htmlDeLOrigineDuTexte(m.element, base)}`}</td></tr>`
     + '</tbody>';
 }
 
