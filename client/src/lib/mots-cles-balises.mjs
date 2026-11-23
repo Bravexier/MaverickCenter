@@ -179,9 +179,20 @@ export function lireUneBalise(brut) {
 }
 
 /**
+ * Ce que montre un mot-clé partout où sa définition s'affiche (bulle, mode complet, sous-ligne du Glossaire ; décision R309, §8 de
+ * docs/chantier-ancrage-mots-cles.md) : sa définition écrite (`description`) s'il en a une, sinon le texte de son élément (`element.texte` : le résumé de sa
+ * page, les effets de son sort), sinon null. Lu à l'affichage, jamais recopié : la définition écrite (`description`, `data-definition`, les champs de
+ * l'éditeur) reste celle que l'auteur a saisie. Sans dépendance : ce module est importé côté navigateur.
+ * @param {{ description?: string | null, element?: { texte?: string | null } | null }} m
+ * @returns {string | null}
+ */
+export const definitionDuMotCle = (m) => m?.description || m?.element?.texte || null;
+
+/**
  * Le vocabulaire prêt à résoudre les refs : { liste, parId, parCle, parLibelle, parSynonyme, parAncienneCle } d'après [{ id, libelle, cle?,
- * description?, url?, couleur?, icone?, verrou?, monnaie_id?, synonymes?, categories?, anciennes_cles? }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET
- * /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `url` et `couleur` NULL sans adresse ni couleur ;
+ * description?, url?, couleur?, icone?, verrou?, monnaie_id?, synonymes?, categories?, anciennes_cles?, element? }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET
+ * /api/edition/mots-cles/ : `description` NULL tant que le mot-clé n'est pas décrit, '' ici ; `element` : { table, id, adresse, texte } de son élément
+ * (décision R309), null sans ; `url` et `couleur` NULL sans adresse ni couleur ;
  * `synonymes` : leurs écritures, dans l'ordre ; `cle` absente : normalize(libelle)) : `parCle` (clé → mot-clé), `parLibelle` (normalize du libellé →
  * les mots-clés qui le portent : plusieurs pour des homonymes), `parSynonyme` (normalize d'un synonyme → { m, libelle }), `parAncienneCle` (clé
  * quittée → mot-clé). Un vocabulaire déjà prêt est rendu tel quel, null reste null.
@@ -194,7 +205,7 @@ export function vocabulaireDesMotsCles(motsCles) {
     url: typeof m.url === 'string' && m.url ? m.url : null, couleur: typeof m.couleur === 'string' && m.couleur ? m.couleur : null,
     verrou: m.verrou ?? 0, monnaie_id: m.monnaie_id ?? null, icone: typeof m.icone === 'string' && m.icone ? m.icone : null,
     synonymes: [...(m.synonymes ?? [])].map((x) => (typeof x === 'string' ? x : x?.libelle)).filter((x) => typeof x === 'string' && x),
-    categories: [...(m.categories ?? [])], anciennes_cles: [...(m.anciennes_cles ?? [])],
+    categories: [...(m.categories ?? [])], anciennes_cles: [...(m.anciennes_cles ?? [])], element: m.element ?? null,
   }));
   const parLibelle = new Map();
   const parSynonyme = new Map();
@@ -318,7 +329,8 @@ export function texteDeLaBalise(b, vocabulaire = null, { profondeur = 0, definit
   if (!m) return b.texte ?? b.ref;
   const { libelle } = m;
   if (!b.complet) return texteEcrit(b, m) ?? libelle;
-  const definition = definitions && profondeur === 0 && m.description ? espaces(texteSansBalises(m.description, v, { profondeur: 1 })) : '';
+  const montree = definitions && profondeur === 0 ? definitionDuMotCle(m) : null;
+  const definition = montree ? espaces(texteSansBalises(montree, v, { profondeur: 1 })) : '';
   return definition ? `${libelle} : ${definition}` : libelle;
 }
 
@@ -674,7 +686,8 @@ export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = 
   const { libelle } = m;
   if (b.complet) {
     // la définition du mode complet : un texte courant du glossaire, ses monnaies en icônes comme dans sa bulle (R63, R183 (9))
-    const definition = m.description ? espaces(texteSansBalises(m.description, v, { profondeur: 1 })) : '';
+    const montree = definitionDuMotCle(m);
+    const definition = montree ? espaces(texteSansBalises(montree, v, { profondeur: 1 })) : '';
     const nom = adresse ? 'a' : 'strong';
     return {
       html: `<span class="${classes('mot-cle-definition')}" data-mot-cle="${echapper(m.cle)}" data-balise="${balise}"><${nom} class="mot-cle-definition__nom"${lien}>${htmlDuNomDuMotCle(m)}</${nom}>`
@@ -685,7 +698,7 @@ export function htmlDeLaBalise(b, vocabulaire, { sansFocus = false, sansBulle = 
   const texte = avecLIcone(htmlDuTexteDeLaBalise(texteEcrit(b, m) ?? libelle), m.icone);
   const nom = adresse ? 'a' : 'strong';
   const debut = `<${nom} class="${classes('mot-cle')}"${lien} data-mot-cle="${echapper(m.cle)}"`;
-  if (!m.description || sansBulle) return { html: `${debut} data-balise="${balise}">${texte}</${nom}>`, id: null };
+  if (!definitionDuMotCle(m) || sansBulle) return { html: `${debut} data-balise="${balise}">${texte}</${nom}>`, id: null };
   const bulle = idDeBulle(m.cle);
   // un lien a déjà le focus : pas de tabindex
   const focus = sansFocus || adresse ? '' : ' tabindex="0"';
@@ -805,11 +818,14 @@ export function libellesDesCategories(ids, categories) {
  * script de la page (src/scripts/glossaire.mjs, lib/glossaire-filtre.mjs : le filtre) et l'extension de l'éditeur : data-id (l'id entier), data-cle,
  * data-n (le nombre de pages du menu), data-libelle, data-synonymes et data-categories (JSON), data-definition, data-url, data-couleur (absents sans
  * valeur). Le même HTML au build (pages/regles/glossaire.astro) et dans l'extension (src/scripts/edition/mots-cles.mjs). `m` : { id, libelle, cle,
- * synonymes, categories, monnaie_id, icone, description, url, couleur, mentions, lien } ; `base` : le préfixe de déploiement des adresses ; `categories` : les
+ * synonymes, categories, monnaie_id, icone, description, element, url, couleur, mentions, lien } (la sous-ligne montre `definitionDuMotCle` : la définition
+ * écrite, sinon le texte de `element` ; `data-definition` reste la définition écrite) ; `base` : le préfixe de déploiement des adresses ; `categories` : les
  * catégories des mots-clés ([{ id, libelle }], lib/mots-cles-db.mjs#categoriesDesMotsCles).
  */
 export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}) {
   const definition = m.description ?? m.definition ?? '';
+  // la sous-ligne montre ce que montre la bulle (définition écrite, sinon le texte de l'élément) ; `data-definition`, que lit l'éditeur, reste la définition écrite
+  const affichee = definitionDuMotCle({ description: definition, element: m.element });
   const synonymes = [...(m.synonymes ?? [])].map((x) => (typeof x === 'string' ? x : x?.libelle)).filter(Boolean);
   // le menu public ne liste que les pages où l'on peut aller, et n'en compte qu'elles (R234 (3), réponse du propriétaire : « Seulement les pages ») ; le
   // menu des mentions du mode modification, lui, les garde toutes (R196, R223 : mots-cles-edition.mjs#endroitsDesMentions)
@@ -844,8 +860,8 @@ export function htmlDeLaLigneDuGlossaire(m, { base = '/', categories = [] } = {}
     + `<td class="glossaire-mot__lien">${lien}</td>`
     + `<td class="glossaire-mot__pages">${menu}</td>`
     + '</tr>'
-    + `<tr${ligne('glossaire-mot__suite')}><td colspan="${COLONNES_DU_GLOSSAIRE.length}" class="glossaire-mot__definition${definition ? '' : ' glossaire-mot__definition--vide'}">`
-    + `${definition ? htmlDeLaDefinition(definition) : 'Pas encore de définition.'}</td></tr>`
+    + `<tr${ligne('glossaire-mot__suite')}><td colspan="${COLONNES_DU_GLOSSAIRE.length}" class="glossaire-mot__definition${affichee ? '' : ' glossaire-mot__definition--vide'}">`
+    + `${affichee ? htmlDeLaDefinition(affichee) : 'Pas encore de définition.'}</td></tr>`
     + '</tbody>';
 }
 
@@ -866,9 +882,11 @@ export const htmlDeLaDefinition = (description) => htmlAvecMonnaies(description 
 export function htmlDeLaBulle(id, vocabulaire) {
   const v = vocabulaireDesMotsCles(vocabulaire);
   const m = v?.parId.get(id);
-  if (!m?.description) return '';
-  // la bulle garde les retours à la ligne de la définition (white-space: pre-line, styles/global/infobulles.css)
-  const definition = texteSansBalises(m.description, v, { profondeur: 1 }).trim();
+  const montree = definitionDuMotCle(m);
+  if (!montree) return '';
+  // la bulle garde les retours à la ligne de la définition (white-space: pre-line, styles/global/infobulles.css) ; sans définition écrite, c'est le texte
+  // de l'élément du mot-clé, rendu de même (ses balises, ses monnaies : décision R309)
+  const definition = texteSansBalises(montree, v, { profondeur: 1 }).trim();
   // les monnaies de la définition en icônes, comme dans tout texte courant (décision R63 : « Monnaies : le Ricken de fer (RF)… », migration 0090)
   // un mot-clé coloré habille sa bulle de sa couleur (filet, titre : styles/global/mots-cles.css), comme une page colorée les siennes
   const classe = classeDuMotCle(m);
@@ -1009,7 +1027,7 @@ export function htmlAvecMotsCles(html, vocabulaire, { base = '/' } = {}) {
       const bulle = /\sdata-bulle\s*=\s*"([^"]*)"/i.exec(attributs)?.[1];
       const cle = bulle && BULLE_DE_MOT_CLE.exec(bulle)?.[1];
       const m = cle ? v.parCle.get(cle) : null;
-      if (m?.description && !employes.includes(m.id)) employes.push(m.id);
+      if (definitionDuMotCle(m) && !employes.includes(m.id)) employes.push(m.id);
     }
     if (CONTENU_BRUT.has(nom)) {
       const fermeture = new RegExp(`</${nom}\\s*>`, 'ig');

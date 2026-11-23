@@ -87,7 +87,7 @@ export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = fals
   // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant) ; une page absente entre dans
   // l'index à son adresse, sans quoi le mot-clé qui y mène, et ses balises, ne la citeraient plus (liensRompusParLeLot)
   const adresses = indexDesAdresses(db, { exemples: true, enPlus: enPlus.map((p) => p.id) });
-  const motsCles = motsClesDeLaBase(db);
+  const motsCles = motsClesDeLaBase(db, { elements: false });
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
   const pageDuMotCle = new Map();
   const propres = new Map();

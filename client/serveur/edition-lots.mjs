@@ -702,14 +702,14 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       // supprime pas), on recalcule une fois, puis on juge ce que le recalcul a réécrit lui-même (la clé, les balises)
       hote.differerLesCles();
       plan.filter((n) => n.genre === 'supprimer').forEach((net) => remettre(net));
-      const lecture = lectureDesBalises(motsClesDeLaBase(db), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
+      const lecture = lectureDesBalises(motsClesDeLaBase(db, { elements: false }), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
       // une ligne d'un groupe gardé ne se coupe pas en deux : elle est notée une fois, entière
       // le renvoi d'une clé quittée se juge après le recalcul, qui le retire si la clé revient
       const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) ? { net, dabord: net, ensuite: null }
         : estUnRenvoiDeCle(nets, net) ? { net, dabord: null, ensuite: net } : { net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
-      lectureFinale = lectureDesBalises(motsClesDeLaBase(db));
+      lectureFinale = lectureDesBalises(motsClesDeLaBase(db, { elements: false }));
       for (const { net, ensuite } of parties) if (ensuite) remettre(ensuite, { complet: net, suite: true });
     }
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
@@ -795,7 +795,7 @@ function jugeDesLignes(db, nets) {
   let ecritures = -1;
   const lecture = () => {
     const { n } = db.prepare('SELECT total_changes() AS n').get();
-    if (n !== ecritures) [memoire, ecritures] = [lectureDesBalises(motsClesDeLaBase(db), avant, deFin), n];
+    if (n !== ecritures) [memoire, ecritures] = [lectureDesBalises(motsClesDeLaBase(db, { elements: false }), avant, deFin), n];
     return memoire;
   };
   const vu = (net, actuelle) => {

@@ -80,7 +80,7 @@ export function chronologieVivante(db) {
 
 /**
  * Le vocabulaire des mots-clés pour le Glossaire (/regles/glossaire/) en mode modification (GET /api/edition/mots-cles/) : [{ id, libelle, cle,
- * description, url, couleur, icone, classe, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, mentions }] — `id` : l'entier figé
+ * description, url, couleur, icone, classe, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, element, mentions }] — `id` : l'entier figé
  * (migration 0113) ; `cle` : la clé que citent les balises et les adresses (décision R232) ; `description` : la définition telle qu'enregistrée, NULL
  * tant qu'il n'est pas décrit ; `url`, `couleur` : l'adresse et la couleur, migration 0098, NULL sans elles ; `icone` : son icône (« monnaie:ro »,
  * migration 0116, décision R235 : lib/icones.mjs#ICONES), NULL sans elle ; `classe` : la classe de sa couleur,
@@ -88,6 +88,8 @@ export function chronologieVivante(db) {
  * champs, ni ses synonymes (R233 (6)), ni sa suppression, ni sa fusion dans un autre, ne se font depuis le site ; ses catégories, si : R232 (11) ; ce
  * qu'il permet encore : lib/mots-cles.mjs#RAISON_DU_VERROU), 0 sinon ; `monnaie_id` : la monnaie dont c'est le mot-clé, null sinon ; `synonymes` :
  * leurs écritures, dans l'ordre (R233) ; `categories` : les ids de ses catégories, croissants (R232) ; `anciennes_cles` : les clés qu'il a quittées ;
+ * `element` : { table, id, adresse, texte } de l'élément qu'il ancre (décision R309), null sans : son `texte` est ce que montrent la bulle et la sous-ligne
+ * d'un mot-clé sans définition écrite (lib/mots-cles-balises.mjs#definitionDuMotCle) ; `description` reste la définition écrite, seule à remplir l'éditeur ;
  * `page_du_lien`, `titre_du_lien` : la page où mène son adresse et son titre (lib/mots-cles-db.mjs#pagesDesLiens ; null sans adresse, ou pour une adresse
  * qui ne mène à aucune page de la base : une route fixe, une rubrique) ;
  * `mentions` : ce qui le mentionne (décision R196 : le menu déroulant du Glossaire, la même forme que le 409 d'une suppression, [{ table, cle, colonne,
@@ -108,7 +110,7 @@ export function vocabulaire(db, { refusDesForcages = null } = {}) {
     .map((m) => ({
       id: m.id, libelle: m.libelle, cle: m.cle, description: m.description, url: m.url ?? null, couleur: m.couleur ?? null, icone: m.icone ?? null,
       classe: classeDuMotCle({ id: m.id, couleur: m.couleur }), pages: pages.get(m.id) ?? 0, verrou: m.verrou ?? 0, monnaie_id: m.monnaie_id ?? null,
-      synonymes: m.synonymes, categories: m.categories, anciennes_cles: m.anciennes_cles, mentions: mentions.get(m.id) ?? [],
+      synonymes: m.synonymes, categories: m.categories, anciennes_cles: m.anciennes_cles, element: m.element, mentions: mentions.get(m.id) ?? [],
       page_du_lien: liens.get(m.id)?.page ?? null, titre_du_lien: liens.get(m.id)?.titre ?? null,
     }))
     .sort(parLibelle);
@@ -406,7 +408,7 @@ export function domainesDeLaChronologie({
       } catch (e) {
         // renommé vers le libellé d'un seul autre mot-clé, sans catégorie qui les distingue : la fusion se propose (la page et l'API v1 l'offrent)
         const autres = e instanceof ErreurEdition && e.details?.champ === 'categories'
-          ? motsClesDeLaBase(ctx.db).filter((m) => m.id !== avant.id && normalize(m.libelle) === normalize(apres.libelle)) : [];
+          ? motsClesDeLaBase(ctx.db, { elements: false }).filter((m) => m.id !== avant.id && normalize(m.libelle) === normalize(apres.libelle)) : [];
         if (autres.length === 1) e.details.fusion = { mot_cle: avant.id, dans: autres[0].id };
         throw e;
       }
@@ -555,7 +557,7 @@ export function domainesDeLaChronologie({
   function renommage(ctx, ligne, valeurs, avant) {
     if (!('libelle' in valeurs) || ligne.libelle === avant.libelle) return {};
     if (!normalize(ligne.libelle)) throw refus(`Mot-clé « ${ligne.libelle} » : il doit contenir au moins une lettre ou un chiffre.`, { champ: 'libelle' });
-    const [pris] = synonymesPris(motsClesDeLaBase(ctx.db), { id: avant.id, libelle: ligne.libelle });
+    const [pris] = synonymesPris(motsClesDeLaBase(ctx.db, { elements: false }), { id: avant.id, libelle: ligne.libelle });
     if (pris) {
       throw new ErreurEdition(409, `« ${ligne.libelle} » s’écrit comme le synonyme « ${pris.synonyme} » du mot-clé « ${pris.m.libelle} » (décision R233 (4)).`,
         { champ: 'libelle', mot_cle: pris.m.id });

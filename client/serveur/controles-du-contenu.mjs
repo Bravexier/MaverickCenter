@@ -325,7 +325,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   // (aussi gardé par db-derive), et la règle de lib/mots-cles-balises.mjs#fautesDuSynonyme, la même que celle du service (normalize non vide, ni espace
   // autour, ni « { », « } », « | », saut de ligne, ni « : » final ; ni le libellé de son propre mot-clé, ni le libellé, un synonyme ou la clé d'un autre).
   if (noms.has('mot_cle')) {
-    const motsCles = motsClesDeLaBase(db);
+    const motsCles = motsClesDeLaBase(db, { elements: false });
     const vocabulaire = vocabulaireDesMotsCles(motsCles);
     if (noms.has('categorie_mot_cle')) {
       try {

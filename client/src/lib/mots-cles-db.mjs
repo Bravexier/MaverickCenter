@@ -34,14 +34,17 @@ export function categoriesDesMotsCles(db) {
 
 /**
  * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, cle, description,
- * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles, parent }], dans l'ordre de leur id (`icone` : migration 0116,
+ * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles, parent, element }], dans l'ordre de leur id (`icone` : migration 0116,
  * décision R235, lib/icones.mjs ; `parent` : le nom de la magie du sort que le mot-clé ancre, migration 0131, décision R309, null sinon et pour une base
- * sans `sort.mot_cle_id` ; il sert à lib/mots-cles-cles.mjs#clesDesMotsCles et n'entre pas dans le vocabulaire des balises). Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
+ * sans `sort.mot_cle_id` ; il sert à lib/mots-cles-cles.mjs#clesDesMotsCles et n'entre pas dans le vocabulaire des balises ; `element` : { table, id,
+ * adresse, texte } le premier de `elementsDesMotsCles`, ou null sans élément : son `texte` est ce qu'un mot-clé sans définition écrite montre,
+ * lib/mots-cles-balises.mjs#definitionDuMotCle). `elements: false` ne lit aucun texte et laisse `element` à null : les chemins d'écriture du service, qui
+ * n'affichent rien et appellent cette fonction à chaque ligne d'un lot, le passent. Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
  * libelle_cle, ni catégorie ni clé quittée, et son abréviation (0090) pour seul synonyme ; d'avant la 0056, la 0098, la 0110 ou la 0116 : NULL (0 pour
  * le verrou) ; vide sans table mot_cle (avant la 0043).
  * @param {import('node:sqlite').DatabaseSync} db
  */
-export function motsClesDeLaBase(db) {
+export function motsClesDeLaBase(db, { elements = true } = {}) {
   if (!tableExiste(db, 'mot_cle')) return [];
   const enPlace = colonnesDe(db, 'mot_cle');
   // un nom de colonne n'est écrit que s'il est l'un de ceux-ci, présent dans la table (PRAGMA table_info) ; sinon sa valeur par défaut
@@ -50,7 +53,7 @@ export function motsClesDeLaBase(db) {
   const optionnelles = [...['description', 'couleur', 'url', 'monnaie_id', 'icone'].map((c) => colonne(c)), colonne('verrou', '0')].join(', ');
   const abreviation = !tableExiste(db, 'mot_cle_synonyme') && enPlace.includes('abreviation');
   const lignes = db.prepare(`SELECT id, libelle, ${cle}, ${optionnelles}${abreviation ? ', "abreviation"' : ''} FROM mot_cle ORDER BY id`).all();
-  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [], parent: null }]));
+  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [], parent: null, element: null }]));
   for (const m of parId.values()) {
     if (abreviation) {
       if (typeof m.abreviation === 'string' && m.abreviation) m.synonymes.push(m.abreviation);
@@ -70,6 +73,12 @@ export function motsClesDeLaBase(db) {
     for (const p of db.prepare('SELECT s.mot_cle_id, m.nom FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.mot_cle_id IS NOT NULL').all()) {
       const m = parId.get(p.mot_cle_id);
       if (m) m.parent = p.nom;
+    }
+  }
+  if (elements) {
+    for (const [id, [premier]] of elementsDesMotsCles(db)) {
+      const m = parId.get(id);
+      if (m && premier) m.element = { table: premier.table, id: premier.id, adresse: premier.adresse, texte: premier.texte };
     }
   }
   return [...parId.values()];
@@ -108,8 +117,10 @@ export function elementsDesMotsCles(db) {
     for (const l of db.prepare(sql).all()) (sortie.get(l.mot_cle_id) ?? sortie.set(l.mot_cle_id, []).get(l.mot_cle_id)).push({ table, id: l.id, nom: l.nom, ...element(l) });
   };
   const sansTexte = { adresse: null, texte: null };
-  ajouter('page', 'SELECT id, mot_cle_id, titre AS nom, resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: l.resume ?? null }));
-  ajouter('sort', 'SELECT id, mot_cle_id, nom, effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDuSort(l.id), texte: l.effets ?? null }));
+  // le texte : une colonne que la base n'a pas (base d'essai réduite à ce que son test lit) n'en donne pas
+  const texteDe = (table, colonne) => (tableExiste(db, table) && colonnesDe(db, table).includes(colonne) ? colonne : 'NULL');
+  ajouter('page', `SELECT id, mot_cle_id, titre AS nom, ${texteDe('page', 'resume')} AS resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDeLaPage(l.id), texte: l.resume ?? null }));
+  ajouter('sort', `SELECT id, mot_cle_id, nom, ${texteDe('sort', 'effets')} AS effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDuSort(l.id), texte: l.effets ?? null }));
   ajouter('type_sort', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_sort t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
   ajouter('magie', 'SELECT id, mot_cle_id, nom FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: null }));
   ajouter('type_degats', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_degats t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);

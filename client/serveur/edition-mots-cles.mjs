@@ -110,7 +110,7 @@ export function recevoirLaFusion(db, w, source, cibleId, synonymes, { gel = true
   }
   const sortie = { repris: [], ecartes: [] };
   if (!synonymes.length || !tableExiste(db, 'mot_cle_synonyme')) return sortie;
-  const vocabulaire = motsClesDeLaBase(db);
+  const vocabulaire = motsClesDeLaBase(db, { elements: false });
   const cible = vocabulaire.find((m) => m.id === cibleId);
   if (gel && estVerrouille(cible)) {
     sortie.ecartes = synonymes.map((synonyme) => ({ synonyme, raison: 'le mot-clé conservé est verrouillé (décision R233 (6))' }));
@@ -171,7 +171,7 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
     // l'annulation d'un lot d'ancrage remet ses lignes une à une : seul l'état final se juge, le recalcul vient après (edition-lots.mjs#annulerLeLot)
     if (ctx.clesEnAttente) return new Map();
     if (!tableExiste(db, 'categorie_mot_cle')) return new Map();
-    const motsCles = motsClesDeLaBase(db);
+    const motsCles = motsClesDeLaBase(db, { elements: false });
     const categories = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
     let cles;
     try {
@@ -269,7 +269,7 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
    * la règle de db:check) : 400 pour leur écriture, 409 quand un autre mot-clé la prend (`mot_cle` : cet autre) ; `champ: 'synonymes'`.
    */
   function refuserLesSynonymes(db, m, synonymes) {
-    const vocabulaire = motsClesDeLaBase(db);
+    const vocabulaire = motsClesDeLaBase(db, { elements: false });
     synonymes.forEach((s, i) => {
       const fautes = fautesDuSynonyme(vocabulaire, m, s, { autres: synonymes.slice(0, i) });
       if (!fautes.length) return;

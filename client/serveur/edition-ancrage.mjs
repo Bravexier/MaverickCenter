@@ -271,7 +271,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     const libelle = nomDeLElement(e, table, elementId);
     const valeurs = {};
     if (m.libelle !== libelle) {
-      const [pris] = synonymesPris(motsClesDeLaBase(db), { id, libelle });
+      const [pris] = synonymesPris(motsClesDeLaBase(db, { elements: false }), { id, libelle });
       if (pris) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : le nom « ${libelle} » s’écrit comme le synonyme « ${pris.synonyme} » du mot-clé « ${pris.m.libelle} ».`, { champ: 'libelle', mot_cle: pris.m.id });
       valeurs.libelle = libelle;
     }
@@ -312,7 +312,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
    * des clés : deux homonymes qui échangent leur nom passent ici, puis `recalculerLesCles` refuse leurs clés croisées (`suivreLesElements` les écarte alors).
    */
   function nomsQuiPassent(db, ids) {
-    const motsCles = motsClesDeLaBase(db);
+    const motsCles = motsClesDeLaBase(db, { elements: false });
     const parId = new Map(motsCles.map((m) => [m.id, m]));
     const libelles = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
     const voulus = new Map();

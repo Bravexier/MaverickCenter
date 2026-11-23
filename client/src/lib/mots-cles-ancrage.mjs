@@ -205,7 +205,7 @@ function alignement(e, m) {
  *   comptes: { crees: number, capacites: number, autres_pages: number, sorts: number, types: number, renommes: number, reclasses: number, ancres_existants: number } }}
  */
 export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
-  const motsCles = motsClesDeLaBase(db);
+  const motsCles = motsClesDeLaBase(db, { elements: false });
   const parId = new Map(motsCles.map((m) => [m.id, m]));
   const categories = lesCategories(db);
   const aTrancher = new Map();

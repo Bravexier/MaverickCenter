@@ -259,7 +259,7 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   const id = idSuivant(db, 'mot_cle', { plancher: plancherDesIdsDeMotsCles() });
   const ids = categories.length ? MOTS_CLES.listeDeCategories(db, categories, `Mot-clé « ${libelle} »`) : [];
   // la clé : celle de la règle, sur le vocabulaire tel qu'il sera (un homonyme qui apparaît change aussi celle des autres, écrite ensuite)
-  const futurs = [...motsClesDeLaBase(db), { id, libelle, categories: ids, parent }];
+  const futurs = [...motsClesDeLaBase(db, { elements: false }), { id, libelle, categories: ids, parent }];
   let cle;
   try {
     cle = clesDesMotsCles(futurs, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]))).get(id);
@@ -267,7 +267,7 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
     if (e instanceof HomonymesRefuses) throw MOTS_CLES.refusDesHomonymes(e, futurs);
     throw e;
   }
-  const [pris] = synonymesPris(motsClesDeLaBase(db), { id, libelle, cle });
+  const [pris] = synonymesPris(motsClesDeLaBase(db, { elements: false }), { id, libelle, cle });
   if (pris) {
     throw new ErreurEdition(409, `Le mot-clé « ${libelle} » ne peut pas être créé : « ${pris.synonyme} » est un synonyme du mot-clé « ${pris.m.libelle} » (décision R233 (4)).`,
       { champ: 'libelle', mot_cle: pris.m.id });
@@ -338,7 +338,7 @@ export function motCleDe(ctx, nom) {
   if (!RAISONS_DES_MOTS_CLES_PROTEGES.has(nom)) {
     throw refus(`Mot-clé « ${nom} » : une page créée depuis le site ne porte que les mots-clés dont le site se sert pour ranger ses pages (le vocabulaire se gère sur le Glossaire, /regles/glossaire/).`);
   }
-  const id = idDuProtege(nom, motsClesDeLaBase(ctx.db));
+  const id = idDuProtege(nom, motsClesDeLaBase(ctx.db, { elements: false }));
   if (id !== null && lireLigne(ctx.db, 'mot_cle', { id })) return id;
   if (nom !== TAG_RACE_HYBRIDE) throw new ErreurEdition(409, `Le mot-clé « ${nom} », dont le site se sert pour ranger ses pages, manque à la base.`);
   return creerMotCle(ctx, MOT_CLE_RACE_HYBRIDE, null, { verrouille: true });
@@ -349,7 +349,7 @@ export function motCleDe(ctx, nom) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Le vocabulaire de la base vivante, prêt à résoudre les refs des balises (lu à chaque besoin : un lot peut le changer). */
-export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db));
+export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
 
 /**
  * Ce qui fait d'un texte affiché de lien saisi autre chose qu'un texte simple : une marque Markdown (« * », « _ », « ` », « ~ », « \ », crochets), une
@@ -381,7 +381,7 @@ function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = fa
   });
   if (!ajoutes.length) return valeur;
   const { db } = ctx;
-  const motsCles = motsClesDeLaBase(db);
+  const motsCles = motsClesDeLaBase(db, { elements: false });
   let index = null;
   const adresseDuLien = (lien) => {
     if (lien.sorte === 'markdown') return lien.cible;
@@ -2781,7 +2781,7 @@ export function motsClesEncoreMentionnes(db, lot) {
     if (m.operation !== 'modifier' && m.operation !== 'inserer') continue;
     for (const [c, v] of Object.entries(lu(m.apres) ?? {})) ecrits.set(`${ligneDe(tableDe(m), lu(m.cle))}\u0000${c}`, v);
   }
-  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
   const parId = mentionsDesMotsCles(db, ids);
   return ids.flatMap((id) => {
     const restent = parId.get(id).filter((x) => {
@@ -2882,7 +2882,7 @@ function balisesRetireesParLeLot(db, lot) {
     retires.push({ m, ligne, cible: forcee ? null : cibleDeLaFusion(db, lot, ligne.id), forcee });
   }
   if (!retires.length) return [];
-  const actuels = motsClesDeLaBase(db);
+  const actuels = motsClesDeLaBase(db, { elements: false });
   // les mots-clés retirés (leur libellé et leur définition, tels que la suppression les a notés), puis ceux de la base, qui priment pour une écriture
   const vocabulaire = vocabulaireDesMotsCles([...retires.map((r) => r.ligne), ...actuels]);
   const presents = new Set(actuels.map((x) => x.id));
@@ -2926,7 +2926,7 @@ function balisesDesColonnesDerivees(db) {
     retires.push({ ligne, cible: forcee ? null : fusions.get(ligne.id) ?? cibleReportee(journal.filter((x) => x.lot_id === m.lot_id), ligne.id), forcee });
   }
   if (!retires.length) return [];
-  const actuels = motsClesDeLaBase(db);
+  const actuels = motsClesDeLaBase(db, { elements: false });
   const vocabulaire = vocabulaireDesMotsCles([...retires.map((r) => r.ligne), ...actuels]);
   const presents = new Set(actuels.map((m) => m.id));
   const plusTard = (i, id) => retires.slice(i + 1).some((r) => r.ligne.id === id);

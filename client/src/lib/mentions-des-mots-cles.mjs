@@ -100,7 +100,7 @@ export function mentionsDesMotsCles(db, ids) {
     ajouter(r.mot_cle_id, { table: r.table, cle: { id: r.id }, colonne: r.colonne, comment: 'reference', page: r.table === 'magie' ? r.id : null });
   }
 
-  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
   for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
     if (table === 'mot_cle' && (colonne === 'url' || colonne === 'couleur')) continue;
     for (const l of db.prepare(`SELECT ${[...new Set([...cle, colonne])].map(q).join(', ')} FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
