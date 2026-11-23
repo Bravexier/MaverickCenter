@@ -1938,8 +1938,8 @@ en infobulle (R219 (7)), avec le texte « Verrouillé : ni modification ni suppr
 dans… », mais il est proposé comme cible d'une fusion et garde son menu des mentions. Hors du mode modification, rien ne le distingue. Une page vers
 laquelle mène un mot-clé verrouillé ne se supprime pas sur le site, et l'adresse du mot-clé n'est jamais vidée (R221). Un mot-clé que cite une balise de
 la définition d'un mot-clé verrouillé, celle de la cible comprise, ne se fusionne pas tant qu'elle le cite : la définition verrouillée n'est pas réécrite
-(R222 (1) ; le service refuse en `409` avec la liste de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés se modifient tous,
-libellé compris (R195). La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` (`detail.gestion` : la gestion est affichée ;
+(R222 (1) ; le service refuse en `409` avec la liste de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés sans élément se modifient tous,
+libellé compris (R195 (1), que R309 remplace pour les mots-clés ancrés). La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` (`detail.gestion` : la gestion est affichée ;
 `detail.categories` : les catégories, pour la liste du filtre) et les `tbody[data-id][data-cle][data-n][data-libelle]`, plus `data-synonymes` et
 `data-categories` (JSON), `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Le titre de la page où mène une adresse vient de
 `GET /api/edition/mots-cles/` (`page_du_lien`, `titre_du_lien` ; null : l'adresse brute). Dans l'éditeur en place, l'outil « Lien page » lie le
