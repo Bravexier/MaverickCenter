@@ -6,8 +6,11 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import * as glossaire from '../src/lib/glossaire-filtre.mjs';
+import * as recherche from '../src/lib/recherche-mots-cles.mjs';
 import {
-  adresseAvecMotCle, comptesDesMotsCles, idDeLaCle, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE, vueDuMotCle,
+  adresseAvecMotCle, comptesDesMotsCles, idDeLaCle, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE,
+  TAILLE_DE_PAGE_DE_LA_RECHERCHE, vueDuMotCle,
 } from '../src/lib/recherche-mots-cles.mjs';
 import {
   cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
@@ -56,20 +59,66 @@ test('élément ↔ mot-clé : les pages portent leurs mots-clés ; un événeme
 test('vue d’un mot-clé : son libellé, ses synonymes et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
   const libelles = new Map([['peuple', 'Peuple'], ['magie', 'magie'], ['vide', 'Vide']]);
   const v = vueDuMotCle(index, 'peuple', libelles);
-  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages', 'synonymes']);
+  assert.deepEqual(Object.keys(v).sort(), ['definition', 'element', 'existe', 'libelle', 'pages', 'synonymes']);
+  assert.equal(v.element, null, 'sans élément');
   assert.equal(v.existe, true);
   assert.equal(v.libelle, 'Peuple');
   assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain']);
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
-  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', synonymes: [], definition: '', pages: [] }, 'un mot-clé sans page visible existe');
+  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', synonymes: [], definition: '', element: null, pages: [] }, 'un mot-clé sans page visible existe');
   // le glossaire (migration 0056) : la définition avec le libellé
   const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
-  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', synonymes: [], definition: 'Rien dedans.', pages: [] });
+  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', synonymes: [], definition: 'Rien dedans.', element: null, pages: [] });
   assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
   // les synonymes (migration 0115, R233 : « Aussi appelé ») ; le nom affiché vient de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
   const synonymes = new Map([['armure-magique', { libelle: 'Armure magique', synonymes: ['AM'], definition: 'x' }]]);
-  assert.deepEqual(vueDuMotCle(index, 'armure-magique', synonymes), { existe: true, libelle: 'Armure magique', synonymes: ['AM'], definition: 'x', pages: [] });
+  assert.deepEqual(vueDuMotCle(index, 'armure-magique', synonymes), { existe: true, libelle: 'Armure magique', synonymes: ['AM'], definition: 'x', element: null, pages: [] });
+});
+
+test('R309 §8 : la vue d’un mot-clé montre d’abord son élément, puis les pages qui le portent ou le citent ; un mot-clé sans page mais avec élément reste décrit par lui', () => {
+  const element = { nom: 'Peuple', type: 'Page', adresse: 'regles/peuple/', texte: 'Le résumé de la page.' };
+  const sort = { nom: 'Boule de feu', type: 'Sort', adresse: 'magies/feu/#sort-boule-de-feu', texte: 'Inflige trois dégâts.' };
+  const vocabulaire = new Map([
+    ['peuple', { libelle: 'Peuple', element }],
+    ['boule', { libelle: 'Boule de feu', definition: 'Écrite à la main.', element: { nom: 'Boule de feu', type: 'Sort', adresse: sort.adresse } }],
+    ['zone', { libelle: 'Zone', element: { nom: 'Zone', type: 'Type de sort' } }],
+  ]);
+  const v = vueDuMotCle(index, 'peuple', vocabulaire);
+  assert.deepEqual(v.element, element, 'l’élément tel que l’index des éléments le donne');
+  assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain'], 'puis ses pages');
+  assert.ok(Object.keys(v).indexOf('element') < Object.keys(v).indexOf('pages'), 'l’élément est lu avant les pages');
+  const boule = vueDuMotCle(index, 'boule', vocabulaire);
+  assert.deepEqual([boule.existe, boule.definition, boule.element.nom, boule.element.texte, boule.pages], [true, 'Écrite à la main.', 'Boule de feu', undefined, []], 'un sort sans page qui le cite : son élément seul');
+  assert.deepEqual(vueDuMotCle(index, 'zone', vocabulaire).element, { nom: 'Zone', type: 'Type de sort' }, 'un élément sans adresse ni texte');
+  assert.equal(vueDuMotCle(index, 'peuple', new Map([['peuple', 'Peuple']])).element, null, 'un vocabulaire qui n’est qu’un libellé : pas d’élément');
+});
+
+test('R309 §9 : la Recherche pagine par 100 ; ses quatre fonctions de page sont la recopie à l’identique de celles du Glossaire (deux scripts de page n’importent jamais le même module)', () => {
+  assert.equal(TAILLE_DE_PAGE_DE_LA_RECHERCHE, 100);
+  assert.equal(glossaire.TAILLE_DE_PAGE_DU_GLOSSAIRE, 50);
+  const noms = ['pageDeLaListe', 'pageDeLAdresse', 'rechercheAvecPage', 'numerosDePage'];
+  for (const nom of noms) assert.equal(recherche[nom].toString(), glossaire[nom].toString(), `${nom} : le même code`);
+  // et le même résultat, sur de quoi couvrir les bornes
+  const totaux = [0, 1, 49, 50, 51, 99, 100, 101, 250, 1764];
+  const pages = [undefined, null, Number.NaN, -3, 0, 1, 2, 3, 17, 18, 999, 2.5, '4', 'abc'];
+  const tailles = [1, 50, 100, 0, undefined];
+  for (const t of totaux) for (const p of pages) for (const taille of tailles) assert.deepEqual(recherche.pageDeLaListe(t, p, taille), glossaire.pageDeLaListe(t, p, taille), `pageDeLaListe(${t}, ${p}, ${taille})`);
+  const adresses = ['', '?', '?page=2', '?q=feu&page=12&x=1', '?page=0', '?page=-1', '?page=abc', '?page=2.5', '?page= 3', '?page=1e2', '?page=99999999999999999999', 'page=4', '?mot-cle=feu&page=3', undefined, null];
+  for (const a of adresses) assert.equal(recherche.pageDeLAdresse(a), glossaire.pageDeLAdresse(a), `pageDeLAdresse(${a})`);
+  for (const a of ['', '?q=br%C3%BBle', '?page=2&q=feu', '?q=feu&page=2', '?mot-cle=feu&page=2&q=a', '?page=abc&q=a', '?', undefined]) {
+    for (const p of [1, 2, 18]) assert.equal(recherche.rechercheAvecPage(a, p), glossaire.rechercheAvecPage(a, p), `rechercheAvecPage(${a}, ${p})`);
+  }
+  for (const total of [1, 2, 7, 18, 36]) for (let p = 0; p <= total + 1; p += 1) assert.deepEqual(recherche.numerosDePage(p, total), glossaire.numerosDePage(p, total), `numerosDePage(${p}, ${total})`);
+  assert.deepEqual(recherche.pageDeLaListe(1764, 18, TAILLE_DE_PAGE_DE_LA_RECHERCHE), { page: 18, pages: 18, debut: 1700, fin: 1764 }, '1 764 pastilles : 18 pages');
+  assert.equal(recherche.rechercheAvecPage('?mot-cle=feu&page=2', 3), '?mot-cle=feu&page=3', 'le mot-clé de l’adresse est gardé tel quel');
+});
+
+test('R309 §9 : le texte normalisé d’un mot-clé, calculé une fois (`recherche`), est celui que le filtre lit', () => {
+  const motsCles = [{ id: 1, libelle: 'Feu', n: 1, recherche: 'brasier' }, { id: 2, libelle: 'Eau', n: 1 }];
+  assert.deepEqual(motsClesAffiches(motsCles, 'brasier').map((m) => m.id), [1], 'la clé précalculée prime sur le libellé');
+  assert.deepEqual(motsClesAffiches(motsCles, 'feu').map((m) => m.id), [], 'et la remplace');
+  assert.deepEqual(motsClesAffiches(motsCles, 'eau').map((m) => m.id), [2], 'sans elle, la clé de recherche du libellé');
 });
 
 test('adresse : une clé, ou une clé quittée, mène à l’id du mot-clé (R232 (3) : idDeLaCle)', () => {

@@ -9,6 +9,62 @@
 // construite (le nombre de pages de chaque mot-clé : le même calcul des deux côtés).
 import { cleDeRecherche, filtrerMotsCles } from './search.mjs';
 
+/** Le nombre de pastilles par page de la Recherche (R309, §9). */
+export const TAILLE_DE_PAGE_DE_LA_RECHERCHE = 100;
+
+// Les quatre fonctions de page qui suivent sont la recopie, à l'identique, de celles de lib/glossaire-filtre.mjs (deux scripts de page n'importent jamais le
+// même module : la version portable le refuse) ; test/recherche-mots-cles.test.mjs compare leur code et leurs résultats.
+
+/**
+ * Une page d'une liste de `total` lignes coupée par `taille` : { page (ramenée dans [1, pages]), pages (au moins 1), debut (indice de la première ligne,
+ * à partir de 0), fin (indice après la dernière : `slice(debut, fin)`) }.
+ */
+export function pageDeLaListe(total, page, taille) {
+  const t = Math.max(1, Math.floor(Number(taille)) || 1);
+  const n = Math.max(0, Math.floor(Number(total)) || 0);
+  const pages = Math.max(1, Math.ceil(n / t));
+  const p = Math.min(pages, Math.max(1, Math.floor(Number(page)) || 1));
+  return { page: p, pages, debut: Math.min(n, (p - 1) * t), fin: Math.min(n, p * t) };
+}
+
+/** La page demandée par une adresse (`search` : « ?page=2 ») : le paramètre `page`, un entier à partir de 1 ; 1 s'il manque ou n'en est pas un. */
+export function pageDeLAdresse(search) {
+  const valeur = new URLSearchParams(String(search ?? '')).get('page');
+  if (valeur === null || !/^\d+$/.test(valeur)) return 1;
+  const n = Number(valeur);
+  return Number.isSafeInteger(n) && n >= 1 ? n : 1;
+}
+
+/**
+ * La recherche d'une adresse (« ?q=feu&page=2 ») avec la page `page` : les autres paramètres restent tels qu'ils étaient écrits, `page` est remplacé, et
+ * retiré à la page 1 ; '' sans paramètre.
+ */
+export function rechercheAvecPage(search, page) {
+  const autres = String(search ?? '').replace(/^\?/, '').split('&').filter((x) => x && x.split('=')[0] !== 'page');
+  if (page > 1) autres.push(`page=${page}`);
+  return autres.length ? `?${autres.join('&')}` : '';
+}
+
+/**
+ * Les numéros que montre la navigation d'une liste de `pages` pages quand `page` est affichée : la première, la dernière, la page courante et ses voisines ;
+ * `null` pour un trou de deux numéros ou plus (« … »), un trou d'un seul numéro est écrit. Au plus 7 entrées.
+ */
+export function numerosDePage(page, pages) {
+  const dernier = Math.max(1, Math.floor(Number(pages)) || 1);
+  const p = Math.min(dernier, Math.max(1, Math.floor(Number(page)) || 1));
+  const gardes = [...new Set([1, p - 1, p, p + 1, dernier].filter((n) => n >= 1 && n <= dernier))].sort((a, b) => a - b);
+  const sortie = [];
+  for (const [i, n] of gardes.entries()) {
+    if (i > 0) {
+      const ecart = n - gardes[i - 1];
+      if (ecart === 2) sortie.push(n - 1);
+      else if (ecart > 2) sortie.push(null);
+    }
+    sortie.push(n);
+  }
+  return sortie;
+}
+
 /** Le paramètre de l'adresse qui désigne un mot-clé : /recherche/?mot-cle=<clé>. */
 export const PARAMETRE_MOT_CLE = 'mot-cle';
 
@@ -59,26 +115,30 @@ export function elementsDuMotCle(index, id) {
 
 /**
  * Ce que la page montre pour le mot-clé `id` (l'id entier, idDeLaCle) de l'adresse : `{ existe: false }` pour un id que le vocabulaire n'a pas (un
- * mot-clé supprimé ou fusionné depuis, une adresse mal écrite), sinon `{ existe: true, libelle, synonymes, definition, pages }` (`definition` : ''
- * tant qu'il n'est pas décrit ; `synonymes` : [] sans synonyme, R233). Son nom affiché (le libellé seul, R233 (9) ; l'icône d'une monnaie) et sa
- * définition rendue viennent de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition) : ce module ne lit aucune monnaie.
- * @param {Map<number, string | { libelle: string, synonymes?: string[], definition?: string | null }>} vocabulaire les mots-clés : id → libellé,
- *   ou { libelle, synonymes, definition } (ceux qui n'ont aucune page visible compris)
+ * mot-clé supprimé ou fusionné depuis, une adresse mal écrite), sinon `{ existe: true, libelle, synonymes, definition, element, pages }` (`definition` : ''
+ * tant qu'il n'est pas décrit ; `synonymes` : [] sans synonyme, R233 ; `element` : l'élément qu'il ancre, `{ nom, type, adresse?, texte? }`, ou null : décision
+ * R309 §8, la vue le montre avant ses pages ; `texte` n'y est que si la définition n'est pas écrite). Son nom affiché (le libellé seul, R233 (9) ; l'icône
+ * d'une monnaie) et sa définition rendue viennent de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille, #htmlDeLaDefinition) : ce module ne
+ * lit aucune monnaie.
+ * @param {Map<number, string | { libelle: string, synonymes?: string[], definition?: string | null, element?: { nom: string, type: string, adresse?: string, texte?: string } | null }>} vocabulaire
+ *   les mots-clés : id → libellé, ou { libelle, synonymes, definition, element } (ceux qui n'ont aucune page visible compris)
  */
 export function vueDuMotCle(index, id, vocabulaire) {
   if (!vocabulaire.has(id)) return { existe: false };
   const m = vocabulaire.get(id);
-  const { libelle, synonymes = [], definition } = typeof m === 'string' ? { libelle: m, definition: '' } : m;
-  return { existe: true, libelle, synonymes: [...(synonymes ?? [])], definition: definition ?? '', pages: elementsDuMotCle(index, id) };
+  const { libelle, synonymes = [], definition, element = null } = typeof m === 'string' ? { libelle: m, definition: '' } : m;
+  return { existe: true, libelle, synonymes: [...(synonymes ?? [])], definition: definition ?? '', element: element ?? null, pages: elementsDuMotCle(index, id) };
 }
 
 /**
  * Les mots-clés de la liste que la page affiche : ceux dont une écriture (le libellé ou un synonyme, R233 (1) : lib/search.mjs#cleDeRecherche) contient
  * chaque mot cherché (lib/search.mjs#filtrerMotsCles) et que porte au moins une page visible (`n`) ; `tous` : aussi ceux qu'aucune ne porte (le
- * glossaire de /recherche/, qui les montre tous depuis la migration 0056).
- * @param {{ libelle: string, synonymes?: string[], n: number }[]} motsCles
+ * glossaire de /recherche/, qui les montre tous depuis la migration 0056). `recherche` : la clé de recherche d'un mot-clé déjà calculée (le script de la
+ * page la calcule une fois, au chargement : 1 764 mots-clés à chaque frappe sinon).
+ * @param {{ libelle: string, synonymes?: string[], n: number, recherche?: string }[]} motsCles
  */
 export function motsClesAffiches(motsCles, query, { tous = false } = {}) {
-  const gardes = new Set(filtrerMotsCles(motsCles.map(cleDeRecherche), query));
-  return motsCles.filter((m) => gardes.has(cleDeRecherche(m)) && (tous || m.n > 0));
+  const cles = motsCles.map((m) => m.recherche ?? cleDeRecherche(m));
+  const gardes = new Set(filtrerMotsCles(cles, query));
+  return motsCles.filter((m, i) => gardes.has(cles[i]) && (tous || m.n > 0));
 }

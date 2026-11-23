@@ -10,8 +10,8 @@ import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { htmlAvecMotsCles, htmlDeLIcone, lireBalises, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { htmlAvecMotsCles, htmlDeLIcone, lireBalises, pageAvecMotsCles, texteSansBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire, elementsDesMotsCles } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
@@ -321,6 +321,9 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   // plus de « Sans catégorie (à trier) » ni d'événements dans la vue d'un mot-clé : les événements ont des catégories (filtre de la frise), pas de mot-clé
   for (const reste of ['data-sans-categorie', 'data-libelle-sans-categorie', 'data-reserve', 'badge--sans-categorie', 'mot-cle-evenements']) assert.ok(!html.includes(reste), reste);
   assert.match(html, /<ul id="vue-du-mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
+  // R309 §8 : la vue montre d'abord l'élément du mot-clé (avant le compte et ses pages) ; les éléments sont lus dans search-elements.json
+  assert.match(html, /<div id="vue-du-mot-cle-element" class="recherche-element" hidden>\s*<h3 id="titre-element">Élément<\/h3>\s*<ul id="vue-du-mot-cle-element-liste" class="entry-list"><\/ul>\s*<\/div>\s*<p id="vue-du-mot-cle-compte"/, 'l’élément, avant le compte et les pages');
+  assert.match(html, /<form id="search-form" action="\/recherche\/" data-index-url="\/search-index\.json" data-elements-url="\/search-elements\.json" data-base="\/"/);
   // l'index : chaque page porte les ids de ses mots-clés (étiquettes, et ceux que citent ses balises) ; un événement n'a pas d'étiquette, ses `tags`
   // sont les libellés de ses catégories ; aucun texte de l'index n'a de balise brute
   const index = JSON.parse(lire('search-index.json'));
@@ -348,7 +351,7 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   // son nom peut porter l’icône que le propriétaire lui a donnée (R235, lib/icones.mjs) : toute famille admise ici, le dessin exact est vérifié plus bas
   const vocabulaire = new Map(chargerVocabulaire(base).map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="[^"]+"[^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?( hidden)?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="[^"]+"[^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
   assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
   const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -356,7 +359,7 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   // navigateur, on compare donc l'attribut sans tenir compte de cette écriture (« Faiblesse d'Armure », lot de mise à jour du 2026-11-14)
   const apostrophes = (t) => t?.replace(/&#39;/g, '\'');
   const attribut = (nom, liste) => (liste?.length ? apostrophes(` ${nom}="${echappe(JSON.stringify(liste))}"`) : undefined);
-  for (const [, idTexte, cle, n, synonymes, anciennes, definition, lien, bulle, texte] of motsCles) {
+  for (const [, idTexte, cle, n, synonymes, anciennes, definition, , lien, bulle, texte] of motsCles) {
     const id = Number(idTexte);
     const m = vocabulaire.get(id);
     assert.equal(lien, encodeURIComponent(cle), 'le lien porte la clé (R232 (3)), pas l’id');
@@ -383,7 +386,27 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     const motCle = [...vocabulaire.values()].find((x) => x.icone === `monnaie:${MONNAIES_DU_JEU[abr].id}`);
     if (!motCle) continue; // l'icône d'une monnaie est verrouillée (R235 (5)) : posée à l'import (mots-cles-balises.test.mjs)
     const m = motsCles.find((x) => Number(x[1]) === motCle.id);
-    assert.ok(m && m[9].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[9].includes(`(${abr})`), `${abr} : libellé + icône`);
+    assert.ok(m && m[10].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[10].includes(`(${abr})`), `${abr} : libellé + icône`);
+  }
+  // R309 §9 : la page construite ne montre que la première page de 100 pastilles ; les autres portent `hidden`, qu'un <noscript> annule (sans JavaScript, tout
+  // s'affiche) ; la navigation est créée par le script : sans lui, elle n'existe pas
+  assert.deepEqual(motsCles.map((m) => Number(m[1])), [...vocabulaire.keys()], 'les pastilles dans l’ordre du vocabulaire');
+  assert.deepEqual(motsCles.map((m) => Boolean(m[7])), motsCles.map((_, i) => i >= 100), 'la première page seule est visible');
+  assert.match(html, /<noscript><style>html \.recherche-mots-cles \.tags li\[hidden\] \{ display: list-item; \}<\/style><\/noscript>/);
+  assert.doesNotMatch(html, /<nav[^>]*recherche-navigation|aria-label="Pages des mots-clés"/, 'aucune navigation sans JavaScript');
+  // R309 §8 : la liste ne garde que les définitions écrites ; le texte des éléments est dans search-elements.json, par id de mot-clé : { nom, type, adresse?, texte? },
+  // le texte sans balises et seulement quand le mot-clé n'a pas de définition écrite
+  const elements = JSON.parse(lire('search-elements.json'));
+  const lexique = vocabulaireDesMotsCles(chargerVocabulaire(base));
+  const attendus = new Map([...elementsDesMotsCles(base)].filter(([, [premier]]) => premier).map(([id, [premier]]) => [id, premier]));
+  assert.deepEqual(Object.keys(elements).map(Number).sort((x, y) => x - y), [...attendus.keys()].sort((x, y) => x - y), 'un élément par mot-clé ancré');
+  for (const [id, premier] of attendus) {
+    const ecrite = Boolean(vocabulaire.get(id)?.description);
+    const voulu = { nom: texteSansBalises(premier.nom, lexique), ...(premier.adresse && { adresse: premier.adresse.replace(/^\//, '') }), type: elements[id].type,
+      ...(!ecrite && premier.texte && texteSansBalises(premier.texte, lexique).trim() && { texte: texteSansBalises(premier.texte, lexique).trim() }) };
+    assert.deepEqual(Object.fromEntries(Object.entries(elements[id]).sort()), Object.fromEntries(Object.entries(voulu).sort()), `${id} : son élément`);
+    assert.ok(['Page', 'Sort', 'Type de sort', 'Magie', 'Type de dégâts', 'Monnaie'].includes(elements[id].type), `${id} : son type`);
+    assert.doesNotMatch(JSON.stringify(elements[id]), /\{\{[^{}\n]+\}\}/, `${id} : aucune balise brute`);
   }
   assert.match(html, /<div id="definitions-des-mots-cles" hidden>/);
   const definitions = html.slice(html.indexOf('<div id="definitions-des-mots-cles" hidden>'), html.indexOf('<section class="recherche-pages"'));

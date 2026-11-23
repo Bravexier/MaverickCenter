@@ -11,6 +11,9 @@
 // lib/panneaux-regles-db.mjs) est aussi cherchée dans le titre et les blocs de ses panneaux, en tête de son texte (avant son corps, qui peut dépasser
 // la limite du texte), et ses `motsCles` comptent leurs balises : le site de dev les modifie, son corps (page.corps_md) n'en garde que le texte de
 // l'import, qui reste aussi cherché.
+// Décision R309 (docs/chantier-ancrage-mots-cles.md §8) : la vue d'un mot-clé de /recherche/ montre d'abord son élément (la page, le sort… qu'il ancre).
+// Ces éléments sont dans un fichier à part, `search-elements.json` (pages/search-elements.json.ts, `elementsDesMotsCles` ci-dessous), que le navigateur
+// ne charge qu'à la première vue d'un mot-clé : le texte de tous les éléments n'alourdit ni la page ni l'index que charge une simple recherche.
 import { TYPES } from './types.mjs';
 import { loadWiki, typeOf } from './wiki';
 import { adresseDePage } from './metiers.mjs';
@@ -20,7 +23,7 @@ import { sansMarquesDOnglets } from './markdown-onglets.mjs';
 import { ouvrirBase } from './donnees.mjs';
 import { chargerChronologie } from './chronologie-db.mjs';
 import { adresseDEvenement, libelleDeDate } from './chronologie.mjs';
-import { chargerVocabulaire, idDuMotCle } from './mots-cles-db.mjs';
+import { chargerVocabulaire, elementsDesMotsCles as lireLesElements, idDuMotCle } from './mots-cles-db.mjs';
 import { motsClesCites, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { chargerPanneaux } from './panneaux-regles-db.mjs';
 
@@ -116,3 +119,43 @@ let cache: Promise<ElementDeRecherche[]> | undefined;
 
 /** L'index de la recherche (une construction par build). */
 export const indexDeRecherche = () => (cache ??= construire());
+
+/** L'élément qu'ancre un mot-clé, tel que la vue de /recherche/ le montre : son nom, son type, où il se lit (sans « / » en tête), son texte. */
+export interface ElementDUnMotCle {
+  nom: string;
+  /** le type de l'élément : « Page », « Sort », « Type de sort »… (mots-cles-db.mjs#elementsDesMotsCles : sa table) */
+  type: string;
+  /** chemin relatif à la racine du site, avec l'ancre d'un sort (« magies/feu/#sort-boule-de-feu ») ; absent pour un élément qui n'a pas d'adresse */
+  adresse?: string;
+  /** le texte de l'élément (résumé d'une page, effets d'un sort), sans balises ; absent quand le mot-clé a une définition écrite (c'est elle qui est montrée) ou que l'élément n'a pas de texte */
+  texte?: string;
+}
+
+const TYPES_D_ELEMENT: Record<string, string> = {
+  page: 'Page', sort: 'Sort', type_sort: 'Type de sort', magie: 'Magie', type_degats: 'Type de dégâts', monnaie: 'Monnaie',
+};
+
+function construireLesElements(): Record<number, ElementDUnMotCle> {
+  const db = ouvrirBase();
+  const vocabulaire = chargerVocabulaire(db);
+  const prepare = vocabulaireDesMotsCles(vocabulaire);
+  const ecrites = new Map<number, boolean>(vocabulaire.map((m: { id: number; description: string | null }) => [m.id, Boolean(m.description)]));
+  const sortie: Record<number, ElementDUnMotCle> = {};
+  // le premier élément de chaque mot-clé : celui que montre aussi `motsClesDeLaBase` (`element`), la sous-ligne du Glossaire et la bulle
+  for (const [id, [premier]] of lireLesElements(db) as Map<number, { table: string; nom: string; adresse: string | null; texte: string | null }[]>) {
+    if (!premier) continue;
+    const texte = ecrites.get(id) || !premier.texte ? '' : texteSansBalises(premier.texte, prepare).trim();
+    sortie[id] = {
+      nom: texteSansBalises(premier.nom, prepare),
+      type: TYPES_D_ELEMENT[premier.table] ?? 'Élément',
+      ...(premier.adresse && { adresse: premier.adresse.replace(/^\//, '') }),
+      ...(texte && { texte }),
+    };
+  }
+  return sortie;
+}
+
+let cacheDesElements: Record<number, ElementDUnMotCle> | undefined;
+
+/** Les éléments des mots-clés ancrés (id du mot-clé → élément), pour /search-elements.json (une construction par build). */
+export const elementsDesMotsCles = () => (cacheDesElements ??= construireLesElements());

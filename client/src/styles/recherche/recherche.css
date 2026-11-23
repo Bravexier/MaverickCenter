@@ -1,5 +1,5 @@
 /* Recherche (/recherche/) : le champ, puis les mots-clés (tous, ou ceux qui correspondent) et les pages trouvées ; ou les pages d'un mot-clé
-   (?mot-cle=<id>). Inséré par pages/recherche.astro (?raw). */
+   (?mot-cle=<id>). Inséré par pages/recherche.astro (?raw). Aucune couleur écrite (skill ui-couleurs). */
 #search-form { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 #search-form input { flex: 1 1 16rem; max-width: 32rem; }
 .recherche-mots-cles h2, .recherche-pages h2, .recherche-mot-cle h2 { font-size: 1.15rem; margin-bottom: 0.5rem; }
@@ -9,3 +9,15 @@
 /* la définition d'un mot-clé du glossaire, sous son titre (?mot-cle=<id>) */
 .recherche-definition { max-width: 46rem; margin: 0 0 0.6rem; white-space: pre-line; }
 .recherche-voir-aussi { margin-top: 2rem; font-size: var(--fs-lg); }
+/* l'élément d'un mot-clé ancré (R309 §8), avant ses pages : son texte garde les retours à la ligne (les effets d'un sort) */
+.recherche-element h3 { font-size: var(--fs-md); margin: 0.6rem 0 0; }
+.recherche-element .entry-list { margin-block: 0.25rem 0.8rem; }
+.recherche-element .muted { max-width: 46rem; white-space: pre-line; }
+/* la navigation par pages de la liste (R309 §9), créée par le script : elle passe à la ligne plutôt que de déborder (18 pages, 360 px de large) */
+.recherche-navigation { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem 0.6rem; margin: 0.8rem 0; }
+.recherche-navigation[hidden] { display: none; }
+.recherche-navigation__numeros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+.recherche-navigation__bouton { min-inline-size: 2.5rem; min-block-size: 2.5rem; padding-block: 0; }
+.recherche-navigation__bouton[aria-current='page'] { color: var(--surface); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.recherche-navigation__trou { min-inline-size: 1.5rem; text-align: center; color: var(--muted); }
+.recherche-navigation__etat { flex-basis: 100%; margin: 0; text-align: center; font-size: var(--fs-sm); }
