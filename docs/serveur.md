@@ -999,8 +999,8 @@ connaît la colonne (`traduire`, comme l'application) : ce qu'il recalcule seul 
 note (`deja`). Une colonne dérivée d'une page typée, que le service refuse d'écrire, passe par le journal. La comparaison est **refaite à chaque ligne** sur l'état du moment ; l'aperçu
 (`GET …/annulation/`, classe lecture) est calculé par **le même code** sur une copie `VACUUM INTO` dans un fil à part (un à la fois, avec les essais), rien n'est enregistré ; il rend
 `verdict` (`applicable`, `verrous`, `refusee`, `rien_a_remettre`), `comptes`, `verrous_a_ouvrir`, les opérations avec leur aperçu avant et après (`ecarts` des valeurs gardées) et les
-problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, mot de passe) : une transaction sous le verrou de l'édition, dans la requête (un lot d'ancrage R309 : de 10 à 15 s sur
-le poste de développement, sous les 60 s de nginx, ses mots-clés retirés lisant leurs mentions une seule fois : `lecteurDesMentions` ; une réponse coupée ne change rien à la transaction, l'état se
+problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, mot de passe) : une transaction sous le verrou de l'édition, dans la requête (un lot d'ancrage R309 : de 3 à 7 s sur
+le poste de développement, mesure du 2026-11-26 sur une copie ancrée, sous les 60 s de nginx, ses mots-clés retirés lisant leurs mentions une seule fois : `lecteurDesMentions` ; une réponse coupée ne change rien à la transaction, l'état se
 relit par `GET /api/edition/lots/`), contrôles du contenu rejoués (le calcul « avant » se fait au clic, environ une seconde), un lot du journal `Annulation de « … »` de **la même nature et du même numéro de décision** que le lot annulé (titre neutralisé comme à l'application), puis
 `lot_de_changements` passe à « annule » (`annule_le`, `annulation_lot_id`, `bilan.annulation` : le bilan d'application est gardé). Les verrous de décision se rouvrent au clic
 (`verrous_ouverts`). Refus (409, rien n'est écrit, le lot reste « applique ») : rien à remettre (tout a changé depuis, ou est déjà revenu), une ligne refusée par le service, un verrou
