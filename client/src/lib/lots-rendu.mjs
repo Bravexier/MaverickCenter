@@ -17,12 +17,14 @@
 // sans référence, rien n'est retiré), ni les refusés et les annulés. Une liste coupe à PLAFOND_DES_LIGNES lignes (un bouton montre le reste).
 import { instantLisible, texteDeValeur } from './conflits-rendu.mjs';
 import { replierLeDiff } from './diff-replie.mjs';
+import { estUnLotDAncrage } from './lots-d-ancrage.mjs';
 import { diffMots, echapper } from './notes-de-version-rendu.mjs';
 
-/** La décision qui donne un mot-clé à chaque page, sort et type de sort (R309, chantier de l'ancrage) : ses changements se replient (htmlDuLot). */
-const DECISION_DE_L_ANCRAGE = 'R309';
-/** Le changement vient-il de l'ancrage ? Son détail ne se lit qu'à l'ouverture de son repli (la page : `<id>:lot` dans `ouverts`). */
-export const estUnLotDAncrage = (lot) => lot?.decision === DECISION_DE_L_ANCRAGE;
+/**
+ * Le changement vient-il de l'action « Préparer l'ancrage » (R309 : sa décision et son auteur, lib/lots-d-ancrage.mjs) ? Ses changements se replient (htmlDuLot) : son
+ * détail ne se lit qu'à l'ouverture de son repli (la page : `<id>:lot` dans `ouverts`).
+ */
+export { estUnLotDAncrage };
 /** Les lignes d'un aperçu montrées d'abord ; « Tout montrer » donne le reste. */
 export const PLAFOND_DES_LIGNES = 30;
 /** Au-delà, deux textes se montrent par leurs différences. */
@@ -512,10 +514,14 @@ export function messageDeLAncrage(r) {
   const aTrancher = r?.a_trancher ?? [];
   const ecartees = r?.ecartees ?? [];
   const parties = [];
+  // sans clé de dépôt, le lot proposé que l'essai refuse : il ne s'applique pas, on le refuse pour relancer (ni « appliquez-la », ni « Arrêt »)
+  const proposeRefuse = r?.arret ? lots.find((l) => l.etat === 'propose' && l.titre === r.arret.titre) : null;
   if (appliques) parties.push(`${pluriel(appliques, 'lot appliqué', 'lots appliqués')} : vous les retrouvez ci-dessous, ligne par ligne.`);
-  if (lots.some((l) => l.etat === 'propose')) parties.push('Une proposition est faite : vérifiez-la ci-dessous et appliquez-la, puis relancez « Préparer l’ancrage » pour la suite.');
-  if (r?.arret) parties.push(`Arrêt sur « ${r.arret.titre} », rien de ce lot n’est écrit : ${r.arret.motif}`);
-  if (!lots.length && !r?.arret) parties.push('Rien à préparer : tout ce qui pouvait être ancré l’est déjà.');
+  if (proposeRefuse) parties.push(`La proposition « ${proposeRefuse.titre} » ne peut pas s’appliquer : ${String(r.arret.motif).trim().replace(/([^.!?…])$/, '$1.')} Refusez-la ci-dessous, puis relancez « Préparer l’ancrage ».`);
+  else if (lots.some((l) => l.etat === 'propose')) parties.push('Une proposition est faite : vérifiez-la ci-dessous et appliquez-la, puis relancez « Préparer l’ancrage » pour la suite.');
+  if (r?.arret && !proposeRefuse) parties.push(`Arrêt sur « ${r.arret.titre} », rien de ce lot n’est écrit : ${r.arret.motif}`);
+  // des lignes annulées restent de côté : rien n'est « déjà » ancré pour elles (la phrase qui suit les liste)
+  if (!lots.length && !r?.arret) parties.push(ecartees.length ? 'Rien d’autre à préparer.' : 'Rien à préparer : tout ce qui pouvait être ancré l’est déjà.');
   if (aTrancher.length) parties.push(`À trancher (${aTrancher.length}) : ${listeCourte(aTrancher.map((x) => `${x.nom} : ${x.raison}`))}.`);
   if (ecartees.length) parties.push(`Lignes annulées laissées de côté (${ecartees.length}) : ${listeCourte(ecartees.map(phraseDeLEcartee))}. « Reprendre les lignes annulées » les redépose.`);
   return parties.join(' ');

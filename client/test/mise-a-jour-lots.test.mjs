@@ -546,8 +546,8 @@ test('R309 : le détail d’un changement d’ancrage se lit à l’ouverture de
   let liberer;
   const attente = new Promise((r) => { liberer = r; });
   const page = await monter([
-    direct('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 36, lignes_annulees: 1 }),
-    direct('aut', [ligne(1)], { decision: 'R309', titre: 'Autre ancrage', lignes_nettes: 7, lignes_annulees: 0 }),
+    direct('anc', lignes, { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 36, lignes_annulees: 1 }),
+    direct('aut', [ligne(1)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Autre ancrage', lignes_nettes: 7, lignes_annulees: 0 }),
     direct('ord', [ligne(1)], { decision: 'R275', titre: 'Changement ordinaire' }),
   ], {
     'GET edition/lots/anc/': async (_corps, etat) => {
@@ -635,7 +635,7 @@ test('R309 : le détail d’un changement d’ancrage se lit à l’ouverture de
 
 test('R309 : une lecture du détail en échec le dit dans le repli avec « Réessayer » ; ni un rendu, ni un nouveau `toggle`, ni « Actualiser » ne la relancent, seul le bouton', async () => {
   let tentatives = 0;
-  const page = await monter([direct('anc', [ligne(1), ligne(2)], { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 2, lignes_annulees: 0 })], {
+  const page = await monter([direct('anc', [ligne(1), ligne(2)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 2, lignes_annulees: 0 })], {
     'GET edition/lots/anc/': (_corps, etat) => {
       tentatives += 1;
       return tentatives < 3 ? [503, { erreur: 'Service occupé' }] : etat.lots.find((l) => l.id === 'anc');
@@ -678,7 +678,7 @@ test('R309 : une lecture du détail en échec le dit dans le repli avec « Rées
 
 test('R309 : une proposition d’ancrage dont la lecture échoue ne laisse aucun échec en mémoire : appliquée, son repli se lit normalement', async () => {
   let lectures = 0;
-  const page = await monter([lot('prop', { decision: 'R309', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })], {
+  const page = await monter([lot('prop', { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })], {
     'GET edition/lots/prop/': (_corps, etat) => {
       lectures += 1;
       // la première lecture (la proposition, au chargement) échoue ; ensuite le changement est appliqué et se lit
@@ -688,7 +688,7 @@ test('R309 : une proposition d’ancrage dont la lecture échoue ne laisse aucun
   assert.equal(lectures, 1, 'la proposition est lue au chargement, comme avant');
   assert.equal(page.section().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0, 'une proposition ne dit pas d’échec de lecture du détail');
   // la proposition est appliquée (sa ligne passe à « applique ») : la page est relue, son repli est replié et se lit à l'ouverture, sans l'échec d'avant
-  page.etat.lots = [direct('prop', [ligne(1), ligne(2), ligne(3)], { decision: 'R309', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })];
+  page.etat.lots = [direct('prop', [ligne(1), ligne(2), ligne(3)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })];
   await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
   assert.equal(lectures, 1, 'le repli fermé de l’ancrage appliqué ne se lit pas à la relecture de la liste');
   const repli = () => page.article('prop').querySelector('details.nv-lot__repli');

@@ -11,7 +11,7 @@ import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { traiter } from '../serveur/api.mjs';
 import * as tacheDeFond from '../serveur/edition-ancrage-lots.mjs';
 import { lignesAnnuleesDeLAncrage, preparerLAncrage } from '../serveur/edition-ancrage-lots.mjs';
-import { annuler, annulerUneLigne, deposerEtAppliquer, lire } from '../serveur/edition-lots.mjs';
+import { annuler, annulerUneLigne, appliquer, deposerEtAppliquer, lire } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { messageDeLAncrage } from '../src/lib/lots-rendu.mjs';
@@ -151,6 +151,8 @@ test('un lot refusé n’écrit rien et arrête la suite, avec son motif : le pr
   assert.notEqual(r.arret.titre, r.lots[0].titre);
   assert.ok(r.arret.motif.includes(sort0), r.arret.motif);
   assert.ok(!r.arret.motif.includes(sort1), 'un seul motif : le premier refus, sans la cascade');
+  assert.doesNotMatch(r.arret.motif, /opération/, 'pas de jargon sur la page (skill zone-mise-a-jour-lots)');
+  assert.match(r.arret.motif, /^ligne \d+ du lot : /);
   assert.equal(r.suite, true);
   for (const id of [...m.monde.sorts, ...m.monde.capacites]) assert.equal(ancre(m, id.includes('#sort:') ? 'sort' : 'page', id), null, `${id} : rien du lot refusé, rien après lui`);
   const refuse = m.db.prepare("SELECT etat FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid DESC LIMIT 1").get();
@@ -159,6 +161,23 @@ test('un lot refusé n’écrit rien et arrête la suite, avec son motif : le pr
   assert.equal((await lancer(m)).lots.length, 0, 'relancé, il s’arrête au même refus');
   assert.equal(motsCles(), nombre);
   assert.ok(messageDeLAncrage(r).includes(r.arret.motif));
+});
+
+test('sans clé, une proposition que l’essai refuse : le message dit de la refuser, ni « appliquez-la » ni « Arrêt », et son motif est sans « opération »', async () => {
+  const m = nouvelle({ pageDeMagie: false });
+  const premier = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
+  assert.equal(premier.arret, null, premier.arret?.motif);
+  appliquer(m.db, premier.lots[0].id, {});
+  const r = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
+  assert.equal(r.lots.length, 1);
+  assert.equal(r.lots[0].etat, 'propose');
+  assert.equal(r.arret?.titre, r.lots[0].titre, 'l’arrêt est sur la proposition');
+  assert.doesNotMatch(r.arret.motif, /opération/);
+  const message = messageDeLAncrage(r);
+  assert.match(message, /ne peut pas s’appliquer/);
+  assert.match(message, /Refusez-la/);
+  assert.doesNotMatch(message, /appliquez-la|Arrêt/);
+  assert.ok(message.includes(r.arret.motif.trim().replace(/[.!?…]$/, '')), message);
 });
 
 test('une ligne annulée reste écartée et listée, avec tout son groupe', async () => {
@@ -183,6 +202,21 @@ test('une ligne annulée reste écartée et listée, avec tout son groupe', asyn
   assert.deepEqual(repris.ecartees, []);
   assert.notEqual(ancre(m, 'page', page), null);
   assert.ok(!lignesAnnuleesDeLAncrage(m.db).has(`page:${page}`), 'reprise : la ligne ne compte plus comme annulée');
+
+  // l'ordre des lots est celui du dépôt (`depose_le`), pas l'ordre physique de la table (Fable m2) : la table recopiée à l'envers, la reprise reste la plus récente
+  const lots = m.db.prepare('SELECT rowid AS r, * FROM lot_de_changements ORDER BY rowid').all();
+  const dernier = lots.at(-1).id;
+  m.db.exec('BEGIN');
+  m.db.exec('DELETE FROM lot_de_changements');
+  for (const { r: _r, ...lot } of lots.reverse()) {
+    lot.depose_le = lot.id === dernier ? '2026-01-02T00:00:00Z' : '2026-01-01T00:00:00Z';
+    const colonnes = Object.keys(lot);
+    m.db.prepare(`INSERT INTO lot_de_changements (${colonnes.join(', ')}) VALUES (${colonnes.map(() => '?').join(', ')})`).run(...Object.values(lot));
+  }
+  m.db.exec('COMMIT');
+  assert.equal(m.db.prepare('SELECT id FROM lot_de_changements ORDER BY rowid LIMIT 1').get().id, dernier, 'la reprise est la première ligne de la table');
+  assert.ok(!lignesAnnuleesDeLAncrage(m.db).has(`page:${page}`), 'la reprise, déposée après l’annulation, compte encore');
+  assert.deepEqual((await lancer(m)).lots, [], 'rien n’est redéposé');
 });
 
 test('un renommage annulé garde l’ancien nom, signalé comme écart', async () => {
@@ -334,6 +368,16 @@ test('le message suit le résultat, sans jargon', () => {
   for (const brut of ['page:', 'sort:', 'type_sort', 'nom:', 'type:', 'categorie:']) assert.ok(!mots.includes(brut), brut);
   const beaucoup = messageDeLAncrage({ lots: [], arret: null, suite: false, a_trancher: [], ecartees: Array.from({ length: 30 }, (_, i) => `page:p${i}`), comptes: {} });
   assert.match(beaucoup, /20 de plus/);
+  // des lignes annulées laissées de côté : rien n'est « déjà » ancré pour elles (relecture finale, Opus M1)
+  for (const message of [mots, beaucoup]) assert.doesNotMatch(message, /l’est déjà/, message);
+  assert.match(mots, /Rien d’autre à préparer/);
+  // sans clé, la proposition refusée par l'essai : la refuser, pas l'appliquer (relecture finale, réserve T6 M3)
+  const refusee = messageDeLAncrage({ lots: [{ etat: 'propose', titre: 'Sorts' }], arret: { titre: 'Sorts', motif: 'ligne 2 du lot : refusée' }, suite: true, a_trancher: [], ecartees: [], comptes: {} });
+  assert.match(refusee, /La proposition « Sorts » ne peut pas s’appliquer : ligne 2 du lot : refusée\. Refusez-la/);
+  assert.doesNotMatch(refusee, /appliquez-la|Arrêt/);
+  // avec la clé, l'arrêt sur un lot refusé reste dit comme un arrêt
+  const arret = messageDeLAncrage({ lots: [{ etat: 'applique', titre: 'Noms' }], arret: { titre: 'Sorts', motif: 'refusé.' }, suite: true, a_trancher: [], ecartees: [], comptes: {} });
+  assert.match(arret, /Arrêt sur « Sorts »/);
 });
 
 test('lire reste possible sur un lot de l’action (le format n’a pas de `famille`)', async () => {

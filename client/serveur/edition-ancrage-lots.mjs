@@ -5,9 +5,13 @@
 //   Sans elle : un seul lot, en proposition ; la suite vient au prochain lancement, une fois la proposition appliquée.
 // Une ligne annulée reste écartée (R291 : annuler est une décision du propriétaire), jusqu'au geste « Reprendre les lignes annulées » (`reprendre`).
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import { DECISION_DE_L_ANCRAGE, estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { planDeLAncrage } from '../src/lib/mots-cles-ancrage.mjs';
 import { ErreurEdition } from './edition.mjs';
 import { deposer, deposerEtAppliquer, motifsDeLEssai, netsDuLot } from './edition-lots.mjs';
+
+/** L'ordre chronologique des lots de l'action : la date de dépôt, puis `rowid` à égalité (relecture finale, Fable m2). */
+const ORDRE_DES_LOTS = 'ORDER BY depose_le, rowid';
 
 /** La clé du plan qu'écarte l'annulation de cette ligne de l'effet net, ou null : un mot-clé créé part avec son ancre, un texte ou une clé recalculés ne décident de rien. */
 function cleDuPlan(net, crees) {
@@ -38,7 +42,9 @@ function rangsAnnules(lot, nets, bilan) {
  */
 export function lignesAnnuleesDeLAncrage(db) {
   const ecartees = new Set();
-  for (const lot of db.prepare("SELECT etat, lot_id, bilan FROM lot_de_changements WHERE decision = 'R309' AND etat IN ('applique', 'annule') AND lot_id IS NOT NULL ORDER BY rowid").all()) {
+  // l'ordre de dépôt : `depose_le`, `rowid` pour départager (il dépend de la façon dont la table a été copiée)
+  const sql = `SELECT etat, lot_id, bilan, decision, auteur FROM lot_de_changements WHERE decision = ? AND etat IN ('applique', 'annule') AND lot_id IS NOT NULL ${ORDRE_DES_LOTS}`;
+  for (const lot of db.prepare(sql).all(DECISION_DE_L_ANCRAGE).filter(estUnLotDAncrage)) {
     const nets = netsDuLot(db, lot.lot_id);
     const annules = rangsAnnules(lot, nets, lot.bilan ? JSON.parse(lot.bilan) : null);
     const crees = new Set(nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer').map((n) => n.cle.id));
@@ -68,6 +74,8 @@ function prochainLot(plan, ecartees, categories) {
 }
 
 const resume = (lot) => ({ id: lot.id, titre: lot.titre, etat: lot.etat, operations: lot.operations, ecrites: lot.bilan?.ecrites ?? 0, verdict: lot.verdict ?? null });
+/** Le motif d'un arrêt, lu sur la page Mise à jour : « opération N » (le format du lot, edition-lots.mjs#motifsDeLEssai) y devient « ligne N du lot », comme ses autres messages. */
+const motifLisible = (motif) => String(motif).replace(/\bopération (\d+) : /g, 'ligne $1 du lot : ');
 const VERDICTS_SANS_APPLICATION = new Set(['a_corriger', 'en_echec', 'rien_a_ecrire']);
 
 let enCours = false; // deux enchaînements à la fois calculeraient le même plan
@@ -94,7 +102,8 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
     const { comptes } = plan;
     const fin = (lots, arret, suite) => ({ lots, arret, suite, a_trancher: plan.a_trancher, ecartees: [...plan.ecartees, ...categories].sort(), comptes });
 
-    const enAttente = db.prepare("SELECT titre FROM lot_de_changements WHERE decision = 'R309' AND etat = 'propose' ORDER BY rowid LIMIT 1").get();
+    const [enAttente] = db.prepare(`SELECT titre, decision, auteur FROM lot_de_changements WHERE decision = ? AND etat = 'propose' ${ORDRE_DES_LOTS}`)
+      .all(DECISION_DE_L_ANCRAGE).filter(estUnLotDAncrage);
     if (enAttente) return fin([], { titre: enAttente.titre, motif: 'cette proposition attend encore votre décision : appliquez-la ou refusez-la, puis relancez.' }, true);
 
     const lots = [];
@@ -109,7 +118,7 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
       precedent = empreinte;
       if (!par) {
         const propose = await deposer(base, lot, { enArrierePlan, dossier, ...options });
-        const arret = VERDICTS_SANS_APPLICATION.has(propose.verdict) ? { titre: lot.titre, motif: motifsDeLEssai(propose.essai)[0] ?? 'l’essai à blanc le refuse.' } : null;
+        const arret = VERDICTS_SANS_APPLICATION.has(propose.verdict) ? { titre: lot.titre, motif: motifLisible(motifsDeLEssai(propose.essai)[0] ?? 'l’essai à blanc le refuse.') } : null;
         return fin([...lots, resume(propose)], arret, true);
       }
       try {
@@ -117,7 +126,7 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
       } catch (e) {
         if (!(e instanceof ErreurEdition) || ![400, 409].includes(e.statut)) throw e;
         // à l'essai, un refus décale les ids et les créations suivantes sont refusées en cascade : seul le premier motif dit la cause
-        return fin(lots, { titre: lot.titre, motif: e.details?.motifs?.[0] ?? e.message }, true);
+        return fin(lots, { titre: lot.titre, motif: motifLisible(e.details?.motifs?.[0] ?? e.message) }, true);
       }
       const vivante = base();
       if (!vivante) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');

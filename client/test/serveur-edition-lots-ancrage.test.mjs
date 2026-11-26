@@ -10,6 +10,7 @@ import { ErreurEdition, enregistrer } from '../serveur/edition.mjs';
 import { annuler, annulerUneLigne, appliquer, decisionsCitees, deposer, lire, previsualiserLAnnulation, traduire } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { controlerLeLot, FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
+import { AUTEUR_DE_L_ANCRAGE, DECISION_DE_L_ANCRAGE } from '../src/lib/lots-d-ancrage.mjs';
 import { htmlDeLApercu } from '../src/lib/lots-rendu.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
@@ -23,7 +24,8 @@ function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(n += 1)}`) }).chemin);
   return { db, dossier: join(racine, `essais${n}`) };
 }
-const lot = (operations, plus = {}) => ({ format: FORMAT_DU_LOT, titre: `Ancrage d’essai ${(n += 1)}`, nature: 'decision', decision: 'R309', operations, ...plus });
+// le lot de l'action « Préparer l'ancrage » : sa décision et son auteur (lib/lots-d-ancrage.mjs) ; un lot de l'équipe qui cite R309 passe `auteur`
+const lot = (operations, plus = {}) => ({ format: FORMAT_DU_LOT, titre: `Ancrage d’essai ${(n += 1)}`, nature: 'decision', decision: DECISION_DE_L_ANCRAGE, auteur: AUTEUR_DE_L_ANCRAGE, operations, ...plus });
 // `mot_cle_categorie` est une table hors édition : le site de dev (base source) ouvre le lot, comme la route (serveur/api.mjs#traiterLots)
 const proposer = (m, operations, plus) => deposer(() => m.db, lot(operations, plus), { enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });
 const nom = (suffixe) => `Zephyrion ${suffixe} ${process.pid}`;
@@ -484,6 +486,20 @@ test('annuler d’un bloc : le texte qui cite le mot-clé créé et celui d’un
   assert.deepEqual(categoriesDe(m, a), [c1]);
   assert.deepEqual(categoriesDe(m, seule), [c1]);
   assert.deepEqual(motsClesDeLaBase(m.db).map((x) => [x.id, x.cle]), cles);
+  clesJustes(m);
+});
+
+test('un lot de l’équipe qui cite R309 (décision 17) est ordinaire : une ligne de reclassement reste seule, comme hors R309', async () => {
+  const m = nouvelle();
+  const [c1, c2] = lesCategories(m);
+  const reclasse = unMotCle(m, nom('equipe'), [c1]);
+  const p = await proposer(m, [retirerCategorie(reclasse, c1), poserCategorie(reclasse, c2)], { auteur: 'équipe' });
+  assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
+  const fait = appliquer(m.db, p.id, {});
+  assert.equal(lire(m.db, p.id).decision, 'R309');
+  const n1 = rangDe(m, fait.lot_id, 'mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: c1 });
+  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, n1)), [n1], 'le lot de l’équipe n’emporte pas la ligne voisine');
+  assert.deepEqual(categoriesDe(m, reclasse), [c1, c2]);
   clesJustes(m);
 });
 

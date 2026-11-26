@@ -446,7 +446,7 @@ test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de
   assert.deepEqual(textes(repli.querySelectorAll('li[data-nv-ligne="1"] .nv-version__texte')), ['avant 1', 'après 1']);
   assert.match(repli.querySelector('[data-nv-bilan]').textContent, /^4 modifications, dont 1 annulée\.$/);
   // « Tout montrer » et le message d'une ligne restent dans le bloc ; le message du changement reste visible replié
-  const long = applique('long', Array.from({ length: PLAFOND_DES_LIGNES + 5 }, (_, i) => ligne(i + 1)), { decision: 'R309' });
+  const long = applique('long', Array.from({ length: PLAFOND_DES_LIGNES + 5 }, (_, i) => ligne(i + 1)), { decision: 'R309', auteur: 'préparer l’ancrage' });
   const vueLongue = lire(htmlDuLot(long, { messages: new Map([['long', { texte: 'Dit au clic', erreur: false }]]) })).querySelector('article');
   assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli li.nv-lot-ligne').length, PLAFOND_DES_LIGNES);
   assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli button[data-nv-toutes="long:lignes"]').length, 1);
@@ -456,7 +456,7 @@ test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de
   // déplié par le propriétaire : il le reste d'un rendu à l'autre
   assert.equal(lire(htmlDuLot(ancrage, { ouverts: new Set(['anc:lot']) })).querySelector('details.nv-lot__repli').hasAttribute('open'), true);
   // une proposition d'ancrage qui attend son clic reste ouverte : ses boutons ne se cachent pas
-  const attente = lire(htmlDuLot(lot('att', { decision: 'R309' }))).querySelector('article');
+  const attente = lire(htmlDuLot(lot('att', { decision: 'R309', auteur: 'préparer l’ancrage' }))).querySelector('article');
   assert.equal(attente.querySelector('details.nv-lot__repli').hasAttribute('open'), true);
   assert.equal(attente.querySelectorAll('details.nv-lot__repli button[data-nv-appliquer]').length, 1);
   // un autre changement n'est pas replié ; un changement d'ancrage dont le détail manque n'a ni bloc ni nombre inventé
@@ -468,7 +468,7 @@ test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de
 });
 
 test('R309 : un changement d’ancrage dont le détail n’est pas lu dit le nombre de la liste, la lecture en cours ou son échec avec « Réessayer », jamais « indisponible » ; lu, le nombre exact', () => {
-  const { lignes: _l, ...nonLu } = applique('anc', [], { decision: 'R309', titre: 'Ancrage d’essai', lignes_nettes: 12, lignes_annulees: 2 });
+  const { lignes: _l, ...nonLu } = applique('anc', [], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 12, lignes_annulees: 2 });
   assert.equal('lignes' in nonLu, false);
   const article = (lot, vue) => lire(htmlDuLot(lot, vue)).querySelector('article');
   // le nombre de la liste, moins les lignes annulées ; rien dans le bloc : ni lecture, ni indisponible, ni bilan
@@ -498,9 +498,11 @@ test('R309 : un changement d’ancrage dont le détail n’est pas lu dit le nom
   const indispo = article({ ...nonLu, lignes: null, lignes_indisponibles: 'journal retiré' }, {});
   assert.equal(indispo.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
   assert.equal(indispo.querySelectorAll('.nv-lot__compte').length, 0);
-  assert.equal(article(lot('prop', { decision: 'R309', lignes_nettes: 9 }), {}).querySelectorAll('.nv-lot__compte').length, 0);
+  assert.equal(article(lot('prop', { decision: 'R309', auteur: 'préparer l’ancrage', lignes_nettes: 9 }), {}).querySelectorAll('.nv-lot__compte').length, 0);
   // les autres changements ne changent pas : leur bilan se lit comme avant
   assert.equal(article(applique('autre', [ligne(1)], { decision: 'R275' }), {}).querySelectorAll('[data-nv-bilan]').length, 1);
-  assert.equal(estUnLotDAncrage({ decision: 'R309' }), true);
-  assert.equal(estUnLotDAncrage({ decision: 'R275' }), false);
+  // un lot d'ancrage : la décision ET l'auteur de l'action (lib/lots-d-ancrage.mjs) ; un lot de l'équipe qui cite R309 (décision 17) est ordinaire
+  assert.equal(estUnLotDAncrage({ decision: 'R309', auteur: 'préparer l’ancrage' }), true);
+  for (const autre of [{ decision: 'R309' }, { decision: 'R309', auteur: 'équipe' }, { decision: 'R275', auteur: 'préparer l’ancrage' }, { decision: 'R275' }, null]) assert.equal(estUnLotDAncrage(autre), false, JSON.stringify(autre));
+  assert.equal(lire(htmlDuLot(applique('equipe', [ligne(1)], { decision: 'R309', auteur: 'équipe' }))).querySelectorAll('details.nv-lot__repli').length, 0, 'le lot de l’équipe n’est pas replié');
 });

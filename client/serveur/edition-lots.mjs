@@ -36,6 +36,7 @@ import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-poti
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import { estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { lecteurDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
@@ -640,7 +641,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     const plan = planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null);
     const nets = netsDuLot(db, depose.lot_id);
     const juge = jugeDesLignes(db, nets);
-    const gardes = groupesGardes(db, nets, depose.decision, lignesDejaAnnulees(ligneOuErreur(db, depose.id))); // un groupe s'annule entier ou reste en place
+    const gardes = groupesGardes(db, nets, ligneOuErreur(db, depose.id), lignesDejaAnnulees(ligneOuErreur(db, depose.id))); // un groupe s'annule entier ou reste en place
     let lectureFinale = null; // les balises sur le vocabulaire d'après le recalcul différé
     let place = 0;
     let mentions = null; // au recalcul différé : les mentions lues une fois pour les mots-clés que le lot a créés (`lecteurDesMentions`)
@@ -883,12 +884,13 @@ const tientAuMotCle = (n, k) => (n.table === 'mot_cle' && n.cle.id === k) || (n.
 
 /**
  * Les lignes qu'annuler une ligne emporte, parce que seule elle n'a pas de sens : Map(rang → les rangs du groupe, croissants), sans entrée pour une ligne qui reste
- * seule. Un mot-clé créé et ancré par le lot : sa ligne, ses catégories, ses clés quittées et les ancres qui le citent. Dans un lot de la décision R309, le
+ * seule. Un mot-clé créé et ancré par le lot : sa ligne, ses catégories, ses clés quittées et les ancres qui le citent. Dans un lot de l'action « Préparer l'ancrage »
+ * (`lot` : sa décision et son auteur, lib/lots-d-ancrage.mjs#estUnLotDAncrage ; un lot de l'équipe qui cite R309 n'en est pas un), le
  * reclassement d'un mot-clé : toutes ses lignes de `mot_cle_categorie`. Par mot-clé, les éléments ancrés retirés avec lui : eux, sa ligne, ses catégories, synonymes et clés
  * quittées ; s'il est gardé par un autre élément (R289) et que son adresse s'est vidée : eux et sa ligne.
  * Rien d'autre : un renommage, l'ancre d'un mot-clé existant, un lot sans ancrage restent ligne à ligne.
  */
-function lignesEmportees(nets, decision) {
+function lignesEmportees(nets, lot) {
   const groupes = new Map();
   const grouper = (lignes) => {
     const rangs = lignes.map((n) => n.rang).sort((a, b) => a - b);
@@ -896,7 +898,7 @@ function lignesEmportees(nets, decision) {
   };
   const crees = motsClesCreesEtAncres(nets);
   for (const k of crees) grouper(nets.filter((n) => tientAuMotCle(n, k)));
-  if (decision === 'R309') {
+  if (estUnLotDAncrage(lot)) {
     const reclasses = new Set(nets.filter((n) => n.table === 'mot_cle_categorie' && !crees.has(n.cle.mot_cle_id)).map((n) => n.cle.mot_cle_id));
     for (const k of reclasses) grouper(nets.filter((n) => n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k));
   }
@@ -953,9 +955,9 @@ function fillesAjoutees(db, nets, groupes, juge) {
  * ligne fille a été ajoutée à son mot-clé créé, ou retouchée depuis (`fillesAjoutees`). Un groupe déjà revenu en entier, ou déjà annulé (`annulees`), n'a plus rien à garder. Une catégorie créée par le lot
  * qui range encore un mot-clé gardé est gardée avec lui. Pour un mot-clé existant reclassé, le journal ne dit pas quelles catégories il avait : seules ses lignes du lot se comparent.
  */
-function groupesGardes(db, nets, decision, annulees = new Set()) {
+function groupesGardes(db, nets, lot, annulees = new Set()) {
   const gardes = new Map();
-  const groupes = [...new Set(lignesEmportees(nets, decision).values())].filter((rangs) => !rangs.every((r) => annulees.has(r)));
+  const groupes = [...new Set(lignesEmportees(nets, lot).values())].filter((rangs) => !rangs.every((r) => annulees.has(r)));
   if (!groupes.length) return gardes;
   const parRang = new Map(nets.map((n) => [n.rang, n]));
   const juge = jugeDesLignes(db, nets);
@@ -1209,8 +1211,8 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
   const etiquettes = etiquettesDesLignes(db, nets);
   const dependances = ligne.etat === 'applique' ? dependancesDesLignes(db, nets, new Set(Object.keys(annulees).map(Number)), etiquettes) : new Map();
   const juge = jugeDesLignes(db, nets);
-  const groupes = lignesEmportees(nets, ligne.decision);
-  const gardes = ligne.etat === 'applique' ? groupesGardes(db, nets, ligne.decision, new Set(Object.keys(annulees).map(Number))) : new Map();
+  const groupes = lignesEmportees(nets, ligne);
+  const gardes = ligne.etat === 'applique' ? groupesGardes(db, nets, ligne, new Set(Object.keys(annulees).map(Number))) : new Map();
   // ce qui tient une ligne : ce qui tient son groupe, hors du groupe lui-même (il s'annule d'un bloc)
   const tenueDe = (rang) => {
     const groupe = groupes.get(rang) ?? [rang];
@@ -1280,7 +1282,7 @@ function problemesToleres(db, ligne, lignes = null) {
     if (e instanceof ErreurEdition) return []; // un lot qui n'est plus au journal, ou en conflit : l'annulation le refuse avec son motif
     throw e;
   }
-  const gardes = groupesGardes(db, nets, ligne.decision, lignesDejaAnnulees(ligne));
+  const gardes = groupesGardes(db, nets, ligne, lignesDejaAnnulees(ligne));
   const remet = nets.some((n) => estUnElementAncreRetire(n) && (!lignes || lignes.includes(n.rang)) && !gardes.has(n.rang) && !lireLigne(db, n.table, n.cle));
   return remet ? avant : [];
 }
@@ -1297,7 +1299,7 @@ function aAnnulerUneLigne(db, ligne, numero) {
   const net = nets.find((n) => n.rang === numero);
   if (!net) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
   const libelle = etiquettesDesLignes(db, [net]).get(net.rang);
-  const lignes = lignesEmportees(nets, ligne.decision).get(numero) ?? [numero];
+  const lignes = lignesEmportees(nets, ligne).get(numero) ?? [numero];
   return { ...aAnnuler(db, ligne, lignes), titre: `Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300), ligne: numero, lignes };
 }
 
@@ -1783,7 +1785,7 @@ export function annulerUneLigne(db, id, numero, corps = {}) {
     const annulees = new Set(Object.keys(bilan.lignes_annulees).map(Number));
     const nets = netsDuLot(base, ligne.lot_id);
     const juge = jugeDesLignes(base, nets);
-    const gardes = groupesGardes(base, nets, ligne.decision, annulees); // un groupe gardé n'a plus rien à remettre
+    const gardes = groupesGardes(base, nets, ligne, annulees); // un groupe gardé n'a plus rien à remettre
     const reste = nets.some((net) => {
       if (annulees.has(net.rang) || gardes.has(net.rang)) return false;
       let actuelle = null;

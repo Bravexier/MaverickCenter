@@ -8,6 +8,7 @@
 // Sans dépendance navigateur ni Astro : la base est passée par l'appelant.
 import { adresseDeLaPage, adresseDuSort } from './adresses-db.mjs';
 import { FORMAT_DU_LOT } from './lot-de-changements.mjs';
+import { AUTEUR_DE_L_ANCRAGE, DECISION_DE_L_ANCRAGE } from './lots-d-ancrage.mjs';
 import { referencesDesMotsCles } from './mentions-des-mots-cles.mjs';
 import { synonymesPris, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { clesDesMotsCles, HomonymesRefuses, RAISONS } from './mots-cles-cles.mjs';
@@ -38,7 +39,6 @@ const TYPE_REPRIS = Object.freeze({ code: 'meteo', mot_cle: 239 });
 const TYPE_D_UN_SORT = 'Sort';
 const TYPE_D_UN_TYPE_DE_SORT = 'Type de sort';
 const OPERATIONS_MAX = 2000; // le plafond d'un lot (serveur/edition-lots.mjs) : le reste vient au plan suivant
-const AUTEUR = 'préparer l’ancrage';
 const TITRES = Object.freeze({
   noms: 'Ancrage des mots-clés : catégories, type unique, noms et pages déjà désignées',
   sorts: 'Ancrage des mots-clés : sorts et types de sort',
@@ -377,7 +377,7 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
   };
 
   const lot = (famille, operations) => ({
-    format: FORMAT_DU_LOT, titre: TITRES[famille], nature: 'decision', decision: 'R309', auteur: AUTEUR, famille, operations: operations.slice(0, OPERATIONS_MAX),
+    format: FORMAT_DU_LOT, titre: TITRES[famille], nature: 'decision', decision: DECISION_DE_L_ANCRAGE, auteur: AUTEUR_DE_L_ANCRAGE, famille, operations: operations.slice(0, OPERATIONS_MAX),
   });
   const premier = [
     ...categories.nouvelles.map((c) => ({ table: 'categorie_mot_cle', cle: { id: { $numero: c.jeton } }, operation: 'inserer', apres: { id: { $numero: c.jeton }, libelle: c.libelle } })),
