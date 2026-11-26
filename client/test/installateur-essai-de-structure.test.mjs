@@ -84,6 +84,9 @@ function fauxService(dossier, reponse) {
     if (!reponse || !existsSync(racineEssais)) return;
     for (const nom of readdirSync(racineEssais).filter((x) => /^demande-/.test(x))) {
       const demande = join(racineEssais, nom);
+      // une demande déjà traitée ne se reprend jamais (comme `vues` du vrai service, client/serveur/essai-de-structure.mjs) : pendant son retrait par
+      // `rm -rf`, accuse.json peut disparaître avant demande.json, et réécrire accuse.json ferait échouer le rm (ENOTEMPTY)
+      if (vus.some((v) => v.nom === nom)) continue;
       if (!existsSync(join(demande, 'demande.json')) || existsSync(join(demande, 'accuse.json'))) continue;
       // l'installateur peut retirer sa demande entre le test d'existence et la lecture (il la dépose d'un coup, par mv) : ENOENT seul, demande suivante
       let lue;
