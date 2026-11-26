@@ -3,7 +3,7 @@
 // la page Archives, n'était pas emporté : « ENOENT … /travail/kit/sources/copies-drive.json »).
 // Voie : la fabrication RÉELLE, pas une trace des lectures. Le kit est fait par `fabriquerLeKit` (lecture seule du dépôt : ses règles d'emport, d'exclusion et d'élagage), décompressé
 // dans un dossier jetable HORS du dépôt (ni `MAVERICK_ROOT`, ni `trouverRacine`, ni `node_modules` ne mènent au vrai dépôt), puis `scripts/fabriquer-depuis-contenu.mjs` y est lancé
-// comme `atelier/conteneur.sh` le lance (HIDE_EXAMPLES=1, SITE_MODE=test), sur un contenu fourni (MAVERICK_CONTENU si posé, sinon l'extrait d'essai). Un fichier absent est nommé.
+// comme `atelier/conteneur.sh` le lance (HIDE_EXAMPLES=1, SITE_MODE=test), sur un contenu fourni (MAVERICK_CONTENU si posé, sinon l'extrait d'essai), mis d'abord à la structure du code (une migration de la PR s'y applique). Un fichier absent est nommé.
 // Deuxième garde (passe S de l'essai mécanique, R296) : le même build dans un kit privé de tout ce qui sortira du dépôt le jour J (`scripts/inventaire-sortie-du-contenu-lib.mjs#listerCeQuiSort`,
 // sans les migrations mixtes, dont le sort est une question ouverte) réussit, et le site fabriqué n'en diffère que par les migrations livrées au service (`_serveur/data/migrations/`) et
 // l'empreinte de `_serveur/version.json` : aucune page ne lit ce qui sort. (Avec les mixtes, `fiche/regles.json` perd les `noms_d_avant` de 24 sorts : le registre de la 0117 les porte.)
@@ -16,6 +16,7 @@ import { isAbsolute, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { A_EMPORTER, ARCHIVE_DU_KIT, fabriquerLeKit } from '../../deploy/installateur/kit.mjs';
+import { preparerLeContenu } from '../scripts/db-preparer-contenu.mjs';
 import { cheminsQuiSortent, listerCeQuiSort } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
 import { comparerSites } from '../serveur/comparaison-de-sites.mjs';
 import { VARIABLE_DU_CONTENU } from '../src/lib/contenu-fourni.mjs';
@@ -98,6 +99,9 @@ const monde = memo(() => {
   const fourni = String(process.env[VARIABLE_DU_CONTENU] ?? '').trim() || extraitDEssai();
   const contenu = join(travail, 'contenu.db');
   copyFileSync(fourni, contenu);
+  // Le contenu fourni est mis à la structure du code, comme partout ailleurs (lib/donnees.mjs#ouvrirBase) : un extrait du site de dev reste à la structure d'avant une migration que la PR apporte,
+  // et le contrôle de la fabrication (serveur/fichier-de-contenu.mjs) exige celle du code livré. Sans exemples : le build de ce test est HIDE_EXAMPLES=1. Le fichier fourni n'est pas touché (c'est la copie).
+  preparerLeContenu(contenu, { racine: DEPOT, exemples: false });
   return { travail, kit, kitS, contenu, retires };
 });
 
