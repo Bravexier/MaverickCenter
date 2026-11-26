@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurEdition, enregistrer } from '../serveur/edition.mjs';
 import { annuler, annulerUneLigne, appliquer, decisionsCitees, deposer, lire, previsualiserLAnnulation, traduire } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
@@ -15,13 +15,13 @@ import { htmlDeLApercu } from '../src/lib/lots-rendu.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { cheminDImport } from './aide-base-d-import.mjs';
+import { copieDeLaBaseLegere } from './aide-base-legere.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('lots-ancrage');
 let n = 0;
 function nouvelle() {
-  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(n += 1)}`) }).chemin);
+  const db = ouvrirBaseVivante(copieDeLaBaseLegere(racine, `b${(n += 1)}`));
   return { db, dossier: join(racine, `essais${n}`) };
 }
 // le lot de l'action « Préparer l'ancrage » : sa décision et son auteur (lib/lots-d-ancrage.mjs) ; un lot de l'équipe qui cite R309 passe `auteur`

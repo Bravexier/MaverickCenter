@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { motsClesPropres } from '../serveur/edition-ancrage.mjs';
 import { appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
@@ -20,23 +20,15 @@ import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDAncrage, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
-import { cheminDImport } from './aide-base-d-import.mjs';
+import { copieDeLaBaseLegere } from './aide-base-legere.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('ancrage-suivi');
 let n = 0;
 const nom = (suffixe) => `Zephyrion ${suffixe} ${process.pid}`;
 
-let modele = null;
-/** Une copie de la base d'import, prête pour le service (préparée une fois : la copier coûte moins que la refaire). */
-function reelle() {
-  modele ??= preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'modele') }).chemin;
-  const dossier = join(racine, `b${(n += 1)}`);
-  mkdirSync(dossier, { recursive: true });
-  const chemin = join(dossier, 'vivante.db');
-  copyFileSync(modele, chemin);
-  return { db: ouvrirBaseVivante(chemin) };
-}
+/** Une copie de la base d'import, prête pour le service (test/aide-base-legere.mjs). */
+const reelle = () => ({ db: ouvrirBaseVivante(copieDeLaBaseLegere(racine, `b${(n += 1)}`)) });
 
 /** La petite base d'essai, en fichier : ce qu'un dépôt copie. `poser` y écrit les lignes du test. */
 function petite(poser) {

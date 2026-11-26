@@ -162,6 +162,19 @@ export function idDuMotCle(db, ecriture) {
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function textesDeLaBase(db) {
+  // lue une fois par structure de la base (`schema_version` change à chaque CREATE, ALTER ou DROP) : le contrôle du contenu la relit à chaque essai,
+  // application et annulation d'un lot ; chaque appel reçoit sa copie
+  const version = db.prepare('PRAGMA schema_version').get().schema_version;
+  let memo = textesParBase.get(db);
+  if (memo?.version !== version) {
+    memo = { version, sortie: lireLesTextesDeLaBase(db) };
+    textesParBase.set(db, memo);
+  }
+  return memo.sortie.map((t) => ({ ...t, cle: [...t.cle] }));
+}
+const textesParBase = new WeakMap(); // db -> { version, sortie }
+
+function lireLesTextesDeLaBase(db) {
   const exclues = new Set([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TELLES_QUELLES]);
   const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
   const virtuelles = tables.filter((t) => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(t.sql ?? '')).map((t) => t.name);

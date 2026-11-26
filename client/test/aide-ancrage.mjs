@@ -101,12 +101,29 @@ function ecrire(db, table, cle, valeurs) {
     .run(...colonnes.map((c) => valeurs[c]), ...cles.map((c) => cle[c]));
 }
 
-/** Recalcule la clé de chaque mot-clé, comme le service en fin de lot (en deux passes : `mot_cle.cle` est unique). */
+/**
+ * Recalcule la clé de chaque mot-clé, comme le service en fin de lot (en deux passes : `mot_cle.cle` est unique). Dans une transaction quand l'appelant n'en a pas
+ * ouvert : sur une base en fichier, une écriture par mot-clé validée une à une coûtait plusieurs secondes par fichier de test (B5 de la relecture R309).
+ */
 export function recalculerLesCles(db) {
   const motsCles = motsClesDeLaBase(db);
   const cles = clesDesMotsCles(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])));
-  for (const m of motsCles) db.prepare('UPDATE mot_cle SET cle = ? WHERE id = ?').run(`provisoire-${m.id}`, m.id);
-  for (const m of motsCles) db.prepare('UPDATE mot_cle SET cle = ? WHERE id = ?').run(cles.get(m.id), m.id);
+  let ouvrir = true;
+  try {
+    db.exec('BEGIN');
+  } catch (e) {
+    if (!/within a transaction/.test(e.message)) throw e;
+    ouvrir = false; // l'appelant tient déjà une transaction
+  }
+  try {
+    const ecrire = db.prepare('UPDATE mot_cle SET cle = ? WHERE id = ?');
+    for (const m of motsCles) ecrire.run(`provisoire-${m.id}`, m.id);
+    for (const m of motsCles) ecrire.run(cles.get(m.id), m.id);
+    if (ouvrir) db.exec('COMMIT');
+  } catch (e) {
+    if (ouvrir) db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 /** Simule l'application d'un lot du plan, en SQL : numéros suivants, création, type et ancre, modifications, puis les clés recalculées. */

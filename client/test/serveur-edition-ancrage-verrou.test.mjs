@@ -3,10 +3,10 @@
 // devient un verrou que le mot de passe ouvre : edition-lots.mjs#ecrireLesOperations). Noms inventés, sur la petite base de test/aide-ancrage.mjs.
 //   node --test test/serveur-edition-ancrage-verrou.test.mjs
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurEdition, enregistrer, OUTILS_DE_RESOLUTION, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, nouveauLot, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, appliquer, decisionsCitees, deposer, deposerEtAppliquer, lire, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
@@ -17,7 +17,7 @@ import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDAncrage, idDeCategorie, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
-import { cheminDImport } from './aide-base-d-import.mjs';
+import { copieDeLaBaseLegere } from './aide-base-legere.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('ancrage-verrou');
@@ -45,16 +45,8 @@ function monde(plus = () => ({})) {
   return { db, base: () => db, dossier: join(racine, `essais${n}`), page, ancre, libre, autre, c, ...ajout };
 }
 
-let modele = null;
-/** Une copie de la base d'import, prête pour le service (préparée une fois : la copier coûte moins que la refaire). */
-function reelle() {
-  modele ??= preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'modele') }).chemin;
-  const dossier = join(racine, `r${(n += 1)}`);
-  mkdirSync(dossier, { recursive: true });
-  const chemin = join(dossier, 'vivante.db');
-  copyFileSync(modele, chemin);
-  return { db: ouvrirBaseVivante(chemin) };
-}
+/** Une copie de la base d'import, prête pour le service (test/aide-base-legere.mjs). */
+const reelle = () => ({ db: ouvrirBaseVivante(copieDeLaBaseLegere(racine, `r${(n += 1)}`)) });
 
 const lot = (operations) => ({ format: FORMAT_DU_LOT, titre: `Verrou d’essai ${(n += 1)}`, nature: 'decision', decision: 'R309', operations });
 const proposer = (m, operations) => deposer(m.base, lot(operations), { enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });

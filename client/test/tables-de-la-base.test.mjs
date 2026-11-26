@@ -12,6 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { TABLES_EDITION } from '../serveur/base-vivante.mjs';
+import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { TABLES_DERIVEES as DERIVEES_DE_LA_PAGE_DEBUG } from '../serveur/debug-tables.mjs';
 import { TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -56,6 +57,24 @@ test('textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni le
   assert.ok(lus.some((t) => t.table === 'page' && t.colonne === 'corps_md' && t.markdown), 'le corps des pages : un texte mis en forme');
   assert.ok(lus.some((t) => t.table === 'arme' && t.colonne === 'effet' && !t.markdown), 'l’effet d’une arme : un texte de case');
   assert.ok(lus.some((t) => t.table === 'panneau_regles_bloc' && t.colonne === 'texte' && t.markdown), 'un bloc de panneau de règles');
+});
+
+test('textesDeLaBase et le contrôle du contenu, lus une fois par structure (B5 de la relecture R309) : une colonne ajoutée est vue au contrôle suivant ; une liste rendue modifiée ne change pas la suivante', () => {
+  const db = schemaEnMemoire();
+  const premiere = textesDeLaBase(db);
+  premiere[0].cle.push('modifiee');
+  premiere.length = 0;
+  assert.ok(textesDeLaBase(db).length > 0 && !textesDeLaBase(db)[0].cle.includes('modifiee'), 'chaque appel reçoit sa copie');
+  const controle = () => controlerLeContenu(db).problemes.filter((p) => p.includes('zephyrion_essai'));
+  assert.deepEqual(controle(), []);
+  // une table, puis une colonne, ajoutées après une première lecture
+  db.exec("CREATE TABLE zephyrion_essai (id TEXT PRIMARY KEY, texte TEXT); INSERT INTO zephyrion_essai VALUES ('a', 'Texte {{zephyrion-inconnu}}.')");
+  assert.ok(textesDeLaBase(db).some((t) => t.table === 'zephyrion_essai' && t.colonne === 'texte'), 'la table ajoutée est lue');
+  assert.ok(controle().some((p) => /zephyrion_essai\.texte a : la balise/.test(p)), controle().join(' ; '));
+  db.exec("ALTER TABLE zephyrion_essai ADD COLUMN nom TEXT; ALTER TABLE zephyrion_essai ADD COLUMN nom_cle TEXT; UPDATE zephyrion_essai SET nom = 'Nom', nom_cle = 'pas la cle', texte = 'Texte {{zephyrion-autre}}.'");
+  const vus = controle();
+  assert.ok(vus.some((p) => /zephyrion_essai\.texte a : la balise « \{\{zephyrion-autre\}\} »/.test(p)), `la balise est relue : ${vus.join(' ; ')}`);
+  assert.ok(vus.some((p) => /nom_cle/.test(p)), `la colonne _cle ajoutée est contrôlée : ${vus.join(' ; ')}`);
 });
 
 test('db:check : une balise d’un lien du Markdown reprise dans `lien.ancre`, ou d’un écart entre sources, n’est pas contrôlée ; la même dans une case des règles est refusée', () => {
