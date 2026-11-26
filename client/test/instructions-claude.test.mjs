@@ -1,6 +1,7 @@
 // Instructions de Claude (A2) : agents `.claude/agents/*.md`, skills `.claude/skills/*/SKILL.md`, `CLAUDE.md`, `docs/equipe.md`. Logique pure de
 // scripts/instructions-lib.mjs, rejouée sur des textes fabriqués (un cas positif et un négatif par contrôle), puis sur le dépôt. Format et
 // budget des skills : skill tenir-un-skill. Les avertissements (skills de 12 à 20 Ko, « lot N » nus, dates) s'écrivent par console.log.
+// Réglages `.claude/settings.json` : hook de rtk et règles jumelles `Bash(rtk …)` (controlerReglages).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -10,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { cheminsQuiSortent, listerCeQuiSort } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
 import { contenuSorti } from '../src/lib/sortie-du-contenu.mjs';
 import {
-  BUDGET, budget, controlerAgent, controlerClaudeMd, controlerSkill, lireFrontmatter, liste, nomsCites, nonCites, recitDate, renvoisAbsents,
+  BUDGET, budget, controlerAgent, controlerClaudeMd, controlerReglages, controlerSkill, lireFrontmatter, liste, nomsCites, nonCites, recitDate,
+  renvoisAbsents,
 } from '../scripts/instructions-lib.mjs';
 
 const RACINE = fileURLToPath(new URL('../..', import.meta.url));
@@ -103,6 +105,26 @@ describe('logique pure', () => {
     assert.deepEqual(controlerClaudeMd(`${'l\n'.repeat(150)}`), []);
     assert.deepEqual(controlerClaudeMd(`${'l\n'.repeat(151)}`), ['151 lignes (max 150)']);
   });
+
+  test('réglages : un hook Bash « rtk hook claude », et chaque règle Bash(…) a sa jumelle Bash(rtk …) dans la même liste', () => {
+    const garde = { matcher: 'Read', hooks: [{ type: 'command', command: 'node garde-lecture.mjs' }] };
+    const rtk = { matcher: 'Bash', hooks: [{ type: 'command', command: 'if command -v rtk >/dev/null 2>&1; then rtk hook claude; fi' }] };
+    const reglages = (hooks, allow, deny) => ({ hooks: { PreToolUse: hooks }, permissions: { allow, deny: [...deny, 'Read(./var/**)'] } });
+    const STATUS = ['Bash(git status *)', 'Bash(rtk git status *)'];
+    const DEV = ['Bash(git push *:dev)', 'Bash(rtk git push *:dev)'];
+    assert.deepEqual(controlerReglages(reglages([garde, rtk], STATUS, DEV)), []);
+    assert.deepEqual(controlerReglages(reglages([garde], STATUS, DEV)), ['hooks.PreToolUse : pas de hook Bash « rtk hook claude »']);
+    // La jumelle d'un refus rangée parmi les autorisations ne compte pas : elle autoriserait la commande réécrite.
+    assert.deepEqual(controlerReglages(reglages([rtk], [...STATUS, 'Bash(rtk git push *:dev)'], ['Bash(git push *:dev)'])), [
+      'permissions.deny : « Bash(git push *:dev) » sans sa jumelle « Bash(rtk git push *:dev) »',
+    ]);
+    assert.deepEqual(controlerReglages(reglages([rtk], ['Bash(git log *)'], [])), [
+      'permissions.allow : « Bash(git log *) » sans sa jumelle « Bash(rtk git log *) »',
+    ]);
+    assert.deepEqual(controlerReglages({ hooks: { PreToolUse: [rtk] }, permissions: { ask: ['Bash(git push *)'] } }), [
+      'permissions.ask : « Bash(git push *) » sans sa jumelle « Bash(rtk git push *) »',
+    ]);
+  });
 });
 
 // ------------------------------------------------------------------------------------------------------------------------------- dépôt
@@ -167,6 +189,19 @@ describe('le dépôt', () => {
 
   test('CLAUDE.md : au plus 150 lignes', () => {
     sansConstat({ 'CLAUDE.md': controlerClaudeMd(lire('CLAUDE.md')) }, 'CLAUDE.md');
+  });
+
+  test('réglages : hook rtk et règles jumelles ; sans rtk installé, le hook laisse la commande telle quelle', () => {
+    const reglages = JSON.parse(lire('.claude/settings.json'));
+    sansConstat({ '.claude/settings.json': controlerReglages(reglages) }, 'réglages');
+    // Claude Code lance le hook par le shell ; un PATH sans rtk simule un poste où il n'est pas installé : ni sortie, ni erreur.
+    const commandes = reglages.hooks.PreToolUse.filter((g) => g.matcher === 'Bash').flatMap((g) => g.hooks).map((h) => h.command).filter((c) => /\brtk\b/.test(c));
+    assert.ok(commandes.length > 0);
+    for (const commande of commandes) {
+      const entree = JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'git status' } });
+      const r = spawnSync('/bin/sh', ['-c', commande], { input: entree, env: { PATH: '/sans-rtk' }, encoding: 'utf8' });
+      assert.deepEqual({ statut: r.status, sortie: r.stdout, erreurs: r.stderr }, { statut: 0, sortie: '', erreurs: '' }, commande);
+    }
   });
 
   test('docs/equipe.md cite chaque skill et chaque agent entre accents graves', () => {

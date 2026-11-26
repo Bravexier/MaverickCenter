@@ -1,6 +1,7 @@
 // Contrôles des instructions de Claude (agents `.claude/agents/*.md`, skills `.claude/skills/*/SKILL.md`, `CLAUDE.md`, `docs/equipe.md`).
 // Logique pure : chaque fonction prend des textes et des listes et rend la liste de ses constats (chaînes, vide si tout va bien). Le dépôt est
 // lu par test/instructions-claude.test.mjs, qui la rejoue aussi sur des textes fabriqués. Format et budget : skill tenir-un-skill.
+// Les réglages `.claude/settings.json` : hook de rtk et règles jumelles `Bash(rtk …)` (controlerReglages).
 import YAML from 'yaml';
 import { globVersRegex } from './tests-cibles-lib.mjs';
 
@@ -137,4 +138,30 @@ export function nonCites(texte, noms) {
 export function controlerClaudeMd(texte) {
   const lignes = texte.replace(/\n$/, '').split('\n').length;
   return lignes > CLAUDE_MD_MAX_LIGNES ? [`${lignes} lignes (max ${CLAUDE_MD_MAX_LIGNES})`] : [];
+}
+
+/** Ce que le hook de rtk (`rtk hook claude`) met devant une commande Bash qu'il réécrit : `git status` devient `rtk git status`. */
+export const PREFIXE_RTK = 'rtk ';
+
+/**
+ * Les constats sur `.claude/settings.json` (`reglages`, lu en JSON) : un hook PreToolUse sur Bash appelle `rtk hook claude`, et chaque règle
+ * `Bash(…)` de `permissions` (`allow`, `ask`, `deny`) a sa jumelle `Bash(rtk …)` dans la même liste. Le hook réécrit
+ * `git push origin HEAD:dev` en `rtk git push origin HEAD:dev`, que `Bash(git push *:dev)` ne couvre plus, et rtk lui-même ne reconnaît pas
+ * ce refus (il lit `*:` comme l'ancienne forme `prefixe:*`) : sans la jumelle, la commande réécrite échapperait au refus. Sans jumelle, une
+ * règle `allow` redemanderait l'autorisation, une règle `ask` pourrait ne plus la demander.
+ */
+export function controlerReglages(reglages) {
+  const constats = [];
+  const hooksBash = (reglages?.hooks?.PreToolUse ?? []).filter((g) => g.matcher === 'Bash').flatMap((g) => g.hooks ?? []);
+  if (!hooksBash.some((h) => /\brtk hook claude\b/.test(h.command ?? ''))) constats.push('hooks.PreToolUse : pas de hook Bash « rtk hook claude »');
+  for (const nom of ['allow', 'ask', 'deny']) {
+    const regles = reglages?.permissions?.[nom] ?? [];
+    for (const regle of regles) {
+      const commande = /^Bash\((.*)\)$/.exec(regle)?.[1];
+      if (commande === undefined || commande.startsWith(PREFIXE_RTK)) continue;
+      const jumelle = `Bash(${PREFIXE_RTK}${commande})`;
+      if (!regles.includes(jumelle)) constats.push(`permissions.${nom} : « ${regle} » sans sa jumelle « ${jumelle} »`);
+    }
+  }
+  return constats;
 }
