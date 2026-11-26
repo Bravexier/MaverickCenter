@@ -75,14 +75,13 @@ function lecteurDesColonnes(db) {
 }
 
 /** Toute colonne `X_cle` d'une table qui a aussi la colonne `X` doit valoir normalize(X) ; `cle` (alias) se compare à `texte`. -> [message]. */
-export function controleNomCle(db, tables, normalize, colonnes = lecteurDesColonnes(db)) {
+export function controleNomCle(db, tables, normalize) {
   const problemes = [];
   let colonnesVerifiees = 0;
   for (const t of tables) {
     if (/VIRTUAL TABLE/i.test(t.sql ?? '') || /_(data|idx|content|docsize|config)$/.test(t.name)) continue;
-    const infos = colonnes(t.name);
-    const cols = infos.map((c) => c.name);
-    const pk = infos.filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => `"${c.name}"`).join(' || \'|\' || ') || 'rowid';
+    const cols = db.prepare(`PRAGMA table_info("${t.name}")`).all().map((c) => c.name);
+    const pk = db.prepare(`PRAGMA table_info("${t.name}")`).all().filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => `"${c.name}"`).join(' || \'|\' || ') || 'rowid';
     for (const c of cols) {
       if (!(c.endsWith('_cle') || c === 'cle')) continue;
       const source = c === 'cle' ? 'texte' : c.slice(0, -4);
@@ -149,7 +148,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   }
 
   // Toute colonne `X_cle` vaut normalize(X) (l'ancienne garde ne couvrait que 9 tables sur 25) ; identifiants fondés sur le contenu : recalculés.
-  const nc = controleNomCle(db, tables, normalize, colonnes);
+  const nc = controleNomCle(db, tables, normalize); // à l'identique de scripts/db-lib.mjs (test/controles-du-contenu.test.mjs) : sans le lecteur des colonnes
   for (const p of nc.problemes.slice(0, 20)) {
     const m = /^(\S+) (.+?) : /.exec(p);   // « <table> <clé> : … » (controleNomCle)
     signaler(m?.[1] ?? null, m?.[2] ?? null, 'colonne_cle', p);
