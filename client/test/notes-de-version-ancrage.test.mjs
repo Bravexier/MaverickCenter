@@ -211,6 +211,44 @@ test('R309 : le service lit type_sort avec les tables décrites, jamais avec les
   assert.deepEqual(comparerBases(avant, apres).filter((l) => l.table_nom === 'type_sort' || mentionne(l)), []);
 });
 
+test('R309 (relecture finale, Opus I2) : un texte qui ne diffère que par la ref d’une balise à texte écrit n’a pas de ligne ; sans texte écrit, en mode complet ou dans un code, la ligne reste', () => {
+  const { ref, dev } = avantEtApresAncrage();
+  const effets = (base, t) => { base.tables.sort[0].effets = t; };
+  const lignesDuSort = () => comparerBases(ref, dev).filter((l) => l.table_nom === 'sort' && l.colonne === 'effets');
+  // le contrôle : la colonne est bien comparée
+  effets(ref, 'Frappe la cible.');
+  effets(dev, 'Frappe les cibles.');
+  assert.equal(lignesDuSort().length, 1);
+  // seules les refs changent, le texte écrit reste : rien ne se voit, aucune ligne (séparateur échappé d'un tableau compris)
+  effets(ref, 'Frappe {{zephyrion-avant|la cible}} et {{zephyrion-autre|un allié}}.\n\n| a | {{zephyrion-avant\\|la cible}} |');
+  effets(dev, 'Frappe {{zephyrion-apres|la cible}} et {{zephyrion-autre-apres|un allié}}.\n\n| a | {{zephyrion-apres\\|la cible}} |');
+  assert.deepEqual(lignesDuSort(), []);
+  // le texte écrit change : la ligne reste
+  effets(dev, 'Frappe {{zephyrion-apres|les cibles}} et {{zephyrion-autre-apres|un allié}}.\n\n| a | {{zephyrion-apres\\|la cible}} |');
+  assert.equal(lignesDuSort().length, 1);
+  // sans texte écrit (le libellé du moment), en mode complet (la définition) ou dans un code (la balise s'y lit telle quelle) : l'affichage dépend de la ref, la ligne reste
+  for (const [avant, apres] of [['{{zephyrion-avant}}', '{{zephyrion-apres}}'], ['{{zephyrion-avant|}}', '{{zephyrion-apres|}}'], ['{{zephyrion-avant:}}', '{{zephyrion-apres:}}'],
+    ['`{{zephyrion-avant|la cible}}`', '`{{zephyrion-apres|la cible}}`']]) {
+    effets(ref, `Frappe ${avant}.`);
+    effets(dev, `Frappe ${apres}.`);
+    assert.equal(lignesDuSort().length, 1, avant);
+  }
+  // la même règle dans les « autres tables »
+  const table = (lignes) => ({ colonnes: ['id', 'texte'], cle: ['id'], lignes });
+  const autres = (a, b) => comparerBases({ tables: {}, autres: { essai_texte: table([{ id: 1, texte: a }]) } }, { tables: {}, autres: { essai_texte: table([{ id: 1, texte: b }]) } })
+    .filter((l) => l.domaine === 'autres-tables');
+  assert.deepEqual(autres('Voir {{zephyrion-avant|ceci}}.', 'Voir {{zephyrion-apres|ceci}}.'), []);
+  assert.equal(autres('Voir {{zephyrion-avant}}.', 'Voir {{zephyrion-apres}}.').length, 1);
+});
+
+test('R309 (relecture finale, Fable « Declined ») : `mot_cle_ancienne_cle`, une trace technique, n’entre pas dans la note publique', () => {
+  assert.equal(estUneTableAutre('mot_cle_ancienne_cle'), false);
+  const traces = (lignes) => ({ colonnes: ['mot_cle_id', 'ancienne_cle'], cle: ['mot_cle_id', 'ancienne_cle'], lignes });
+  const lignes = comparerBases({ tables: {}, autres: { mot_cle_ancienne_cle: traces([]) } },
+    { tables: {}, autres: { mot_cle_ancienne_cle: traces([{ mot_cle_id: 1, ancienne_cle: 'zephyrion-avant' }]) } });
+  assert.deepEqual(lignes.filter((l) => l.table_nom === 'mot_cle_ancienne_cle' || l.groupe === 'mot_cle_ancienne_cle'), []);
+});
+
 test('R309 : dans les « autres tables », une colonne mot_cle_id hors de la clé n’est ni comparée ni listée (« Structure changée » compris) ; une table dont la clé la contient garde ses lignes', () => {
   const table = (colonnes, cle, lignes) => ({ colonnes, cle, lignes });
   const degats = (lignes, colonnes = ['id', 'nom', 'mot_cle_id']) => table(colonnes, ['id'], lignes);

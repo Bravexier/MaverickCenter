@@ -13,7 +13,7 @@ import { MAINS } from './arme-champs.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
 import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
-import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { lireBalises, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
 import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
@@ -113,7 +113,27 @@ const sansCadrage = (table) => colonnesDe(table).filter((c) => !CADRAGE.includes
  */
 const portraitDit = (v, ligne) => (v ? `${resumeDuPortrait(v)}, cadrage ${ligne?.portrait_x ?? 0.5} × ${ligne?.portrait_y ?? 0.5}, zoom ${ligne?.portrait_zoom ?? 1}` : null);
 const texte = (v) => (v === null || v === undefined ? null : String(v).replace(/\r\n?/g, '\n').trim() || null);
-const pareil = (a, b) => texte(a) === texte(b);
+/**
+ * Le texte sans la ref de ses balises à texte écrit (« {{cle|texte}} » devient « {{|texte}} ») : cette ref ne se voit pas, seul le texte écrit s'affiche (R309 ; relecture
+ * finale, Opus I2). Une balise sans texte écrit (« {{cle}} », le libellé du moment) ou en mode complet (« {{cle:}} ») garde sa ref : son affichage en dépend, elle
+ * garde sa ligne. Une balise dans un code (lireBalises, `markdown`) n'en est pas une et reste telle quelle.
+ */
+function sansRefInvisible(t) {
+  if (t === null || !t.includes('{{')) return t;
+  let sortie = '';
+  let k = 0;
+  for (const b of lireBalises(t, { markdown: true })) {
+    if (b.complet || b.texte === null) continue;
+    sortie += `${t.slice(k, b.debut)}{{${b.separateur}${b.texte}}}`;
+    k = b.fin;
+  }
+  return sortie + t.slice(k);
+}
+/** Deux valeurs pareilles pour la note : le même texte, ou des textes qui ne diffèrent que par la ref de balises à texte écrit (sansRefInvisible). */
+const pareil = (a, b) => {
+  const [x, y] = [texte(a), texte(b)];
+  return x === y || (x !== null && y !== null && sansRefInvisible(x) === sansRefInvisible(y));
+};
 const cleTriee = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
 const lignesDe = (base, table) => base?.tables?.[table] ?? null;
 const indexer = (rows, cle) => new Map((rows ?? []).map((r) => [cle.map((c) => String(r[c])).join('\u0000'), r]));
@@ -991,10 +1011,16 @@ const comparerOrdres = (p, q) => {
 };
 
 /**
- * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
- * lien_candidat) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute ou retire d'elle-même.
+ * Les traces techniques du vocabulaire, que la note publique ne dit pas : `mot_cle_ancienne_cle` (les clés quittées, pour qu'une balise écrite avec l'une d'elles
+ * se lise encore ; R309, relecture finale, Fable « Declined »). Le renommage d'un mot-clé se dit par sa ligne de mot-clé.
  */
-export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES]);
+const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle']);
+/**
+ * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
+ * lien_candidat), traces techniques (TRACES_TECHNIQUES) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute
+ * ou retire d'elle-même.
+ */
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES]);
 export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
   && !/^(page|entite)_fts(_|$)/.test(nom);
 
