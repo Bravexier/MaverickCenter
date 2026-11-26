@@ -7,8 +7,14 @@
 //   - des homonymes : normalize(libellé), puis, chacune précédée d'un tiret, le normalize du libellé de chacune de SES catégories qui n'est pas
 //     commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race », « namazu-classe » ; trois homonymes ou plus, de même).
 // Refus (`strict`) : un homonyme sans catégorie, ou dont les catégories sont incluses dans celles d'un autre (mêmes catégories comprises : il n'a pas
-// au moins une catégorie propre face à chacun des autres, R232 (9)) ; deux mots-clés de même clé (« Namazu race » face à namazu-race, R232 (10)).
+// au moins une catégorie propre face à chacun des autres, R232 (9)) et qui n'a pas de parent pour le distinguer (R309, plus bas) ; deux mots-clés de même clé (« Namazu race » face à namazu-race, R232 (10)).
 // Sans `strict`, un homonyme sans catégorie propre prend normalize(libellé) seul ; deux clés égales restent refusées (mot_cle.cle est UNIQUE).
+// Le parent (décision R309, migration 0131) : deux homonymes de même type (leurs catégories sont incluses l'une dans l'autre) ne se distinguent plus
+// seulement par une catégorie propre ; un mot-clé ancré sur un sort a pour parent la magie de ce sort (`parent`, le nom de la magie, lu par
+// mots-cles-db.mjs#motsClesDeLaBase). Un homonyme dont les catégories sont incluses dans celles d'un autre ET qui a un parent n'est plus refusé : sa clé
+// prend, à la suite de ses catégories propres, normalize(parent) (« contre-sort-arcane », « contre-sort-corruption ») ; sans parent, le refus
+// « incluses » reste ; deux parents égaux donnent deux clés égales, refusées (« clé déjà prise »). Le parent ne sert qu'à départager : il n'entre pas
+// dans la clé d'un mot-clé sans homonyme ni d'un homonyme que ses catégories distinguent déjà (« sapeur-metier », « sapeur-sort »).
 // Sans dépendance navigateur ni Astro (lib/text.mjs seulement).
 import { normalize } from './text.mjs';
 
@@ -24,13 +30,13 @@ export class HomonymesRefuses extends Error {
 /** Le texte de chaque raison d'un refus (le même sens que celui de maverick.py). */
 export const RAISONS = Object.freeze({
   'sans-categorie': 'homonyme sans catégorie',
-  incluses: 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)',
+  incluses: 'aucune catégorie propre ni parent face à un homonyme (catégories incluses ou égales)',
   'cle-prise': 'clé déjà prise',
 });
 
 /**
- * La clé de chaque mot-clé : Map(id → clé). `motsCles` : [{ id, libelle, categories: [ids de catégorie] }] ; `categories` : Map ou objet { id de
- * catégorie → libellé }. Lève HomonymesRefuses (voir l'en-tête) ; une Error pour un libellé sans lettre ni chiffre.
+ * La clé de chaque mot-clé : Map(id → clé). `motsCles` : [{ id, libelle, categories: [ids de catégorie], parent?: string | null }] (`parent` : le nom de
+ * la magie d'un sort ancré, R309) ; `categories` : Map ou objet { id de catégorie → libellé }. Lève HomonymesRefuses (voir l'en-tête) ; une Error pour un libellé sans lettre ni chiffre.
  */
 export function clesDesMotsCles(motsCles, categories, { strict = true } = {}) {
   const libelleDe = categories instanceof Map ? (c) => categories.get(c) : (c) => categories[c];
@@ -38,7 +44,7 @@ export function clesDesMotsCles(motsCles, categories, { strict = true } = {}) {
   for (const m of motsCles) {
     const base = normalize(m.libelle ?? '');
     if (!groupes.has(base)) groupes.set(base, []);
-    groupes.get(base).push({ id: m.id, cats: new Set((m.categories ?? []).map(Number)) });
+    groupes.get(base).push({ id: m.id, cats: new Set((m.categories ?? []).map(Number)), parent: normalize(m.parent ?? '') });
   }
   const cles = new Map();
   const fautes = [];
@@ -49,15 +55,19 @@ export function clesDesMotsCles(motsCles, categories, { strict = true } = {}) {
       continue;
     }
     const communes = new Set([...membres[0].cats].filter((c) => membres.every((x) => x.cats.has(c))));
-    for (const { id, cats } of membres) {
+    for (const { id, cats, parent } of membres) {
+      let inclus = false;
       if (!cats.size) fautes.push({ base, ids: [id], raison: 'sans-categorie' });
       else {
         for (const autre of membres) {
-          if (autre.id !== id && [...cats].every((c) => autre.cats.has(c))) fautes.push({ base, ids: [id, autre.id], raison: 'incluses' });
+          if (autre.id !== id && [...cats].every((c) => autre.cats.has(c))) {
+            inclus = true;
+            if (!parent) fautes.push({ base, ids: [id, autre.id], raison: 'incluses' }); // R309 : le parent le départage
+          }
         }
       }
       const propres = [...cats].filter((c) => !communes.has(c)).sort((a, b) => a - b);
-      cles.set(id, [base, ...propres.map((c) => normalize(libelleDe(c) ?? ''))].join('-'));
+      cles.set(id, [base, ...propres.map((c) => normalize(libelleDe(c) ?? '')), ...(inclus && parent ? [parent] : [])].join('-'));
     }
   }
   const parCle = new Map();

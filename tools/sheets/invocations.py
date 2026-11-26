@@ -94,7 +94,8 @@ commentaires ; dump sans aucun champ `note` ; note retirée, dupliquée, tronqu�
 être signalé.
 
 Choix de métadonnées (tout vient des cellules) :
-  * tags : « invocation » et le mot qui suit dans le bandeau de l'onglet (« golem », « non-mort », « marionette »), plus
+  * tags : le mot qui suit « invocation » dans le bandeau de l'onglet (« golem », « non-mort », « marionette ») ; « invocation » elle-même n'est
+    plus écrite (tools/db/homonymes.py#ETIQUETTES_NON_POSEES : le mot-clé du type de sort la porte, R309), plus
     les noms de magie de la marge A (en minuscules ; « mono » n'est pas un nom de magie) ;
   * aliases : uniquement des écritures du même nom relevées dans la source, vérifiées dans la description au lancement
     (ALIASES) ; pour les pages d'introduction, le texte du bandeau (« INVOCATION GOLEM »…) ;
@@ -543,6 +544,8 @@ def sources_for(tab_name):
 
 
 def front_matter(title, aliases, tags, summary, tab_name):
+    # R183 (11), R309 : « invocation » (écrite en minuscules par tab_tags ; mot-clé du type de sort) n'est pas posée
+    tags = [t for t in tags if t not in etiquettes_non_posees()]
     lines = ["---",
              "title: " + yaml_str(title),
              "aliases: " + yaml_list(aliases),
@@ -576,6 +579,17 @@ def magic_tags(margin):
         if part and part not in tags and part not in magies_homonymes():
             tags.append(part)
     return tags
+
+@functools.lru_cache(maxsize=None)
+def etiquettes_non_posees():
+    """tools/db/homonymes.py#ETIQUETTES_NON_POSEES (décisions R183 (11) et R309 : étiquettes d'un mot-clé que l'import n'écrit pas), chargé par son chemin :
+    `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ETIQUETTES_NON_POSEES
+
 
 @functools.lru_cache(maxsize=None)
 def magies_homonymes():

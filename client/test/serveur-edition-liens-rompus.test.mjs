@@ -16,6 +16,7 @@ import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { citationsDe } from '../src/lib/citations-db.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { retirerLeMotCleDeLaPage } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('liens-rompus');
@@ -60,6 +61,7 @@ test('liensRompusParLeLot : la page retirée garde son titre et ses alias pour l
   try {
     const titre = titreLibre(db, 'Page retirée d’essai');
     const cible = creer(lot, titre);
+    retirerLeMotCleDeLaPage(db, cible); // sur un contenu ancré, son mot-clé (R309) la citerait aussi : seuls comptent ici les textes du test
     const citante = creer(lot, titreLibre(db, 'Page qui cite d’essai'));
     const alias = `Autre nom ${process.pid}`;
     db.prepare('INSERT INTO alias (page_id, ordre, texte, cle) VALUES (?, 0, ?, ?)').run(cible, alias, normalize(alias));

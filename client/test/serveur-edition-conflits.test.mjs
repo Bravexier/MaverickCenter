@@ -87,6 +87,8 @@ before(() => {
   remettreDepuisLImport(r0db, 'monstre_capacite', S.capaciteAncienne);
   // les deux métiers du scénario (le site de dev supprime des métiers) : leur ligne, leur page et ce qui les compose
   for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
+  // le métier renommé du scénario, sans ancre (R309) : son mot-clé suivrait le nom et ajouterait des lignes au lot, que la fixture, faite sur un contenu sans ancre, ne connaît pas
+  r0db.prepare('UPDATE page SET mot_cle_id = NULL WHERE id = ?').run(ACROBATE);
   r0db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)')
     .run(ETIQUETTE.id, ETIQUETTE.libelle, ETIQUETTE.cle, 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
   r0db.close();
@@ -105,6 +107,9 @@ before(() => {
   S.magie = lot(MAGIE, [corpsModifie(MAGIE), { op: 'modifier', table: 'metier', cle: { id: FORGERON }, valeurs: { description: DESCRIPTION_DU_SITE } }]);
   S.hyper = lot(HYPER, [corpsModifie(HYPER)]);
   S.metierGuide = lot(METIER_GUIDE, [corpsModifie(METIER_GUIDE)]);
+  // le corps tel que le service l'a écrit : il remet les balises à la forme canonique (sur un contenu ancré, `{{clé|Libellé}}` devient `{{clé}}`), l'ajout reste à la fin
+  S.ecrits = { [MAGIE]: corps(MAGIE), [HYPER]: corps(HYPER), [METIER_GUIDE]: corps(METIER_GUIDE) };
+  for (const id of [MAGIE, HYPER, METIER_GUIDE]) assert.ok(S.ecrits[id].endsWith(AJOUT), id);
   // un métier et ses lignes de détail (metier_bonus) : la source et ses dérivées
   S.bonus = lot(FORGERON, [{ op: 'modifier', table: 'metier', cle: { id: FORGERON }, valeurs: { bonus_brut: BONUS_DU_SITE } }]);
   // une référence vers la page que les règles retirent : clé étrangère rompue
@@ -178,7 +183,7 @@ test('les trois pages du guide réécrites par les règles : version 1 (le site 
     assert.equal(c.genre, 'champ');
     assert.equal(c.colonne, 'corps_md');
     assert.equal(c.id, `${c.rang}:corps_md`);
-    assert.deepEqual(c.version_1, { genre: 'valeur', valeur: S.corps[page] + AJOUT });
+    assert.deepEqual(c.version_1, { genre: 'valeur', valeur: S.ecrits[page] });
     assert.deepEqual(c.version_2, { genre: 'valeur', valeur: REECRITE(page) });
     assert.deepEqual(c.avant, { genre: 'valeur', valeur: S.corps[page] });
     assert.deepEqual(c.choix_possibles, [1, 2, 3]);
@@ -194,7 +199,7 @@ test('les trois pages du guide réécrites par les règles : version 1 (le site 
   assert.equal(c.id, '1');
   assert.deepEqual(c.choix_possibles, [2]);
   assert.match(c.raison, /n’existe plus dans les règles/);
-  assert.equal(c.version_1.valeur.corps_md, S.corps[HYPER] + AJOUT);
+  assert.equal(c.version_1.valeur.corps_md, S.ecrits[HYPER]);
   assert.deepEqual(c.version_2, { genre: 'absente', valeur: null });
   assert.ok(Array.isArray(c.apercu));
   assert.equal(c.libelle, `Page ${HYPER}`, 'la ligne supprimée, sans nom ni titre : l’id de sa clé, pas du JSON');
@@ -334,7 +339,7 @@ test('choix 1 et 3 sur une page du guide : par le chemin de l’éditeur (Markdo
   const { db } = copie();
   const d1 = diagnostic(db, S.magie);
   const r1 = resoudreLeConflit(db, { lot: S.magie, empreinte: d1.empreinte, choix: { '1:corps_md': { choix: 1 } } });
-  assert.equal(lire(db, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, S.corps[MAGIE] + AJOUT);
+  assert.equal(lire(db, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, S.ecrits[MAGIE]);
   const m = lire(db, "SELECT avant, apres, apercu FROM modification WHERE lot_id = ? AND table_nom = 'page' AND json_extract(cle, '$.id') = ?", r1.nouveau_lot, MAGIE);
   assert.deepEqual(JSON.parse(m.avant), { corps_md: REECRITE(MAGIE) }, 'l’avant du nouveau lot : la base vivante (il se rejoue sans conflit sur les règles)');
   assert.ok(JSON.parse(m.apercu).length > 0, 'l’aperçu du choix 1 est repris');
@@ -449,7 +454,7 @@ test('les lots de résolution se rejouent sans conflit à la livraison suivante 
   const vivante = ouvrirBaseVivante(join(dossier, FICHIER_BASE));
   ouvertes.push(vivante);
   assert.equal(lire(vivante, "SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").n > 0, true);
-  assert.equal(lire(vivante, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, S.corps[MAGIE] + AJOUT);
+  assert.equal(lire(vivante, 'SELECT corps_md FROM page WHERE id = ?', MAGIE).corps_md, S.ecrits[MAGIE]);
   assert.equal(lire(vivante, 'SELECT bonus_brut FROM metier WHERE id = ?', FORGERON).bonus_brut, BONUS_DU_SITE);
   assert.deepEqual(lotsEnConflit(vivante).map((l) => l.id).sort(), [S.hyper, S.alias, S.ancien, S.etiquette, S.renommage].sort());
 });

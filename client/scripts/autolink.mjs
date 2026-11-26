@@ -31,6 +31,7 @@ import { EXTRAIT_PAR_DEFAUT, lotDeSourceParModification } from './lot-de-source.
 export function mailler(db, pages, { ignore = [], maxLinks = 25 } = {}) {
   // chaque mot-clé à adresse, et la page où elle mène (comme la table dérivée `lien`, scripts/db-derive.mjs)
   const adresses = indexDesAdresses(db);
+  // `parent` (la magie du sort qu'un mot-clé ancre, R309) vient de cette lecture : ciblesDuVocabulaire en a besoin pour ne pas compter un sort comme le mot-clé de sa magie
   const motsCles = motsClesDeLaBase(db);
   const pageDuMotCle = new Map(motsCles.filter((m) => m.url).map((m) => [m.id, pageDeLAdresse(adresses, m.url)]));
   const { cibles, sansMotCle } = ciblesDuVocabulaire(motsCles, pages, pageDuMotCle);

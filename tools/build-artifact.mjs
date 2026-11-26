@@ -121,7 +121,7 @@ pages.push(['index.html', readFileSync(join(out, 'main.html'), 'utf8')]);
 for (const [rel, html] of pages) {
   if (html.includes('__BASE__')) problems.push(`${rel} : marqueur restant`);
   const dir = posix.dirname(rel);
-  for (const m of html.matchAll(/\b(?:href|src|action|data-index-url)="(\.{1,2}\/[^"#?]*)(?:[#?][^"]*)?"/g)) {
+  for (const m of html.matchAll(/\b(?:href|src|action|data-index-url|data-elements-url)="(\.{1,2}\/[^"#?]*)(?:[#?][^"]*)?"/g)) {
     links += 1;
     const target = posix.normalize(posix.join(dir, m[1]));
     if (target === '.' || target === './' || target === '') continue; // racine = page principale

@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
@@ -46,15 +47,19 @@ ${script}`], { encoding: 'utf8', input: JSON.stringify(entree) });
   return JSON.parse(p.stdout);
 }
 
-/** Les clés que la règle donne à des mots-clés et à leurs catégories (tools/db/maverick.py#cles_des_mots_cles, strict : un refus lève). */
-function clesDeLaRegle(motsCles, liaisons, categories) {
+/**
+ * Les clés que la règle donne à des mots-clés et à leurs catégories (tools/db/maverick.py#cles_des_mots_cles, strict : un refus lève). `parents` :
+ * { id du mot-clé → parent } (R309, la magie du sort qu'il ancre ; aucun à l'import, les ancres viennent par des lots du site).
+ */
+function clesDeLaRegle(motsCles, liaisons, categories, parents = {}) {
   const entree = {
     mots: motsCles.map((m) => [m.id, m.libelle, liaisons.filter((c) => c.mot_cle_id === m.id).map((c) => c.categorie_id)]),
     categories: categories.map((c) => [c.id, c.libelle]),
+    parents,
   };
   return python(`
 try:
-    print(json.dumps({'cles': T.cles_des_mots_cles(entree['mots'], dict(entree['categories']), strict=True)}))
+    print(json.dumps({'cles': T.cles_des_mots_cles(entree['mots'], dict(entree['categories']), strict=True, parents={int(k): v for k, v in entree['parents'].items()})}))
 except T.HomonymesRefuses as e:
     print(json.dumps({'refus': [[f[0], f[1], f[2]] for f in e.fautes]}))`, entree);
 }
@@ -131,7 +136,7 @@ test('import : la règle de la clé, stricte, donne exactement les clés de l’
 test('état courant (R232 (2), (9), (10)) : chaque clé est celle de la règle stricte ; aucun homonyme sans catégorie propre', { skip: sansPython }, () => {
   const motsCles = db.prepare('SELECT id, libelle, cle FROM mot_cle').all();
   const r = clesDeLaRegle(motsCles, db.prepare('SELECT mot_cle_id, categorie_id FROM mot_cle_categorie').all(),
-    db.prepare('SELECT id, libelle FROM categorie_mot_cle').all());
+    db.prepare('SELECT id, libelle FROM categorie_mot_cle').all(), Object.fromEntries(motsClesDeLaBase(db).filter((m) => m.parent).map((m) => [m.id, m.parent])));
   assert.deepEqual(r.refus, undefined);
   for (const m of motsCles) assert.equal(m.cle, r.cles[String(m.id)], `mot-clé ${m.id}`);
 });

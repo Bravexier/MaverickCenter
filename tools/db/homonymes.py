@@ -14,9 +14,16 @@ de l'import ». Elles ne sont plus écrites (le `tags:` de la page ne les porte 
   * tools/sheets/divers-craft.py : « tour » (tour, page ressources/fiche-de-tour) ;
   * tools/sheets/annexes-magie.py : « mode hyper » (mode-hyper, page guide/liste-des-effets-mode-hyper, retirée de la base par la migration 0095 ;
     la page guide/mode-hyper-magie, qui la portait aussi, n'est plus produite : décision R184 (9)) et « mode super » (mode-super, page
-    guide/liste-des-effets-mode-super).
-Test : client/test/importeurs-etiquettes.test.mjs (rejoue les trois importeurs sur les instantanés de sources/raw/classeurs/)."""
+    guide/liste-des-effets-mode-super) ;
+  * l'ancrage des mots-clés (R309, docs/chantier-ancrage-mots-cles.md §11) crée six mots-clés de plus qui portent ces écritures, et le prochain
+    import en poserait 83 : « invocation » (tools/sheets/invocations.py : les 66 créatures, vers le type de sort), « chasseur » (7 capacités de
+    l'Olwman) et « gladiateur » (7 capacités du Minotaure), vers le métier (tools/sheets/classes.py), « maison » et « construction » (page
+    Maison, vers elle-même et vers le type de sort ; tools/sheets/divers-craft.py), « malédiction » (page Accessoires, vers le sort ; tools/sheets/equipement.py).
+    Le filtre reste dans les importeurs, jamais dans `mots_cles_poses` : une étiquette posée à la main sur le site doit survivre à l'aller-retour
+    des pages.
+Test : client/test/importeurs-etiquettes.test.mjs (rejoue les cinq importeurs sur les instantanés de sources/raw/classeurs/)."""
 
 MAGIES_HOMONYMES = frozenset({'corruption', 'sang'})
 
-ETIQUETTES_NON_POSEES = frozenset({'bouclier', 'pièce élémentaire', 'amélioration', 'tour', 'mode hyper', 'mode super'})
+ETIQUETTES_NON_POSEES = frozenset({'bouclier', 'pièce élémentaire', 'amélioration', 'tour', 'mode hyper', 'mode super',
+                                   'invocation', 'chasseur', 'gladiateur', 'maison', 'construction', 'malédiction'})

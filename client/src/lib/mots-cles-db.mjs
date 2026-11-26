@@ -10,7 +10,7 @@
 // portent l'écriture de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages : le libellé, ou la clé d'un homonyme).
 // Et les textes de la base où une balise peut s'écrire (textesDeLaBase : db:check, le rejeu du journal ; hors tables de lib/tables-de-la-base.mjs).
 // Sans dépendance Astro ni navigateur : la base est passée par l'appelant (pages, middleware, service, scripts, tests).
-import { indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
+import { adresseDeLaPage, adresseDuSort, indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
 import { typeDeTexte } from './edition-modele.mjs';
 import { parLibelle } from './mots-cles.mjs';
 import { motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -34,13 +34,17 @@ export function categoriesDesMotsCles(db) {
 
 /**
  * Les mots-clés de la base, lus à chaque appel (sans cache : le service, dont la base change d'un lot à l'autre) : [{ id, libelle, cle, description,
- * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles }], dans l'ordre de leur id (`icone` : migration 0116, décision
- * R235, lib/icones.mjs). Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
+ * couleur, url, verrou, monnaie_id, icone, synonymes, categories, anciennes_cles, parent, element }], dans l'ordre de leur id (`icone` : migration 0116,
+ * décision R235, lib/icones.mjs ; `parent` : le nom de la magie du sort que le mot-clé ancre, migration 0131, décision R309, null sinon et pour une base
+ * sans `sort.mot_cle_id` ; il sert à lib/mots-cles-cles.mjs#clesDesMotsCles et n'entre pas dans le vocabulaire des balises ; `element` : { table, id,
+ * adresse, texte } le premier de `elementsDesMotsCles`, ou null sans élément : son `texte` est ce qu'un mot-clé sans définition écrite montre,
+ * lib/mots-cles-balises.mjs#definitionDuMotCle). `elements: false` ne lit aucun texte et laisse `element` à null : les chemins d'écriture du service, qui
+ * n'affichent rien et appellent cette fonction à chaque ligne d'un lot, le passent. Une base d'avant la migration 0113 (le service peut y retomber si la reconstruction de sa base vivante échoue) : `cle` =
  * libelle_cle, ni catégorie ni clé quittée, et son abréviation (0090) pour seul synonyme ; d'avant la 0056, la 0098, la 0110 ou la 0116 : NULL (0 pour
  * le verrou) ; vide sans table mot_cle (avant la 0043).
  * @param {import('node:sqlite').DatabaseSync} db
  */
-export function motsClesDeLaBase(db) {
+export function motsClesDeLaBase(db, { elements = true } = {}) {
   if (!tableExiste(db, 'mot_cle')) return [];
   const enPlace = colonnesDe(db, 'mot_cle');
   // un nom de colonne n'est écrit que s'il est l'un de ceux-ci, présent dans la table (PRAGMA table_info) ; sinon sa valeur par défaut
@@ -49,7 +53,7 @@ export function motsClesDeLaBase(db) {
   const optionnelles = [...['description', 'couleur', 'url', 'monnaie_id', 'icone'].map((c) => colonne(c)), colonne('verrou', '0')].join(', ');
   const abreviation = !tableExiste(db, 'mot_cle_synonyme') && enPlace.includes('abreviation');
   const lignes = db.prepare(`SELECT id, libelle, ${cle}, ${optionnelles}${abreviation ? ', "abreviation"' : ''} FROM mot_cle ORDER BY id`).all();
-  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [] }]));
+  const parId = new Map(lignes.map((l) => [l.id, { ...l, synonymes: [], categories: [], anciennes_cles: [], parent: null, element: null }]));
   for (const m of parId.values()) {
     if (abreviation) {
       if (typeof m.abreviation === 'string' && m.abreviation) m.synonymes.push(m.abreviation);
@@ -64,6 +68,18 @@ export function motsClesDeLaBase(db) {
   }
   if (tableExiste(db, 'mot_cle_ancienne_cle')) {
     for (const a of db.prepare('SELECT mot_cle_id, cle FROM mot_cle_ancienne_cle ORDER BY mot_cle_id, cle').all()) parId.get(a.mot_cle_id)?.anciennes_cles.push(a.cle);
+  }
+  if (tableExiste(db, 'sort') && tableExiste(db, 'magie') && colonnesDe(db, 'sort').includes('mot_cle_id')) {
+    for (const p of db.prepare('SELECT s.mot_cle_id, m.nom FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.mot_cle_id IS NOT NULL').all()) {
+      const m = parId.get(p.mot_cle_id);
+      if (m) m.parent = p.nom;
+    }
+  }
+  if (elements) {
+    for (const [id, [premier]] of elementsDesMotsCles(db)) {
+      const m = parId.get(id);
+      if (m && premier) m.element = { table: premier.table, id: premier.id, adresse: premier.adresse, texte: premier.texte };
+    }
   }
   return [...parId.values()];
 }
@@ -84,6 +100,32 @@ export function pagesDesLiens(db, motsCles = motsClesDeLaBase(db)) {
   for (const m of avecAdresse) {
     const page = pageDeLAdresse(index, m.url);
     sortie.set(m.id, page && titres.has(page) ? { page, titre: titres.get(page) } : null);
+  }
+  return sortie;
+}
+
+/**
+ * Les éléments auxquels chaque mot-clé renvoie (décision R309, migration 0131) : Map(id du mot-clé → [{ table, id, nom, adresse, texte }]), dans l'ordre
+ * page, sort, type de sort, magie, type de dégâts, monnaie. `texte` : le résumé d'une page, les effets d'un sort, sinon null. Un type de sort et un type
+ * de dégâts n'ont pas de nom à eux : celui de leur mot-clé. Une table ou une colonne absente (base d'avant la migration) ne donne aucun élément.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function elementsDesMotsCles(db) {
+  const sortie = new Map();
+  const ajouter = (table, sql, element) => {
+    if (!tableExiste(db, table) || !colonnesDe(db, table).includes(table === 'monnaie' ? 'id' : 'mot_cle_id')) return;
+    for (const l of db.prepare(sql).all()) (sortie.get(l.mot_cle_id) ?? sortie.set(l.mot_cle_id, []).get(l.mot_cle_id)).push({ table, id: l.id, nom: l.nom, ...element(l) });
+  };
+  const sansTexte = { adresse: null, texte: null };
+  // le texte : une colonne que la base n'a pas (base d'essai réduite à ce que son test lit) n'en donne pas
+  const texteDe = (table, colonne) => (tableExiste(db, table) && colonnesDe(db, table).includes(colonne) ? colonne : 'NULL');
+  ajouter('page', `SELECT id, mot_cle_id, titre AS nom, ${texteDe('page', 'resume')} AS resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDeLaPage(l.id), texte: l.resume ?? null }));
+  ajouter('sort', `SELECT id, mot_cle_id, nom, ${texteDe('sort', 'effets')} AS effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDuSort(l.id), texte: l.effets ?? null }));
+  ajouter('type_sort', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_sort t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
+  ajouter('magie', 'SELECT id, mot_cle_id, nom FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: null }));
+  ajouter('type_degats', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_degats t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
+  if (colonnesDe(db, 'mot_cle').includes('monnaie_id')) {
+    ajouter('monnaie', 'SELECT n.id, m.id AS mot_cle_id, n.nom FROM mot_cle m JOIN monnaie n ON n.id = m.monnaie_id ORDER BY n.id', () => sansTexte);
   }
   return sortie;
 }
@@ -120,6 +162,19 @@ export function idDuMotCle(db, ecriture) {
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function textesDeLaBase(db) {
+  // lue une fois par structure de la base (`schema_version` change à chaque CREATE, ALTER ou DROP) : le contrôle du contenu la relit à chaque essai,
+  // application et annulation d'un lot ; chaque appel reçoit sa copie
+  const version = db.prepare('PRAGMA schema_version').get().schema_version;
+  let memo = textesParBase.get(db);
+  if (memo?.version !== version) {
+    memo = { version, sortie: lireLesTextesDeLaBase(db) };
+    textesParBase.set(db, memo);
+  }
+  return memo.sortie.map((t) => ({ ...t, cle: [...t.cle] }));
+}
+const textesParBase = new WeakMap(); // db -> { version, sortie }
+
+function lireLesTextesDeLaBase(db) {
   const exclues = new Set([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TELLES_QUELLES]);
   const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
   const virtuelles = tables.filter((t) => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(t.sql ?? '')).map((t) => t.name);

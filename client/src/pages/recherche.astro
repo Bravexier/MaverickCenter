@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import rechercheCss from '../styles/recherche/recherche.css?raw';
 import { url } from '../lib/wiki';
 import { indexDeRecherche } from '../lib/recherche-index';
-import { comptesDesMotsCles, PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
+import { comptesDesMotsCles, PARAMETRE_MOT_CLE, TAILLE_DE_PAGE_DE_LA_RECHERCHE } from '../lib/recherche-mots-cles.mjs';
 import { htmlDeLaDefinition, htmlDeLaPastille } from '../lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../lib/mots-cles-db.mjs';
 import { ouvrirBase } from '../lib/donnees.mjs';
@@ -24,6 +24,10 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 // du propriétaire du 2026-11-06) : cette page ne fait plus que chercher, et liste toujours les mots-clés ; leurs pastilles mènent toujours à la liste de
 // leurs pages (?mot-cle=<clé>), jamais à l'adresse du mot-clé (réponse Q12). CSS : styles/recherche/, inséré ici (?raw). Aucun id de la page ne commence
 // par « mot-cle- » : c'est celui des bulles du glossaire (« mot-cle-<clé> », lib/mots-cles-balises.mjs#idDeBulle).
+// Décision R309 (docs/chantier-ancrage-mots-cles.md §8, §9) : la liste ne garde dans son HTML que les définitions ÉCRITES (le texte de l'élément d'un
+// mot-clé ancré arrive avec la vue : /search-elements.json, src/pages/search-elements.json.ts) ; seule la première page de 100 pastilles est
+// visible, les suivantes portent `hidden` (le script de la page les pagine ; sans JavaScript, le <noscript> les redonne). La vue d'un mot-clé montre son
+// élément (#vue-du-mot-cle-element) avant ses pages.
 const index = await indexDeRecherche();
 const comptes = comptesDesMotsCles(index);
 // La pastille d'un mot-clé montre son libellé seul (décision R233 (9) : « Armure magique · 3 » ; une monnaie : « Ricken d’or » et son icône, R63 ;
@@ -36,14 +40,18 @@ const motsCles = chargerVocabulaire(ouvrirBase()).map((m) => ({
   id: m.id, libelle: m.libelle, cle: m.cle, icone: m.icone ?? null, synonymes: json(m.synonymes), anciennes: json(m.anciennes_cles),
   definition: m.description, n: comptes.get(m.id) ?? 0,
 }));
+// sans JavaScript, tout s'affiche : les pastilles d'après la première page (`hidden`) sont rendues, et la navigation, que le script crée, n'existe pas
+// (« html » en tête : la feuille de la page, plus bas dans le document, a la même règle `display: none` ; celle-ci doit l'emporter)
+const sansScript = 'html .recherche-mots-cles .tags li[hidden] { display: list-item; }';
 const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
 ---
 
 <Base title="Recherche" description="Rechercher dans le site : les pages, les événements de la chronologie et le glossaire des mots-clés">
   <style is:inline set:html={rechercheCss}></style>
+  <noscript slot="tete"><style is:inline set:html={sansScript}></style></noscript>
   <div class="recherche" data-recherche data-lien-mot-cle={lienDuMotCle}>
     <h1>Recherche</h1>
-    <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} data-base={url()} data-suffix="" role="search">
+    <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} data-elements-url={url('search-elements.json')} data-base={url()} data-suffix="" role="search">
       <input id="q" type="search" name="q" placeholder="Nom, mot-clé, texte…" aria-label="Rechercher dans le site" autocomplete="off" autofocus />
       <button type="submit">Chercher</button>
     </form>
@@ -54,8 +62,8 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <h2 id="titre-mots-cles">Mots-clés <small id="nombre-mots-cles" class="muted">({motsCles.length})</small></h2>
       <ul class="tags" id="liste-mots-cles">
         {
-          motsCles.map((m) => (
-            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-synonymes={m.synonymes} data-anciennes-cles={m.anciennes} data-definition={m.definition || undefined}>
+          motsCles.map((m, i) => (
+            <li data-id={m.id} data-cle={m.cle} data-n={m.n} data-libelle={m.libelle} data-synonymes={m.synonymes} data-anciennes-cles={m.anciennes} data-definition={m.definition || undefined} hidden={i >= TAILLE_DE_PAGE_DE_LA_RECHERCHE}>
               <a class="badge" href={`${lienDuMotCle}${encodeURIComponent(m.cle)}`} data-bulle={m.definition ? `mot-cle-${m.cle}` : undefined}
                 aria-describedby={m.definition ? `mot-cle-${m.cle}` : undefined} set:html={htmlDeLaPastille(m)} />
             </li>
@@ -69,6 +77,10 @@ const lienDuMotCle = `${url('recherche/')}?${PARAMETRE_MOT_CLE}=`;
       <p class="muted"><a id="tous-les-mots-cles" href={url('recherche/')}>Tous les mots-clés</a></p>
       <h2 id="titre-mot-cle"></h2>
       <p id="vue-du-mot-cle-definition" class="recherche-definition" hidden></p>
+      <div id="vue-du-mot-cle-element" class="recherche-element" hidden>
+        <h3 id="titre-element">Élément</h3>
+        <ul id="vue-du-mot-cle-element-liste" class="entry-list"></ul>
+      </div>
       <p id="vue-du-mot-cle-compte" class="muted"></p>
       <ul id="vue-du-mot-cle-pages" class="entry-list" hidden></ul>
       <div id="definitions-des-mots-cles" hidden>

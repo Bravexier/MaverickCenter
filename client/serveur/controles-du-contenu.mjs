@@ -56,6 +56,24 @@ export function controleCles(db, tables, heritees) {
   return { violations, tolerees };
 }
 
+const colonnesParBase = new WeakMap(); // db -> { version, tables: Map(table -> PRAGMA table_info) }
+/**
+ * `PRAGMA table_info` d'une table, lu une fois par structure de la base (`schema_version` change à chaque CREATE, ALTER ou DROP) : le contrôle du contenu tourne à
+ * chaque essai, application et annulation d'un lot, et relit les colonnes de chaque table.
+ */
+function lecteurDesColonnes(db) {
+  const version = db.prepare('PRAGMA schema_version').get().schema_version;
+  let memo = colonnesParBase.get(db);
+  if (memo?.version !== version) {
+    memo = { version, tables: new Map() };
+    colonnesParBase.set(db, memo);
+  }
+  return (table) => {
+    if (!memo.tables.has(table)) memo.tables.set(table, db.prepare(`PRAGMA table_info("${table}")`).all());
+    return memo.tables.get(table);
+  };
+}
+
 /** Toute colonne `X_cle` d'une table qui a aussi la colonne `X` doit valoir normalize(X) ; `cle` (alias) se compare à `texte`. -> [message]. */
 export function controleNomCle(db, tables, normalize) {
   const problemes = [];
@@ -97,7 +115,8 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
   const noms = new Set(tables.map((t) => t.name));
   const fts = tables.filter((t) => /VIRTUAL TABLE/i.test(t.sql)).map((t) => t.name);
-  const colonnes = (t) => db.prepare(`PRAGMA table_info("${t}")`).all();
+  // lues une fois par structure de la base : le contrôle y revient pour chaque correction (il tourne à chaque essai, application et annulation d'un lot)
+  const colonnes = lecteurDesColonnes(db);
 
   const ic = db.prepare('PRAGMA integrity_check').all();
   if (!(ic.length === 1 && ic[0].integrity_check === 'ok')) signaler(null, null, 'integrity_check', `integrity_check : ${JSON.stringify(ic).slice(0, 200)}`);
@@ -108,11 +127,16 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
 
   // Entités adressées sans clé étrangère : la table doit exister (nom contraint par CHECK à [a-z_]+, vérifié présent dans sqlite_master : interpolation sûre).
   // entite_id = la clé primaire (colonnes jointes par '|' si elle est composite : convention du schéma, design.md §2).
+  // les clés d'une table, lues une fois (par SQLite, la même écriture qu'une comparaison `= ?`) : des milliers d'entités visent les mêmes tables, et ce contrôle
+  // tourne à chaque essai, application et annulation d'un lot ; `entite_id` est un TEXT (schéma)
   const cles = new Map();
   function existe(table, id) {
     if (!noms.has(table)) return false;
-    if (!cles.has(table)) cles.set(table, colonnes(table).filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => `CAST("${c.name}" AS TEXT)`).join(" || '|' || "));
-    return !!db.prepare(`SELECT 1 FROM "${table}" WHERE ${cles.get(table)} = ?`).get(id);
+    if (!cles.has(table)) {
+      const expression = colonnes(table).filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => `CAST("${c.name}" AS TEXT)`).join(" || '|' || ");
+      cles.set(table, new Set(db.prepare(`SELECT ${expression} AS k FROM "${table}"`).all().map((r) => r.k)));
+    }
+    return cles.get(table).has(id);
   }
   for (const src of ['page_entite', 'note_cellule', 'ecart_source']) {
     let n = 0;
@@ -124,7 +148,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   }
 
   // Toute colonne `X_cle` vaut normalize(X) (l'ancienne garde ne couvrait que 9 tables sur 25) ; identifiants fondés sur le contenu : recalculés.
-  const nc = controleNomCle(db, tables, normalize);
+  const nc = controleNomCle(db, tables, normalize); // à l'identique de scripts/db-lib.mjs (test/controles-du-contenu.test.mjs) : sans le lecteur des colonnes
   for (const p of nc.problemes.slice(0, 20)) {
     const m = /^(\S+) (.+?) : /.exec(p);   // « <table> <clé> : … » (controleNomCle)
     signaler(m?.[1] ?? null, m?.[2] ?? null, 'colonne_cle', p);
@@ -211,11 +235,18 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     : [];
   let correctionsLignesSupprimees = 0;
   const tablesCellules = tables.filter((t) => !fts.includes(t.name) && !['correction', 'note_cellule', 'ecart_source'].includes(t.name) && colonnes(t.name).some((c) => c.name === 'source_ref'));
+  // les lignes d'un onglet, lues une fois par table : des centaines de corrections visent le même onglet
+  const lignesDeLOnglet = new Map();
+  const lignesDe = (table, classeur, onglet) => {
+    const k = `${table}\u0000${classeur}\u0000${onglet}`;
+    if (!lignesDeLOnglet.has(k)) lignesDeLOnglet.set(k, db.prepare(`SELECT * FROM "${table}" WHERE source_ref LIKE ? || ' › ' || ? || ' › %'`).all(classeur.replace(/[%_]/g, ''), onglet.replace(/[%_]/g, '')));
+    return lignesDeLOnglet.get(k);
+  };
   for (const c of corrections.filter((x) => x.champ === 'v')) {
     let couvertes = 0, avecApres = 0;
     for (const t of tablesCellules) {
       const txt = colonnes(t.name).filter((x) => /TEXT/i.test(x.type) && x.name !== 'source_ref').map((x) => x.name);
-      for (const r of db.prepare(`SELECT * FROM "${t.name}" WHERE source_ref LIKE ? || ' › ' || ? || ' › %'`).all(c.classeur.replace(/[%_]/g, ''), c.onglet.replace(/[%_]/g, ''))) {
+      for (const r of lignesDe(t.name, c.classeur, c.onglet)) {
         if (!couvre(r.source_ref, c.classeur, c.onglet, c.cellule)) continue;
         couvertes += 1;
         // « avant » hors de « apres » : une correction qui ajoute une lettre en fin de cellule (« dégâts sonore » → « dégâts sonores ») garde « avant » dans « apres »
@@ -325,7 +356,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   // (aussi gardé par db-derive), et la règle de lib/mots-cles-balises.mjs#fautesDuSynonyme, la même que celle du service (normalize non vide, ni espace
   // autour, ni « { », « } », « | », saut de ligne, ni « : » final ; ni le libellé de son propre mot-clé, ni le libellé, un synonyme ou la clé d'un autre).
   if (noms.has('mot_cle')) {
-    const motsCles = motsClesDeLaBase(db);
+    const motsCles = motsClesDeLaBase(db, { elements: false });
     const vocabulaire = vocabulaireDesMotsCles(motsCles);
     if (noms.has('categorie_mot_cle')) {
       try {
@@ -356,9 +387,17 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
     let balises = 0;
     let colonnesLues = 0;
-    for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
+    // une seule lecture de chaque colonne pour les balises et pour les liens (plus bas) : les lignes qui écrivent un lien sont gardées pour ce contrôle-là
+    const lignesAvecUnLien = [];
+    for (const texte of textesDeLaBase(db)) {
+      const { table, colonne, cle, markdown } = texte;
       colonnesLues += 1;
-      for (const r of db.prepare(`SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
+      const sql = `SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}"
+        WHERE instr(${q(colonne)}, '{{') > 0 OR instr(${q(colonne)}, '[[') > 0 OR instr(${q(colonne)}, '](/') > 0`;
+      for (const r of db.prepare(sql).all()) {
+        const t = String(r.texte__);
+        if (t.includes('[[') || t.includes('](/')) lignesAvecUnLien.push({ ...texte, r });
+        if (!t.includes('{{')) continue;
         balises += lireBalises(r.texte__, { markdown }).length;
         for (const f of formesNonCanoniques(r.texte__, vocabulaire, { markdown })) {
           signaler(table, cle.map((c) => r[`k_${c}`]).join('|'), 'balise_canonique', `${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : la balise « ${f.balise} » n'est pas sous sa forme canonique (${f.raison})`);
@@ -394,15 +433,12 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
       bilan.couleurs_mots_cles = couleurs;
       const exemples = new Set(db.prepare("SELECT id FROM page WHERE statut = 'example'").all().map((p) => p.id));
       let liensRestes = 0;
-      for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
-        const sql = `SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '[[') > 0 OR instr(${q(colonne)}, '](/') > 0`;
-        for (const r of db.prepare(sql).all()) {
-          if (table === 'page' && exemples.has(r.k_id)) continue;
-          for (const l of liensDuTexte(r.texte__, { markdown })) {
-            if (l.sorte === 'markdown' && lienGarde(l.cible)) continue;
-            liensRestes += 1;
-            if (liensRestes <= 20) signaler(table, cle.map((c) => r[`k_${c}`]).join('|'), 'lien_en_balise', `${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0098)`);
-          }
+      for (const { table, colonne, cle, markdown, r } of lignesAvecUnLien) {
+        if (table === 'page' && exemples.has(r.k_id)) continue;
+        for (const l of liensDuTexte(r.texte__, { markdown })) {
+          if (l.sorte === 'markdown' && lienGarde(l.cible)) continue;
+          liensRestes += 1;
+          if (liensRestes <= 20) signaler(table, cle.map((c) => r[`k_${c}`]).join('|'), 'lien_en_balise', `${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0098)`);
         }
       }
       if (liensRestes > 20) signaler(null, null, 'lien_en_balise', `liens : ${liensRestes} liens à écrire en balises au total`);

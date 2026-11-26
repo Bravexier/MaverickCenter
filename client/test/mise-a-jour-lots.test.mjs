@@ -6,6 +6,7 @@
 //   node --test test/mise-a-jour-lots.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as rendu from '../src/lib/lots-rendu.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 const NOTE = { version_cible: '0.4', reference: { disponible: true, version: '0.3.70' }, lignes: [], brouillon: { texte: '' }, lancement: null, occupe: false, liberable: false, confirmation: 'MAJ', en_conflit: { lots: 0, modifications: 0 } };
@@ -363,6 +364,158 @@ test('« Tout recalculer » : rien à recalculer est dit sans lot ; un lot dépo
   assert.ok(echec.section().querySelector('[data-nv-lots-message]').textContent.includes('trop de pages pour un lot'));
 });
 
+/** Les attentes longues du suivi ne s'écoulent qu'à la demande (`ecouler`) ; les autres minuteries du test restent vraies. */
+function horloge(t) {
+  const vraie = globalThis.setTimeout;
+  const attentes = [];
+  globalThis.setTimeout = (f, ms, ...reste) => {
+    if (ms < 1000) return vraie(f, ms, ...reste);
+    attentes.push({ f, ms });
+    return 0;
+  };
+  t.after(() => {
+    globalThis.setTimeout = vraie;
+  });
+  return { attentes, ecouler: async () => {
+    attentes.shift().f();
+    await fini();
+  } };
+}
+const ROUTE_ANCRAGE = 'edition/lots/ancrage/';
+const EN_COURS = { en_cours: true, resultat: null, erreur: null };
+const AU_REPOS = { en_cours: false, resultat: null, erreur: null };
+const resultatDeLAncrage = (ecartees = []) => ({ lots: [], arret: null, suite: false, a_trancher: [], ecartees, comptes: {} });
+const etatFini = (resultat) => ({ en_cours: false, resultat, erreur: null });
+const leMessage = (page) => page.section().querySelector('[data-nv-lots-message]')?.textContent ?? '';
+const lecturesDeLAncrage = (page) => page.envois.filter(([k]) => k === `GET ${ROUTE_ANCRAGE}`).length;
+/** Une page dont le faux service rend `service.lecture()` à chaque lecture de l'état ; le POST répond 202. */
+async function pageDeLAncrage(extra = {}) {
+  const service = { lecture: () => AU_REPOS };
+  const page = await monter([], { [`POST ${ROUTE_ANCRAGE}`]: () => [202, { en_cours: true }], [`GET ${ROUTE_ANCRAGE}`]: () => service.lecture(), ...extra });
+  return { page, service, bouton: () => page.section().querySelector('[data-nv-ancrage]'), reprendre: () => page.section().querySelector('[data-nv-ancrage-reprendre]') };
+}
+
+test('« Préparer l’ancrage » (R309) : le clic lance, la page relit l’état toutes les 5 s, une lecture après l’autre, tolère une panne passagère, puis dit le résultat', async (t) => {
+  const h = horloge(t);
+  const { page, service, bouton, reprendre } = await pageDeLAncrage();
+  assert.equal(reprendre(), null, 'rien à reprendre tant que l’action n’a rien dit');
+  const avant = lecturesDeLAncrage(page);
+  await page.clic(bouton());
+  assert.deepEqual(page.ecritures(), [[`POST ${ROUTE_ANCRAGE}`, {}]]);
+  assert.deepEqual(h.attentes.map((a) => a.ms), [5000], 'la première lecture attend 5 s');
+  assert.equal(lecturesDeLAncrage(page), avant);
+
+  // le service met du temps à répondre : aucune autre lecture ne part en attendant
+  const lente = Promise.withResolvers();
+  service.lecture = () => [200, lente.promise];
+  await h.ecouler();
+  assert.equal(lecturesDeLAncrage(page), avant + 1);
+  assert.equal(h.attentes.length, 0, 'pas de nouvelle attente tant que la lecture n’a pas répondu');
+  lente.resolve(EN_COURS);
+  await fini();
+  assert.equal(h.attentes.length, 1);
+
+  // une panne réseau, puis une erreur du mandataire : le suivi continue
+  service.lecture = () => {
+    throw new TypeError('réseau coupé');
+  };
+  await h.ecouler();
+  service.lecture = () => [502, { erreur: 'mandataire' }];
+  await h.ecouler();
+  assert.equal(h.attentes.length, 1, 'le suivi continue après une erreur passagère');
+
+  const relectures = page.envois.filter(([k]) => k === 'GET edition/lots/').length;
+  service.lecture = () => etatFini(resultatDeLAncrage(['page:races/zephyrion']));
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'fini : plus de lecture');
+  assert.ok(leMessage(page).includes('races/zephyrion'));
+  assert.ok(page.envois.filter(([k]) => k === 'GET edition/lots/').length > relectures, 'la page est relue');
+
+  // le bouton « Reprendre » ne vient qu'avec des lignes écartées, et lui seul demande de les reprendre
+  await page.clic(reprendre());
+  assert.deepEqual(page.ecritures().at(-1), [`POST ${ROUTE_ANCRAGE}`, { reprendre: true }]);
+  service.lecture = () => etatFini(resultatDeLAncrage());
+  await h.ecouler();
+  assert.equal(reprendre(), null, 'plus rien à reprendre');
+});
+
+test('« Préparer l’ancrage » : l’erreur de l’action est dite ; un état vide dit que le service a redémarré ; une panne qui dure arrête le suivi ; un refus du lancement ne suit rien', async (t) => {
+  const h = horloge(t);
+  const { page, service, bouton } = await pageDeLAncrage();
+  await page.clic(bouton());
+  service.lecture = () => ({ en_cours: false, resultat: null, erreur: { statut: 500, message: 'le plan a échoué' } });
+  await h.ecouler();
+  assert.ok(leMessage(page).includes('le plan a échoué'));
+  assert.equal(h.attentes.length, 0);
+
+  await page.clic(bouton());
+  service.lecture = () => AU_REPOS;
+  await h.ecouler();
+  assert.ok(rendu.MESSAGE_ANCRAGE_INTERROMPU && leMessage(page).includes(rendu.MESSAGE_ANCRAGE_INTERROMPU), leMessage(page));
+  assert.equal(h.attentes.length, 0);
+
+  await page.clic(bouton());
+  service.lecture = () => {
+    throw new TypeError('réseau coupé');
+  };
+  for (let i = 0; i < 100 && h.attentes.length; i += 1) await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'une panne qui dure finit par arrêter le suivi');
+  assert.ok(rendu.MESSAGE_ANCRAGE_INJOIGNABLE && leMessage(page).includes(rendu.MESSAGE_ANCRAGE_INJOIGNABLE), leMessage(page));
+
+  await page.clic(bouton());
+  service.lecture = () => [403, { erreur: 'accès fermé' }];
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'un refus ne se retente pas');
+  assert.ok(leMessage(page).includes('accès fermé'));
+
+  const refuse = await pageDeLAncrage({ [`POST ${ROUTE_ANCRAGE}`]: [409, { erreur: 'déjà lancée' }] });
+  await refuse.page.clic(refuse.bouton());
+  assert.ok(leMessage(refuse.page).includes('déjà lancée'));
+  assert.equal(h.attentes.length, 0, 'rien à suivre');
+});
+
+test('une page rechargée pendant l’action reprend le suivi ; quand rien ne tourne, elle redit le dernier résultat que garde le service, sans rien relancer', async (t) => {
+  const h = horloge(t);
+  const repos = await pageDeLAncrage();
+  assert.equal(lecturesDeLAncrage(repos.page), 1);
+  assert.equal(h.attentes.length, 0);
+  assert.equal(leMessage(repos.page), '', 'service redémarré : aucun résultat, rien à dire (ni « interrompue »)');
+
+  // relecture finale (Fable m7) : le motif d'arrêt, les éléments à trancher et « Reprendre les lignes annulées » restent visibles après un rechargement
+  const arret = { titre: 'Ancrage d’essai', motif: 'un motif d’arrêt inventé.' };
+  const fini = { ...resultatDeLAncrage(['page:races/zephyrion']), arret, suite: true, a_trancher: [{ nom: 'Zephyrion inventé', raison: 'deux noms possibles' }] };
+  const dejaFini = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: etatFini(fini) });
+  assert.equal(h.attentes.length, 0, 'rien ne tourne : aucun suivi');
+  assert.equal(leMessage(dejaFini), rendu.messageDeLAncrage(fini), 'le dernier résultat se redit au chargement');
+  assert.ok(leMessage(dejaFini).includes('un motif d’arrêt inventé'));
+  assert.ok(leMessage(dejaFini).includes('deux noms possibles'), 'les éléments à trancher');
+  assert.ok(dejaFini.section().querySelector('[data-nv-ancrage-reprendre]'), '« Reprendre les lignes annulées » reste proposé');
+  assert.deepEqual(dejaFini.ecritures(), [], 'rien n’est relancé');
+
+  const enErreur = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: { en_cours: false, resultat: null, erreur: { statut: 500, message: 'une erreur inventée' } } });
+  assert.ok(leMessage(enErreur).includes('une erreur inventée'), leMessage(enErreur));
+
+  const absent = await monter([]); // service d'avant cette route : 404 silencieux
+  assert.equal(absent.section().hidden, false);
+  assert.equal(leMessage(absent), '');
+
+  const lots401 = await monter([], { 'GET edition/lots/': [401, { erreur: 'refusé' }], [`GET ${ROUTE_ANCRAGE}`]: EN_COURS });
+  assert.equal(lecturesDeLAncrage(lots401), 0, 'les lots ne se lisent pas : l’état non plus');
+
+  let etat = EN_COURS;
+  const reprise = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: () => etat, [`POST ${ROUTE_ANCRAGE}`]: () => [202, { en_cours: true }] });
+  assert.equal(h.attentes.length, 1, 'le suivi a repris');
+  assert.notEqual(leMessage(reprise), '');
+  await reprise.clic(reprise.section().querySelector('[data-nv-ancrage]'));
+  assert.deepEqual(reprise.ecritures(), [], 'pas de second lancement pendant le suivi');
+  etat = etatFini(resultatDeLAncrage(['page:races/zephyrion']));
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0);
+  assert.ok(leMessage(reprise).includes('races/zephyrion'));
+  await reprise.clic(reprise.section().querySelector('[data-nv-ancrage]'));
+  assert.equal(reprise.ecritures().length, 1, 'le suivi fini, le bouton remarche');
+});
+
 test('le HTML venu de la base ne s’exécute pas dans la page ; « Voir la page de production » cache la section, la décocher la remet', async () => {
   const piege = '<img src=x onerror=alert(1)>';
   const page = await monter([lot('p', { titre: piege })]);
@@ -395,4 +548,167 @@ test('un échec de relecture de la page après un clic réussi ne se dit pas com
   assert.ok(message.textContent.includes('relecture impossible'), 'l’échec de la relecture est ajouté');
   assert.equal(message.classList.contains('nv-message--erreur'), false, 'ce n’est pas un refus du lot');
   assert.equal(page.section().querySelectorAll('[data-nv-lot-message].nv-message--erreur').length, 0);
+});
+
+test('R309 : le détail d’un changement d’ancrage se lit à l’ouverture de son repli, une seule fois ; ses lignes restent branchées (annulation, « Tout montrer »), et seuls les replis ouverts sont relus après un clic', async () => {
+  const lignes = Array.from({ length: 35 }, (_, i) => ligne(i + 1));
+  const apercu = { verdict: 'applicable', verrous_a_ouvrir: [], ligne: { n: 2 }, comptes: { remises: 1, gardees: 0, deja: 0, verrouillees: 0, refusees: 0 }, operations: [] };
+  let liberer;
+  const attente = new Promise((r) => { liberer = r; });
+  const page = await monter([
+    direct('anc', lignes, { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 36, lignes_annulees: 1 }),
+    direct('aut', [ligne(1)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Autre ancrage', lignes_nettes: 7, lignes_annulees: 0 }),
+    direct('ord', [ligne(1)], { decision: 'R275', titre: 'Changement ordinaire' }),
+  ], {
+    'GET edition/lots/anc/': async (_corps, etat) => {
+      await attente;
+      return etat.lots.find((l) => l.id === 'anc');
+    },
+    'GET edition/lots/anc/lignes/2/annulation/': apercu,
+    'POST edition/lots/anc/lignes/2/annuler/': (corps, etat) => {
+      etat.lots = etat.lots.map((l) => (l.id === 'anc' ? { ...l, lignes: l.lignes.map((x) => (x.n === 2 ? { ...x, etat: 'annulee', annulable_seule: false, annulee: { annule_le: '2026-11-15T09:00:00Z', lot_id: 'L2' } } : x)) } : l));
+      return etat.lots.find((l) => l.id === 'anc');
+    },
+  });
+  const lectures = (id) => page.envois.filter(([k]) => k === `GET edition/lots/${id}/`).length;
+  const repli = (id) => page.article(id).querySelector('details.nv-lot__repli');
+  const compte = (id) => repli(id).querySelector('.nv-lot__compte').textContent;
+  const ouvrir = (id, oui = true) => {
+    repli(id).open = oui;
+    const e = new Event('toggle');
+    Object.defineProperty(e, 'target', { value: repli(id) });
+    page.section().dispatchEvent(e);
+  };
+  // au chargement : aucune lecture du détail d'un changement d'ancrage replié ; le nombre vient de la liste (36 lignes nettes moins 1 annulée) ; l'autre changement est lu
+  assert.equal(lectures('anc'), 0);
+  assert.equal(lectures('aut'), 0);
+  assert.equal(lectures('ord'), 1, 'un changement ordinaire se lit comme avant');
+  assert.equal(compte('anc'), '35 lignes');
+  assert.equal(compte('aut'), '7 lignes');
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne, [data-nv-bilan-indisponible]').length, 0);
+  // l'ouverture : « Lecture des lignes… » dans le repli, une seule requête même ouvert deux fois de suite
+  ouvrir('anc');
+  await fini();
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.match(repli('anc').querySelector('[data-nv-lecture]').textContent, /Lecture des lignes/);
+  assert.equal(repli('anc').hasAttribute('open'), true);
+  liberer();
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 30, 'les trente premières lignes');
+  assert.equal(repli('anc').querySelectorAll('[data-nv-lecture]').length, 0);
+  assert.equal(compte('anc'), '35 lignes', 'le nombre exact des lignes en écart, une fois le détail lu');
+  // fermer puis rouvrir ne relit pas, et le rendu qui repose le repli ouvert (le navigateur refait `toggle`) non plus
+  ouvrir('anc', false);
+  ouvrir('anc');
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 1);
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 30);
+  // « Annuler cette modification » d'une ligne du repli : l'aperçu, la confirmation, le POST de cette ligne seule
+  await page.clic(repli('anc').querySelector('button[data-nv-annuler-ligne="2"]'));
+  assert.ok(page.dialogue()?.ouvert, 'la confirmation');
+  assert.equal(page.ecritures().length, 0, 'rien n’est envoyé avant la confirmation');
+  await page.confirmer();
+  assert.deepEqual(page.ecritures(), [['POST edition/lots/anc/lignes/2/annuler/', { verrous_ouverts: [] }]]);
+  assert.equal(repli('anc').querySelector('li[data-nv-ligne="2"]').dataset.nvEtatLigne, 'annulee');
+  assert.equal(repli('anc').hasAttribute('open'), true, 'le repli ouvert le reste');
+  // après le clic : seul le repli ouvert est relu ; l'autre changement d'ancrage jamais ouvert ne l'est pas
+  assert.equal(lectures('anc'), 2, 'le repli ouvert est relu');
+  assert.equal(lectures('aut'), 0, 'un repli fermé ne se lit pas');
+  // « Tout montrer » : les cinq dernières lignes s'ajoutent, annulables elles aussi, sans nouvelle lecture
+  await page.clic(repli('anc').querySelector('button[data-nv-toutes="anc:lignes"]'));
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 35);
+  assert.equal(repli('anc').querySelectorAll('li[data-nv-ligne="35"] button[data-nv-annuler-ligne]').length, 1);
+  assert.equal(lectures('anc'), 2);
+  // un repli lu puis fermé : la liste relue (« Actualiser ») ne le relit pas, il oublie ses lignes (états et boutons périmés) et son titre reprend le nombre de la liste ;
+  // sa réouverture relit une fois et montre l'état neuf ; l'autre changement d'ancrage, jamais ouvert, n'a rien lu
+  ouvrir('anc', false);
+  page.etat.lots = page.etat.lots.map((l) => (l.id === 'anc' ? { ...l, lignes_nettes: 30, lignes_annulees: 4, lignes: l.lignes.slice(0, 30).map((x) => (x.n === 5 ? { ...x, etat: 'annulee', annulable_seule: false } : x)) } : l));
+  await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
+  assert.equal(lectures('anc'), 2, 'la liste relue ne lit pas un repli fermé');
+  assert.equal(lectures('aut'), 0);
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 0, 'il a oublié ses lignes');
+  assert.equal(compte('anc'), '26 lignes', 'le titre reprend le nombre de la liste (30 nettes moins 4 annulées)');
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 3, 'rouvert : une lecture');
+  assert.equal(repli('anc').querySelectorAll('li.nv-lot-ligne').length, 30);
+  assert.equal(repli('anc').querySelector('li[data-nv-ligne="5"]').dataset.nvEtatLigne, 'annulee', 'l’état neuf');
+  ouvrir('anc', false);
+  ouvrir('anc');
+  await fini();
+  assert.equal(lectures('anc'), 3, 'entre deux relectures de la liste, rouvrir ne relit pas');
+});
+
+test('R309 : une lecture du détail en échec le dit dans le repli avec « Réessayer » ; ni un rendu, ni un nouveau `toggle`, ni « Actualiser » ne la relancent, seul le bouton', async () => {
+  let tentatives = 0;
+  const page = await monter([direct('anc', [ligne(1), ligne(2)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 2, lignes_annulees: 0 })], {
+    'GET edition/lots/anc/': (_corps, etat) => {
+      tentatives += 1;
+      return tentatives < 3 ? [503, { erreur: 'Service occupé' }] : etat.lots.find((l) => l.id === 'anc');
+    },
+  });
+  const repli = () => page.article('anc').querySelector('details.nv-lot__repli');
+  const ouvrir = () => {
+    repli().open = true;
+    const e = new Event('toggle');
+    Object.defineProperty(e, 'target', { value: repli() });
+    page.section().dispatchEvent(e);
+  };
+  assert.equal(tentatives, 0, 'rien au chargement');
+  ouvrir();
+  await fini();
+  assert.equal(tentatives, 1);
+  assert.ok(repli().querySelector('[data-nv-lecture-erreur]').textContent.includes('Service occupé'));
+  assert.equal(repli().querySelectorAll('button[data-nv-relire]').length, 1);
+  assert.equal(repli().querySelectorAll('[data-nv-bilan-indisponible], [data-nv-lecture]').length, 0, 'l’échec n’est pas dit « indisponible »');
+  assert.equal(repli().querySelector('.nv-lot__compte').textContent, '2 lignes', 'le nombre de la liste reste');
+  // le rendu repose le repli ouvert, le navigateur refait `toggle` (plusieurs fois) : aucune requête de plus ; « Actualiser » non plus
+  ouvrir();
+  ouvrir();
+  await fini();
+  await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
+  ouvrir();
+  await fini();
+  assert.equal(tentatives, 1, 'pas de boucle de requêtes');
+  assert.equal(repli().querySelectorAll('button[data-nv-relire]').length, 1);
+  // « Réessayer » : une lecture, qui échoue encore (le message reste), puis une qui réussit
+  await page.clic(repli().querySelector('button[data-nv-relire]'));
+  assert.equal(tentatives, 2);
+  assert.ok(repli().querySelector('[data-nv-lecture-erreur]'));
+  await page.clic(repli().querySelector('button[data-nv-relire]'));
+  assert.equal(tentatives, 3);
+  assert.equal(repli().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
+  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 2);
+  assert.equal(page.ecritures().length, 0);
+});
+
+test('R309 : une proposition d’ancrage dont la lecture échoue ne laisse aucun échec en mémoire : appliquée, son repli se lit normalement', async () => {
+  let lectures = 0;
+  const page = await monter([lot('prop', { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })], {
+    'GET edition/lots/prop/': (_corps, etat) => {
+      lectures += 1;
+      // la première lecture (la proposition, au chargement) échoue ; ensuite le changement est appliqué et se lit
+      return lectures === 1 ? [503, { erreur: 'Service occupé' }] : etat.lots.find((l) => l.id === 'prop');
+    },
+  });
+  assert.equal(lectures, 1, 'la proposition est lue au chargement, comme avant');
+  assert.equal(page.section().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0, 'une proposition ne dit pas d’échec de lecture du détail');
+  // la proposition est appliquée (sa ligne passe à « applique ») : la page est relue, son repli est replié et se lit à l'ouverture, sans l'échec d'avant
+  page.etat.lots = [direct('prop', [ligne(1), ligne(2), ligne(3)], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage proposé', lignes_nettes: 3, lignes_annulees: 0 })];
+  await page.clic(page.section().querySelector('button[data-nv-lots-actualiser]'));
+  assert.equal(lectures, 1, 'le repli fermé de l’ancrage appliqué ne se lit pas à la relecture de la liste');
+  const repli = () => page.article('prop').querySelector('details.nv-lot__repli');
+  assert.equal(repli().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
+  repli().open = true;
+  const e = new Event('toggle');
+  Object.defineProperty(e, 'target', { value: repli() });
+  page.section().dispatchEvent(e);
+  await fini();
+  assert.equal(lectures, 2, 'une lecture à l’ouverture');
+  assert.equal(repli().querySelectorAll('li.nv-lot-ligne').length, 3);
+  assert.equal(repli().querySelectorAll('[data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
 });

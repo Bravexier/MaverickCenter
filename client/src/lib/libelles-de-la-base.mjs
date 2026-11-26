@@ -134,6 +134,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   sort_mot_cle: 'Étiquette du sort',
   // les types de dégâts à valeur fermée (migrations 0125 et 0130) : leur mot-clé ou leur magie ; une ligne s'ajoute par un lot de changements (R298)
   type_degats: 'Type de dégâts',
+  // les types de sort (migration 0131, R309) : leur mot-clé d'ancrage ; ses lignes sont les codes de sort_type.type, un type s'ajoute par une migration
+  type_sort: 'Type de sort',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',
   personnage_accessoire: 'Accessoire du personnage',

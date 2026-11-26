@@ -8,8 +8,8 @@
 //   - au crayon (debut) : le tableau de gestion, une ligne (un <tbody>) par mot-clé, dans les colonnes du tableau — ses noms : la balise à copier
 //     (« {{clé}} »), son libellé (mot_cle.libelle ; décision R195 : modifiable pour tout mot-clé) et ses synonymes (R233 : une liste
 //     ordonnée, une écriture par ligne), précédés de son icône (R235 : un choix dans la liste des icônes du
-//     site, en première colonne) ; ses catégories (R232 (5) : une case à cocher par catégorie, choix
-//     multiple ; aussi pour un mot-clé verrouillé, R232 (11)) ; son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ;
+//     site, en première colonne) ; son type (R232 (5), R309 : une case à cocher par catégorie, exclusives — en cocher une décoche les autres, on peut tout
+//     décocher ; un mot-clé qui en a encore plusieurs avant le premier lot d'ancrage les montre toutes cochées ; aussi pour un mot-clé verrouillé, R232 (11)) ; son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ;
 //     vidée, NULL) ; le menu déroulant des endroits qui le mentionnent (décision R196 (2), `mentions` du service : lib/mentions-des-mots-cles.mjs) et ses
 //     outils, « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer » ; « Supprimer » seulement quand rien ne le mentionne,
 //     R196) ; un mot-clé mentionné, à la place de « Supprimer », « Forcer la suppression » (décision R223 : mis en file comme les autres, confirmé avec ce
@@ -22,28 +22,34 @@
 //     sa définition, son adresse, sa couleur, ses catégories et ses synonymes : ENTITES.mot_cle) et la gestion des catégories (R232 (5) : chacune
 //     renommable, « Supprimer » pour une catégorie vide, mis en file ; « + Ajouter une catégorie », créée tout de suite) ; ce que le service refuse (400 :
 //     synonyme, adresse ou couleur mal écrite ; 409 : homonyme sans catégorie distinctive, clé ou synonyme déjà pris, suppression d'un mot-clé verrouillé, mot-clé
-//     mentionné, refus du forçage, catégorie non vide ; `champ`) l'est comme tout refus du lot ;
+//     mentionné, refus du forçage, catégorie non vide ; `champ`) l'est comme tout refus du lot ; un mot-clé **ancré** (`element`, R309 : relié à une page, un
+//     sort, un type de sort, une magie, une monnaie ou un type de dégâts) est en lecture seule — ni saisie, ni case, ni « Supprimer », « Forcer la suppression »
+//     ou « Fusionner dans… » —, il garde sa balise à copier et le menu de ses mentions, et reste une cible de fusion ; le formulaire de création n'offre qu'un
+//     type, exclusif, « Notion » présélectionné quand cette catégorie existe ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
 //     une fusion et serait supprimé) ; un renommage vers l'écriture d'un mot-clé gardé, sans catégorie qui les distingue (R232 (9)), propose la fusion ;
 //     suppressions et fusions sont confirmées une fois ; (operations) l'ordre du lot que le service accepte (lib/mots-cles-edition.mjs#operationsDuVocabulaire :
 //     fusions, suppressions, catégories des mots-clés avant les renommages, synonymes, catégories supprimées) ;
 //   - en sortant (fin, après un enregistrement aussi) : le tableau relu dans la base vivante.
 // Hors du mode modification, rien ne montre le verrou (R219 (7)).
-// La page (src/scripts/glossaire.mjs : les filtres) relit le tableau à l'évènement « glossaire:mots-cles » (detail.gestion : le tableau de gestion est
-// affiché ; detail.categories : les catégories des mots-clés, [{ id, libelle }], pour la liste du filtre) ; chaque mot-clé y est un <tbody data-id
+// La page (src/scripts/glossaire.mjs : les filtres et la pagination) relit le tableau à l'évènement « glossaire:mots-cles » (detail.gestion : le tableau de
+// gestion est affiché ; detail.categories : les catégories des mots-clés, [{ id, libelle }], pour la liste du filtre ; detail.voir : l'id d'un mot-clé créé,
+// dont la page de la pagination s'affiche) ; chaque mot-clé y est un <tbody data-id
 // data-cle data-n data-libelle data-synonymes data-categories data-definition data-url data-couleur> (absents sans valeur), la ligne de lecture le HTML de
 // la page construite (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire), dont les balises de la définition sont rendues par mots-cles-vivants.mjs dès
 // qu'elle est posée. Le titre de la page où mène l'adresse d'un mot-clé (la colonne Lien, R234 (2)) : `titre_du_lien` du service (null : l'adresse
 // brute). Les catégories des événements de la chronologie
 // se gèrent sur /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
-import { estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
+import { aUnElement, estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
 import {
-  ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, ecrituresDesCibles, endroitsDesMentions,
-  erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDesListes, operationsDuVocabulaire,
-  raisonSansForcage, suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis,
+  ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
+  erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, noteDeLAncrage, operationsDesListes, operationsDuVocabulaire,
+  raisonSansForcage, suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis, typeParDefaut,
 } from '../../lib/mots-cles-edition.mjs';
-import { COLONNES_DU_GLOSSAIRE, htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
+import {
+  adresseDuMotCle, COLONNES_DU_GLOSSAIRE, definitionDuMotCle, htmlDeLaLigneDuGlossaire, htmlDeLIcone, libellesDesCategories,
+} from '../../lib/mots-cles-balises.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 
@@ -61,8 +67,9 @@ let session = 0; // le passage en mode modification en cours (une lecture finie 
 const tableau = () => document.getElementById('liste-mots-cles');
 const lignes = () => [...(tableau()?.querySelectorAll('tbody[data-id]') ?? [])];
 const ligneDe = (id) => lignes().find((t) => t.dataset.id === String(id)) ?? null;
-const annoncerLeTableau = (gestion) => document.dispatchEvent(new CustomEvent('glossaire:mots-cles', {
-  detail: { gestion, categories: categories.map((c) => ({ id: c.id, libelle: c.libelle })) },
+// `voir` : l'id d'un mot-clé que la page doit montrer (un mot-clé créé : la pagination affiche sa page)
+const annoncerLeTableau = (gestion, voir) => document.dispatchEvent(new CustomEvent('glossaire:mots-cles', {
+  detail: { gestion, categories: categories.map((c) => ({ id: c.id, libelle: c.libelle })), ...(voir !== undefined ? { voir } : {}) },
 }));
 const retires = () => new Set([...suppressions, ...forcages, ...fusions.keys()]);
 const motCle = (id) => vocabulaire?.find((m) => m.id === id) ?? null;
@@ -184,9 +191,11 @@ function categoriesPortees() {
   if (!tableau()?.hasAttribute('data-gestion')) return null;
   const sortants = retires();
   const portees = new Map();
-  for (const [id, s] of saisiesDesListes()) {
-    if (sortants.has(id)) continue;
-    for (const c of s.categories ?? []) portees.set(c, (portees.get(c) ?? 0) + 1);
+  // les cases cochées de chaque ligne ; un mot-clé ancré n'a pas de case (sa ligne est en lecture seule) : ses catégories, celles de la base vivante
+  const saisies = saisiesDesListes();
+  for (const m of vocabulaire ?? []) {
+    if (sortants.has(m.id)) continue;
+    for (const c of saisies.get(m.id)?.categories ?? m.categories ?? []) portees.set(c, (portees.get(c) ?? 0) + 1);
   }
   return portees;
 }
@@ -291,10 +300,14 @@ function basculerLaSuppression(ed, m, file) {
   etatDesLignes();
 }
 
-/** Les cases à cocher des catégories d'un mot-clé (R232 (5) : choix multiple ; `cochees` : ses ids) ; un changement marque la page modifiée. */
+/**
+ * Les cases à cocher du type d'un mot-clé (R309 : un seul type, les cases sont exclusives : en cocher une décoche les autres, on peut tout décocher ;
+ * `cochees` : ses ids — un mot-clé qui a encore plusieurs catégories avant le premier lot d'ancrage les montre toutes cochées, sans refus à
+ * l'enregistrement) ; un changement marque la page modifiée.
+ */
 function casesDesCategories(ed, cochees) {
   const fieldset = element('fieldset', 'ed-mot-cle__categories-choix');
-  fieldset.setAttribute('aria-label', 'Catégories');
+  fieldset.setAttribute('aria-label', 'Type');
   for (const c of categories) fieldset.append(caseDeCategorie(ed, c, cochees.includes(c.id)));
   return fieldset;
 }
@@ -305,6 +318,7 @@ function caseDeCategorie(ed, c, cochee) {
   caseACocher.value = String(c.id);
   caseACocher.checked = cochee;
   caseACocher.addEventListener('change', () => {
+    decocherLesAutres(caseACocher, caseACocher.closest('fieldset')?.querySelectorAll('.ed-mot-cle__categorie input') ?? []);
     ed.marquerModifie();
     etatDesLignes(); // le compte des catégories et leur « Supprimer »
   });
@@ -316,31 +330,41 @@ function caseDeCategorie(ed, c, cochee) {
  * Une ligne du tableau de gestion (un <tbody>, les colonnes du tableau de lecture) : ses noms (la balise à copier, le libellé, la liste ordonnée de ses
  * synonymes), ses catégories (cases à cocher), son adresse, ses outils — le menu des mentions (R196 (2)) et, pour un mot-clé verrouillé, le cadenas
  * (R219 (7)), sinon « Fusionner dans… » et, s'il n'est mentionné nulle part, « Supprimer » ; mentionné, « Forcer la suppression », ou la note qui dit
- * pourquoi le service la refuserait (R223) — ; dessous, sur toute la largeur, sa couleur et sa définition (saisies communes).
+ * pourquoi le service la refuserait (R223) — ; dessous, sur toute la largeur, sa couleur et sa définition (saisies communes). Un mot-clé **ancré** (`element`,
+ * R309) est en lecture seule : ni saisie, ni case, ni bouton ; il garde la balise à copier et le menu de ses mentions, le cadenas s'il est verrouillé, et une
+ * note dit à quoi il est lié (un lien vers l'endroit où il se modifie) ; il reste une cible de « Fusionner dans… » (ciblesDeFusion). Le type : des cases
+ * exclusives (R309), toutes cochées pour un mot-clé qui a encore plusieurs catégories.
  */
 function ligneDeGestion(ed, m) {
   const t = element('tbody', 'ed-mot-cle');
+  const ancre = aUnElement(m); // R309 : un mot-clé ancré est en lecture seule, hors sa balise à copier et le menu de ses mentions
   // la balise à copier, son aide, les synonymes et la définition telle qu'enregistrée (balises comprises) : tels qu'écrits, jamais rendus
-  // (mots-cles-vivants.mjs)
-  t.setAttribute('data-mots-cles-bruts', '');
+  // (mots-cles-vivants.mjs) ; une ligne ancrée n'a que la balise à copier de brute, le reste y est lu comme au tableau de lecture
+  if (!ancre) t.setAttribute('data-mots-cles-bruts', '');
   Object.assign(t.dataset, { id: String(m.id), cle: m.cle, libelle: m.libelle });
   if (m.description) t.dataset.definition = m.description;
   if (m.synonymes?.length) t.dataset.synonymes = JSON.stringify(m.synonymes);
   if (m.categories?.length) t.dataset.categories = JSON.stringify(m.categories);
+  if (ancre) {
+    t.classList.add('ed-mot-cle--ancre');
+    t.dataset.ancre = m.element.table;
+  }
   const verrouille = estVerrouille(m);
-  // chaque champ, une saisie commune ; vide : NULL (sauf le libellé, requis)
+  // chaque champ, une saisie commune ; vide : NULL (sauf le libellé, requis) ; sur un mot-clé ancré, le texte seul
   const champ = (classe, colonne, valeur) => {
     const span = element('span', classe, valeur ?? '');
-    span.dataset.ed = attributEd('mot_cle', { id: m.id }, colonne);
+    if (!ancre) span.dataset.ed = attributEd('mot_cle', { id: m.id }, colonne);
     return span;
   };
   const ligne = element('tr', 'ed-mot-cle__ligne');
   // l'icône (décision R235 : un choix dans la liste des icônes du site, ed.listes.icones ; vidée, NULL ; modifiable aussi sur un mot-clé verrouillé)
   const icone = element('td', 'ed-mot-cle__icone-case');
-  icone.append(champ('ed-mot-cle__icone', 'icone', m.icone));
+  if (ancre) icone.innerHTML = htmlDeLIcone(m.icone);
+  else icone.append(champ('ed-mot-cle__icone', 'icone', m.icone));
   const noms = element('th', 'ed-mot-cle__noms');
   noms.setAttribute('scope', 'row');
   const balise = element('code', 'ed-mot-cle__balise', `{{${m.cle}}}`);
+  if (ancre) balise.setAttribute('data-mots-cles-bruts', ''); // la balise reste telle qu'écrite : c'est ce qu'on copie
   balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.cle}|texte}} » pour un autre texte affiché, `
     + `« {{${m.cle}:}} » pour « Libellé : définition »${m.synonymes?.length ? ` ; « {{${m.synonymes[0]}}} » pour un synonyme, qu’elle affiche` : ''}`;
   // les synonymes : une liste ordonnée, une écriture par ligne (R233 ; réponse T6)
@@ -350,11 +374,20 @@ function ligneDeGestion(ed, m) {
   saisieDesSynonymes.value = (m.synonymes ?? []).join('\n');
   saisieDesSynonymes.addEventListener('input', () => ed.marquerModifie());
   synonymes.append(element('span', 'ed-libelle', 'Synonymes (un par ligne)'), saisieDesSynonymes);
-  noms.append(balise, champ('ed-mot-cle__nom', 'libelle', m.libelle), synonymes);
+  if (ancre) {
+    noms.append(balise, champ('ed-mot-cle__nom', 'libelle', m.libelle));
+    if (m.synonymes?.length) noms.append(element('span', 'ed-mot-cle__synonymes', m.synonymes.join(', ')));
+  } else noms.append(balise, champ('ed-mot-cle__nom', 'libelle', m.libelle), synonymes);
   const cats = element('td', 'ed-mot-cle__categories');
-  cats.append(casesDesCategories(ed, m.categories ?? []));
+  if (ancre) cats.append(libellesDesCategories(m.categories ?? [], categories).join(', ') || '—');
+  else cats.append(casesDesCategories(ed, m.categories ?? []));
   const lien = element('td', 'ed-mot-cle__lien-case');
-  lien.append(champ('ed-mot-cle__lien', 'url', m.url));
+  const adresse = ancre ? adresseDuMotCle(m, ed?.base || '/') : null;
+  if (adresse) {
+    const a = element('a', 'ed-mot-cle__lien', lienDe(m)?.titre ?? m.url);
+    a.href = adresse;
+    lien.append(a);
+  } else lien.append(champ('ed-mot-cle__lien', 'url', m.url));
   const outils = element('td', 'ed-mot-cle__outils');
   const compte = element('span', 'ed-mot-cle__compte', compteDesElements(m));
   outils.append(compte);
@@ -364,7 +397,8 @@ function ligneDeGestion(ed, m) {
   const suite = element('tr', 'ed-mot-cle__suite');
   const definition = element('td', 'ed-mot-cle__suite-case');
   definition.setAttribute('colspan', String(COLONNES_DU_GLOSSAIRE.length));
-  definition.append(champ('ed-mot-cle__couleur', 'couleur', m.couleur), champ('ed-mot-cle__definition', 'description', m.description));
+  if (ancre) definition.append(element('span', 'ed-mot-cle__definition', definitionDuMotCle(m) ?? 'Pas encore de définition.'));
+  else definition.append(champ('ed-mot-cle__couleur', 'couleur', m.couleur), champ('ed-mot-cle__definition', 'description', m.description));
   suite.append(definition);
   t.append(ligne, suite);
   if (verrouille) {
@@ -376,8 +410,19 @@ function ligneDeGestion(ed, m) {
     cadenas.title = INFOBULLE_DU_VERROU;
     cadenas.innerHTML = CADENAS;
     outils.append(cadenas);
+  }
+  if (ancre) {
+    // ni « Supprimer », ni « Forcer la suppression », ni « Fusionner dans… » : la ligne dit où il se modifie
+    const note = element('p', 'ed-mot-cle__ancre', noteDeLAncrage(m));
+    if (typeof m.element.adresse === 'string' && m.element.adresse) {
+      const a = element('a', '', 'Ouvrir');
+      a.href = `${String(ed?.base || '/').replace(/\/+$/, '')}${m.element.adresse}`;
+      note.append(' ', a);
+    }
+    outils.append(note);
     return t;
   }
+  if (verrouille) return t;
   if (fusionOfferte(m)) {
     const fusion = bouton('Fusionner dans…', 'ed-outil ed-mot-cle__fusionner');
     fusion.setAttribute('aria-pressed', 'false');
@@ -514,7 +559,7 @@ function ajouter(ed, ligne, valeurs = {}) {
   const suivant = vocabulaire[vocabulaire.indexOf(m) + 1];
   t.insertBefore(corps, suivant ? ligneDe(suivant.id) : null);
   ed.monterChamps(corps);
-  annoncerLeTableau(true);
+  annoncerLeTableau(true, m.id);
   return corps;
 }
 
@@ -522,7 +567,7 @@ function ajouter(ed, ligne, valeurs = {}) {
 function saisiesDesListes() {
   const saisies = new Map();
   for (const t of lignes()) {
-    if (!t.classList.contains('ed-mot-cle')) continue;
+    if (!t.classList.contains('ed-mot-cle') || t.classList.contains('ed-mot-cle--ancre')) continue; // un mot-clé ancré : aucune saisie
     const cases = t.querySelectorAll('.ed-mot-cle__categorie input');
     const synonymes = t.querySelector('.ed-mot-cle__synonymes-saisie');
     saisies.set(Number(t.dataset.id), {
@@ -533,10 +578,15 @@ function saisiesDesListes() {
   return saisies;
 }
 
-/** Les champs du formulaire de création d'un mot-clé (ENTITES.mot_cle) : ses catégories en cases à cocher, ses synonymes un par ligne. */
+/** Les champs du formulaire de création d'un mot-clé (ENTITES.mot_cle) : son type en cases exclusives, ses synonymes un par ligne. */
 const champsDeCreation = () => Object.entries(ENTITES.mot_cle.champs).map(([nom, c]) => {
   if (c.type === 'ids') {
-    return { nom, libelle: c.libelle, type: 'categories', choix: categories.map((x) => ({ id: x.id, libelle: x.libelle })), vide: 'Aucune catégorie pour l’instant : « + Ajouter une catégorie », au-dessus du tableau.' };
+    // un seul type (R309), exclusif ; « Notion » est présélectionné quand cette catégorie existe (elle n'existe qu'après le premier lot d'ancrage)
+    const notion = typeParDefaut(categories);
+    return {
+      nom, libelle: 'Type', type: 'categories', exclusif: true, valeur: notion === null ? [] : [notion], choix: categories.map((x) => ({ id: x.id, libelle: x.libelle })),
+      vide: 'Aucun type pour l’instant : « + Ajouter une catégorie », au-dessus du tableau.',
+    };
   }
   if (c.type === 'ecritures') return { nom, libelle: `${c.libelle} (un par ligne)`, type: 'texte' };
   // `liste` : celle des icônes (ed.listes.icones, GET /api/edition/listes/ ; décision R235), que le formulaire lit pour un choix

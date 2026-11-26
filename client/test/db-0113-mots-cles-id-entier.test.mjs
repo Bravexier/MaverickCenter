@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
@@ -150,8 +151,10 @@ test('état courant : la clé de chaque mot-clé suit la règle (maverick.py#cle
   const entree = {
     mots: mots.map((m) => [m.id, m.libelle, cats.filter((c) => c.mot_cle_id === m.id).map((c) => c.categorie_id)]),
     categories: db.prepare('SELECT id, libelle FROM categorie_mot_cle').all().map((c) => [c.id, c.libelle]),
+    // R309 : le parent d'un mot-clé ancré sur un sort (la magie du sort) départage deux homonymes de même type
+    parents: Object.fromEntries(motsClesDeLaBase(db).filter((m) => m.parent).map((m) => [m.id, m.parent])),
   };
-  const cles = python('print(json.dumps(T.cles_des_mots_cles(entree["mots"], dict(entree["categories"]), strict=False)))', entree);
+  const cles = python('print(json.dumps(T.cles_des_mots_cles(entree["mots"], dict(entree["categories"]), strict=False, parents={int(k): v for k, v in entree["parents"].items()})))', entree);
   for (const { id, cle } of db.prepare('SELECT id, cle FROM mot_cle').all()) assert.equal(cle, cles[String(id)], `mot-clé ${id}`);
 });
 

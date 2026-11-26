@@ -225,7 +225,9 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
     const r = codexPy(...args);
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const tags = (f) => JSON.parse(readFileSync(join(tmp, 'lore', f), 'utf8').match(/^tags: (.*)$/m)[1]);
-    for (const page of ['confrerie-du-sang', 'la-pointe-de-sang']) assert.deepEqual(tags(`${page}.md`), ['codex'], `${nom} : lore/${page}`);
+    // l'étiquette écrit le libellé du mot-clé « codex », lu par son id (R309 le renomme « Codex »)
+    const codex = vocabulaire ? MOT_CLE_CODEX.libelle : db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(CODEX).libelle;
+    for (const page of ['confrerie-du-sang', 'la-pointe-de-sang']) assert.deepEqual(tags(`${page}.md`), [codex], `${nom} : lore/${page}`);
     assert.deepEqual(readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md') && tags(f).some((e) => ecrituresDuSang.has(normalize(e)))), [], nom);
   }
 });

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  PLAFOND_DES_LIGNES, corpsDuClic, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  PLAFOND_DES_LIGNES, corpsDuClic, estUnLotDAncrage, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, motDeLEtat, origineDuLot, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLAnnulation, phraseDeLEssai, verrousDuLot,
 } from '../src/lib/lots-rendu.mjs';
 import { el } from './aide-faux-dom.mjs';
@@ -424,4 +424,85 @@ test('l’accord au pluriel : « sa valeur » pour une ligne gardée, « leur va
   const sans = phraseDeLEssai(lot('v', { essai: essai('verrous', [operation(1, 'verrouillee')], { verrous_a_ouvrir: [] }) }));
   assert.equal(sans.niveau, 'accord');
   assert.doesNotMatch(sans.texte, /\?|\bR\d+\b/);
+});
+
+test('R309 : un lot d’ancrage est replié derrière son titre et son nombre de lignes ; ses lignes restent consultables et annulables une à une, les autres lots ne sont pas repliés', () => {
+  const lignes = [ligne(1), ligne(2), ligne(3, { annulable_seule: false, motif: 'Une autre ligne la tient.', depend_de: [1] }), ligne(4, { ecart_production: false }), ligne(5, { etat: 'annulee', annulable_seule: false })];
+  const ancrage = applique('anc', lignes, { decision: 'R309', titre: 'Ancrage d’essai', auteur: 'préparer l’ancrage' });
+  const article = lire(htmlDesLots({ lots: [ancrage] })).querySelector('[data-nv-lots-appliques] [data-nv-lot-id="anc"]');
+  const repli = article.querySelector('details.nv-lot__repli');
+  assert.ok(repli, 'le lot est dans un bloc dépliant');
+  assert.equal(repli.hasAttribute('open'), false, 'replié au départ');
+  assert.equal(repli.getAttribute('data-nv-ouvert'), 'anc:lot', 'la page garde ce que le propriétaire déplie');
+  // le titre et le nombre de lignes (celles en écart avec la production : 4 sur 5) sont ce qui déplie
+  const resume = repli.querySelector('summary');
+  assert.ok(resume.textContent.includes('Ancrage d’essai') && resume.textContent.includes('R309'));
+  assert.equal(resume.querySelectorAll('h4.nv-lot__titre').length, 1);
+  assert.match(resume.querySelector('.nv-lot__compte').textContent, /^4 lignes$/);
+  // les lignes restent consultables (valeurs avant et après) et chacune garde son geste d'annulation, ou la raison pour laquelle elle n'en a pas
+  assert.deepEqual([...repli.querySelectorAll('li.nv-lot-ligne')].map((l) => l.getAttribute('data-nv-ligne')), ['1', '2', '3', '5']);
+  assert.deepEqual([...repli.querySelectorAll('button[data-nv-annuler-ligne]')].map((b) => b.getAttribute('data-nv-annuler-ligne')), ['1', '2']);
+  assert.ok(repli.querySelector('li[data-nv-ligne="3"] [data-nv-motif]').textContent.includes('Une autre ligne la tient.'));
+  assert.deepEqual(textes(repli.querySelectorAll('li[data-nv-ligne="1"] .nv-version__texte')), ['avant 1', 'après 1']);
+  assert.match(repli.querySelector('[data-nv-bilan]').textContent, /^4 modifications, dont 1 annulée\.$/);
+  // « Tout montrer » et le message d'une ligne restent dans le bloc ; le message du changement reste visible replié
+  const long = applique('long', Array.from({ length: PLAFOND_DES_LIGNES + 5 }, (_, i) => ligne(i + 1)), { decision: 'R309', auteur: 'préparer l’ancrage' });
+  const vueLongue = lire(htmlDuLot(long, { messages: new Map([['long', { texte: 'Dit au clic', erreur: false }]]) })).querySelector('article');
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli li.nv-lot-ligne').length, PLAFOND_DES_LIGNES);
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli button[data-nv-toutes="long:lignes"]').length, 1);
+  assert.equal(vueLongue.querySelectorAll('details.nv-lot__repli [data-nv-lot-message]').length, 0, 'le message du changement n’est pas dans le bloc replié');
+  assert.equal(vueLongue.querySelector('[data-nv-lot-message]').textContent.includes('Dit au clic'), true);
+  assert.equal(lire(htmlDuLot(long, { toutes: new Set(['long:lignes']) })).querySelectorAll('details.nv-lot__repli button[data-nv-annuler-ligne]').length, PLAFOND_DES_LIGNES + 5, 'toutes les lignes, chacune annulable');
+  // déplié par le propriétaire : il le reste d'un rendu à l'autre
+  assert.equal(lire(htmlDuLot(ancrage, { ouverts: new Set(['anc:lot']) })).querySelector('details.nv-lot__repli').hasAttribute('open'), true);
+  // une proposition d'ancrage qui attend son clic reste ouverte : ses boutons ne se cachent pas
+  const attente = lire(htmlDuLot(lot('att', { decision: 'R309', auteur: 'préparer l’ancrage' }))).querySelector('article');
+  assert.equal(attente.querySelector('details.nv-lot__repli').hasAttribute('open'), true);
+  assert.equal(attente.querySelectorAll('details.nv-lot__repli button[data-nv-appliquer]').length, 1);
+  // un autre changement n'est pas replié ; un changement d'ancrage dont le détail manque n'a ni bloc ni nombre inventé
+  assert.equal(lire(htmlDuLot(applique('autre', [ligne(1)], { decision: 'R275' }))).querySelectorAll('details.nv-lot__repli').length, 0);
+  assert.equal(lire(htmlDuLot(applique('autre', [ligne(1)], { decision: null }))).querySelectorAll('details.nv-lot__repli').length, 0);
+  const sansDetail = lire(htmlDuLot({ ...ancrage, lignes: null })).querySelector('article');
+  assert.equal(sansDetail.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
+  assert.equal(sansDetail.querySelectorAll('.nv-lot__compte').length, 0, 'sans le détail, aucun nombre inventé');
+});
+
+test('R309 : un changement d’ancrage dont le détail n’est pas lu dit le nombre de la liste, la lecture en cours ou son échec avec « Réessayer », jamais « indisponible » ; lu, le nombre exact', () => {
+  const { lignes: _l, ...nonLu } = applique('anc', [], { decision: 'R309', auteur: 'préparer l’ancrage', titre: 'Ancrage d’essai', lignes_nettes: 12, lignes_annulees: 2 });
+  assert.equal('lignes' in nonLu, false);
+  const article = (lot, vue) => lire(htmlDuLot(lot, vue)).querySelector('article');
+  // le nombre de la liste, moins les lignes annulées ; rien dans le bloc : ni lecture, ni indisponible, ni bilan
+  const ferme = article(nonLu, {});
+  assert.match(ferme.querySelector('.nv-lot__compte').textContent, /^10 lignes$/);
+  assert.equal(ferme.querySelector('details.nv-lot__repli').hasAttribute('open'), false);
+  assert.equal(ferme.querySelectorAll('[data-nv-bilan-indisponible], [data-nv-bilan], [data-nv-lecture], [data-nv-lecture-erreur], li.nv-lot-ligne').length, 0);
+  assert.equal(ferme.textContent.includes('pas disponible'), false);
+  // sans nombre dans la liste (journal illisible) : le titre seul
+  assert.equal(article({ ...nonLu, lignes_nettes: undefined }, {}).querySelectorAll('.nv-lot__compte').length, 0);
+  // la lecture en cours, puis son échec : le message et « Réessayer » dans le repli (c'est tout ce qui relance), le nombre de la liste reste
+  const ouverts = new Set(['anc:lot']);
+  const enCours = article(nonLu, { ouverts, lectures: new Map([['anc', { etat: 'en_cours' }]]) });
+  assert.equal(enCours.querySelectorAll('details.nv-lot__repli [data-nv-lecture]').length, 1);
+  assert.match(enCours.querySelector('[data-nv-lecture]').textContent, /Lecture des lignes/);
+  assert.equal(enCours.querySelectorAll('button[data-nv-relire]').length, 0);
+  const echec = article(nonLu, { ouverts, lectures: new Map([['anc', { etat: 'echec', texte: 'Service occupé' }]]) });
+  assert.ok(echec.querySelector('details.nv-lot__repli [data-nv-lecture-erreur]').textContent.includes('Service occupé'));
+  assert.equal(echec.querySelectorAll('details.nv-lot__repli button[data-nv-relire]').length, 1);
+  assert.match(echec.querySelector('.nv-lot__compte').textContent, /^10 lignes$/);
+  // lu : le nombre exact des lignes en écart (3 sur 4), plus rien de la lecture ; les lignes ont chacune leur bouton
+  const lu = article({ ...nonLu, lignes: [ligne(1), ligne(2), ligne(3, { ecart_production: false }), ligne(4)] }, { lectures: new Map([['anc', { etat: 'echec', texte: 'périmé' }]]) });
+  assert.match(lu.querySelector('.nv-lot__compte').textContent, /^3 lignes$/);
+  assert.equal(lu.querySelectorAll('[data-nv-lecture], [data-nv-lecture-erreur], button[data-nv-relire]').length, 0);
+  assert.equal(lu.querySelectorAll('button[data-nv-annuler-ligne]').length, 3);
+  // le service dit le détail indisponible (`lignes: null`) : c'est dit, sans nombre de la liste ; une proposition n'est pas concernée
+  const indispo = article({ ...nonLu, lignes: null, lignes_indisponibles: 'journal retiré' }, {});
+  assert.equal(indispo.querySelectorAll('[data-nv-bilan-indisponible]').length, 1);
+  assert.equal(indispo.querySelectorAll('.nv-lot__compte').length, 0);
+  assert.equal(article(lot('prop', { decision: 'R309', auteur: 'préparer l’ancrage', lignes_nettes: 9 }), {}).querySelectorAll('.nv-lot__compte').length, 0);
+  // les autres changements ne changent pas : leur bilan se lit comme avant
+  assert.equal(article(applique('autre', [ligne(1)], { decision: 'R275' }), {}).querySelectorAll('[data-nv-bilan]').length, 1);
+  // un lot d'ancrage : la décision ET l'auteur de l'action (lib/lots-d-ancrage.mjs) ; un lot de l'équipe qui cite R309 (décision 17) est ordinaire
+  assert.equal(estUnLotDAncrage({ decision: 'R309', auteur: 'préparer l’ancrage' }), true);
+  for (const autre of [{ decision: 'R309' }, { decision: 'R309', auteur: 'équipe' }, { decision: 'R275', auteur: 'préparer l’ancrage' }, { decision: 'R275' }, null]) assert.equal(estUnLotDAncrage(autre), false, JSON.stringify(autre));
+  assert.equal(lire(htmlDuLot(applique('equipe', [ligne(1)], { decision: 'R309', auteur: 'équipe' }))).querySelectorAll('details.nv-lot__repli').length, 0, 'le lot de l’équipe n’est pas replié');
 });

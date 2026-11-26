@@ -249,7 +249,8 @@ const ordreLibre = (base, page) => base.prepare('SELECT max(ordre) AS m FROM pag
 const commeLAncienRejeu = (base, ligne) => {
   // depuis la migration 0113, un id entier dans la base ; le journal de ce site de dev, d'avant la 0113, le nomme par son id texte (enAncienneForme)
   // un id propre à chaque fantôme du fichier (enAncienneForme les relit tous)
-  const id = FANTOMES.get(ligne.tag_id) ?? Math.max(base.prepare('SELECT max(id) + 1 AS n FROM mot_cle').get().n, ...[...FANTOMES.values()].map((n) => n + 1));
+  // loin des ids que le service donne : une page créée ancre son mot-clé (R309), et enAncienneForme relirait cet id comme celui du fantôme
+  const id = FANTOMES.get(ligne.tag_id) ?? Math.max(900000, base.prepare('SELECT max(id) + 1 AS n FROM mot_cle').get().n, ...[...FANTOMES.values()].map((n) => n + 1));
   FANTOMES.set(ligne.tag_id, id);
   base.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(id, ligne.libelle, normalize(ligne.libelle));
   base.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(ligne.page_id, ligne.ordre, id);

@@ -41,7 +41,8 @@ const dImport = () => baseDImport();
 
 test('structure : magie_specialisation, et sort.specialisation_id ajoutée en dernier ; amelioration_cadaverique retirée (R237 (7))', () => {
   const colonnes = db.prepare('PRAGMA table_info(sort)').all();
-  assert.equal(colonnes.at(-1).name, 'specialisation_id');
+  // la colonne ajoutée par la 0117 est suivie de celle de la 0131 (mot_cle_id, R309) : une colonne ajoutée va toujours en dernier
+  assert.deepEqual(colonnes.slice(-2).map((c) => c.name), ['specialisation_id', 'mot_cle_id']);
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'magie_specialisation'").get());
   assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'amelioration_cadaverique'").get().n, 0);
   const cle = db.prepare('PRAGMA foreign_key_list(sort)').all().find((f) => f.from === 'specialisation_id');

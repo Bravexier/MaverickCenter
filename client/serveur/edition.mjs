@@ -70,6 +70,7 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
+import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuDetachement, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -88,7 +89,7 @@ import {
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { fauteDeLUrl, lienGarde, motsClesDeLAdresse } from '../src/lib/mots-cles-liens.mjs';
 import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
-import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
+import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adresseDuSort, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
 import { baliseDuLien, convertirLesLiens, liensDuTexte, motCleDuLien, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
@@ -138,7 +139,10 @@ export class ErreurEdition extends ErreurHttp {}
 const refus = (message, details) => new ErreurEdition(400, message, details);
 
 /** Les catégories, les synonymes et la clé recalculée des mots-clés (décisions R232, R233 : serveur/edition-mots-cles.mjs). */
-const MOTS_CLES = outilsDesMotsCles({ ErreurEdition });
+const MOTS_CLES = outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie });
+
+/** Créer un mot-clé ancré, poser une ancre, aligner un mot-clé sur son élément (décision R309 : serveur/edition-ancrage.mjs) ; seuls les lots s'en servent. */
+const ANCRAGE = outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle });
 
 /** Les contraintes de la base qui refusent un objet par magie du Potentiel Illimité (décision R160, migration 0078) : leur refus se dit en clair. */
 const CONTRAINTES_R160 = new Set(OBJETS_PAR_MAGIE.map(contrainteR160));
@@ -211,13 +215,16 @@ function ecrirePage(ctx, pageId, changes) {
  * Supprime une page du wiki et ce qui la décrit (alias, mots-clés, sources, entités rattachées), chaque ligne notée au journal. Une page du guide
  * (`guide/…` : une page des Règles, serveur/edition-plan.mjs) n'est jamais supprimée si une raison la protège (lib/pages-protegees.mjs, la seule
  * source) : 409, même si l'appelant ne l'a pas regardé ; les autres pages (métier, don) partent avec leur entité, qui les retire elle-même.
+ * Son mot-clé (R309) part après elle, sauf s'il est cité (409, avant toute écriture) ou tenu par un autre élément (R289). `motCle` : celui que l'appelant a déjà
+ * contrôlé avant ses propres écritures (id, ou null), sinon il est contrôlé ici.
  */
-export function supprimerPage(ctx, pageId) {
+export function supprimerPage(ctx, pageId, options = {}) {
   const { db, w } = ctx;
   if (String(pageId).startsWith('guide/')) {
     const raisons = raisonsDeProtection(db, pageId);
     if (raisons.length) throw new ErreurEdition(409, `${pageId} ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: pageId, raisons });
   }
+  const motCle = options.motCle !== undefined ? options.motCle : ANCRAGE.motCleARetirer(ctx, { table: 'page', id: pageId });
   const sources = db.prepare('SELECT source_id FROM page_source WHERE page_id = ?').all(pageId).map((s) => s.source_id);
   for (const table of ['alias', 'page_tag', 'page_source']) {
     for (const l of db.prepare(`SELECT * FROM "${table}" WHERE page_id = ?`).all(pageId)) w.supprimer(table, cleDe(db, table, l));
@@ -230,6 +237,7 @@ export function supprimerPage(ctx, pageId) {
   w.supprimer('page', { id: pageId });
   // le dictionnaire des sources n'a pas d'orphelin (comme tools/db/pages_md.py sync)
   for (const id of sources) if (!db.prepare('SELECT 1 FROM page_source WHERE source_id = ?').get(id)) w.supprimer('source', { id });
+  if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse: adresseDeLaPage(pageId) });
 }
 
 /**
@@ -238,18 +246,20 @@ export function supprimerPage(ctx, pageId) {
  * refus de recalculerLesCles, 409), les clés de ses homonymes recalculées et réécrites dans les textes ; non verrouillé (`verrou` non écrit : 0 par
  * défaut, décision R219 (5), même avec une adresse), sauf `verrouille` (`race-hybride`, motCleDe : décision R220 (2)) ; sa définition, NULL tant
  * qu'il n'est pas décrit ; son adresse et sa couleur (migration 0098) et son icône (migration 0116, R235) écrites seulement si elles sont données ;
- * ses catégories (`categories`, ids) et ses synonymes (`synonymes`, écritures dans l'ordre : décision R233, refuserLesSynonymes). Refusé si son
+ * ses catégories (`categories`, ids) et ses synonymes (`synonymes`, écritures dans l'ordre : décision R233, refuserLesSynonymes). `ancre` ({ table, id },
+ * décision R309) : l'élément dont il est le mot-clé, écrit AVANT le recalcul des clés, qui lit le parent d'un sort ancré ; `parent` : le nom de la magie de ce
+ * sort, qui départage dès sa création deux homonymes de même type. Refusé si son
  * libellé (ou sa clé) s'écrit comme le synonyme d'un autre mot-clé (R233 (4) : 409, `champ: 'libelle'`), ou si son adresse (refuserLeLien), sa
  * couleur (refuserLaCouleur) ou son icône (refuserLIcone) ne conviennent pas. Rend son id.
  */
-export function creerMotCle(ctx, libelle, description = null, { url = null, couleur = null, icone = null, categories = [], synonymes = [], verrouille = false } = {}) {
+export function creerMotCle(ctx, libelle, description = null, { url = null, couleur = null, icone = null, categories = [], synonymes = [], verrouille = false, ancre = null, parent = null } = {}) {
   const { db, w } = ctx;
   const base = normalize(libelle);
   if (!base) throw refus(`Mot-clé « ${libelle} » : il doit contenir au moins une lettre ou un chiffre`, { champ: 'libelle' });
   const id = idSuivant(db, 'mot_cle', { plancher: plancherDesIdsDeMotsCles() });
   const ids = categories.length ? MOTS_CLES.listeDeCategories(db, categories, `Mot-clé « ${libelle} »`) : [];
   // la clé : celle de la règle, sur le vocabulaire tel qu'il sera (un homonyme qui apparaît change aussi celle des autres, écrite ensuite)
-  const futurs = [...motsClesDeLaBase(db), { id, libelle, categories: ids }];
+  const futurs = [...motsClesDeLaBase(db, { elements: false }), { id, libelle, categories: ids, parent }];
   let cle;
   try {
     cle = clesDesMotsCles(futurs, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]))).get(id);
@@ -257,13 +267,14 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
     if (e instanceof HomonymesRefuses) throw MOTS_CLES.refusDesHomonymes(e, futurs);
     throw e;
   }
-  const [pris] = synonymesPris(motsClesDeLaBase(db), { id, libelle, cle });
+  const [pris] = synonymesPris(motsClesDeLaBase(db, { elements: false }), { id, libelle, cle });
   if (pris) {
     throw new ErreurEdition(409, `Le mot-clé « ${libelle} » ne peut pas être créé : « ${pris.synonyme} » est un synonyme du mot-clé « ${pris.m.libelle} » (décision R233 (4)).`,
       { champ: 'libelle', mot_cle: pris.m.id });
   }
   MOTS_CLES.refuserLesSynonymes(db, { id, libelle }, synonymes);
-  if (url) refuserLeLien(db, { libelle, url });
+  // un lot d'ancrage crée des centaines de mots-clés de suite : les adresses du site ne se relisent pas à chacun (`ctx.adressesDuLot`, oubliées par `appliquerUnLot`)
+  if (url) refuserLeLien(db, { libelle, url }, ancre && ctx.voie === 'lot' ? (ctx.adressesDuLot ??= adressesDuSite(db)) : null);
   if (couleur) refuserLaCouleur({ libelle, couleur });
   if (icone) refuserLIcone({ libelle, icone });
   w.inserer('mot_cle', {
@@ -272,6 +283,7 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   });
   MOTS_CLES.poserLesCategories(ctx, id, ids);
   if (synonymes.length) MOTS_CLES.poserLesSynonymes(ctx, id, synonymes);
+  if (ancre) w.modifier(ancre.table, { id: ancre.id }, { mot_cle_id: id });
   MOTS_CLES.recalculerLesCles(ctx);
   return id;
 }
@@ -287,9 +299,9 @@ function plancherDesIdsDeMotsCles() {
  * imprimable sans espace ni « \ », la barre finale), puis son chemin, qui doit être celui d'une page du site qui n'est pas d'exemple, d'une rubrique ou
  * d'une route fixe (lib/adresses-db.mjs#adressesDuSite, lu dans la base vivante) ; l'ancre et la requête ne sont pas vérifiées. 400, `champ: 'url'`.
  */
-export function refuserLeLien(db, m) {
+export function refuserLeLien(db, m, adresses = null) {
   if (m.url === null || m.url === undefined) return;
-  const faute = fauteDeLUrl(m.url, adressesDuSite(db));
+  const faute = fauteDeLUrl(m.url, adresses ?? adressesDuSite(db));
   if (faute) throw new ErreurEdition(400, `Mot-clé « ${m.libelle} » : le lien « ${m.url} » ne convient pas (${faute}).`, { champ: 'url' });
 }
 
@@ -326,7 +338,7 @@ export function motCleDe(ctx, nom) {
   if (!RAISONS_DES_MOTS_CLES_PROTEGES.has(nom)) {
     throw refus(`Mot-clé « ${nom} » : une page créée depuis le site ne porte que les mots-clés dont le site se sert pour ranger ses pages (le vocabulaire se gère sur le Glossaire, /regles/glossaire/).`);
   }
-  const id = idDuProtege(nom, motsClesDeLaBase(ctx.db));
+  const id = idDuProtege(nom, motsClesDeLaBase(ctx.db, { elements: false }));
   if (id !== null && lireLigne(ctx.db, 'mot_cle', { id })) return id;
   if (nom !== TAG_RACE_HYBRIDE) throw new ErreurEdition(409, `Le mot-clé « ${nom} », dont le site se sert pour ranger ses pages, manque à la base.`);
   return creerMotCle(ctx, MOT_CLE_RACE_HYBRIDE, null, { verrouille: true });
@@ -337,7 +349,7 @@ export function motCleDe(ctx, nom) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Le vocabulaire de la base vivante, prêt à résoudre les refs des balises (lu à chaque besoin : un lot peut le changer). */
-export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db));
+export const vocabulaireVivant = (db) => vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
 
 /**
  * Ce qui fait d'un texte affiché de lien saisi autre chose qu'un texte simple : une marque Markdown (« * », « _ », « ` », « ~ », « \ », crochets), une
@@ -369,7 +381,7 @@ function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = fa
   });
   if (!ajoutes.length) return valeur;
   const { db } = ctx;
-  const motsCles = motsClesDeLaBase(db);
+  const motsCles = motsClesDeLaBase(db, { elements: false });
   let index = null;
   const adresseDuLien = (lien) => {
     if (lien.sorte === 'markdown') return lien.cible;
@@ -489,8 +501,8 @@ function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
       if (!Object.keys(valeurs).length) continue;
       // un texte gelé (raisonDuGel) n'est jamais réécrit depuis le site (décision R222 (1)) : la fusion qui toucherait la définition d'un mot-clé
       // verrouillé est refusée avant (definitionsVerrouilleesQuiCitent) ; un autre texte gelé (une monnaie) la refuse ici, en 409, le lot annulé ; au
-      // rejeu (`ctx.gel` faux), il est réécrit comme les autres (R219 (6))
-      modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, l), valeurs });
+      // rejeu (`ctx.gel` faux), il est réécrit comme les autres (R219 (6)). La définition d'un mot-clé ancré suit la balise : ce n'est pas un geste sur lui (R309)
+      modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, l), valeurs }, { reecriture: true });
       n += 1;
     }
   }
@@ -527,7 +539,7 @@ function remplacerLesMentions(ctx, m, mentions) {
       const texte = remplace(table, c, ligne[c]);
       if (texte !== ligne[c]) valeurs[c] = texte;
     }
-    if (Object.keys(valeurs).length) modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, ligne), valeurs });
+    if (Object.keys(valeurs).length) modifier(ctx, { op: 'modifier', table, cle: cleDe(db, table, ligne), valeurs }, { reecriture: true });
   }
   const etiquettes = mentions.filter((x) => x.comment === 'etiquette');
   for (const x of etiquettes) w.supprimer('page_tag', x.cle);
@@ -608,7 +620,8 @@ function mentionsQueLeSiteNeReecritPas(db, mentions, { gel = true } = {}) {
 export function refusDesForcages(db, motsCles) {
   const verrouilles = definitionsVerrouilleesQuiCitentChacun(db);
   const adresses = indexDesAdresses(db);
-  return new Map(motsCles.map((m) => [m.id, CHRONOLOGIE.refusDuForcage(db, m, m.mentions ?? [], { verrouilles: verrouilles.get(m.id) ?? [], adresses })?.message ?? null]));
+  const ancres = motsClesAncres(db);
+  return new Map(motsCles.map((m) => [m.id, CHRONOLOGIE.refusDuForcage(db, m, m.mentions ?? [], { verrouilles: verrouilles.get(m.id) ?? [], adresses, ancres })?.message ?? null]));
 }
 
 /**
@@ -634,6 +647,7 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
     w.inserer('source', { id: source, nature: 'libelle', texte, url: null, genre: null, google_id: null, fichier: null, onglets: null });
   }
   w.inserer('page_source', { page_id: id, ordre: 0, source_id: source });
+  ANCRAGE.ancrerLaPage(ctx, { id, type, titre }); // son mot-clé (R309) ; null : le nom attend, la page est créée quand même
   return id;
 }
 
@@ -739,13 +753,15 @@ const METIER = {
     const metier = lireLigne(db, 'metier', cle);
     if (!metier) throw new ErreurEdition(404, 'Métier introuvable.');
     refuserSiUnMotCleYMene(db, metier.id, metier.nom);
+    // son mot-clé (R309) : contrôlé avant les fiches, dont les retraits gardés en mémoire ne se défont pas
+    const motCle = ANCRAGE.motCleARetirer(ctx, { table: 'page', id: metier.id });
     // les fiches qui l'ont le perdent, avec une note datée (R42) : avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     retirerDesFiches(db, { metiers: [metier.id] }, ctx.retraits);
     for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
     // ses notes de cellule et écarts entre sources (Enchanteur, Forgeron) partent avec lui : sinon des traces orphelines que db:check refuse
     for (const t of ['note_cellule', 'ecart_source']) synchroniser(ctx, t, { entite_table: 'metier', entite_id: metier.id }, []);
     w.supprimer('metier', { id: metier.id });
-    supprimerPage(ctx, metier.id);
+    supprimerPage(ctx, metier.id, { motCle });
     return { id: metier.id, resume: `Métier supprimé : ${metier.nom}` };
   },
 };
@@ -1542,15 +1558,16 @@ export function retirerLesReglesDuDon(db, w, id) {
 
 /**
  * Retire un don : ses notes de cellule, ses sources de maîtrise d'arme, ses règles en données (TABLES_DES_REGLES_DU_DON), sa ligne, puis sa fiche
- * (alias, mots-clés, sources, entités rattachées) ; dans l'ordre des clés étrangères, tout noté au journal.
+ * (alias, mots-clés, sources, entités rattachées) ; dans l'ordre des clés étrangères, tout noté au journal. `motCle` : le mot-clé de sa fiche, déjà contrôlé
+ * (refuserSiLesFichesSontCitees), ou null.
  */
-function retirerDon(ctx, don) {
+function retirerDon(ctx, don, motCle) {
   const { db, w } = ctx;
   for (const n of db.prepare("SELECT * FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?").all(don.id)) w.supprimer('note_cellule', cleDe(db, 'note_cellule', n));
   suivreLesSourcesDuDon(ctx, don, null);
   retirerLesReglesDuDon(db, w, don.id);
   w.supprimer('capacite', { id: don.id });
-  supprimerPage(ctx, don.id);
+  supprimerPage(ctx, don.id, { motCle });
 }
 
 const SPECIALITE = {
@@ -1607,9 +1624,9 @@ const SPECIALITE = {
     const classe = lireLigne(db, 'classe', { id: s.classe_id });
     const siens = db.prepare('SELECT * FROM capacite WHERE specialite_id = ? ORDER BY ligne, rang').all(s.id);
     if (!siens.some((d) => d.nature === 'specialite')) throw specialitesFigees(classe);
-    refuserSiLesFichesSontCitees(db, siens, s.nom); // la fiche de l'un de ses dons encore citée
+    const propres = refuserSiLesFichesSontCitees(ctx, siens, s.nom); // la fiche de l'un de ses dons encore citée
     retirerDesFiches(db, { specialites: [s.id], capacites: siens.map((d) => d.id) }, ctx.retraits); // avant leur suppression (clés étrangères contrôlées)
-    for (const d of siens) retirerDon(ctx, d);
+    for (const d of siens) retirerDon(ctx, d, propres.get(d.id)?.id ?? null);
     for (const l of db.prepare("SELECT * FROM page_entite WHERE entite_table = 'specialite' AND entite_id = ?").all(s.id)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
     w.supprimer('specialite', { id: s.id });
     suivreDonneesDesDons(ctx, classe.id);
@@ -1623,14 +1640,17 @@ const SPECIALITE = {
  * mot-clé dont l'adresse y mène (db:check refuserait son lien), une balise de ce mot-clé, un lien écrit. Même refus et même message
  * que pour une page des Règles (serveur/edition-plan.mjs) : on retire d'abord ces liens ; quand un mot-clé verrouillé y mène, son lien ne se retire pas :
  * la fiche ne se supprime pas (décision R221, `details.mots_cles_verrouilles`). Ne bloquent pas : une page d'exemple, une colonne dérivée
- * (refaite par le service), un don supprimé avec eux (les dons d'une spécialité).
+ * (refaite par le service), un don supprimé avec eux (les dons d'une spécialité). Le propre mot-clé d'une fiche (R309) ne la cite pas, il part avec elle ;
+ * ses balises et étiquettes dans d'autres textes bloquent, dans le même message. En annulation, il reste où il est (`ctx.annulation`). Rend Map(id du don → son mot-clé).
  */
-function refuserSiLesFichesSontCitees(db, dons, nom) {
+function refuserSiLesFichesSontCitees(ctx, dons, nom) {
+  const { db } = ctx;
   const ids = new Set(dons.map((d) => d.id));
-  const parPage = citationsDesPages(db, [...ids]);
-  const citations = [...ids].flatMap((id) => citationsBloquantes(parPage.get(id) ?? []))
+  const parPage = citationsDesPages(db, [...ids], { sansSonMotCle: true });
+  const propres = ctx.annulation ? new Map() : motsClesPropres(db, 'page', ids, { avec: [...ids] });
+  const citations = [...[...ids].flatMap((id) => citationsBloquantes(parPage.get(id) ?? [])), ...[...propres.values()].flatMap((m) => m.mentions)]
     .filter((c) => !colonneDerivee(c.table, c.cle, c.colonne) && !((c.table === 'capacite' || c.table === 'page') && ids.has(c.cle.id)));
-  if (!citations.length) return;
+  if (!citations.length) return propres;
   // un mot-clé verrouillé qui y mène : son lien ne se retire pas, la fiche reste (décision R221)
   const verrouilles = motsClesVerrouillesQuiYMenent(db, citations);
   if (verrouilles.length) throw new ErreurEdition(409, refusDuMotCleVerrouille(nom, verrouilles), { page: [...ids][0], citations, mots_cles_verrouilles: verrouilles });
@@ -1647,7 +1667,8 @@ function refuserSiLesFichesSontCitees(db, dons, nom) {
  * nomme chaque mot-clé ; `details.citations` : les citations de lib/citations-db.mjs (`comment: 'mot-cle'`).
  */
 function refuserSiUnMotCleYMene(db, pageId, nom) {
-  const citations = (citationsDesPages(db, [pageId]).get(pageId) ?? []).filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle');
+  // le propre mot-clé de la page (R309) part avec elle, sauf s'il est verrouillé (R221)
+  const citations = (citationsDesPages(db, [pageId], { sansSonMotCle: true }).get(pageId) ?? []).filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle');
   if (!citations.length) return;
   const motsCles = citations.map((c) => lireLigne(db, 'mot_cle', { id: c.cle.id })).filter(Boolean);
   // un mot-clé verrouillé : son lien ne se change ni ne se vide, le métier reste (décision R221)
@@ -1752,10 +1773,10 @@ const CAPACITE = {
       throw new ErreurEdition(409, `« ${don.nom} » est le don de la spécialité ${s?.nom ?? don.specialite_id} : supprimez la spécialité (elle emporte ses dons).`);
     }
     if (estMiroir(db, don)) throw new ErreurEdition(409, `« ${don.nom} » est aussi une spécialité de la classe ${classe.nom} pour la fiche de personnage : il ne se supprime pas d’ici.`);
-    refuserSiLesFichesSontCitees(db, [don], don.nom);
+    const propres = refuserSiLesFichesSontCitees(ctx, [don], don.nom);
     retirerDesFiches(db, { capacites: [don.id] }, ctx.retraits); // avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     const freres = groupeDe(don, db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id)).filter((d) => d.id !== don.id);
-    retirerDon(ctx, don);
+    retirerDon(ctx, don, propres.get(don.id)?.id ?? null);
     let suite = '';
     if (!don.specialite_id && don.nature === 'choix' && freres.length === 1) {
       // un don seul sur sa ligne est reçu sans choix (docs/content-guide.md, « Règle des choix » ; règle de l'importeur)
@@ -1840,6 +1861,7 @@ const CHRONOLOGIE = domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLeLien, refuserLaCouleur, refuserLIcone, reecrireLesBalises,
   definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste,
   recalculerLesCles: (ctx) => MOTS_CLES.recalculerLesCles(ctx), resumeDesCles: (c) => MOTS_CLES.resumeDesCles(c),
+  sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie, refusDesSynonymesTransmis,
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -2759,7 +2781,7 @@ export function motsClesEncoreMentionnes(db, lot) {
     if (m.operation !== 'modifier' && m.operation !== 'inserer') continue;
     for (const [c, v] of Object.entries(lu(m.apres) ?? {})) ecrits.set(`${ligneDe(tableDe(m), lu(m.cle))}\u0000${c}`, v);
   }
-  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
   const parId = mentionsDesMotsCles(db, ids);
   return ids.flatMap((id) => {
     const restent = parId.get(id).filter((x) => {
@@ -2860,7 +2882,7 @@ function balisesRetireesParLeLot(db, lot) {
     retires.push({ m, ligne, cible: forcee ? null : cibleDeLaFusion(db, lot, ligne.id), forcee });
   }
   if (!retires.length) return [];
-  const actuels = motsClesDeLaBase(db);
+  const actuels = motsClesDeLaBase(db, { elements: false });
   // les mots-clés retirés (leur libellé et leur définition, tels que la suppression les a notés), puis ceux de la base, qui priment pour une écriture
   const vocabulaire = vocabulaireDesMotsCles([...retires.map((r) => r.ligne), ...actuels]);
   const presents = new Set(actuels.map((x) => x.id));
@@ -2904,7 +2926,7 @@ function balisesDesColonnesDerivees(db) {
     retires.push({ ligne, cible: forcee ? null : fusions.get(ligne.id) ?? cibleReportee(journal.filter((x) => x.lot_id === m.lot_id), ligne.id), forcee });
   }
   if (!retires.length) return [];
-  const actuels = motsClesDeLaBase(db);
+  const actuels = motsClesDeLaBase(db, { elements: false });
   const vocabulaire = vocabulaireDesMotsCles([...retires.map((r) => r.ligne), ...actuels]);
   const presents = new Set(actuels.map((m) => m.id));
   const plusTard = (i, id) => retires.slice(i + 1).some((r) => r.ligne.id === id);
@@ -3221,9 +3243,10 @@ function ancienneEcritureDesMotsCles(db) {
  *     13 races « orios » → « orios-race », « pp » → « pierre-precieuse ») ; une ref qui est déjà une clé courante reste ;
  *   - l'abréviation (colonne retirée par la 0115, devenue un synonyme) : une modification qui en écrit une autre que les synonymes du mot-clé est une
  *     forme sans équivalent (`conflit`, choix 2 seul à la résolution), retirée sinon.
- * Une modification d'après la 0113 (ids entiers) passe telle quelle. Limite admise (réponse du leader-technique, 2026-11-08) : la traduction d'une ref se
- * lit dans les règles au début du rejeu ; un lot récent en attente qui citerait une ancienne clé texte reprise entre-temps, dans le même journal, par
- * un mot-clé créé, serait traduit vers le mot-clé de la correspondance, pas vers celui-là.
+ * Une modification d'après la 0113 (ids entiers) passe telle quelle. Une clé qu'une ligne de `mot_cle` du journal a écrite, lue dans l'ordre du rejeu, est une clé du moment
+ * et plus un ancien id, même si elle s'écrit comme lui (R309 : « Caractéristiques », #56, reprend la clé `caracteristiques`, son id d'avant la 0113) : elle ne se traduit
+ * plus, sinon le rejeu défait la réécriture de ses balises. Limite admise (réponse du leader-technique, 2026-11-08) : avant cette ligne, la traduction se lit dans les règles
+ * du début du rejeu.
  */
 export function ancienneEcritureDesIds(db) {
   const registre = registreDes0113();
@@ -3240,8 +3263,9 @@ export function ancienneEcritureDesIds(db) {
     prochain += 1;
     return crees.get(x);
   };
+  const clesDuJournal = new Set(); // les clés écrites par les lignes de mot_cle déjà lues
   const cleCourante = (ref) => {
-    if (db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(ref)) return null;
+    if (clesDuJournal.has(ref) || db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(ref)) return null;
     const id = registre.get(ref) ?? crees.get(ref);
     return id === undefined ? null : lireLigne(db, 'mot_cle', { id })?.cle ?? null;
   };
@@ -3271,6 +3295,10 @@ export function ancienneEcritureDesIds(db) {
     return sortie;
   };
   return (m) => {
+    if (m.table_nom === 'mot_cle' && m.operation !== 'supprimer') {
+      const ecrite = jsonOuNull(m.apres)?.cle;
+      if (typeof ecrite === 'string') clesDuJournal.add(ecrite);
+    }
     const ancienne = (x) => typeof x === 'string' && (x.includes('{{') || x.includes('"libelle_cle"') || x.includes('"abreviation"')
       || (m.table_nom in ETIQUETTES && /"(tag_id|mot_cle_id)":"/.test(x)) || (m.table_nom === 'mot_cle' && /"id":"/.test(x)));
     if (![m.cle, m.avant, m.apres].some(ancienne) && !m.aCreer?.some((c) => c.table === 'mot_cle' && typeof c.valeurs?.id === 'string')) return m;
@@ -3454,9 +3482,10 @@ export function raisonDuGel(table, ligne) {
  * L'opération « modifier ». `exiger` faux (la résolution d'un lot en conflit, OUTILS_DE_RESOLUTION) : le domaine reçoit `annexes` null, rien de ce que
  * le lot porte lui-même dans ses lignes n'est exigé (la magie d'un don qui passe à « Variable » : suivreLaMagieDuDon). Une ligne gelée (raisonDuGel :
  * un mot-clé verrouillé, une monnaie) est refusée en 409 avant tout contrôle de ses valeurs, sauf `gel` faux (la résolution, qui refait un lot
- * ancien) ou `ctx.gel` faux (enregistrer ; le rejeu).
+ * ancien) ou `ctx.gel` faux (enregistrer ; le rejeu). Un mot-clé ancré (décision R309 : ANCRAGE.refusDuVerrou) est refusé de même sur les colonnes qui changent, sauf `gel`
+ * faux et `reecriture` (une balise de sa définition suit un autre mot-clé qu'on fusionne ou supprime : le service réécrit, personne ne touche à ce mot-clé).
  */
-function modifier(ctx, op, { exiger = true, gel = true } = {}) {
+function modifier(ctx, op, { exiger = true, gel = true, reecriture = false } = {}) {
   const { db, w } = ctx;
   const { table } = op;
   if (!TABLES[table]) throw refus(`table « ${table} » : pas modifiable depuis le site`);
@@ -3464,6 +3493,10 @@ function modifier(ctx, op, { exiger = true, gel = true } = {}) {
   if (!op.valeurs || typeof op.valeurs !== 'object' || Array.isArray(op.valeurs)) throw refus(`${table} : valeurs attendues`);
   const avant = lireLigne(db, table, op.cle);
   if (!avant) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(op.cle)}`);
+  if (table === 'mot_cle' && gel && !reecriture) {
+    const ferme = ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null)));
+    if (ferme) throw new ErreurEdition(409, ferme);
+  }
   const gelee = gel && ctx.gel !== false ? raisonDuGel(table, avant) : null;
   if (gelee) throw new ErreurEdition(409, gelee);
   const { colonnes: envoyees, annexes } = separerLesAnnexes(table, op.valeurs);
@@ -3556,6 +3589,9 @@ function supprimer(ctx, op) {
   if (!op.cle || typeof op.cle !== 'object') throw refus(`${entite.libelle} : clé attendue`);
   // le forçage n'est qu'une option de la suppression d'un mot-clé (décision R223 : serveur/edition-chronologie.mjs#MOT_CLE.supprimer), comme dans /api/v1/
   if (op.forcer !== undefined && entite.table !== 'mot_cle') throw refus(`${entite.libelle} : « forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).`);
+  // avant le gel, qui cite un numéro et que le mot de passe ouvre : supprimer la monnaie d'un mot-clé le détacherait (Ruling T8-detachement)
+  const detachee = entite.table === 'monnaie' ? refusDuDetachement(ctx, 'monnaie', lireLigne(ctx.db, 'monnaie', op.cle)) : null;
+  if (detachee) throw new ErreurEdition(409, detachee);
   // une table figée (TABLES_FIGEES : les monnaies) : 409 après le 404, comme une modification (raisonDuGel)
   if (TABLES_FIGEES[entite.table] && ctx.gel !== false) {
     const ligne = lireLigne(ctx.db, entite.table, op.cle);
@@ -3616,6 +3652,10 @@ const OPERATIONS_DU_LOT = {
   ecrire_modifier(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, le mot de passe ne l'ouvre pas, contrairement à celui d'une colonne tenue
+    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null)
+      ?? refusDuDetachement(ctx, op.table, avant, op.valeurs);
+    if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
     ctx.w.modifier(op.table, op.cle, op.valeurs);
@@ -3633,9 +3673,14 @@ const OPERATIONS_DU_LOT = {
   ecrire_supprimer(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null) ?? refusDuDetachement(ctx, op.table, avant);
+    if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
+    // le mot-clé d'un sort (R309) : même règle qu'une page, contrôlé avant, retiré après
+    const motCle = op.table === 'sort' ? ANCRAGE.motCleARetirer(ctx, { table: 'sort', id: op.cle.id }) : null;
     ctx.w.supprimer(op.table, op.cle);
+    if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse: adresseDuSort(op.cle.id) });
     return `${op.table} : une ligne retirée`;
   },
   /**
@@ -3647,10 +3692,24 @@ const OPERATIONS_DU_LOT = {
     if (!ligne) throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition n’a pas créé la ligne attendue`);
     const ecarts = Object.entries(op.attendu).filter(([c, v]) => (ligne[c] ?? null) !== (v ?? null)).map(([c]) => c);
     if (ecarts.length) {
-      throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition crée cette ligne autrement que le lot ne la décrit (${ecarts.map((c) => `« ${c} » : ${JSON.stringify(ligne[c] ?? null)} au lieu de ${JSON.stringify(op.attendu[c] ?? null)}`).join(' ; ')})`);
+      throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition écrit cette ligne autrement que le lot ne la décrit (${ecarts.map((c) => `« ${c} » : ${JSON.stringify(ligne[c] ?? null)} au lieu de ${JSON.stringify(op.attendu[c] ?? null)}`).join(' ; ')})`);
     }
     return `${op.table} : la ligne créée est celle du lot`;
   },
+  // l'ancrage des mots-clés (décision R309 : serveur/edition-ancrage.mjs)
+  ancrer_nouveau(ctx, op) {
+    const id = ANCRAGE.ancrerNouveau(ctx, op);
+    return `Mot-clé #${id} créé pour ${op.table} ${op.id}`;
+  },
+  ancrer_element(ctx, op) {
+    ANCRAGE.ancrerElement(ctx, op);
+    return `${op.table} ${op.id} : ancre`;
+  },
+  aligner_mot_cle(ctx, op) {
+    ANCRAGE.alignerMotCle(ctx, op.id);
+    return `Mot-clé #${op.id} aligné sur son élément`;
+  },
+  recalculer_les_cles: (ctx) => ANCRAGE.recalculerEnFinDeLot(ctx),
 };
 
 /**
@@ -3664,12 +3723,15 @@ const OPERATIONS_DU_LOT = {
  *     que le service sait lever (comme le rejeu, R219 (6)).
  *   hote.isoler(faire) : `faire` sous un SAVEPOINT ; s'il lève, rien de ce qu'il a écrit (ni ses lignes du journal) ne reste.
  *   hote.ecrites() : le nombre de lignes du journal écrites jusqu'ici.
+ *   hote.differerLesCles() : plus aucun recalcul des clés jusqu'à l'opération `recalculer_les_cles` (l'annulation d'un lot d'ancrage : seul l'état final se juge).
+ *   hote.lireLesMentionsPar(lecteur) : les suppressions de mots-clés lisent leurs mentions dans ce lecteur (lecteurDesMentions), que l'appelant tient à jour.
+ * `annulation` : le lot du journal annule un lot de changements (`ctx.annulation` : seule voie qui retire une ancre) ; `ctx.voie` vaut « lot ».
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
- * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null,
- *   travail: (hote: { db: object, id: string, instant: string, isoler: Function, executer: Function, ecrites: () => number }) => unknown }} o
+ * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null, annulation?: boolean,
+ *   travail: (hote: { db: object, id: string, instant: string, isoler: Function, executer: Function, ecrites: () => number, differerLesCles: () => void }) => unknown }} o
  * @returns {{ lot: string | null, ecrites: number, resultat: unknown }} `lot` : null quand rien n'a été écrit
  */
-export function appliquerUnLot(db, { id, instant, titre, nature, decision = null, auteurId = null, travail }) {
+export function appliquerUnLot(db, { id, instant, titre, nature, decision = null, auteurId = null, annulation = false, travail }) {
   if (instant === undefined || id === undefined) {
     const lot = nouveauLot();
     instant ??= lot.instant;
@@ -3688,7 +3750,7 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
   };
   try {
     const w = ouvrirLot(db, { id, instant, auteurId, nature, decision });
-    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel: true, forcees: [], fusions: [] };
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel: true, forcees: [], fusions: [], voie: 'lot', annulation };
     const variablesAvant = magiesDesDonsVariables(db);
     const permises = { ...OPERATIONS, ...OPERATIONS_DU_LOT };
     let place = 0;
@@ -3699,9 +3761,23 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
       isoler: (faire) => w.isoler(faire),
       executer: (op, { gel = true } = {}) => {
         ctx.gel = gel;
+        // seules ces deux opérations laissent les pages comme elles sont : toute autre peut changer une adresse du site
+        if (!['ancrer_nouveau', 'verifier_ligne'].includes(op.op)) ctx.adressesDuLot = null;
         return executerUneOperation(ctx, op, place++, { operations: permises, prefixe: false });
       },
       ecrites: () => w.nombre,
+      differerLesCles: () => {
+        ctx.clesEnAttente = true;
+      },
+      // une suite de suppressions de mots-clés lit leurs mentions une fois (lib/mentions-des-mots-cles.mjs#lecteurDesMentions) ; l'appelant l'oublie avant toute autre écriture
+      lireLesMentionsPar: (lecteur) => {
+        ctx.mentionsDuLot = lecteur;
+      },
+      // après la dernière opération, avant les contrôles du contenu (edition-lots.mjs#appliquerLeLot) : ils jugent les noms suivis et les clés qu'un mot-clé retiré
+      // laisse à recalculer (un `travail` qui retire un élément l'appelle donc). Rend vrai s'il a recalculé les clés
+      suivreLesElements: () => ANCRAGE.suivreLesElements(ctx),
+      // l'état de fin d'un lot : les mots-clés auxquels il a ajouté une catégorie et qui en ont plusieurs (R309)
+      secondesCategories: () => ANCRAGE.secondesCategories(ctx),
     };
     const resultat = travail(hote);
     if (!w.nombre) {
@@ -3772,6 +3848,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
       annuler();
       return { lot: null, modifications: 0, crees: [], lignes: [], fiches: [] };
     }
+    ANCRAGE.suivreLesElements(ctx); // le mot-clé suit le nom de son élément (R309)
     // un don « Variable » qui a quitté ce type ou changé de magie (décision R181 ; réponses du propriétaire « Retirés avec une note », R192) : les dons obtenus
     // des fiches partent, une ligne datée chacun, comme pour un don supprimé (R42) ; quelle que soit l'opération qui l'a écrit (page, /api/v1/)
     retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);

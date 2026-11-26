@@ -13,7 +13,7 @@ import { MAINS } from './arme-champs.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
 import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
-import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { lireBalises, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
 import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
@@ -77,7 +77,10 @@ export { TABLES_DES_NOTES };
 
 /** Tables que les appelants doivent lire dans chaque base (celles qui manquent dans une base sont simplement absentes). */
 export const TABLES_LUES = [
-  'sort', 'magie', 'magie_role', 'magie_specialisation', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
+  // `type_sort` (migration 0131) n'a pas de définition : elle ne dit que le mot-clé que chaque type ancre (R309), jamais listé ; la lire ici la retire des
+  // « autres tables » (qui en feraient « Table type_sort ajoutée », puis une ligne `mot_cle_id` par type ancré) et dit à la ligne condensée des mots-clés
+  // ajoutés (comparerLesMotsClesAncres) quels types ancrent un mot-clé
+  'sort', 'type_sort', 'magie', 'magie_role', 'magie_specialisation', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
@@ -110,7 +113,27 @@ const sansCadrage = (table) => colonnesDe(table).filter((c) => !CADRAGE.includes
  */
 const portraitDit = (v, ligne) => (v ? `${resumeDuPortrait(v)}, cadrage ${ligne?.portrait_x ?? 0.5} × ${ligne?.portrait_y ?? 0.5}, zoom ${ligne?.portrait_zoom ?? 1}` : null);
 const texte = (v) => (v === null || v === undefined ? null : String(v).replace(/\r\n?/g, '\n').trim() || null);
-const pareil = (a, b) => texte(a) === texte(b);
+/**
+ * Le texte sans la ref de ses balises à texte écrit (« {{cle|texte}} » devient « {{|texte}} ») : cette ref ne se voit pas, seul le texte écrit s'affiche (R309 ; relecture
+ * finale, Opus I2). Une balise sans texte écrit (« {{cle}} », le libellé du moment) ou en mode complet (« {{cle:}} ») garde sa ref : son affichage en dépend, elle
+ * garde sa ligne. Une balise dans un code (lireBalises, `markdown`) n'en est pas une et reste telle quelle.
+ */
+function sansRefInvisible(t) {
+  if (t === null || !t.includes('{{')) return t;
+  let sortie = '';
+  let k = 0;
+  for (const b of lireBalises(t, { markdown: true })) {
+    if (b.complet || b.texte === null) continue;
+    sortie += `${t.slice(k, b.debut)}{{${b.separateur}${b.texte}}}`;
+    k = b.fin;
+  }
+  return sortie + t.slice(k);
+}
+/** Deux valeurs pareilles pour la note : le même texte, ou des textes qui ne diffèrent que par la ref de balises à texte écrit (sansRefInvisible). */
+const pareil = (a, b) => {
+  const [x, y] = [texte(a), texte(b)];
+  return x === y || (x !== null && y !== null && sansRefInvisible(x) === sansRefInvisible(y));
+};
 const cleTriee = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
 const lignesDe = (base, table) => base?.tables?.[table] ?? null;
 const indexer = (rows, cle) => new Map((rows ?? []).map((r) => [cle.map((c) => String(r[c])).join('\u0000'), r]));
@@ -126,6 +149,8 @@ const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.
  * son retrait est dit par l'entité qui la porte. `resume(n)` : un contenu entièrement nouveau (aucune ligne en production : le Codex, le bestiaire
  * à leur première livraison) est dit en une ligne (« 116 pages du Codex »), pas entité par entité. `vide(r)` : une ligne sans contenu (l'annonce de
  * l'encart IRL, texte NULL) ; présente d'un seul côté, elle n'est ni ajoutée ni retirée, ses champs se comparent comme les autres quand elle est des deux.
+ * `suit(r, x)` : une ligne dite par une autre (ajoutée ou retirée sans ligne à elle). `dejaDit(colonne, r, avant, x)` : le changement de cette colonne d'une ligne
+ * présente des deux côtés est déjà dit par une autre ligne (le nom d'un mot-clé qui suit celui de son élément).
  */
 const DEFINITIONS = [
   {
@@ -428,10 +453,14 @@ const DEFINITIONS = [
     groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
   },
   // le vocabulaire des mots-clés (migration 0043, le Glossaire sur le site de dev) : ajouté, renommé, retiré (de toutes les pages) ; ordonné par clé
-  // (migration 0113 : le libellé n'est plus unique)
+  // (migration 0113 : le libellé n'est plus unique). R309 (l'ancrage : un mot-clé par page, par sort et par type de sort) : un mot-clé ancré à un élément ne fait
+  // pas de ligne à lui. Créé, il est dit par la ligne condensée de comparerLesMotsClesAncres (`suit`) ; renommé en même temps que son élément (le mot-clé en
+  // suit le nom), il est dit par celui de l'élément (`dejaDit`) ; renommé sans que son élément change, ou sans élément, il garde sa ligne.
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
     groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
+    suit: (r, x) => x.ancres(r.id).length > 0,
+    dejaDit: (colonne, r, _avant, x) => colonne === 'libelle' && x.elementRenomme(r.id),
   },
   // les catégories des mots-clés (migration 0113, décision R232 (5)) : ajoutée, renommée, retirée
   {
@@ -497,12 +526,18 @@ export function premiersMots(markdown, vocabulaire = null, n = MOTS_DU_NOM) {
 /** L'ordre de lecture d'un événement dans une note : époque, année, rang (lib/chronologie.mjs#ordonner). */
 const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.epoque), e.annee ?? 0, e.rang ?? 0];
 
+/**
+ * Les éléments qu'un mot-clé ancre (R309 : colonne `mot_cle_id` de la page, du sort, du type de sort), et la colonne de leur nom : le mot-clé en suit le nom
+ * (titre de la page, nom du sort) ; un type de sort n'a pas de nom, son code est le même dans les deux bases.
+ */
+const ELEMENTS_ANCRES = Object.freeze([{ table: 'page', nom: 'titre' }, { table: 'sort', nom: 'nom' }, { table: 'type_sort', nom: null }]);
+
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
       'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
-      'bouclier_poids', 'panneau_regles', 'niveau_alchimie']
+      'bouclier_poids', 'panneau_regles', 'niveau_alchimie', 'sort', 'type_sort']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la ligne de potion d'une ressource (consommables de l'onglet Ceinture) : clé ressource_id
     potion: new Map((lignesDe(base, 'potion') ?? []).map((p) => [p.ressource_id, p])),
@@ -526,7 +561,27 @@ function contexte(ref, dev) {
   const tetes = [entetes(dev), entetes(ref)];
   const cases = [cellules(dev), cellules(ref)];
   const trouver = (maps, cle) => maps.map((m) => m.get(cle)).find(Boolean) ?? null;
+  // R309 : les éléments de dev que chaque mot-clé ancre (colonne `mot_cle_id`, absente d'une base d'avant la migration 0131), dans l'ordre de ELEMENTS_ANCRES
+  const ancres = new Map();
+  for (const { table } of ELEMENTS_ANCRES) {
+    for (const l of lignesDe(dev, table) ?? []) {
+      if (l.mot_cle_id === null || l.mot_cle_id === undefined) continue;
+      if (!ancres.has(l.mot_cle_id)) ancres.set(l.mot_cle_id, []);
+      ancres.get(l.mot_cle_id).push({ table, id: l.id, ligne: l });
+    }
+  }
   return {
+    /** Les éléments de dev (page, sort, type de sort) que le mot-clé ancre : { table, id, ligne }, aucun s'il n'ancre rien. */
+    ancres: (motCleId) => ancres.get(motCleId) ?? [],
+    /** L'élément que le mot-clé ancre a-t-il changé de nom entre la production et dev (le mot-clé en suit le nom : un titre de page, le nom d'un sort) ? */
+    elementRenomme: (motCleId) => (ancres.get(motCleId) ?? []).some(({ table, id }) => {
+      const colonne = ELEMENTS_ANCRES.find((e) => e.table === table).nom;
+      const avant = r[table].get(id);
+      const apres = d[table].get(id);
+      return Boolean(colonne && avant && apres && !pareil(avant[colonne], apres[colonne]));
+    }),
+    /** L'élément existait-il dans la production ? Un type de sort aussi quand sa table manque (production d'avant la 0131) : son code existait déjà. */
+    elementExistait: ({ table, id }) => (table === 'type_sort' && !lignesDe(ref, 'type_sort')) || r[table].has(id),
     ligne,
     /** La ligne existe-t-elle dans la base de production (`ref`) ou de dev (`dev`) ? */
     dans: (cote, table, id) => (cote === 'ref' ? r : d)[table].has(id),
@@ -623,6 +678,7 @@ function comparerTable(def, ref, dev, x) {
       const v1 = lire(absente ? null : avant[colonne], avant);
       const v2 = lire(r[colonne], r);
       if (pareil(v1, v2)) return;
+      if (def.dejaDit?.(colonne, r, avant, x)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
       sortie.push(ligneDeNote({ ...base(), ordre: [...base().ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
     });
@@ -738,6 +794,44 @@ function comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x) {
     }
   }
   return sortie;
+}
+
+/** Les familles de la ligne des mots-clés ajoutés avec leur élément, dans l'ordre où elle les dit : « 690 capacités, 204 autres pages, 420 sorts, 8 types de sort ». */
+const FAMILLES_DES_MOTS_CLES_ANCRES = Object.freeze([
+  { id: 'capacites', un: 'capacité', plusieurs: 'capacités' },
+  { id: 'pages', un: 'autre page', plusieurs: 'autres pages' },
+  { id: 'sorts', un: 'sort', plusieurs: 'sorts' },
+  { id: 'types', un: 'type de sort', plusieurs: 'types de sort' },
+]);
+/** La famille d'un élément ancré : les pages `capacites/…` (type `capacites`), les autres pages, les sorts, les types de sort. */
+const familleDeLAncre = ({ table, ligne }) => (table === 'sort' ? 'sorts' : table === 'type_sort' ? 'types' : ligne.type === 'capacites' ? 'capacites' : 'pages');
+/** Un nombre en français : « 1 322 » (une espace entre les milliers). */
+const nombreEnFrancais = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+/**
+ * Les mots-clés ajoutés pour un élément qui existait déjà (R309 : l'ancrage donne un mot-clé à chaque page, sort et type de sort), dits en UNE ligne par
+ * famille d'élément : « 1 322 mots-clés ajoutés : 690 capacités, 204 autres pages, 420 sorts, 8 types de sort » (les nombres viennent du calcul, une famille
+ * absente n'est pas dite) ; neutre. Pas une ligne par mot-clé. Un mot-clé ajouté en même temps que son élément (page ou sort nouveau) n'a pas de ligne à lui :
+ * celle de l'élément suffit (`suit` de la table mot_cle) ; un mot-clé sans élément garde la sienne. Rien ici quand la production n'a aucun mot-clé : la ligne
+ * « N mots-clés » de la table (`resume`) dit tout.
+ */
+function comparerLesMotsClesAncres(ref, dev, x) {
+  const motsDeDev = lignesDe(dev, 'mot_cle') ?? [];
+  if (!lignesDe(ref, 'mot_cle')?.length && motsDeDev.length > 1) return [];
+  const comptes = new Map();
+  for (const m of motsDeDev) {
+    if (x.dans('ref', 'mot_cle', m.id)) continue;
+    const ancre = x.ancres(m.id).find((a) => x.elementExistait(a));
+    if (ancre) comptes.set(familleDeLAncre(ancre), (comptes.get(familleDeLAncre(ancre)) ?? 0) + 1);
+  }
+  const total = [...comptes.values()].reduce((somme, n) => somme + n, 0);
+  if (!total) return [];
+  const familles = FAMILLES_DES_MOTS_CLES_ANCRES.filter((f) => comptes.get(f.id))
+    .map((f) => `${nombreEnFrancais(comptes.get(f.id))} ${comptes.get(f.id) > 1 ? f.plusieurs : f.un}`);
+  const dit = `${nombreEnFrancais(total)} ${total > 1 ? 'mots-clés ajoutés' : 'mot-clé ajouté'} : ${familles.join(', ')}`;
+  return [ligneDeNote({
+    def: { table: 'mot_cle' }, domaine: 'mots-cles', groupe: null, entite: dit, ordre: [-1], champ: null, nature: 'ajoute', avant: null, apres: dit, cle: {},
+  })];
 }
 
 /**
@@ -917,10 +1011,16 @@ const comparerOrdres = (p, q) => {
 };
 
 /**
- * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
- * lien_candidat) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute ou retire d'elle-même.
+ * Les traces techniques du vocabulaire, que la note publique ne dit pas : `mot_cle_ancienne_cle` (les clés quittées, pour qu'une balise écrite avec l'une d'elles
+ * se lise encore ; R309, relecture finale, Fable « Declined »). Le renommage d'un mot-clé se dit par sa ligne de mot-clé.
  */
-export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES]);
+const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle']);
+/**
+ * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
+ * lien_candidat), traces techniques (TRACES_TECHNIQUES) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute
+ * ou retire d'elle-même.
+ */
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES]);
 export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
   && !/^(page|entite)_fts(_|$)/.test(nom);
 
@@ -946,9 +1046,12 @@ function comparerAutresTables(ref, dev) {
       ligne(table, i, `Table ${table}`, null, a ? 'retire' : 'ajoute', a ? `${a.lignes.length} ligne(s)` : null, b ? `${b.lignes.length} ligne(s)` : null);
       return;
     }
-    const communes = b.colonnes.filter((c) => a.colonnes.includes(c));
-    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c));
-    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c));
+    // R309 : une colonne `mot_cle_id` hors de la clé de la table est l'ancre d'un élément (type_degats, les ancres à venir) : le mot-clé est dit par la ligne
+    // condensée des mots-clés, jamais par une colonne, ni par « Structure changée ». Une table dont la clé la contient (sort_mot_cle) garde ses lignes.
+    const ancre = (c) => c === 'mot_cle_id' && b.cle.length > 0 && !b.cle.includes(c) && !a.cle.includes(c);
+    const communes = b.colonnes.filter((c) => a.colonnes.includes(c) && !ancre(c));
+    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c) && !ancre(c));
+    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c) && !ancre(c));
     if (ajoutees.length || retirees.length) {
       ligne(table, i, `Table ${table}`, 'Structure changée', 'modifie', retirees.length ? `colonnes retirées : ${retirees.join(', ')}` : null,
         ajoutees.length ? `colonnes ajoutées : ${ajoutees.join(', ')}` : null);
@@ -1024,6 +1127,7 @@ export function comparerBases(ref, dev) {
     ...comparerRelations(ref, dev, x),
     ...comparerCategoriesDesEvenements(ref, dev, x),
     ...comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x),
+    ...comparerLesMotsClesAncres(ref, dev, x),
     ...comparerOrdreDesBlocs(ref, dev, x),
     ...comparerPlanDesRegles(ref, dev, x),
     ...comparerOrdreDesRaces(ref, dev),

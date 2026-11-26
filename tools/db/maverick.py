@@ -64,10 +64,11 @@ class HomonymesRefuses(ValueError):
         super().__init__('; '.join(f'{base} {sorted(ids)} : {raison}' for base, ids, raison in fautes))
 
 
-def cles_des_mots_cles(mots_cles, categories, strict=True):
+def cles_des_mots_cles(mots_cles, categories, strict=True, parents=None):
     """La clé de chaque mot-clé (mot_cle.cle, migration 0113) : {id: clé}. Référence de la règle (réponses du propriétaire, 2026-11-08) ; le
     JavaScript du service et de db:check la reprend.
-    `mots_cles` : [(id, libellé, ids de ses catégories)] ; `categories` : {id de catégorie: libellé}.
+    `mots_cles` : [(id, libellé, ids de ses catégories)] ; `categories` : {id de catégorie: libellé} ; `parents` : {id: libellé du parent} (décision R309,
+    migration 0131 : la magie du sort qu'ancre le mot-clé), ou None.
       * Sans homonyme (aucun autre mot-clé de même normalize(libellé)) : normalize(libellé).
       * Des homonymes : normalize(libellé), puis, chacune précédée d'un tiret, le normalize du libellé de chacune de SES catégories qui n'est pas
         commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race », « namazu-classe » ; avec trois homonymes ou
@@ -76,7 +77,12 @@ def cles_des_mots_cles(mots_cles, categories, strict=True):
     moins une catégorie propre face à chacun des autres ; mêmes catégories comprises) ; deux mots-clés de même clé (« Namazu race » face à
     namazu-race). Sans `strict` (l'état intermédiaire de la migration 0113, que la 0114 a rendu conforme : les 13 races homonymes des classes
     raciales, sans catégorie ; la base n'a plus d'écart depuis), un homonyme sans catégorie propre prend normalize(libellé) seul ; deux clés égales
-    restent refusées (mot_cle.cle est UNIQUE)."""
+    restent refusées (mot_cle.cle est UNIQUE).
+    Le parent (R309) départage deux homonymes de même type : un homonyme dont les catégories sont incluses dans celles d'un autre ET qui a un parent
+    n'est plus refusé, sa clé prend à la suite de ses catégories propres normalize(parent) (« contre-sort-arcane », « contre-sort-corruption ») ; sans
+    parent, le refus « catégories incluses » reste ; deux parents égaux donnent deux clés égales, refusées (« clé déjà prise »). Le parent n'entre pas
+    dans la clé d'un mot-clé sans homonyme ni d'un homonyme que ses catégories distinguent déjà."""
+    parents = parents or {}
     groupes = {}
     for ident, libelle, cats in mots_cles:
         groupes.setdefault(normalize(libelle), []).append((ident, frozenset(cats)))
@@ -89,14 +95,18 @@ def cles_des_mots_cles(mots_cles, categories, strict=True):
             continue
         communes = frozenset.intersection(*(c for _, c in membres))
         for ident, cats in membres:
+            parent = normalize(parents.get(ident) or '')
+            inclus = False
             if not cats:
                 fautes.append((base, [ident], 'homonyme sans catégorie'))
             else:
                 for autre, cats_autre in membres:
                     if autre != ident and cats <= cats_autre:
-                        fautes.append((base, [ident, autre], 'aucune catégorie propre face à un homonyme (catégories incluses ou égales)'))
+                        inclus = True
+                        if not parent:  # R309 : le parent le départage
+                            fautes.append((base, [ident, autre], 'aucune catégorie propre ni parent face à un homonyme (catégories incluses ou égales)'))
             propres = sorted(cats - communes)
-            cles[ident] = '-'.join([base] + [normalize(categories[c]) for c in propres])
+            cles[ident] = '-'.join([base] + [normalize(categories[c]) for c in propres] + ([parent] if inclus and parent else []))
     par_cle = {}
     for ident, cle in cles.items():
         par_cle.setdefault(cle, []).append(ident)

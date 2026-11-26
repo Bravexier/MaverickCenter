@@ -48,9 +48,11 @@ function colonnesDeCle(db, table) {
  * lib/adresses-db.mjs#adresseDeLaPage), sans quoi le mot-clé dont l'adresse y mène et ses balises ne les citeraient plus.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {Iterable<string>} ids
- * @param {{ absentes?: { id: string, type: string, slug: string, titre: string, alias?: string[] }[] }} [options]
+ * @param {{ absentes?: { id: string, type: string, slug: string, titre: string, alias?: string[] }[], sansSonMotCle?: boolean }} [options]
+ *   `sansSonMotCle` : le mot-clé que la page ancre (R309) ne la cite pas, ni par son adresse ni par ses balises : il part avec elle
+ *   (serveur/edition-ancrage.mjs#motsClesPropres lit ses mentions) ; un mot-clé verrouillé reste cité : la page ne se supprime pas (R221).
  */
-export function citationsDesPages(db, ids, { absentes = [] } = {}) {
+export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = false } = {}) {
   const voulues = new Set(ids);
   const sortie = new Map([...voulues].map((id) => [id, []]));
   if (!voulues.size) return sortie;
@@ -85,12 +87,21 @@ export function citationsDesPages(db, ids, { absentes = [] } = {}) {
   // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant) ; une page absente entre dans
   // l'index à son adresse, sans quoi le mot-clé qui y mène, et ses balises, ne la citeraient plus (liensRompusParLeLot)
   const adresses = indexDesAdresses(db, { exemples: true, enPlus: enPlus.map((p) => p.id) });
-  const motsCles = motsClesDeLaBase(db);
+  const motsCles = motsClesDeLaBase(db, { elements: false });
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
   const pageDuMotCle = new Map();
+  const propres = new Map();
+  if (sansSonMotCle && db.prepare("SELECT 1 FROM pragma_table_info('page') WHERE name = 'mot_cle_id'").get()) {
+    const sien = db.prepare('SELECT p.mot_cle_id AS m FROM page p JOIN mot_cle k ON k.id = p.mot_cle_id WHERE p.id = ? AND k.verrou = 0');
+    for (const id of voulues) {
+      const l = sien.get(id);
+      if (l) propres.set(l.m, id);
+    }
+  }
   for (const m of motsCles) {
     const id = m.url ? pageDeLAdresse(adresses, m.url) : null;
     if (id === null || !voulues.has(id)) continue;
+    if (propres.get(m.id) === id) continue;
     pageDuMotCle.set(m.id, id);
     ajouter(id, { table: 'mot_cle', cle: { id: m.id }, colonne: 'url', comment: 'mot-cle', ligne: m });
   }

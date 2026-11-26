@@ -96,7 +96,8 @@ testDeLaMixte('migration 0092 rejouée : les 27 races de la liste prennent leur 
     base.prepare(`INSERT INTO "${table}" (${colonnes.map((c) => `"${c}"`).join(', ')}) SELECT ${valeurs.join(', ')} FROM "${table}" WHERE id = 'races/humain'`)
       .run(...colonnes.filter((c) => c in remplacements).map((c) => remplacements[c]));
   };
-  copier('page', { id: 'races/race-d-essai', slug: 'race-d-essai', titre: 'Race d’essai', titre_cle: 'race-d-essai' });
+  // sans l'ancre de l'Humain (R309) : un mot-clé n'ancre qu'une page
+  copier('page', { id: 'races/race-d-essai', slug: 'race-d-essai', titre: 'Race d’essai', titre_cle: 'race-d-essai', mot_cle_id: null });
   copier('race', { id: 'races/race-d-essai', nom: 'Race d’essai', ordre: 999 });
   rejouerLaMigration(base, MIGRATION);
   // les races qu'elle ne connaît pas (créées sur le site, ou par une migration postérieure : Fongoïde et Gémidien, 0120) restent à NULL, par nom

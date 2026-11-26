@@ -395,7 +395,14 @@ test('base remplie : les migrations livrées depuis la 0129 (qui crée migration
   assert.equal(r.etapes.length, REELLES.length);
   const { bilan } = r.etapes[0];
   assert.deepEqual(bilan.tables.creees, [{ table: 'migration_recue', lignes: 0 }]);
-  for (const etape of r.etapes) assert.deepEqual(Object.keys(etape.bilan.tables.modifiees), [], `${etape.fichier} : aucune autre table ne change`);
+  for (const etape of r.etapes) {
+    // une migration qui ajoute une colonne (0131 : page.mot_cle_id et sort.mot_cle_id) change la forme de sa table, jamais ses lignes ; aucune autre table ne change
+    const sql = REELLES.find((m) => m.fichier === etape.fichier).sql;
+    const alterees = [...new Set([...sql.matchAll(/ALTER\s+TABLE\s+(\w+)\s+ADD\b/gi)].map((m) => m[1]))].sort();
+    const { modifiees } = etape.bilan.tables;
+    assert.deepEqual(Object.keys(modifiees).sort(), alterees, `${etape.fichier} : aucune autre table ne change`);
+    for (const [table, e] of Object.entries(modifiees)) assert.deepEqual([e.ajoutees, e.retirees, e.modifiees], [0, 0, 0], `${etape.fichier} : ${table} garde toutes ses lignes`);
+  }
   for (const table of ['personnage', 'groupe', 'utilisateur', 'modification_lot', 'modification', 'historique_modification', 'lot_de_changements', 'numero_donne', 'race']) {
     assert.ok(bilan.tables.inchangees.includes(table), `${table} : empreinte inchangée`);
   }

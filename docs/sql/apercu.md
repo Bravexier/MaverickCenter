@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 222 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 223 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -13,14 +13,14 @@
 
 ## 1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)
 
-**Relations dans cette section** : `alias→page`, `mot_cle_ancienne_cle→mot_cle`, `mot_cle_categorie→categorie_mot_cle`, `mot_cle_categorie→mot_cle`, `mot_cle_synonyme→mot_cle`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→mot_cle`, `page_tag→page`, `page→type_page`, `panneau_regles_bloc→panneau_regles`, `panneau_regles→page`, `regles_onglet_entree→page`, `regles_onglet_entree→regles_onglet`, `regles_onglet→regles_onglet_entree`
+**Relations dans cette section** : `alias→page`, `mot_cle_ancienne_cle→mot_cle`, `mot_cle_categorie→categorie_mot_cle`, `mot_cle_categorie→mot_cle`, `mot_cle_synonyme→mot_cle`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→mot_cle`, `page_tag→page`, `page→mot_cle`, `page→type_page`, `panneau_regles_bloc→panneau_regles`, `panneau_regles→page`, `regles_onglet_entree→page`, `regles_onglet_entree→regles_onglet`, `regles_onglet→regles_onglet_entree`
 
 **Vers d'autres sections** : `mot_cle→monnaie (§9)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `type_page` | Registre des catégories du wiki : reprend client/src/lib/types.mjs (aujourd'hui une constante JavaScript). | **id**, libelle, singulier, salon_discord, description, ordre |
-| `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, +provenance |
+| `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, mot_cle_id→mot_cle?, +provenance |
 | `alias` | Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. | **page_id**→page, **ordre**, texte, cle |
 | `mot_cle` | Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). | **id**, libelle, cle, description?, couleur?, url?, verrou, monnaie_id→monnaie?, icone? |
 | `categorie_mot_cle` | Les catégories des mots-clés (migration 0113, demande du propriétaire : « la table Keyword_category qui liste toutes les catégories possibles de mots clés (ID + libelle) », « Il sera possible d'en ajo | **id**, libelle, libelle_cle |
@@ -63,7 +63,7 @@
 
 **Relations dans cette section** : `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `magie_specialisation→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`, `sort→magie_specialisation`, `type_degats→magie`
 
-**Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→mot_cle (§1)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`, `type_degats→mot_cle (§1)`
+**Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→mot_cle (§1)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`, `sort→mot_cle (§1)`, `type_degats→mot_cle (§1)`, `type_sort→mot_cle (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
@@ -74,8 +74,9 @@
 | `magie_ethnie_secondaire` | Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). | **magie_id**→magie, **rang**, ethnie_id→ethnie, ethnie_brut, +provenance |
 | `magie_dieu` |  | **magie_id**→magie, **dieu_id**→dieu, rang, +provenance |
 | `magie_specialisation` | SPÉCIALISATIONS MAGIQUES (décision R236 (1), migration 0117, classeur de Décembre « Nouveauté mise à jour Décembre », onglets 03 à 16) : deux par magie, sauf le Potentiel Illimité (28). | **id**, magie_id→magie, ordre, nom, nom_cle, description?, remarque?, +provenance |
-| `sort` | SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par magie dans le classeur V8). | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, mode_brut?, bonus_maitrise?, cout_secondaire?, specialisation_id→magie_specialisation?, +provenance |
+| `sort` | SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par magie dans le classeur V8). | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, mode_brut?, bonus_maitrise?, cout_secondaire?, specialisation_id→magie_specialisation?, mot_cle_id→mot_cle?, +provenance |
 | `sort_type` | Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. | **sort_id**→sort, **rang**, type, libelle, +provenance |
+| `type_sort` | Les types de sort (migration 0131, décision R309 : un type de sort = un mot-clé) : une ligne par code que le CHECK de sort_type.type accepte, dans l'ordre de ce CHECK. | **id**, mot_cle_id→mot_cle? |
 | `sort_mode` | Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…). | **sort_id**→sort, **rang**, mode, libelle, fois?, +provenance |
 | `sort_bonus_maitrise` | Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. | **sort_id**→sort, **champ**, **rang**, nature, texte_brut, contexte, increment_brut?, increment_entier?, pas_nm?, seuil_nm?, +provenance |
 | `sort_etat` | Sort <-> altération d'état. | **sort_id**→sort, **etat_id**→etat, **relation**, **rang**, stade?, champ, forme_trouvee, extrait, +provenance |

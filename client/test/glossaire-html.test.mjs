@@ -1,7 +1,8 @@
 // Le site CONSTRUIT et la migration 0098 (réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
 //   - le Glossaire (/regles/glossaire/, Q6 et Q7) : au menu Règles après Exploration ; le tableau de TOUS les mots-clés (décision R234 : au gabarit
-//     commun ; ses noms, libellé et synonymes ; ses catégories ; son lien, le titre de sa page ; le menu de ses pages, ses mentions de R196 ; le liseré de
-//     sa couleur ; sa définition dans une ligne en plus, ses balises rendues) ; les deux filtres (texte, catégorie) ; les couleurs que propose le mode
+//     commun ; ses noms, libellé et synonymes ; son type ; son lien, le titre de sa page ; le menu de ses pages, ses mentions de R196 ; le liseré de
+//     sa couleur ; sa définition dans une ligne en plus, ses balises rendues ; R309 : le texte de son élément à défaut, signalé, et `data-ancre`) ; les deux filtres (texte, type) ; les
+//     50 premières lignes visibles, les autres `hidden` (un <noscript> les redonne), aucune navigation sans JavaScript ; les couleurs que propose le mode
 //     modification (data-couleurs) ; le Lexique y mène ; /recherche/ ne gère plus le vocabulaire ;
 //   - les mots-clés à adresse sont des liens (vers une page construite), la feuille des mots-clés colorés est sur chaque page ;
 //   - « il ne faut pas de changement par rapport à avant en terme de résultat » : les pages colorées gardent leur classe.
@@ -16,7 +17,7 @@ import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { mentionsDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
-import { htmlDeLIcone, pagesDesMentions } from '../src/lib/mots-cles-balises.mjs';
+import { definitionDuMotCle, htmlDeLIcone, pagesDesMentions } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, chargerVocabulaire, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
 import { FAMILLES_DE_LA_PALETTE } from '../src/lib/palette-css.mjs';
@@ -37,21 +38,30 @@ test('R234 : le Glossaire — au menu Règles après Exploration ; le tableau de
   const categories = categoriesDesMotsCles(db);
   // le gabarit commun des tableaux (skill ui-tableaux) : le cadre, la zone qui défile, la table et ses en-têtes
   assert.match(html, /<div class="tableau glossaire-tableau">\s*<div class="tableau__defile">\s*<table class="table-donnees glossaire-table"[^>]* id="liste-mots-cles"/);
-  assert.match(html, /<thead><tr><th scope="col">Icône<\/th><th scope="col">Mot-clé<\/th><th scope="col">Catégories<\/th><th scope="col">Lien<\/th><th scope="col">Pages<\/th><\/tr><\/thead>/);
-  // le filtre par catégorie (R234 (4)) : toutes, puis chaque catégorie, dans l'ordre de leur id
+  assert.match(html, /<thead><tr><th scope="col">Icône<\/th><th scope="col">Mot-clé<\/th><th scope="col">Type<\/th><th scope="col">Lien<\/th><th scope="col">Pages<\/th><\/tr><\/thead>/);
+  // le filtre par type (R234 (4), R309) : tous, « Sans catégorie » seulement s'il y a un mot-clé à classer (R234 (7)), puis chaque catégorie, dans l'ordre de leur id
   const choix = html.slice(html.indexOf('<select id="filtre-categorie"'), html.indexOf('</select>'));
+  assert.match(choix, /aria-label="Filtrer par type"/);
   assert.deepEqual([...choix.matchAll(/<option value="(\d*|sans)">([^<]*)<\/option>/g)].map((o) => [o[1], decoder(o[2])]),
-    [['', 'Toutes les catégories'], ['sans', 'Sans catégorie'], ...categories.map((c) => [String(c.id), c.libelle])]);
+    [['', 'Tous les types'], ...(vocabulaire.some((m) => !m.categories.length) ? [['sans', 'Sans catégorie']] : []), ...categories.map((c) => [String(c.id), c.libelle])]);
   const tableau = html.slice(html.indexOf('id="liste-mots-cles"'), html.indexOf('</table>'));
-  const lignes = [...tableau.matchAll(/<tbody class="glossaire-mot" data-id="(\d+)"[^>]*>([\s\S]*?)<\/tbody>/g)];
-  assert.deepEqual(lignes.map((l) => Number(l[1])).sort((a, b) => a - b), vocabulaire.map((m) => m.id).sort((a, b) => a - b), 'tous les mots-clés, avec ou sans définition');
-  const parId = new Map(lignes.map((l) => [Number(l[1]), l[2]]));
+  const lignes = [...tableau.matchAll(/<tbody class="glossaire-mot"( hidden)? data-id="(\d+)"[^>]*>([\s\S]*?)<\/tbody>/g)];
+  assert.deepEqual(lignes.map((l) => Number(l[2])).sort((a, b) => a - b), vocabulaire.map((m) => m.id).sort((a, b) => a - b), 'tous les mots-clés, avec ou sans définition');
+  assert.deepEqual(lignes.map((l) => Number(l[2])), vocabulaire.map((m) => m.id), 'dans l’ordre du vocabulaire (parLibelle)');
+  // R309 §9 : seules les 50 premières lignes sont visibles ; les autres portent `hidden`, qu'un <noscript> annule (sans JavaScript, tout s'affiche) ; la navigation
+  // est créée par le script : sans lui, elle n'existe pas
+  assert.deepEqual(lignes.map((l) => Boolean(l[1])), lignes.map((_, i) => i >= 50), 'la première page seule est visible');
+  assert.match(html, /<noscript><style>html \.glossaire-table > tbody\[hidden\] \{ display: table-row-group; \}<\/style><\/noscript>/);
+  assert.doesNotMatch(html, /<nav[^>]*glossaire-pages|aria-label="Pages du glossaire"/, 'aucune navigation sans JavaScript');
+  const parId = new Map(lignes.map((l) => [Number(l[2]), l[0]])); // la ligne entière, son <tbody> ouvrant compris
   const mentions = mentionsDesMotsCles(db, vocabulaire.map((m) => m.id));
   const liens = pagesDesLiens(db, vocabulaire);
   const texte = (h) => decoder(h.replace(/<[^>]+>/g, ''));
   let avecLien = 0;
   for (const m of vocabulaire) {
     const ligne = parId.get(m.id);
+    // R309 : `data-ancre` (la table de son élément) sur un mot-clé ancré, rien sur les autres
+    assert.equal(/ data-ancre="([^"]*)"/.exec(ligne.slice(0, ligne.indexOf('>')))?.[1] ?? null, m.element?.table ?? null, `${m.cle} : data-ancre`);
     // son icône seule, en première colonne (R235 (2)) ; le RF, le RO et la PP l'ont reçue (migration 0116)
     assert.ok(ligne.includes(`<td class="glossaire-mot__icone">${htmlDeLIcone(m.icone)}</td>`), `${m.cle} : son icône`);
     // le liseré de sa couleur sur ses deux lignes (R234 (1))
@@ -71,7 +81,9 @@ test('R234 : le Glossaire — au menu Règles après Exploration ; le tableau de
     const items = [...ligne.matchAll(/<li(?: data-exemple)?>([\s\S]*?)<\/li>/g)].map((x) => texte(x[1]));
     assert.deepEqual(items, attendues.map((x) => x.libelle), `${m.cle} : ses pages`);
     if (attendues.length) assert.match(ligne, new RegExp(`<summary>${attendues.length} pages?</summary>`), `${m.cle} : leur total`);
-    assert.equal(ligne.includes('glossaire-mot__definition--vide'), !m.description, `${m.cle} : sa définition`);
+    // R309 §8 : la définition écrite, sinon le texte de l'élément (signalé comme tel), sinon « Pas encore de définition. »
+    assert.equal(ligne.includes('glossaire-mot__definition--vide'), !definitionDuMotCle(m), `${m.cle} : sa définition`);
+    assert.equal(ligne.includes('class="glossaire-mot__origine"'), !m.description && Boolean(m.element?.texte), `${m.cle} : la mention du texte de son élément`);
   }
   assert.equal(avecLien, vocabulaire.filter((m) => m.url).length);
   assert.ok(vocabulaire.filter((m) => m.icone).length >= 1 || !baseDImport().prepare('SELECT 1 FROM mot_cle WHERE icone IS NOT NULL').get(), 'des icônes dès l’import');

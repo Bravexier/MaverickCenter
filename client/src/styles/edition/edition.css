@@ -389,6 +389,9 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-mot-cle__mentions li[data-exemple] { font-style: italic; }
 /* le forçage que le service refuserait (R223, `refus_du_forcage`) : une note à la place du bouton, la raison en infobulle et au bas du menu des mentions */
 .ed-mot-cle__sans-forcage { align-self: center; font-size: var(--fs-sm); color: var(--muted); cursor: help; }
+/* un mot-clé ancré (R309) : sa ligne est en lecture seule ; la note dit où il se modifie, son texte garde les retours à la ligne */
+.ed-mot-cle__ancre { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+.ed-mot-cle--ancre .ed-mot-cle__definition { white-space: pre-line; font-size: var(--fs-md); }
 .ed-mot-cle__sans-forcage-raison { margin: 0.3rem 0 0; font-size: var(--fs-sm); color: var(--muted); }
 /* un mot-clé verrouillé (R219 (7)) : le cadenas à la place des boutons de suppression et de fusion ; ses champs restent modifiables */
 .ed-mot-cle__verrou { display: inline-flex; inline-size: 1.25rem; block-size: 1.25rem; color: var(--muted); }

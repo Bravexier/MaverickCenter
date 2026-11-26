@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { mentionsDe, referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
@@ -28,6 +28,8 @@ function nouvelle(db = vivante()) {
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps === undefined ? undefined : JSON.stringify(corps) }, service);
   const lot = (operations) => appel('POST', '/api/edition/', { page: 'regles/glossaire/', operations });
+  // un lot d'avant R309 : aucune route ne fusionne plus un mot-clé relié à un élément, le journal en garde et le rejeu les repasse (R219 (6))
+  const lotAncien = (operations) => enregistrer(db, { page: 'regles/glossaire/', operations }, { gel: false });
   const lire = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
   const ligne = (sql, ...p) => lire(sql, ...p)[0];
   /** Un mot-clé créé par le service, sous un libellé que personne ne porte. */
@@ -37,7 +39,7 @@ function nouvelle(db = vivante()) {
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     return r.corps.crees[0].id;
   };
-  return { db, appel, lot, lire, ligne, creer };
+  return { db, appel, lot, lotAncien, lire, ligne, creer };
 }
 
 const refuse = (r, quoi) => {
@@ -73,9 +75,9 @@ test('mentions : chaque référence de la base est une mention du mot-clé (`ref
     assert.deepEqual(m.map((x) => x.cle), [{ id: g.id }]);
     assert.equal(m[0].page?.id, g.id, 'la page de la magie nomme la mention');
   }
-  // la liste des références est celle des mentions, sans écart
+  // la liste des références est celle des mentions, sans écart (sur un contenu ancré, ces mots-clés sont aussi référencés par leurs pages : R309)
   const ids = [...new Set([...types, ...magies].map((x) => x.mot_cle_id))];
-  assert.equal(referencesDesMotsCles(s.db, ids).length, types.length + magies.length);
+  assert.equal(referencesDesMotsCles(s.db, ids).filter((r) => r.table === 'type_degats' || r.table === 'magie').length, types.length + magies.length);
   assert.deepEqual(referencesDesMotsCles(s.db, []), []);
   s.db.close();
 });
@@ -102,8 +104,9 @@ test('suppression d’un mot-clé de magie : refusée (verrou ou référence), l
   const s = nouvelle();
   const g = s.ligne('SELECT id, mot_cle_id FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id');
   refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: g.mot_cle_id }, forcer: true }]), 'forcée');
-  // un mot-clé de magie déverrouillé dans la copie est refusé pour sa référence, par un message qui nomme la magie
+  // un mot-clé de magie déverrouillé dans la copie est refusé pour sa référence, par un message qui nomme la magie (l'ancre de sa page, R309, retirée pour ne lire que celle-là)
   s.db.prepare('UPDATE mot_cle SET verrou = 0 WHERE id = ?').run(g.mot_cle_id);
+  s.db.prepare('UPDATE page SET mot_cle_id = NULL WHERE mot_cle_id = ?').run(g.mot_cle_id);
   const corps = refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: g.mot_cle_id } }]), 'sans verrou');
   assert.deepEqual(corps.references.map((r) => [r.table, r.id]), [['magie', g.id]]);
   assert.equal(s.ligne('SELECT mot_cle_id FROM magie WHERE id = ?', g.id).mot_cle_id, g.mot_cle_id);
@@ -114,16 +117,16 @@ test('fusion : la référence suit le mot-clé cible, notée au journal avant la
   const s = nouvelle();
   const { type, mot } = typeCite(s);
   const cible = s.creer('Essai référence cible');
-  const r = s.lot([{ op: 'fusionner_mots_cles', mot_cle: mot, dans: cible }]);
-  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  refuse(s.lot([{ op: 'fusionner_mots_cles', mot_cle: mot, dans: cible }]), 'une source reliée à un élément ne se fusionne plus à la main (R309)');
+  const r = s.lotAncien([{ op: 'fusionner_mots_cles', mot_cle: mot, dans: cible }]);
   assert.equal(s.ligne('SELECT mot_cle_id FROM type_degats WHERE id = ?', type).mot_cle_id, cible, 'la référence passe à la cible');
   assert.equal(s.ligne('SELECT 1 AS x FROM mot_cle WHERE id = ?', mot), undefined, 'la source a quitté le vocabulaire');
   assert.deepEqual(s.lire('PRAGMA foreign_key_check'), []);
-  const ops = s.lire('SELECT table_nom, operation, cle FROM modification WHERE lot_id = ? ORDER BY rang', r.corps.lot);
+  const ops = s.lire('SELECT table_nom, operation, cle FROM modification WHERE lot_id = ? ORDER BY rang', r.lot);
   const rang = (t, o) => ops.findIndex((m) => m.table_nom === t && m.operation === o);
   assert.ok(rang('type_degats', 'modifier') >= 0 && rang('type_degats', 'modifier') < rang('mot_cle', 'supprimer'), 'la référence est reportée avant la suppression de la source');
   assert.deepEqual(JSON.parse(ops[rang('type_degats', 'modifier')].cle), { id: type });
-  assert.match(r.corps.resume ?? s.ligne('SELECT resume FROM modification_lot WHERE id = ?', r.corps.lot).resume, /type_degats/, 'le résumé dit que la référence passe à la cible');
+  assert.match(s.ligne('SELECT resume FROM modification_lot WHERE id = ?', r.lot).resume, /type_degats/, 'le résumé dit que la référence passe à la cible');
   // un mot-clé sans référence se fusionne dans un mot-clé cité : la référence reste
   const autre = s.creer('Essai référence reçue');
   const ok = s.lot([{ op: 'fusionner_mots_cles', mot_cle: autre, dans: cible }]);
@@ -135,12 +138,16 @@ test('fusion : la référence suit le mot-clé cible, notée au journal avant la
 test('fusion : deux mots-clés cités chacun par une magie ne se fusionnent pas (un mot-clé par magie), rien d’écrit', () => {
   const s = nouvelle();
   const [a, b] = s.lire('SELECT mot_cle_id AS id FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id LIMIT 2');
-  // source verrouillée : le verrou refuse d'abord ; déverrouillée dans la copie, c'est l'unicité de la magie qui refuse
+  // à la main, la source reliée à une magie est refusée d'abord (R309) ; un lot ancien, qui passe ce verrou, bute sur l'unicité de la magie
   assert.equal(s.lot([{ op: 'fusionner_mots_cles', mot_cle: a.id, dans: b.id }]).statut, 409);
   s.db.prepare('UPDATE mot_cle SET verrou = 0 WHERE id = ?').run(a.id);
   const avant = s.lire('SELECT id, mot_cle_id FROM magie ORDER BY id');
-  const corps = refuse(s.lot([{ op: 'fusionner_mots_cles', mot_cle: a.id, dans: b.id }]), 'deux magies');
-  assert.equal(corps.references.length, 2);
+  refuse(s.lot([{ op: 'fusionner_mots_cles', mot_cle: a.id, dans: b.id }]), 'source reliée à une magie');
+  assert.throws(() => s.lotAncien([{ op: 'fusionner_mots_cles', mot_cle: a.id, dans: b.id }]), (e) => {
+    assert.equal(e.statut, 409);
+    assert.equal(e.details.references.length, 2);
+    return true;
+  });
   assert.deepEqual(s.lire('SELECT id, mot_cle_id FROM magie ORDER BY id'), avant);
   assert.ok(s.ligne('SELECT 1 AS x FROM mot_cle WHERE id = ?', a.id), 'la source reste');
   s.db.close();
@@ -168,8 +175,7 @@ test('rejeu : une fusion se rejoue avec sa référence reportée ; un lot ancien
   const livraison = nouvelle();
   const { type, mot } = typeCite(site);
   const cible = site.creer('Essai rejeu référence');
-  const fusion = site.lot([{ op: 'fusionner_mots_cles', mot_cle: mot, dans: cible }]);
-  assert.equal(fusion.statut, 200, JSON.stringify(fusion.corps));
+  assert.ok(site.lotAncien([{ op: 'fusionner_mots_cles', mot_cle: mot, dans: cible }]).lot, 'la fusion est au journal');
   // un lot ancien (noté avant que le service ne refuse) qui supprime un mot-clé cité par une magie ou un autre type de dégâts, que les règles livrées citent
   const autre = site.ligne('SELECT t.id AS type, t.mot_cle_id AS mot FROM type_degats t JOIN mot_cle m ON m.id = t.mot_cle_id WHERE m.verrou = 0 AND t.id <> ? ORDER BY t.id', type);
   assert.ok(autre, 'un second type de dégâts lié à un mot-clé non verrouillé');

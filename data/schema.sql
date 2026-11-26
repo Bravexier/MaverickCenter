@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 130;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 131;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -81,6 +81,10 @@ CREATE TABLE page (
                                                      -- equipement, craft, annexes ; 'exemple' pour les fixtures de démo
   source_ref TEXT CHECK (source_ref IS NULL OR length(source_ref) > 0),   -- provenance fine, lisible : « Google Sheet « Magie Maverick V8 », onglet « Feu » ».
                                                      -- NULL quand la source n'en cite aucune (pages d'exemple).
+  -- Colonne ajoutée par la migration 0131 (décision R309, « les mots-clés au centre » : une page = un mot-clé) : le mot-clé que la page ancre, dont le
+  -- nom, l'adresse et la clé suivront la page (chantier de l'ancrage). NULL tant que la page n'est pas ancrée. Un mot-clé ancre au plus une page (index
+  -- UNIQUE page_ancre_mot_cle) ; la même clé peut aussi être celle d'un type de sort (type_sort : Météo). Pas de cascade : un mot-clé ancré ne se supprime pas.
+  mot_cle_id INTEGER REFERENCES mot_cle(id),   -- le mot-clé que la page ancre (R309) ; NULL = page pas encore ancrée
   CHECK (id = type || '/' || slug)
 ) STRICT;
 
@@ -93,6 +97,8 @@ CREATE INDEX page_slug       ON page (slug);              -- recherche d'une pag
 CREATE INDEX page_statut     ON page (statut);            -- masquer les pages d'exemple, lister les « verified »
 
 CREATE INDEX page_origine    ON page (origine);           -- « supprime et réimporte cette famille »
+
+CREATE UNIQUE INDEX page_ancre_mot_cle ON page (mot_cle_id) WHERE mot_cle_id IS NOT NULL;   -- un mot-clé ancre au plus une page (R309) ; clé étrangère
 
 -- Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. `texte` garde l'écriture d'origine ;
 -- `cle` est sa forme normalisée (casse, accents, apostrophes ignorés), celle qui sert à retrouver la page (vue cle_page).
@@ -153,9 +159,9 @@ CREATE INDEX alias_cle   ON alias (cle);
 -- balises « {{<cle>}} » et l'adresse /recherche/?mot-cle=<cle>, et elle SUIT le libellé et les catégories (réponse du propriétaire : chaque renommage
 -- ou changement de catégorie réécrit les textes qui citent le mot-clé). Règle (réponse du propriétaire) : sans homonyme, cle = normalize(libelle) ;
 -- des homonymes (même normalize(libelle)) ont chacun au moins une catégorie propre face à chacun des autres (refusés : un homonyme sans catégorie,
--- ou dont les catégories sont incluses dans celles d'un autre), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
+-- ou dont les catégories sont incluses dans celles d'un autre, sauf si son parent le distingue : R309), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
 -- libellé de chacune de SES catégories qui n'est pas commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race »,
--- « namazu-classe ») ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
+-- « namazu-classe »), puis, pour un homonyme de même type, du normalize du nom de son parent (la magie d'un sort ancré : « contre-sort-arcane », R309) ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
 -- tools/db/maverick.py#cles_des_mots_cles. Aucun écart admis depuis la migration 0114 (catégories assignées, R232 (7) : les 13 races homonymes
 -- des classes raciales, sans catégorie à la 0113, ont reçu Race et la clé « x-race », la classe garde « x-classe »). Le libellé
 -- n'est plus unique : une écriture que portent plusieurs homonymes est ambiguë, la saisie écrit alors la clé. Une clé quittée (renommage,
@@ -882,6 +888,10 @@ CREATE TABLE sort (
   -- NPM 3 à 5 en ait une n'est pas un CHECK (le contrôle est à db:check).
   specialisation_id     TEXT    REFERENCES magie_specialisation(id)
     CHECK (specialisation_id IS NULL OR (niveau >= 3 AND substr(specialisation_id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')),
+  -- Colonne ajoutée par la migration 0131 (décision R309 : un sort = un mot-clé) : le mot-clé que le sort ancre, dont le nom suivra celui du sort. NULL tant
+  -- que le sort n'est pas ancré. Un mot-clé ancre au plus un sort (index UNIQUE sort_ancre_mot_cle). Distinct de sort_mot_cle (R114), qui ÉTIQUETTE le sort
+  -- de plusieurs mots-clés : ici le mot-clé est l'identité du sort. Pas de cascade.
+  mot_cle_id            INTEGER REFERENCES mot_cle(id),   -- le mot-clé que le sort ancre (R309) ; NULL = sort pas encore ancré
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : le service la recalcule avec lib/sort-analyse.mjs, que
@@ -916,6 +926,8 @@ CREATE INDEX sort_portee       ON sort (portee_nature, portee_valeur);
 
 CREATE INDEX sort_specialisation ON sort (specialisation_id) WHERE specialisation_id IS NOT NULL;   -- « les sorts d'une spécialisation » ; clé étrangère
 
+CREATE UNIQUE INDEX sort_ancre_mot_cle ON sort (mot_cle_id) WHERE mot_cle_id IS NOT NULL;   -- un mot-clé ancre au plus un sort (R309) ; clé étrangère
+
 -- Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. Les parenthèses sont retirées avant de couper sur « / ».
 -- `libelle` garde l'écriture d'origine (« Entave » pour deux sorts : faute de frappe de la source, rapprochée de 'entrave').
 CREATE TABLE sort_type (
@@ -932,6 +944,19 @@ CREATE TABLE sort_type (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX sort_type_type ON sort_type (type);
+
+-- Les types de sort (migration 0131, décision R309 : un type de sort = un mot-clé) : une ligne par code que le CHECK de sort_type.type accepte, dans l'ordre de
+-- ce CHECK. `id` est le code (identifiant figé : le CHECK fait foi, ajouter un type = migration), `mot_cle_id` le mot-clé que le type ancre, dont le nom
+-- suivra le type ; NULL tant que le type n'est pas ancré. Un mot-clé ancre au plus un type (index UNIQUE type_sort_ancre_mot_cle) ; la même clé peut
+-- aussi être celle d'une page (Météo : sa page et son type de sort). Pas de cascade. La migration pose les dix lignes sans mot-clé : les mots-clés viennent
+-- plus tard par des lots de changements.
+CREATE TABLE type_sort (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('attaque', 'entrave', 'soin', 'amplification', 'placement', 'invocation',
+                                                       'construction', 'protection', 'meteo', 'aleatoire')),
+  mot_cle_id INTEGER REFERENCES mot_cle(id)   -- le mot-clé que le type ancre (R309) ; NULL = type pas encore ancré
+) STRICT, WITHOUT ROWID;
+
+CREATE UNIQUE INDEX type_sort_ancre_mot_cle ON type_sort (mot_cle_id) WHERE mot_cle_id IS NOT NULL;   -- un mot-clé ancre au plus un type de sort (R309) ; clé étrangère
 
 -- Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…).
 -- Valeur de BASE seulement : « IC », « Imparable », « Inesquivable », « IC x 2 », « IC x 3 ». Un mode qui dépend d'un niveau de maîtrise (« IC pour 3 NM », « IC x 2 si 3NM »,

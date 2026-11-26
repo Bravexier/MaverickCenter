@@ -454,7 +454,7 @@ function cheminsDuService() {
         responses: { 200: { description: 'L’image.' }, 304: ref('responses', 'NonModifie'), 404: ref('responses', 'Introuvable') },
       },
     },
-    '/edition/en-attente/': lectureDuService('edition_en_attente', 'Lignes modifiées depuis la construction', `Ce que les pages statiques doivent montrer à la place de leur contenu construit.${SITE_DE_DEV}`),
+    '/edition/en-attente/': lectureDuService('edition_en_attente', 'Lignes modifiées depuis la construction', `Ce que les pages statiques doivent montrer à la place de leur contenu construit, sans le vocabulaire des mots-clés (lu en direct) ni les pages, sorts et types de sort dont seul mot_cle_id a changé (R309).${SITE_DE_DEV}`),
     '/edition/lignes/': ecritureDuService('edition_lignes', 'Lire des lignes (mode modification)', `{ lignes: [{ table, cle }] } → la ligne actuelle de chacune (images résumées).${SITE_DE_DEV}`, { lignes: [{ table: 'metier', cle: { id: '<identifiant>' } }] }),
     '/edition/listes/': lectureDuService('edition_listes', 'Listes des formulaires', `Compétences, catégories de classe, races hybrides, espèces de monstres…${SITE_DE_DEV}`),
     '/edition/pages/': lectureDuService('edition_pages', 'Pages du wiki', `Les pages (id, titre) : cibles d’un lien posé dans un texte.${SITE_DE_DEV}`),
@@ -473,7 +473,7 @@ function cheminsDuService() {
     '/edition/lots/': {
       get: {
         operationId: 'edition_lots', tags: [SERVICE], summary: 'Les lots de changements proposés',
-        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc ; un lot appliqué dit « lignes_nettes » (le nombre de ses lignes, sans lire son détail ; absent si son journal est illisible) et, la référence de la production lisible, « ecart_production ». Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
         responses: { 200: reponse('Les propositions.', objet), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
       },
       post: {
@@ -558,6 +558,15 @@ function cheminsDuService() {
         description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Comme tout dépôt : proposé (rien n’est écrit, le propriétaire l’applique d’un clic) tant que la clé de dépôt n’est pas posée, appliqué aussitôt avec la clé de dépôt ou le mot de passe une fois posée (R291 ; la clé de lecture est alors refusée en 403). 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet) },
         responses: { 200: reponse('Rien à recalculer.', objet), 201: reponse('Déposé et essayé.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Plus d’écarts que ce qu’un lot porte.', objet), 503: ref('responses', 'Indisponible') },
+      },
+    },
+    '/edition/lots/ancrage/': {
+      ...lectureDuService('edition_lots_ancrage_etat', 'État de la préparation de l’ancrage', `{ en_cours, resultat, erreur } : resultat est ce que l’action a rendu { lots, arret, suite, a_trancher, ecartees, comptes } (arret : le lot refusé et son premier motif), erreur { statut, message } si elle a échoué. Le dernier état reste lisible jusqu’au lancement suivant ; après un redémarrage du service, en_cours vaut false et les deux autres null.${SITE_DE_DEV}`),
+      post: {
+        operationId: 'edition_lots_ancrage', tags: [SERVICE], summary: 'Lancer la préparation de l’ancrage des mots-clés',
+        description: `Décision R309 : en tâche de fond (202 { en_cours: true } ; la fin se lit par GET), calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite ; un gel des écritures posé en cours de route l’arrête aussi avant le lot suivant. Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json({ type: 'object', additionalProperties: false, properties: { reprendre: { type: 'boolean', description: 'Redéposer les lignes annulées.' } } }) },
+        responses: { 202: reponse('Lancée : { en_cours: true }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Une préparation tourne déjà.', objet), 503: ref('responses', 'Indisponible') },
       },
     },
     '/edition/extrait/': {

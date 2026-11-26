@@ -13,6 +13,8 @@
 //   - par une référence de la base (migration 0125, `comment: 'reference'`) : le mot-clé d'un type de dégâts à valeur fermée (type_degats.mot_cle_id : taille,
 //     estoc, frappe) ou d'une magie (magie.mot_cle_id) ; la page de la magie nomme la mention. Ce n'est pas un texte : aucune suppression, même forcée,
 //     ne la remplace (serveur/edition-chronologie.mjs#verifierSansReference), la fusion la reporte sur la cible.
+// L'ancre d'une page, d'un sort ou d'un type de sort (migration 0131, décision R309) est une référence de la base, mais pas une mention : le mot-clé est
+// l'identité de cet élément, il n'y est pas cité (TABLES_DES_ANCRES).
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant.
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -21,11 +23,17 @@ import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
 const existe = (db, table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
 
-/** Les colonnes de la base qui citent un mot-clé (migration 0125) : la table, sa clé primaire, la colonne. */
+/** Les colonnes de la base qui citent un mot-clé (migrations 0125 et 0131) : la table, sa clé primaire, la colonne. */
 export const REFERENCES_AUX_MOTS_CLES = Object.freeze([
   Object.freeze({ table: 'type_degats', cle: 'id', colonne: 'mot_cle_id' }),
   Object.freeze({ table: 'magie', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'page', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'sort', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'type_sort', cle: 'id', colonne: 'mot_cle_id' }),
 ]);
+
+/** Les références qui ancrent un élément à son mot-clé (R309) : elles ne sont pas rendues comme des mentions (R196). */
+const TABLES_DES_ANCRES = new Set(['page', 'sort', 'type_sort']);
 
 const aLaColonne = (db, table, colonne) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(table, colonne));
 
@@ -88,10 +96,11 @@ export function mentionsDesMotsCles(db, ids) {
 
   // une référence de la base : la page de la magie (même id) la nomme ; un type de dégâts n'a pas de page
   for (const r of referencesDesMotsCles(db, voulus)) {
+    if (TABLES_DES_ANCRES.has(r.table)) continue;
     ajouter(r.mot_cle_id, { table: r.table, cle: { id: r.id }, colonne: r.colonne, comment: 'reference', page: r.table === 'magie' ? r.id : null });
   }
 
-  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
   for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
     if (table === 'mot_cle' && (colonne === 'url' || colonne === 'couleur')) continue;
     for (const l of db.prepare(`SELECT ${[...new Set([...cle, colonne])].map(q).join(', ')} FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
@@ -121,6 +130,27 @@ export function mentionsDesMotsCles(db, ids) {
 
 /** Les mentions du mot-clé `id` (mentionsDesMotsCles) : [{ table, cle, colonne, comment, page, libelle, exemple }]. */
 export const mentionsDe = (db, id) => mentionsDesMotsCles(db, [id]).get(id);
+
+/**
+ * Les mentions, lues une fois pour tout le vocabulaire, pour une suite de suppressions de mots-clés (l'annulation d'un lot d'ancrage en retire des centaines : relire tous les
+ * textes pour chacun prenait l'essentiel de sa durée). `de(id)` : comme `mentionsDe`, sans la définition d'un mot-clé retiré depuis la lecture. `oublier()` : à appeler avant toute
+ * autre écriture qui peut changer une mention (un texte, une étiquette, un synonyme, une clé quittée).
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function lecteurDesMentions(db) {
+  let carte = null;
+  const encore = db.prepare('SELECT 1 FROM mot_cle WHERE id = ?');
+  return {
+    oublier: () => {
+      carte = null;
+    },
+    de(id) {
+      carte ??= mentionsDesMotsCles(db, db.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
+      if (!carte.has(id)) return mentionsDe(db, id); // créé depuis la lecture
+      return carte.get(id).filter((x) => x.table !== 'mot_cle' || encore.get(x.cle.id));
+    },
+  };
+}
 
 /** Le texte d'un refus : les endroits qui mentionnent encore le mot-clé, nommés une fois chacun (cinq au plus, puis « … »). */
 export function texteDesMentions(mentions) {

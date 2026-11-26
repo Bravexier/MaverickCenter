@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
+import { netsDuLot } from '../serveur/edition-lots.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -96,4 +97,39 @@ test('sans référence, rien n’est dit : aucun champ, donc rien n’est retir�
   assert.ok((await lignes(lot.id)).every((l) => !('ecart_production' in l)));
   m.service.reference = join(racine, 'absente.db');
   assert.equal('ecart_production' in (await resume(lot.id)), false);
+});
+
+test('R309 : la liste dit le nombre des lignes nettes de chaque lot appliqué, avec ou sans référence de production, sans lire son détail ; ni proposition ni journal illisible n’en portent', async () => {
+  // les métiers ont servi aux tests d'avant : leur description d'aujourd'hui est l'« avant » du lot
+  const courant = (metier) => m.db.prepare('SELECT id, nom, description FROM metier WHERE id = ?').get(metier.id);
+  const lot = await appliquer([modifier(courant(lesMetiers[0]), `Nettes ${process.pid}`), modifier(courant(lesMetiers[1]), `Nettes b ${process.pid}`)]);
+  const attendu = netsDuLot(m.db, lot.lot_id).length;
+  assert.ok(attendu >= 2);
+  // sans référence : le nombre est là, l'écart non
+  m.service.reference = null;
+  let liste = await resume(lot.id);
+  assert.equal(liste.lignes_nettes, attendu);
+  assert.equal('ecart_production' in liste, false);
+  // avec la production (lisible, ou illisible : le nombre ne dépend pas d'elle)
+  livrer();
+  assert.equal((await resume(lot.id)).lignes_nettes, attendu);
+  assert.equal(typeof (await resume(lot.id)).ecart_production, 'boolean');
+  m.service.reference = join(racine, 'absente.db');
+  assert.equal((await resume(lot.id)).lignes_nettes, attendu);
+  // une proposition (clé de dépôt non posée : déposée, pas appliquée) n'a pas de lignes nettes
+  const propose = await m.appel('POST', '/api/edition/lots/', { format: 'maverick-lot/1', titre: `Proposition ${(n += 1)}`, nature: 'code', operations: [modifier(courant(lesMetiers[2]), `En attente ${process.pid}`)] });
+  if (propose.etat === 'propose') assert.equal('lignes_nettes' in (await resume(propose.id)), false);
+  // un journal illisible (le lot du journal n'a plus de ligne) : ni nombre, ni écart « faux » (null : on ne peut pas dire), le lot reste dans la liste
+  livrer();
+  m.db.exec('SAVEPOINT journal_illisible');
+  try {
+    m.db.prepare('DELETE FROM modification WHERE lot_id = ?').run(lot.lot_id);
+    m.db.prepare('DELETE FROM historique_modification WHERE lot_id = ?').run(lot.lot_id);
+    const illisible = await resume(lot.id);
+    assert.equal('lignes_nettes' in illisible, false);
+    assert.equal(illisible.ecart_production, null);
+  } finally {
+    m.db.exec('ROLLBACK TO journal_illisible');
+    m.db.exec('RELEASE journal_illisible');
+  }
 });

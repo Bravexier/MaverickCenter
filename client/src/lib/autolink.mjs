@@ -45,11 +45,19 @@ export const TYPES_SANS_MAILLAGE = new Set(['races', 'classes', 'capacites', 'ma
 export const aMailler = (page) => !TYPES_SANS_MAILLAGE.has(page.type ?? String(page.id ?? '').split('/')[0]);
 
 /**
+ * Un mot-clé de sort (décision R309 : le mot-clé qu'ancre un sort) : `parent` (le nom de sa magie, lib/mots-cles-db.mjs#motsClesDeLaBase), ou, quand
+ * le vocabulaire n'en porte pas, un premier élément qui est un sort. Une base d'avant `sort.mot_cle_id` n'en a aucun : tout y reste comme avant.
+ */
+const estMotCleDeSort = (m) => (typeof m?.parent === 'string' && m.parent !== '') || m?.element?.table === 'sort';
+
+/**
  * Les cibles du maillage : chaque mot-clé à adresse (`url`), avec la page où mène son adresse (`pageDuMotCle` : id du mot-clé -> id de la page, ou
  * null pour une rubrique ou une route sans page : lib/adresses-db.mjs#pageDeLAdresse) et ses écritures en plus du libellé : le titre et les alias de
  * cette page quand il est le seul mot-clé à y mener (sinon, son libellé seul). Une page (de `pages`) à laquelle aucun mot-clé ne mène n'est pas une
  * cible : le maillage ne crée jamais de mot-clé (règle de la migration 0056) ; elle est rendue dans `sansMotCle`.
- * @param {{ id: string, libelle: string, url?: string|null }[]} motsCles
+ * Le mot-clé d'un sort n'est pas celui de la page de sa magie (R309) : son adresse (« /magies/<magie>/#sort-<nom> ») y mène, mais il ne compte pas
+ * parmi ceux de la page (sinon les 420 sorts ancrés ôteraient leurs termes aux pages des magies), et il n'emprunte pas son titre : son libellé seul.
+ * @param {{ id: string, libelle: string, url?: string|null, parent?: string|null, element?: { table?: string }|null }[]} motsCles
  * @param {{ id: string, title: string, aliases?: string[] }[]} pages
  * @param {Map<string, string|null>} pageDuMotCle
  * @returns {{ cibles: { id: number, cle?: string, libelle: string, page: string|null, termes: string[] }[], sansMotCle: string[] }}
@@ -58,13 +66,14 @@ export function ciblesDuVocabulaire(motsCles, pages, pageDuMotCle) {
   const avecUrl = motsCles.filter((m) => typeof m?.url === 'string' && m.url);
   const parPage = new Map();
   for (const m of avecUrl) {
+    if (estMotCleDeSort(m)) continue;
     const page = pageDuMotCle.get(m.id) ?? null;
     if (page) parPage.set(page, [...(parPage.get(page) ?? []), m.id]);
   }
   const pagesParId = new Map(pages.map((p) => [p.id, p]));
   const cibles = avecUrl.map((m) => {
     const page = pageDuMotCle.get(m.id) ?? null;
-    const p = page && parPage.get(page).length === 1 ? pagesParId.get(page) : null;
+    const p = page && !estMotCleDeSort(m) && parPage.get(page).length === 1 ? pagesParId.get(page) : null;
     // `cle` : celle que cite la balise (décision R232 (3) ; l'id entier n'est jamais écrit dans un texte)
     return { id: m.id, ...(m.cle ? { cle: m.cle } : {}), libelle: m.libelle, page, termes: p ? [p.title, ...(p.aliases ?? [])] : [] };
   });

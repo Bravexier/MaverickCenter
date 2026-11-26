@@ -67,6 +67,7 @@ function instanceConnue() {
   attendu['site-donnees'] += fichier(join(site, 'donnees', 'reference.db'), 61_440);
   attendu['site-donnees'] += fichier(join(site, 'donnees', 'reference.json'), 400);
   attendu['site-donnees'] += fichier(join(site, 'search-index.json'), 30_000);
+  attendu['site-donnees'] += fichier(join(site, 'search-elements.json'), 9_000);
   attendu['site-donnees'] += fichier(join(site, 'fiche', 'regles.json'), 15_000);
   attendu['site-images'] += fichier(join(site, 'logo.webp'), 9000);
   attendu['site-images'] += fichier(join(site, 'favicon.png'), 1200);
@@ -108,6 +109,7 @@ test('catégories des fichiers du site : service livré, pages et scripts (code)
     'donnees/maverick.db': 'site-donnees',
     'donnees/reference.json': 'site-donnees',
     'search-index.json': 'site-donnees',
+    'search-elements.json': 'site-donnees',
     'fiche/regles.json': 'site-donnees',
     'autre/base.db': 'site-donnees',
     'logo.webp': 'site-images',
@@ -182,7 +184,7 @@ test('relevé d’un dossier aux tailles connues : chaque catégorie à l’octe
   const r = releverRepartition(fichiers);
   assert.deepEqual(r.comptes, attendu);
   assert.equal(r.partiel, false);
-  assert.equal(r.fichiers, 23, 'les fichiers des dossiers parcourus (pas la base vivante ni son WAL, nommés ; ni etat.json ; ni les liens)');
+  assert.equal(r.fichiers, 24, 'les fichiers des dossiers parcourus (pas la base vivante ni son WAL, nommés ; ni etat.json ; ni les liens)');
   assert.ok(r.duree_ms >= 0);
   // les octets des images de la base vivante passent de « base » à « images » (jamais plus que la base)
   const avecImages = releverRepartition({ ...fichiers, imagesDeLaBase: 10_000 });

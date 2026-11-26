@@ -119,7 +119,12 @@ function viderLesAjoutsDesMigrations(db) {
       const c = existe(table) && db.prepare('SELECT dflt_value AS defaut FROM pragma_table_info(?) WHERE name = ?').get(table, colonne);
       if (c) db.exec(`UPDATE "${table}" SET "${colonne}" = ${c.defaut ?? 'NULL'}`);
     }
-    for (const table of tables) if (existe(table)) db.exec(`DELETE FROM "${table}"`);
+    for (const table of tables) {
+      if (!existe(table)) continue;
+      db.exec(`DELETE FROM "${table}"`);
+      // les lignes que la migration pose elle-même (0131 : les dix types de sort) sont refaites telles qu'elle les pose : le circuit les refait de même
+      for (const [insert] of m.sql.matchAll(new RegExp(`INSERT\\s+INTO\\s+["\`]?${table}["\`]?\\s*(?:\\(|VALUES|SELECT)[^;]*;`, 'gi'))) db.exec(insert);
+    }
   }
   db.exec('PRAGMA foreign_keys = ON');
 }
@@ -142,13 +147,14 @@ export function annulerLesMigrations(db) {
   const colonnes = (table) => db.prepare('SELECT name FROM pragma_table_info(?)').all(table).map((c) => c.name);
   for (const m of migrationsLivrees().filter((x) => x.numero >= NUMERO).reverse()) {
     const ajouts = ajoutsDeLaMigration(m);
-    for (const [table, colonne] of [...ajouts.colonnes].reverse()) {
-      if (existe('table', table) && colonnes(table).includes(colonne)) db.exec(`ALTER TABLE "${table}" DROP COLUMN "${colonne}"`);
-    }
+    // les objets d'abord, les colonnes ensuite : SQLite refuse de retirer une colonne qu'un index (0131 : page_ancre_mot_cle), une vue ou un déclencheur cite encore
     for (const [type, motif] of [['trigger', 'TRIGGER'], ['view', 'VIEW'], ['index', 'INDEX']]) {
       for (const [objet] of ajouts.trouve(`CREATE\\s+(?:UNIQUE\\s+)?${motif}\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${NOM_SQL}`).reverse()) {
         if (existe(type, objet)) db.exec(`DROP ${motif} "${objet}"`);
       }
+    }
+    for (const [table, colonne] of [...ajouts.colonnes].reverse()) {
+      if (existe('table', table) && colonnes(table).includes(colonne)) db.exec(`ALTER TABLE "${table}" DROP COLUMN "${colonne}"`);
     }
     for (const table of [...ajouts.tables].reverse()) {
       if (existe('table', table)) db.exec(`DROP TABLE "${table}"`);

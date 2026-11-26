@@ -21,6 +21,9 @@
 // `cle` : l'objet de la clé primaire (toutes ses colonnes). `avant` : les valeurs attendues des colonnes touchées (la ligne entière pour « supprimer »,
 // absent pour « inserer »). `apres` : les valeurs écrites (absent pour « supprimer »). Même forme que `avant` / `apres` d'une ligne de `modification`
 // (serveur/edition-journal.mjs) : les colonnes touchées seulement pour « modifier », la ligne entière pour « inserer ».
+// `ancrage` (décision R309, sur une opération de `mot_cle` seulement) : à l'insertion, `{ "table": "page" | "sort" | "type_sort", "id": …, "type": <id de
+// catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id, libelle, url) ; sur « modifier », `{ "aligner": true }` recopie le
+// nom et l'adresse de l'élément (`apres` : libelle, url, qui doivent valoir ceux de l'élément).
 //
 // Pur : aucune dépendance au navigateur, à Astro ni à node:… (skill site-version-portable). La structure d'une table (colonnes, clé) vient de l'appelant,
 // qui la lit dans sa base (PRAGMA table_info : serveur/edition-journal.mjs#structure) ; les valeurs actuelles aussi (comparerAvecLaBase).
@@ -55,8 +58,13 @@ export const LOT_OUVERT_AUX_TABLES_HORS_EDITION = false;
 const FORME_D_UNE_DECISION = /^R[0-9]+$/;
 
 const CLES_DU_LOT = Object.freeze(['format', 'titre', 'nature', 'decision', 'auteur', 'operations']);
-const CLES_D_UNE_OPERATION = Object.freeze(['table', 'cle', 'operation', 'avant', 'apres']);
+const CLES_D_UNE_OPERATION = Object.freeze(['table', 'cle', 'operation', 'avant', 'apres', 'ancrage']);
 const TITRE_MAX = 200;
+
+/** Les tables dont une ligne ancre un mot-clé par sa colonne `mot_cle_id` (décision R309, migration 0131). */
+export const TABLES_ANCRABLES = Object.freeze(['page', 'sort', 'type_sort']);
+const COLONNES_D_UNE_CREATION_ANCREE = Object.freeze(['id', 'libelle', 'url']);
+const COLONNES_D_UN_ALIGNEMENT = Object.freeze(['libelle', 'url']);
 
 const estUnObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const estAbsent = (v) => v === undefined || v === null;
@@ -200,6 +208,7 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
 
     // les valeurs, selon l'opération
     const colonnesTouchees = controlerLesValeurs(o, s, dit, numeros, rang);
+    if (o.ancrage !== undefined) controlerLAncrage(o, dit);
     if (!cleValide || !colonnesTouchees) return;
 
     // deux opérations ne touchent pas la même ligne et colonne (une insertion ou une suppression touche toute la ligne)
@@ -216,6 +225,29 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
     lignes.get(ligne).push({ rang, operation: o.operation, colonnes: colonnesTouchees });
   });
   return termine();
+}
+
+/** `ancrage` d'une opération (voir l'en-tête) : une création ancrée ou un alignement de `mot_cle`, rien d'autre. Dit chaque faute. */
+function controlerLAncrage(o, dit) {
+  const a = o.ancrage;
+  const horsDe = (permises) => Object.keys(estUnObjet(o.apres) ? o.apres : {}).filter((c) => !permises.includes(c));
+  if (o.table !== 'mot_cle' || !['inserer', 'modifier'].includes(o.operation)) {
+    dit('ancrage : il ne se pose que sur l\'insertion ou la modification d\'un mot-clé');
+  } else if (!estUnObjet(a)) {
+    dit('ancrage : un objet est attendu');
+  } else if (o.operation === 'modifier') {
+    if (Object.keys(a).length !== 1 || a.aligner !== true) dit('ancrage : sur une modification, seul { "aligner": true } est admis');
+    const autres = horsDe(COLONNES_D_UN_ALIGNEMENT);
+    if (autres.length) dit(`ancrage : un alignement n'écrit que ${liste(COLONNES_D_UN_ALIGNEMENT)} (reçu ${liste(autres)})`);
+  } else {
+    const enTrop = Object.keys(a).filter((c) => !['table', 'id', 'type'].includes(c));
+    if (enTrop.length) dit(`ancrage : ${liste(enTrop)} inconnu (attendu : « table », « id », « type »)`);
+    if (!TABLES_ANCRABLES.includes(a.table)) dit(`ancrage : table ${JSON.stringify(a.table ?? null)} (attendu : ${liste(TABLES_ANCRABLES)})`);
+    if (typeof a.id !== 'string' || !a.id) dit('ancrage : « id » est l\'identifiant de l\'élément (un texte)');
+    if (!Number.isInteger(a.type) || a.type < 1) dit('ancrage : « type » est l\'id d\'une catégorie (un entier)');
+    const autres = horsDe(COLONNES_D_UNE_CREATION_ANCREE);
+    if (autres.length) dit(`ancrage : une création ancrée n'écrit que ${liste(COLONNES_D_UNE_CREATION_ANCREE)} (reçu ${liste(autres)})`);
+  }
 }
 
 /**

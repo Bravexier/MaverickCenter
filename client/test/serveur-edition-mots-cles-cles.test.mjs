@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
@@ -135,13 +136,14 @@ test('R232 (11) : les catégories d’un mot-clé verrouillé se posent ; sa cl�
   const [c1, c2] = deuxCategories(db);
   // un mot-clé verrouillé sans homonyme, cité par une balise quelque part (choisi dans la base). Le site de dev, source de ce qu'il modifie, a pu poser
   // des catégories à tous les verrouillés (2026-11) : le test retire alors, dans sa copie, celles du premier qui convient (skill tests-conventions :
-  // un test remet ce dont il a besoin)
+  // un test remet ce dont il a besoin). Sans élément : le libellé d'un mot-clé relié à un élément suit cet élément (R309)
   const convient = (m) => textesQuiCitent(db, m.cle).length && motsClesDeLaBase(db).filter((x) => normalize(x.libelle) === normalize(m.libelle)).length === 1;
-  if (!motsClesDeLaBase(db).some((m) => m.verrou === 1 && !m.categories.length)) {
-    const pris = motsClesDeLaBase(db).find((m) => m.verrou === 1 && convient(m)) ?? motsClesDeLaBase(db).find((m) => m.verrou === 1);
+  const verrouilleSansElement = (m) => m.verrou === 1 && !estAncre(db, m.id);
+  if (!motsClesDeLaBase(db).some((m) => verrouilleSansElement(m) && !m.categories.length)) {
+    const pris = motsClesDeLaBase(db).find((m) => verrouilleSansElement(m) && convient(m)) ?? motsClesDeLaBase(db).find(verrouilleSansElement);
     if (pris) db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(pris.id);
   }
-  const verrouilles = motsClesDeLaBase(db).filter((m) => m.verrou === 1 && !m.categories.length);
+  const verrouilles = motsClesDeLaBase(db).filter((m) => verrouilleSansElement(m) && !m.categories.length);
   const cible = verrouilles.find(convient) ?? verrouilles[0];
   assert.ok(cible, 'un mot-clé verrouillé sans catégorie');
   ok(lot([{ op: 'categories_mot_cle', mot_cle: cible.id, categories: [c1] }]));
@@ -182,8 +184,8 @@ test('R233 (4), (6) : un synonyme en conflit est refusé (libellé, synonyme, cl
   ok(lot([{ op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: ['Zq synonyme'] }]));
   refuse(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { libelle: 'ZQ Synonyme' } }]), 409, 'libelle');
   refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'zq-synonyme' } }]), 409, 'libelle');
-  // ceux d'un mot-clé verrouillé : modifiables, le verrou reste
-  const verrouille = db.prepare('SELECT id FROM mot_cle WHERE verrou = 1 ORDER BY id LIMIT 1').get();
+  // ceux d'un mot-clé verrouillé, sans élément (R309) : modifiables, le verrou reste
+  const verrouille = db.prepare('SELECT id FROM mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(db, m.id));
   ok(lot([{ op: 'synonymes_mot_cle', mot_cle: verrouille.id, synonymes: ['Zq synonyme verrouillé'] }]));
   assert.deepEqual(db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(verrouille.id).map((s) => s.libelle), ['Zq synonyme verrouillé']);
   assert.equal(motCle(verrouille.id).verrou, 1);

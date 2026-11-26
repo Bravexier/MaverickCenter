@@ -5,7 +5,8 @@
 // calcul (règles de la fiche, classe magique, races hybrides sans classe raciale) ; une page créée depuis le site reçoit les mêmes mots-clés. Depuis les
 // décisions R218 et R219 (2), ces mots-clés sont verrouillés (mot_cle.verrou = 1 : aucun champ ne se modifie depuis le site,
 // test/serveur-edition-verrou.test.mjs) : ce test lève leur verrou dans sa copie de la base, pour garder la preuve que le site les reconnaît à leur id
-// (un admin pourra lever un verrou : R218 (4)).
+// (un admin pourra lever un verrou : R218 (4)). R309 remplace R195 (1) pour un mot-clé ancré, qui suit son élément : seuls ceux sans élément se renomment ici, et le dernier
+// test épingle le refus pour un ancré.
 //   node --test test/mots-cles-r195.test.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -18,6 +19,7 @@ import { MOT_CLE_DE_CATEGORIE } from '../src/lib/classe-champs.mjs';
 import { isMagicalClass } from '../src/lib/classe-magique.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES as ID } from '../src/lib/mots-cles-proteges.mjs';
@@ -49,6 +51,8 @@ const libre = (base) => {
   return t;
 };
 const renommer = (id, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle } });
+/** Les écritures d'origine des mots-clés renommés par le premier test (id → libellé). */
+const quittes = new Map();
 
 /** Les pages de classes et de races comme le build les reçoit : le `tags:` du `.md` (lirePages, libellés) et leurs mots-clés par id (lib/wiki.ts). */
 const pagesDuSite = () => avecLesMotsCles(lirePages(db).filter((p) => ['classes', 'races'].includes(p.type) && p.statut !== 'example')
@@ -77,17 +81,23 @@ test('R195 : chaque mot-clé dont le site se sert se renomme ; aucune page ne ch
   const avant = lecture();
   const presents = [...MOTS_CLES_PROTEGES.keys()].filter((id) => ligne('SELECT 1 FROM mot_cle WHERE id = ?', id));
   assert.ok(['codex', 'classe', 'race', 'magique', 'hybride-animal', 'sort-fer'].every((nom) => presents.includes(ID[nom])), presents.join());
+  // R309 : un mot-clé relié à un élément ne se renomme plus à la main (le dernier test) ; les autres, oui
+  const sansElement = presents.filter((id) => !estAncre(db, id));
+  assert.ok(sansElement.length >= 2, 'des mots-clés dont le site se sert, sans élément');
   const nouveaux = new Map();
-  for (const id of presents) {
+  for (const id of sansElement) {
+    quittes.set(id, ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle);
     const libelle = libre(`Renommé ${id}`);
     ok(enregistrer([renommer(id, libelle)]));
     nouveaux.set(id, libelle);
   }
   for (const [id, libelle] of nouveaux) assert.equal(ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle, libelle, id);
   // le `tags:` des pages construites montre les nouveaux libellés (le renommage a bien eu lieu)…
-  const classe = pagesDuSite().find((p) => p.id.startsWith('classes/') && p.data.mots_cles.includes('magique'));
-  assert.ok(classe.data.tags.includes(nouveaux.get(ID.magique)), classe.id);
-  assert.ok(!classe.data.tags.some((t) => normalize(t) === 'magique'), 'plus l’écriture d’origine');
+  const nom = ['magique', 'hybride-animal', 'classe'].find((n) => nouveaux.has(ID[n]));
+  assert.ok(nom, 'un mot-clé renommé que portent des classes');
+  const classe = pagesDuSite().find((p) => p.id.startsWith('classes/') && p.data.mots_cles.includes(nom));
+  assert.ok(classe.data.tags.includes(nouveaux.get(ID[nom])), classe.id);
+  assert.ok(!classe.data.tags.includes(quittes.get(ID[nom])), 'plus l’écriture d’origine');
   // …et rien de ce que le site range ou calcule ne bouge
   assert.deepEqual(lecture(), avant);
   // « codex » reste mentionné (les pages du Codex le portent : décision R196), il ne se supprime pas
@@ -96,14 +106,16 @@ test('R195 : chaque mot-clé dont le site se sert se renomme ; aucune page ne ch
 
 test('R195 : l’écriture qu’un mot-clé dont le site se sert a quittée se reprend, par un mot-clé créé ou renommé, sans rien déplacer', () => {
   const avant = lecture();
-  assert.notEqual(normalize(ligne('SELECT libelle FROM mot_cle WHERE id = ?', ID.magique).libelle), 'magique', 'renommé par le test précédent');
-  // un mot-clé créé sous l'écriture d'origine de « magique » : un autre id, non protégé
-  const cree = ok(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'magique' } }])).crees[0].id;
-  assert.notEqual(cree, ID.magique);
+  // deux écritures quittées par le test précédent (des mots-clés sans élément : un ancré ne se renomme plus, R309)
+  const [[premier, ecriture], [, secondeEcriture]] = [...quittes];
+  assert.notEqual(normalize(ligne('SELECT libelle FROM mot_cle WHERE id = ?', premier).libelle), normalize(ecriture), 'renommé par le test précédent');
+  // un mot-clé créé sous la première : un autre id, non protégé
+  const cree = ok(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: ecriture } }])).crees[0].id;
+  assert.notEqual(cree, premier);
   assert.equal(MOTS_CLES_PROTEGES.has(cree), false);
-  // un mot-clé renommé vers l'écriture d'origine de « codex » (le refus d'avant R195 est levé)
+  // un mot-clé renommé vers la seconde (le refus d'avant R195 est levé)
   const autre = ok(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre('Essai R195') } }])).crees[0].id;
-  ok(enregistrer([renommer(autre, 'codex')]));
+  ok(enregistrer([renommer(autre, secondeEcriture)]));
   assert.deepEqual(lecture(), avant);
   // l'un et l'autre se suppriment (rien ne les mentionne)
   ok(enregistrer([{ op: 'supprimer', entite: 'mot_cle', cle: { id: cree } }]));
@@ -131,4 +143,21 @@ test('R195 : une race hybride et une classe créées depuis le site après ces r
     const rangee = lecture().classes.find(([, sections]) => sections.some(([, ids]) => ids.includes(id)))?.[0];
     assert.equal(rangee, attendue, `${categorie} : sa colonne de /classes/`);
   }
+});
+
+test('R309 remplace R195 (1) : un mot-clé dont le site se sert, relié à un élément, ne se renomme plus à la main (409, rien d’écrit) ; sans élément, il se renomme', () => {
+  const presents = [...MOTS_CLES_PROTEGES.keys()].filter((id) => ligne('SELECT 1 FROM mot_cle WHERE id = ?', id));
+  let ancre = presents.find((id) => estAncre(db, id));
+  if (ancre === undefined) {
+    // un contenu d'avant l'ancrage : l'ancre est posée dans la copie, sur une page qui n'en a pas
+    ancre = presents[0];
+    db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = (SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(ancre);
+  }
+  const avant = ligne('SELECT libelle, cle FROM mot_cle WHERE id = ?', ancre);
+  const refus = enregistrer([renommer(ancre, libre('Essai R309'))]);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.match(refus.corps.erreur, /relié à un élément/);
+  assert.deepEqual({ ...ligne('SELECT libelle, cle FROM mot_cle WHERE id = ?', ancre) }, { ...avant });
+  const sansElement = presents.find((id) => !estAncre(db, id));
+  ok(enregistrer([renommer(sansElement, libre('Essai R309 sans élément'))]));
 });

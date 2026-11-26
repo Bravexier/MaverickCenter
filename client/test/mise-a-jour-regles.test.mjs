@@ -226,7 +226,8 @@ test('un lot de dons (D11 : une option créée, un don à note supprimé) ne cha
   const journalDons = journalExporte(v);
   v.close();
   const touchees = new Set(journalDons.lots.flatMap((l) => l.modifications.map((m) => m.table)));
-  for (const t of touchees) assert.ok(['capacite', 'page', 'page_tag', 'page_source', 'page_entite', 'source', 'note_cellule'].includes(t), t);
+  // mot_cle, mot_cle_categorie : le mot-clé de la fiche du don créé (R309)
+  for (const t of touchees) assert.ok(['capacite', 'page', 'page_tag', 'page_source', 'page_entite', 'source', 'note_cellule', 'mot_cle', 'mot_cle_categorie'].includes(t), t);
   const rows = copie('rows-dons');
   const res = appliquerMiseAJour({ ...lot('Des dons.'), journal: journalDons }, { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
   const permis = new Set([...[...touchees].map((t) => `${t}.sql`), ...TABLES_DE_LA_NOTE.map((t) => `${t}.sql`)]);

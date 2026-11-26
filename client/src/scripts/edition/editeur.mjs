@@ -3,7 +3,8 @@
 //     remplie avec la valeur actuelle de la base (POST /api/edition/lignes/) ;
 //   - un bouton de confirmation flottant à droite enregistre les modifications en cours (POST /api/edition/, un lot d'un bloc) et repasse en lecture ;
 //   - décocher le crayon abandonne les modifications non enregistrées (après confirmation).
-// Au chargement, la page reçoit les lignes modifiées depuis sa construction (GET /api/edition/en-attente/) et réécrit leurs champs : la page statique
+// Au chargement, la page reçoit les lignes modifiées depuis sa construction (GET /api/edition/en-attente/ : sans le vocabulaire des mots-clés, que la page lit en
+// direct, ni les pages, sorts et types de sort dont seul `mot_cle_id` a changé, R309) et réécrit leurs champs en un passage (lib/edition-rejeu.mjs) : la page statique
 // montre donc toujours l'état de la base du site de dev. Les extensions (src/scripts/edition/*.mjs) ajoutent ce qui est propre à une famille de pages :
 // lignes ajoutées ou supprimées, création d'une race ou d'une classe, relations entre peuples, règle des niveaux de maîtrise, éditeur du guide.
 // Les mots-clés du glossaire suivent le vocabulaire vivant, et le HTML posé après le chargement (rendus des champs, extensions) a ses balises rendues
@@ -11,8 +12,9 @@
 import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
+import { rejouerLesLignes } from '../../lib/edition-rejeu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
-import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
+import { couleurDuCercle, decocherLesAutres, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
 import { libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
@@ -439,7 +441,8 @@ export function demarrer(racine, etatService) {
   /**
    * Les champs de formulaire à part (lib/edition-modele.mjs) : { element, lire() } ; `lire` rend la valeur à envoyer, ou lève une erreur (affichée).
    *   categories plusieurs catégories (`c.choix` : celles des mots-clés, sur le Glossaire ; sinon `ed.listes.categoriesChronologie`) : une case à cocher
-   *              chacune ; sans catégorie, le texte `c.vide` (par défaut : le bouton « Catégories » de la chronologie) ; rend la liste des ids cochés
+   *              chacune, `c.valeur` cochées au départ ; `c.exclusif` : un seul choix (en cocher une décoche les autres : le type d'un mot-clé, R309) ;
+   *              sans catégorie, le texte `c.vide` (par défaut : le bouton « Catégories » de la chronologie) ; rend la liste des ids cochés
    *   page       une page du wiki (GET /api/edition/pages/, lue à la première saisie), saisie à suggestions ; rend son id, ou '' (aucune)
    *   couleur    une couleur (controleDeCouleur) : la liste des couleurs du site et le cercle ; rend « famille:id », « #rrggbb » ou ''
    */
@@ -494,6 +497,7 @@ export function demarrer(racine, etatService) {
       caseACocher.checked = choisies.has(cat.id);
       label.append(caseACocher, ` ${cat.libelle}`);
       element.append(label);
+      if (c.exclusif) caseACocher.addEventListener('change', () => decocherLesAutres(caseACocher, element.querySelectorAll('input[type="checkbox"]')));
     }
     // une catégorie cochée qui n'existe plus (supprimée entre-temps) n'est pas renvoyée : la case a disparu
     if (!categories.length) {
@@ -593,7 +597,10 @@ export function demarrer(racine, etatService) {
       await glossaireVivant(ed);
       // une extension après l'autre, chacune seulement si elle s'applique à la page telle que les précédentes l'ont laissée
       for (const x of EXTENSIONS) if (x.actif(document)) await x.surcouche?.(ed, enAttente.lignes);
-      for (const l of enAttente.lignes) appliquerLigne(l.table, l.cle, l.ligne);
+      // en un passage : les extensions actives et les cadres ne sont relus qu'une fois (lib/edition-rejeu.mjs) ; aucun `x.ligne` ne crée le marqueur d'une autre extension
+      rejouerLesLignes(enAttente.lignes, ed, {
+        extensions: EXTENSIONS, document, elementsDe, estEdite: (el) => editeurs.has(el), rendre: rendreElement, cadres: () => cadres(),
+      });
       for (const x of actives()) x.pret?.(ed);
     } catch (e) {
       annoncer(`Les modifications du site de dev n’ont pas pu être affichées : ${e.message}`, 'erreur');

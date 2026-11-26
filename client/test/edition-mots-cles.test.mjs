@@ -22,9 +22,9 @@ import { normalize } from '../src/lib/text.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../src/lib/mots-cles-balises.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import {
-  categoriesDistinctes, ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, confirmationDesRetraits, ecrituresDesCibles, endroitsDesMentions, erreurDesRetraits,
-  examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDesListes, operationsDuVocabulaire, raisonSansForcage,
-  suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis,
+  categoriesDistinctes, ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
+  erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDesListes, operationsDuVocabulaire, raisonSansForcage,
+  suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis, typeParDefaut,
 } from '../src/lib/mots-cles-edition.mjs';
 import { htmlDePiece } from '../src/lib/monnaies.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -378,7 +378,7 @@ test('R233, R232 (5), réponse T6 : les synonymes (liste ordonnée, un par ligne
   assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null);
   assert.deepEqual(p.motsCles.operations(p.ed, []), [
     { op: 'supprimer', entite: 'mot_cle', cle: { id: I.aide } },
-    { op: 'categories_mot_cle', mot_cle: I.feu, categories: [1, 2], avant: [2] },
+    { op: 'categories_mot_cle', mot_cle: I.feu, categories: [1], avant: [2] }, // R309 : les cases de type sont exclusives, « Règles » remplace « Magie »
     { op: 'categories_mot_cle', mot_cle: I.magique, categories: [1], avant: [6] },
     { op: 'synonymes_mot_cle', mot_cle: I.feu, synonymes: ['Brasier', 'Flamme'], avant: ['Flamme'] },
   ], 'suppressions, catégories (verrouillé compris, R232 (11)), puis synonymes ; rien pour « aide », supprimé');
@@ -730,7 +730,7 @@ test('R233 (8), R235 : les synonymes sans étiquette dans la ligne et en data-sy
   const definition = ro.querySelector('.glossaire-mot__definition');
   assert.ok(definition.querySelector('.piece.piece--ro') && definition.querySelector('.piece.piece--rf'), 'les monnaies en icônes (R63)');
   assert.doesNotMatch(definition.textContent, /R[OF]/, 'plus d’abréviation visible');
-  assert.equal(am.querySelector('.glossaire-mot__definition').innerHTML, 'Protège des sorts.');
+  assert.equal(am.querySelector('.glossaire-mot__texte').innerHTML, 'Protège des sorts.');
   p.ed.enEdition = true;
   p.motsCles.debut(p.ed);
   await attendre();
@@ -1028,4 +1028,177 @@ test('décision R223, contre le service : un mot-clé cité se supprime en forç
   assert.equal(s.motCle(A.id), null, 'A supprimé');
   const definition = s.db.prepare('SELECT description FROM mot_cle WHERE id = ?').get(B.id).description;
   assert.ok(!definition.includes('{{') && definition.includes('texte affiché d’essai'), `la balise devient son texte affiché : ${definition}`);
+});
+
+// ---- R309, tâche 10 : un mot-clé ancré en lecture seule, un seul type, un mot-clé créé montré à sa page --------------------------------------------------
+const ELEMENT = (table = 'page', texte = 'Le texte de la page.') => ({ table, id: 'guide/x', adresse: '/guide/x/', texte });
+const ANCRES = [
+  v(1, 'aide', 3),
+  v(2, 'Feu', 2, 0, 'Ce qui brûle.', { synonymes: ['Flamme'], categories: [2] }),
+  v(3, 'Zéphyra', 4, 0, null, { categories: [6], element: ELEMENT(), mentions: [PAGE_DE_REGLE], synonymes: ['Zeph'], url: '/guide/zephyra/', icone: null, couleur: 'magie:feu' }),
+  v(4, 'Borée', 0, 1, null, { categories: [2], element: ELEMENT('sort', 'Les effets.'), mentions: [] }),
+  v(5, 'Multi', 0, 0, null, { categories: [1, 2] }),
+  v(6, 'Ecrit', 0, 0, 'Définition écrite.', { categories: [1], element: ELEMENT('page', 'Texte ignoré.'), mentions: [PAGE_DE_REGLE, PAGE_DE_REGLE] }),
+];
+const IA = Object.fromEntries(ANCRES.map((m) => [m.cle, m.id]));
+async function enGestion(options = {}) {
+  const p = await monter({ vocabulaire: ANCRES, ...options });
+  await p.motsCles.surcouche(p.ed, []);
+  p.ed.enEdition = true;
+  p.motsCles.debut(p.ed);
+  await attendre();
+  return p;
+}
+
+test('R309, fonctions pures : un mot-clé ancré n’offre ni « Supprimer », ni « Forcer la suppression », ni « Fusionner dans… » ; il reste une cible, sauf pour une source à synonymes', () => {
+  const ancre = { ...ANCRES[2] };
+  assert.equal(suppressionOfferte({ ...ancre, mentions: [] }), false, 'même sans mention');
+  assert.equal(forcageOffert({ ...ancre, mentions: [PAGE_DE_REGLE], refus_du_forcage: null }), false);
+  assert.equal(raisonSansForcage({ ...ancre, mentions: [PAGE_DE_REGLE], refus_du_forcage: 'une raison' }), null, 'la ligne est en lecture seule : pas de note de forçage');
+  assert.equal(fusionOfferte(ancre), false);
+  assert.equal(fusionOfferte({ ...ancre, element: null }), true);
+  assert.equal(suppressionOfferte({ ...ancre, element: null, mentions: [] }), true, 'sans élément : ses gestes restent');
+  assert.equal(forcageOffert({ ...ancre, element: null, mentions: [PAGE_DE_REGLE] }), true);
+  const cibles = (id) => ciblesDeFusion(ANCRES, id).map((m) => m.id);
+  assert.deepEqual(cibles(IA.aide), [2, 3, 4, 5, 6], 'sans synonyme : un ancré est une cible, comme un verrouillé (R219 (4))');
+  assert.deepEqual(cibles(IA.feu), [1, 5], 'avec un synonyme : ni l’ancré ni le verrouillé (R233 (11))');
+});
+
+test('R309 : « Notion » est présélectionnée seulement si cette catégorie existe, sans figer son id ; une case cochée décoche les autres', () => {
+  assert.equal(typeParDefaut([{ id: 1, libelle: 'Règles' }, { id: 6, libelle: 'Classe' }]), null);
+  assert.equal(typeParDefaut([]), null);
+  assert.equal(typeParDefaut(undefined), null);
+  assert.equal(typeParDefaut([{ id: 1, libelle: 'Règles' }, { id: 87, libelle: 'Notion' }]), 87);
+  assert.equal(typeParDefaut([{ id: 4, libelle: 'notion' }]), 4);
+  const [a, b, c] = [{ checked: false }, { checked: true }, { checked: true }];
+  decocherLesAutres(a, [a, b, c]);
+  assert.deepEqual([a, b, c].map((x) => x.checked), [false, true, true], 'une case décochée : rien ne bouge');
+  a.checked = true;
+  decocherLesAutres(a, [a, b, c]);
+  assert.deepEqual([a, b, c].map((x) => x.checked), [true, false, false], 'une case cochée décoche les autres');
+});
+
+test('R309 (T10-gestes-d-un-ancre) : en mode modification, un mot-clé ancré n’a aucun geste ni saisie — il garde sa balise à copier et le menu de ses mentions ; un mot-clé sans élément garde les siens', async () => {
+  const p = await enGestion();
+  const zephyra = ligne(p.liste, 'zephyra');
+  assert.equal(zephyra.dataset.ancre, 'page');
+  assert.ok(zephyra.classList.contains('ed-mot-cle--ancre'));
+  assert.equal(zephyra.querySelector('button'), null, 'ni « Supprimer », ni « Forcer la suppression », ni « Fusionner dans… »');
+  assert.equal(zephyra.querySelector('[data-ed]'), null, 'aucun champ modifiable : nom, icône, adresse, couleur, définition');
+  assert.equal(zephyra.querySelector('textarea'), null, 'ni synonymes à saisir');
+  assert.deepEqual(cases(zephyra), [], 'ni type à cocher');
+  assert.equal([...p.editeurs].filter(([c]) => c.closest('tbody') === zephyra).length, 0, 'aucune saisie montée');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__balise').textContent, '{{zephyra}}', 'la balise à copier est gardée');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__nom').textContent, 'Zéphyra');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__synonymes').textContent, 'Zeph');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__categories').textContent, 'Classe', 'son type, en lecture');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__lien').getAttribute('href'), '/guide/zephyra/');
+  assert.equal(zephyra.querySelector('.ed-mot-cle__definition').textContent, 'Le texte de la page.', 'le texte de son élément, à défaut de définition');
+  assert.equal(ligne(p.liste, 'ecrit').querySelector('.ed-mot-cle__definition').textContent, 'Définition écrite.', 'la définition écrite d’abord');
+  const mentions = zephyra.querySelector('.ed-mot-cle__mentions');
+  assert.equal(mentions.querySelector('summary').textContent, '1 mention', 'le menu de ses mentions est gardé');
+  assert.equal(mentions.querySelector('li a').href, `/${cheminDePage('regles/essai')}`);
+  assert.equal(zephyra.querySelector('.ed-mot-cle__sans-forcage'), null);
+  assert.equal(zephyra.querySelector('.ed-mot-cle__sans-forcage-raison'), null);
+  assert.match(zephyra.querySelector('.ed-mot-cle__ancre').textContent, /^Lié à une page : se modifie là-bas, pas ici/);
+  assert.equal(zephyra.querySelector('.ed-mot-cle__ancre a').href, '/guide/x/', 'vers l’endroit où il se modifie');
+  // verrouillé ET ancré : le cadenas reste, aucun bouton
+  const boree = ligne(p.liste, 'boree');
+  assert.match(boree.querySelector('.ed-mot-cle__ancre').textContent, /^Lié à un sort/);
+  assert.ok(boree.hasAttribute('data-verrou') && boree.querySelector('.ed-mot-cle__verrou svg'));
+  assert.equal(boree.querySelector('button'), null);
+  // sans élément : ses gestes et ses saisies
+  const feu = ligne(p.liste, 'feu');
+  assert.ok(!feu.hasAttribute('data-ancre'));
+  assert.ok(bouton(feu, 'ed-mot-cle__supprimer') && bouton(feu, 'ed-mot-cle__fusionner'));
+  assert.ok(p.saisie('feu') && synonymes(feu) && cases(feu).length > 0);
+});
+
+test('R309 (T10-gestes-d-un-ancre) : un mot-clé ancré reste une cible de « Fusionner dans… » pour un mot-clé sans élément sans synonymes ; il n’en propose aucune à un mot-clé à synonymes', async () => {
+  const p = await enGestion();
+  cliquer(bouton(ligne(p.liste, 'aide'), 'ed-mot-cle__fusionner'));
+  const boite = p.document.body.querySelector('dialog');
+  assert.deepEqual(boite.querySelector('datalist').children.map((o) => o.getAttribute('value')), ['Feu', 'Zéphyra', 'Borée', 'Multi', 'Ecrit']);
+  boite.querySelector('input').value = 'Zéphyra';
+  boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+  assert.equal(bouton(ligne(p.liste, 'aide'), 'ed-mot-cle__fusionner').textContent, 'Sera fusionné dans « Zéphyra » — annuler');
+  // le lot : la fusion seule, aucune opération sur les catégories ni les synonymes d'un ancré
+  assert.deepEqual(p.motsCles.operations(p.ed, [], p.editeurs), [{ op: 'fusionner_mots_cles', mot_cle: IA.aide, dans: IA.zephyra }]);
+  // un mot-clé à synonymes : ni l'ancré ni le verrouillé
+  cliquer(bouton(ligne(p.liste, 'feu'), 'ed-mot-cle__fusionner'));
+  const autre = p.document.body.querySelectorAll('dialog').at(-1);
+  assert.deepEqual(autre.querySelector('datalist').children.map((o) => o.getAttribute('value')), ['Multi']);
+});
+
+test('R309 : les catégories d’un mot-clé ancré comptent pour la catégorie (pas de « Supprimer » d’une catégorie qu’il porte) bien qu’il n’ait aucune case', async () => {
+  const p = await enGestion();
+  const item = (id) => p.document.querySelector('.ed-categories-mots-cles').querySelectorAll('li.ed-categorie-mot-cle').find((li) => li.dataset.id === String(id));
+  // « Magie » (2) : Feu, Multi (cases) et Borée (ancré)
+  for (const cle of ['feu', 'multi']) cocher(ligne(p.liste, cle), 2, false);
+  assert.equal(item(2).querySelector('.ed-categorie-mot-cle__supprimer').disabled, true, 'Borée, ancré, la porte encore');
+  assert.equal(item(2).querySelector('.ed-categorie-mot-cle__compte').textContent, '1 mot-clé');
+  // « Règles » (1) : Multi (case) et « Ecrit » (ancré)
+  cocher(ligne(p.liste, 'multi'), 1, false);
+  assert.equal(item(1).querySelector('.ed-categorie-mot-cle__supprimer').disabled, true);
+});
+
+test('R309 (T10-type-exclusif) : les cases de type sont exclusives — en cocher une décoche les autres, on peut tout décocher ; plusieurs catégories d’avant le premier lot restent cochées, sans refus', async () => {
+  const p = await enGestion();
+  const multi = ligne(p.liste, 'multi');
+  assert.deepEqual(cases(multi).filter((c) => c.checked).map((c) => c.value), ['1', '2'], 'plusieurs catégories : toutes cochées');
+  assert.equal(p.motsCles.verifier(p.ed, p.editeurs), null, 'aucun refus à l’enregistrement');
+  assert.deepEqual(p.motsCles.operations(p.ed, [], p.editeurs), [], 'rien changé : rien envoyé');
+  cocher(multi, 6);
+  assert.deepEqual(cases(multi).map((c) => [c.value, c.checked]), [['1', false], ['2', false], ['6', true]], 'cocher une case décoche les autres');
+  const feu = ligne(p.liste, 'feu');
+  cocher(feu, 2, false);
+  assert.deepEqual(cases(feu).filter((c) => c.checked), [], 'tout décocher : permis');
+  cocher(feu, 1);
+  cocher(feu, 6);
+  assert.deepEqual(cases(feu).filter((c) => c.checked).map((c) => c.value), ['6']);
+  assert.ok(p.ed.modifie);
+  const ops = p.motsCles.operations(p.ed, [], p.editeurs);
+  assert.deepEqual(ops.map((o) => [o.op, o.mot_cle, o.categories, o.avant]),
+    [['categories_mot_cle', IA.feu, [6], [2]], ['categories_mot_cle', IA.multi, [6], [1, 2]]], 'un seul type par mot-clé modifié ; `avant` : la liste lue');
+  assert.equal(multi.querySelector('.ed-mot-cle__categories-choix').getAttribute('aria-label'), 'Type');
+  // une catégorie ajoutée : sa case est exclusive aussi
+  cliquer(p.document.querySelector('.ed-outils-mots-cles').querySelectorAll('button').find((b) => b.textContent === '+ Ajouter une catégorie'));
+  await p.formulaires.at(-1).valider({ libelle: 'Nouvelle' });
+  const neuve = cases(multi).at(-1);
+  neuve.checked = true;
+  neuve.dispatchEvent(new Event('change'));
+  assert.deepEqual(cases(multi).filter((c) => c.checked).map((c) => c.value), [neuve.value]);
+});
+
+test('R309 (T10-type-exclusif, F9) : la création propose un seul type — « Notion » présélectionnée seulement si la catégorie existe, sans id figé', async () => {
+  const sans = await enGestion();
+  cliquer(sans.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  const champ = sans.formulaires[0].champs.find((c) => c.nom === 'categories');
+  assert.equal(champ.exclusif, true);
+  assert.equal(champ.libelle, 'Type');
+  assert.deepEqual(champ.valeur, [], 'sans catégorie « Notion » : rien de présélectionné');
+  const avec = await enGestion({ categories: [...CATEGORIES, { id: 87, libelle: 'Notion', libelle_cle: 'notion', mots_cles: 0 }] });
+  cliquer(avec.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  const champAvec = avec.formulaires[0].champs.find((c) => c.nom === 'categories');
+  assert.deepEqual(champAvec.valeur, [87]);
+  assert.deepEqual(champAvec.choix.map((x) => x.libelle), ['Règles', 'Magie', 'Classe', 'Notion']);
+});
+
+test('R309 §9 : un mot-clé créé est montré à sa page (`voir`) ; au tableau de lecture, un ancré porte data-ancre et la mention de son élément', async () => {
+  const p = await enGestion();
+  cliquer(p.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '', categories: ['6'], synonymes: '' });
+  const dernier = p.evenements.at(-1);
+  assert.equal(dernier.gestion, true);
+  assert.equal(String(dernier.voir), ligne(p.liste, 'bestiaire').dataset.id, 'la page affiche le mot-clé créé');
+  assert.equal(p.evenements.filter((e) => e.voir !== undefined).length, 1, 'les autres évènements n’en portent pas');
+  p.ed.enEdition = false;
+  p.motsCles.fin(p.ed);
+  await attendre();
+  const zephyra = ligne(p.liste, 'zephyra');
+  assert.equal(zephyra.dataset.ancre, 'page');
+  assert.equal(zephyra.querySelector('.glossaire-mot__origine').textContent, 'Texte de la page — le modifier');
+  assert.equal(zephyra.querySelector('.glossaire-mot__origine a').href, '/guide/x/');
+  assert.equal(zephyra.querySelector('.glossaire-mot__categories').textContent, 'Classe');
+  assert.equal(ligne(p.liste, 'ecrit').querySelector('.glossaire-mot__origine'), null, 'une définition écrite : ni mention ni lien');
 });

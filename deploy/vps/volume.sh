@@ -81,7 +81,7 @@ fichiers_du_site() {
       if ($1 == "d") c = "site-autres"
       else if (p ~ /^_serveur\//) c = "site-code"
       else if (image && p ~ /(^|\/)portraits\//) c = "images"
-      else if ((p ~ /^donnees\// && e != "html") || e == "db" || nom == "search-index.json" || p == "fiche/regles.json") c = "site-donnees"
+      else if ((p ~ /^donnees\// && e != "html") || e == "db" || nom == "search-index.json" || nom == "search-elements.json" || p == "fiche/regles.json") c = "site-donnees"
       else if (image) c = "site-images"
       else if (e ~ /^(html|js|mjs|cjs|css|json|map)$/) c = "site-code"
       else c = "site-autres"

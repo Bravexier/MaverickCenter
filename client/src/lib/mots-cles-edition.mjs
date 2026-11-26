@@ -1,9 +1,10 @@
 // La gestion du glossaire des mots-clés sur /regles/glossaire/ en mode modification (site de dev ; demande du propriétaire : « en mode édition seulement »,
 // « supprimer / ajouter / Modifier des mots clés ») : ce que l'extension de l'éditeur (src/scripts/edition/mots-cles.mjs) décide avant d'envoyer le lot,
 // en fonctions pures (sans dépendance navigateur ni Astro). Le vocabulaire est celui du service (GET /api/edition/mots-cles/ : [{ id (entier), libelle,
-// cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, mentions, refus_du_forcage }], `pages` = le nombre
+// cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, element, mentions, refus_du_forcage }], `pages` = le nombre
 // de pages qui le portent ; `cle` : la clé que citent les balises, recalculée par le service (décision R232) ; `synonymes` : ses écritures secondaires,
-// dans l'ordre (R233) ; `categories` : les ids de ses catégories (R232 (5)) ;
+// dans l'ordre (R233) ; `categories` : les ids de ses catégories (R232 (5)) ; `element` : { table, id, adresse, texte } de l'élément qu'il ancre, null sans (R309 :
+// un mot-clé ancré ne se modifie plus à la main, ne se supprime ni ne se fond dans un autre ; il garde sa balise, ses mentions, et reste une cible de fusion) ;
 // `verrou` = 1 pour un mot-clé verrouillé, migration 0110, décisions R218, R219 : ni sa suppression ni sa fusion dans un autre ne se font depuis le site
 // (ses champs, eux, se modifient : demande du propriétaire, « seule leur suppression est bloquée »), et il reçoit la fusion d'un autre ; `mentions` = les endroits qui le mentionnent, lib/mentions-des-mots-cles.mjs, décision R196 ;
 // `refus_du_forcage` = null si sa suppression forcée passerait, sinon la raison du refus, décision R223). Un mot-clé ne se supprime que si rien ne le
@@ -13,7 +14,7 @@
 // Le service refait tous les contrôles (serveur/edition-chronologie.mjs) : ici, de quoi proposer la fusion avant l'envoi, nommer les mentions, dire ce
 // qu'un retrait fait et ranger les opérations du lot.
 import { pagesDesMentions } from './mots-cles-balises.mjs';
-import { estVerrouille } from './mots-cles.mjs';
+import { aUnElement, estVerrouille } from './mots-cles.mjs';
 import { normalize } from './text.mjs';
 
 const nombre = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
@@ -37,23 +38,23 @@ export const INFOBULLE_DU_VERROU = 'Verrouillé : ne se supprime pas sur le site
 export const endroitsDesMentions = (m) => pagesDesMentions(m?.mentions);
 
 /**
- * Vrai si la ligne du mot-clé offre « Supprimer » : jamais pour un mot-clé verrouillé (R218 (3)), et seulement quand la liste de ses mentions est vide
+ * Vrai si la ligne du mot-clé offre « Supprimer » : jamais pour un mot-clé ancré (R309) ni verrouillé (R218 (3)), et seulement quand la liste de ses mentions est vide
  * (R196 (2) : « Le mot clé n'est supprimable que si cette liste est vide ») ; sans la liste (service qui ne la donne pas), le bouton reste et le service
  * juge (409 avec `mentions`).
  */
 export function suppressionOfferte(m) {
-  if (estVerrouille(m)) return false;
+  if (estVerrouille(m) || aUnElement(m)) return false;
   const endroits = endroitsDesMentions(m);
   return endroits === null || endroits.length === 0;
 }
 
 /**
- * Vrai si la ligne du mot-clé offre « Forcer la suppression » (décision R223 (1), (4)) : un mot-clé non verrouillé dont la liste des mentions n'est pas
+ * Vrai si la ligne du mot-clé offre « Forcer la suppression » (décision R223 (1), (4)) : un mot-clé sans élément (R309) et non verrouillé dont la liste des mentions n'est pas
  * vide (le « Supprimer » d'une liste vide reste tel quel : suppressionOfferte), et dont le service ne prévoit pas de refuser le forçage
  * (`refus_du_forcage` null ; absent, le service juge à l'enregistrement). Sans la liste des mentions, rien à forcer : « Supprimer » reste.
  */
 export function forcageOffert(m) {
-  if (estVerrouille(m)) return false;
+  if (estVerrouille(m) || aUnElement(m)) return false;
   const endroits = endroitsDesMentions(m);
   return Boolean(endroits?.length) && !raisonSansForcage(m);
 }
@@ -61,27 +62,27 @@ export function forcageOffert(m) {
 /**
  * La raison pour laquelle le forçage n'est pas offert à un mot-clé non verrouillé et mentionné (`refus_du_forcage` du service : verrou, étiquette de
  * sort, définition verrouillée qui le cite, adresse vers une page, mention que le site ne sait pas remplacer ; décision R223), que la ligne montre à la
- * place du bouton ; null sinon (verrouillé : le cadenas dit déjà tout ; liste vide : « Supprimer »).
+ * place du bouton ; null sinon (verrouillé : le cadenas dit déjà tout ; ancré : la ligne est en lecture seule ; liste vide : « Supprimer »).
  */
 export function raisonSansForcage(m) {
-  if (estVerrouille(m) || !endroitsDesMentions(m)?.length) return null;
+  if (estVerrouille(m) || aUnElement(m) || !endroitsDesMentions(m)?.length) return null;
   const r = m.refus_du_forcage;
   return typeof r === 'string' && r.trim() ? r : null;
 }
 
-/** Vrai si la ligne du mot-clé offre « Fusionner dans… » : jamais depuis un mot-clé verrouillé (la fusion le supprimerait : R218 (3), R219 (4)). */
-export const fusionOfferte = (m) => !estVerrouille(m);
+/** Vrai si la ligne du mot-clé offre « Fusionner dans… » : jamais depuis un mot-clé verrouillé ni ancré (la fusion le supprimerait : R218 (3), R219 (4), R309). */
+export const fusionOfferte = (m) => !estVerrouille(m) && !aUnElement(m);
 
 /**
  * Les mots-clés dans lesquels `id` peut être fusionné : ni lui-même, ni un mot-clé qui disparaît dans le même lot (`retires` : supprimé, ou fusionné à
- * son tour dans un autre). Un mot-clé verrouillé est une cible (R219 (4) : il « reçoit la fusion d'un autre mot-clé », sans en prendre l'adresse ni la
- * couleur), sauf quand la source a au moins un synonyme (R233 (11), réponse du propriétaire : « Refuser la fusion » ; ses synonymes iraient au
- * verrouillé, dont les synonymes ne se modifient pas : le service répond 409, `champ: 'synonymes'`).
+ * son tour dans un autre). Un mot-clé verrouillé ou ancré est une cible (R219 (4), R309 : il « reçoit la fusion d'un autre mot-clé », sans en prendre
+ * l'adresse ni la couleur, seulement sa clé), sauf quand la source a au moins un synonyme (R233 (11), réponse du propriétaire : « Refuser la fusion » ; ses
+ * synonymes iraient à un mot-clé dont les synonymes ne se modifient pas : le service répond 409, `champ: 'synonymes'`).
  */
 export function ciblesDeFusion(vocabulaire, id, { retires = new Set() } = {}) {
   const source = vocabulaire.find((m) => m.id === id);
   const avecSynonymes = (source?.synonymes ?? []).length > 0;
-  return vocabulaire.filter((m) => m.id !== id && !retires.has(m.id) && !(avecSynonymes && estVerrouille(m)));
+  return vocabulaire.filter((m) => m.id !== id && !retires.has(m.id) && !(avecSynonymes && (estVerrouille(m) || aUnElement(m))));
 }
 
 /**
@@ -315,6 +316,27 @@ export function operationsDesListes(vocabulaire, saisies, { retires = new Set() 
   }
   return sortie;
 }
+
+/**
+ * La catégorie que le formulaire de création présélectionne (R309 : « Notion » par défaut) : son id si elle existe (par son libellé, sans figer son id : la
+ * catégorie n'existe qu'après le premier lot d'ancrage), null sinon (rien n'est présélectionné).
+ */
+export const typeParDefaut = (categories) => (categories ?? []).find((c) => normalize(c?.libelle ?? '') === 'notion')?.id ?? null;
+
+/**
+ * Les cases du type d'un mot-clé sont exclusives (R309 : un seul type) : cocher `cochee` décoche les autres `cases` ; en décocher une, ou tout décocher, reste
+ * libre. Un mot-clé qui a encore plusieurs catégories (avant le premier lot d'ancrage) les montre toutes cochées, sans qu'aucune case ait changé.
+ */
+export function decocherLesAutres(cochee, cases) {
+  if (!cochee.checked) return;
+  for (const autre of cases) if (autre !== cochee) autre.checked = false;
+}
+
+/** Ce que dit la ligne d'un mot-clé ancré, en mode modification, de ce à quoi il est lié (R309 : « Lié à une page »), par table de son élément. */
+const ELEMENTS_LIES = Object.freeze({
+  page: 'une page', sort: 'un sort', type_sort: 'un type de sort', magie: 'une magie', type_degats: 'un type de dégâts', monnaie: 'une monnaie',
+});
+export const noteDeLAncrage = (m) => `Lié à ${ELEMENTS_LIES[m?.element?.table] ?? 'un élément'} : se modifie là-bas, pas ici`;
 
 /** Vrai si la catégorie `c` ({ mots_cles : le nombre de mots-clés qui la portent }) peut se supprimer : vide (décision R232 (5)). */
 export const suppressionDeCategorieOfferte = (c) => Number(c?.mots_cles ?? 0) === 0;

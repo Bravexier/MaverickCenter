@@ -7,16 +7,17 @@ import { COLONNES_DU_GLOSSAIRE, htmlDeLaLigneDuGlossaire } from '../../lib/mots-
 import { categoriesDesMotsCles, chargerVocabulaire, pagesDesLiens } from '../../lib/mots-cles-db.mjs';
 import { mentionsDesMotsCles } from '../../lib/mentions-des-mots-cles.mjs';
 import { choixDesCouleurs } from '../../lib/glossaire-couleurs.mjs';
+import { TAILLE_DE_PAGE_DU_GLOSSAIRE } from '../../lib/glossaire-filtre.mjs';
 import { cssDesFamilles, FAMILLES_DES_ZONES } from '../../lib/palette-css.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 
 // Le Glossaire (réponses du propriétaire du 2026-11-06, Q6 et Q7 : une entrée « Glossaire » dans le menu Règles, après Exploration ; une page seule,
 // /regles/glossaire/) : le tableau de TOUS les mots-clés du glossaire (table mot_cle), avec ou sans définition (décision R234 : « dans le même style que
 // les autres », le gabarit commun des tableaux, components/Tableau.astro, avec la couleur du mot-clé en liseré comme pour les armes) — ses noms (le
-// libellé et ses synonymes, R233), ses catégories (R232), son lien (le titre de la page où il mène, sinon l'adresse : lib/mots-cles-db.mjs#pagesDesLiens),
+// libellé et ses synonymes, R233), son type (R232, R309 : un seul), son lien (le titre de la page où il mène, sinon l'adresse : lib/mots-cles-db.mjs#pagesDesLiens),
 // le menu des pages qui le mentionnent (ses mentions, R196 : étiquettes et balises, lib/mentions-des-mots-cles.mjs), et sa définition dans une ligne
 // en plus, sous la sienne. Une ligne : lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire, le même HTML que l'extension de l'éditeur. Les filtres (texte,
-// catégorie : R234 (4)) : src/scripts/glossaire.mjs.
+// type : R234 (4)) et la pagination par 50 (R309, §9) : src/scripts/glossaire.mjs.
 // Sur le site de dev, en mode modification, toute la gestion du vocabulaire est ici (src/scripts/edition/mots-cles.mjs : créer, renommer, définir, les
 // synonymes, les catégories, fusionner, supprimer, la balise à copier, l'adresse et la couleur ; les catégories elles-mêmes) ; /recherche/ ne fait plus que
 // chercher. Les couleurs que le choix propose (`data-couleurs`, lib/glossaire-couleurs.mjs : toutes les familles de la palette, que le navigateur
@@ -29,30 +30,37 @@ const vocabulaire = chargerVocabulaire(db);
 const categories = categoriesDesMotsCles(db);
 const mentions = mentionsDesMotsCles(db, vocabulaire.map((m) => m.id));
 const liens = pagesDesLiens(db, vocabulaire);
+// la première page seule est visible (R309 §9 : les autres lignes portent `hidden`, qu'un <noscript> annule) ; le script de la page pagine ensuite
 const lignes = vocabulaire
-  .map((m) => htmlDeLaLigneDuGlossaire({ ...m, mentions: mentions.get(m.id) ?? [], lien: liens.get(m.id) ?? null }, { base, categories }))
+  .map((m, i) => htmlDeLaLigneDuGlossaire({ ...m, mentions: mentions.get(m.id) ?? [], lien: liens.get(m.id) ?? null }, { base, categories, masquee: i >= TAILLE_DE_PAGE_DU_GLOSSAIRE }))
   .join('');
+// (« html » en tête : la feuille de la page, plus bas dans le document, a la même règle `display: none` ; celle-ci doit l'emporter)
+const sansScript = 'html .glossaire-table > tbody[hidden] { display: table-row-group; }';
+// « Sans catégorie » : les mots-clés à classer ; l'option n'est dans la liste que s'il y en a (`hidden` sur une option n'est pas respecté par Safari)
+const aClasser = vocabulaire.some((m) => !(m.categories ?? []).length);
 const entete = `<thead><tr>${COLONNES_DU_GLOSSAIRE.map((c) => `<th scope="col">${c}</th>`).join('')}</tr></thead>`;
 const couleurs = JSON.stringify(choixDesCouleurs(db));
 ---
 
 <Base title="Glossaire" description="Le glossaire de Maverick : tous les mots-clés des règles et du lore, leur définition et les pages qui les citent" edition="regles/glossaire/">
   <style is:inline set:html={glossaireCss}></style>
+  {/* sans JavaScript, tout s'affiche : les lignes d'après la première page (`hidden`) sont rendues, et la navigation, que le script crée, n'existe pas (R309 §9) */}
+  <noscript slot="tete"><style is:inline set:html={sansScript}></style></noscript>
   {/* les familles d'une zone de la palette : le liseré d'un mot-clé et le choix de sa couleur en mode modification */}
   <style is:inline set:html={cssDesFamilles(FAMILLES_DES_ZONES)}></style>
   <div class="glossaire" data-glossaire data-couleurs={couleurs}>
     <h1>Glossaire</h1>
-    <p class="glossaire-intro">Les mots-clés des règles et du lore : leurs noms, leurs catégories, leur définition, et les pages qui les citent.</p>
+    <p class="glossaire-intro">Les mots-clés des règles et du lore : leurs noms, leur type, leur définition, et les pages qui les citent.</p>
     <form class="glossaire-filtre" role="search">
       <input id="filtre-glossaire" type="search" aria-label="Filtrer le glossaire" placeholder="Filtrer : mot-clé, synonyme, définition…" autocomplete="off" />
-      <select id="filtre-categorie" aria-label="Filtrer par catégorie">
-        <option value="">Toutes les catégories</option>
-        <option value="sans">Sans catégorie</option>
+      <select id="filtre-categorie" aria-label="Filtrer par type">
+        <option value="">Tous les types</option>
+        {aClasser && <option value="sans">Sans catégorie</option>}
         {categories.map((c) => <option value={String(c.id)}>{c.libelle}</option>)}
       </select>
       <span id="glossaire-compte" class="muted" aria-live="polite">{vocabulaire.length} mots-clés</span>
     </form>
-    <noscript><p class="banner">Les filtres demandent JavaScript ; le tableau est complet sans lui.</p></noscript>
+    <noscript><p class="banner">Les filtres et les pages demandent JavaScript ; le tableau est complet sans lui.</p></noscript>
     <Tableau class="glossaire-tableau" classeTable="glossaire-table" attributsTable={{ id: 'liste-mots-cles', 'aria-label': 'Mots-clés du glossaire' }}>
       <Fragment set:html={entete + lignes} />
     </Tableau>

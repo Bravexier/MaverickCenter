@@ -131,8 +131,9 @@ un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser
 « sang ») ; `ETIQUETTES_NON_POSEES` : les étiquettes des mots-clés venus du Lexique (migration 0090) Bouclier, Pièce élémentaire et Amélioration
 (`equipement.py`), Tour (`divers-craft.py`), Mode Hyper et Mode Super (`annexes-magie.py` ; Mode Hyper n'a plus de page où se poser depuis le retrait
 de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'onglet « Mode Hyper », dont les textes, les constantes et les effets restent
-en base), exclues de l'import par la décision R183 (11). Test :
-`client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
+en base), exclues de l'import par la décision R183 (11) ; et, depuis l'ancrage (R309), Invocation (`invocations.py`), Chasseur et Gladiateur (`classes.py`),
+Maison et Construction (`divers-craft.py`, page Maison), Malédiction (`equipement.py`, page Accessoires) : le filtre est dans chaque importeur, jamais dans `mots_cles_poses`. Test :
+`client/test/importeurs-etiquettes.test.mjs`, qui rejoue les cinq extracteurs sur les instantanés de `sources/raw/classeurs/`.
 
 **Les mots-clés dont le site se sert** (`client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES` : catégories et colonnes de classe, `classe`,
 `capacite-de-classe`, `race`, `metier`, `codex`, étiquettes de sort…) se posent par leur id, jamais par leur écriture, qu'un autre mot-clé pourrait
