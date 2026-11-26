@@ -167,6 +167,23 @@ test('R309 §8 : sans définition écrite, la sous-ligne montre le texte de l’
   assert.equal(ligne(ANCRE).hasAttribute('data-definition'), false);
 });
 
+test('R309 §8 : « le modifier » seulement là où ce texte se modifie à l’adresse de l’élément (relecture finale)', () => {
+  const lienDe = (id, adresse) => ligne({ ...ANCRE, element: { table: 'page', id, adresse, texte: 'Le résumé.' } }).querySelector('.glossaire-mot__origine');
+  // le guide écrit son résumé en place ; une classe, une race, une magie, un métier le tirent d'un champ modifiable sur leur page
+  for (const [id, adresse] of [['guide/zephyra', '/guide/zephyra/'], ['classes/zephyra', '/classes/zephyra/'], ['races/zephyra', '/races/zephyra/'],
+    ['magies/zephyra', '/magies/zephyra/'], ['metiers/zephyra', '/metiers/#metier-zephyra']]) {
+    const origine = lienDe(id, adresse);
+    assert.equal(origine.textContent, 'Texte de la page — le modifier', id);
+    assert.equal(origine.querySelector('a').href, `/M${adresse}`, id);
+  }
+  // une capacité (son effet se modifie sur la page de sa classe), le Codex, le bestiaire, les ressources : la mention seule
+  for (const id of ['capacites/zephyra-frappe', 'lore/zephyra', 'bestiaire/zephyra', 'ressources/zephyra']) {
+    const origine = lienDe(id, `/${id}/`);
+    assert.equal(origine.querySelector('a'), null, id);
+    assert.equal(origine.textContent, 'Texte de la page', id);
+  }
+});
+
 test('F1 (360 px) : le texte de la sous-ligne est dans `div.glossaire-mot__texte`, que la feuille borne à la largeur visible du cadre et colle à son bord ; un mot d’un titre de lien ne se coupe pas lettre par lettre', () => {
   for (const m of [ELFE, ANCRE, { ...ELFE, description: null }, { ...ANCRE, description: 'Écrite.' }]) {
     const td = ligne(m).querySelector('.glossaire-mot__definition');

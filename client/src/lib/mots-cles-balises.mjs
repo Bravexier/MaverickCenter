@@ -805,11 +805,23 @@ export function libellesDesCategories(ids, categories) {
 const ORIGINES_DU_TEXTE = Object.freeze({ page: 'de la page', sort: 'du sort' });
 
 /**
+ * Les rubriques dont la page, à son adresse, modifie le texte que montre le Glossaire (`page.resume`, relecture finale du chantier R309) : le guide l'écrit en place
+ * (src/scripts/edition/guide.mjs) ; une classe, une race, une magie et un métier le tirent d'un champ modifiable sur leur page (serveur/edition.mjs : resumeDeClasse,
+ * `presentation`, resumeDeMagieApres, resumeDuMetier ; le métier se modifie sur /metiers/, où mène son adresse). Pas ailleurs : le résumé d'une capacité vient de son
+ * effet, modifiable sur la page de sa classe, pas sur la sienne ; celui d'une page du Codex, du bestiaire ou des ressources ne se modifie pas sur le site.
+ */
+const RUBRIQUES_AU_TEXTE_MODIFIABLE = Object.freeze(['guide', 'classes', 'races', 'magies', 'metiers']);
+/** Le texte de l'élément se modifie-t-il là où mène son adresse ? Un sort : ses effets, dans son panneau de la page de sa magie (src/scripts/edition/magies.mjs). */
+const texteModifiableASonAdresse = (element) => element?.table === 'sort'
+  || (element?.table === 'page' && RUBRIQUES_AU_TEXTE_MODIFIABLE.includes(String(element.id ?? '').split('/', 1)[0]));
+
+/**
  * La mention qui signale, dans la sous-ligne du Glossaire, un texte venu de l'élément du mot-clé (R309, §8) : « Texte de la page — le modifier », le lien
- * menant à l'endroit où il se modifie (`element.adresse`, préfixée de `base`) ; sans adresse, la mention seule.
+ * menant à l'endroit où il se modifie (`element.adresse`, préfixée de `base`) ; sans adresse, ou là où ce texte ne se modifie pas (texteModifiableASonAdresse),
+ * la mention seule.
  */
 function htmlDeLOrigineDuTexte(element, base) {
-  const lien = typeof element?.adresse === 'string' && element.adresse
+  const lien = typeof element?.adresse === 'string' && element.adresse && texteModifiableASonAdresse(element)
     ? ` — <a href="${echapper(`${String(base ?? '/').replace(/\/+$/, '')}${element.adresse}`)}">le modifier</a>` : '';
   return `<span class="glossaire-mot__origine">Texte ${ORIGINES_DU_TEXTE[element?.table] ?? 'de l’élément'}${lien}</span>`;
 }
