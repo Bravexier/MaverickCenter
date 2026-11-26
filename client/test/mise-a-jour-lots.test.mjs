@@ -474,16 +474,26 @@ test('« Préparer l’ancrage » : l’erreur de l’action est dite ; un état
   assert.equal(h.attentes.length, 0, 'rien à suivre');
 });
 
-test('une page rechargée pendant l’action reprend le suivi ; quand rien ne tourne, elle n’affiche rien de plus', async (t) => {
+test('une page rechargée pendant l’action reprend le suivi ; quand rien ne tourne, elle redit le dernier résultat que garde le service, sans rien relancer', async (t) => {
   const h = horloge(t);
   const repos = await pageDeLAncrage();
   assert.equal(lecturesDeLAncrage(repos.page), 1);
   assert.equal(h.attentes.length, 0);
-  assert.equal(leMessage(repos.page), '');
+  assert.equal(leMessage(repos.page), '', 'service redémarré : aucun résultat, rien à dire (ni « interrompue »)');
 
-  const dejaFini = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: etatFini(resultatDeLAncrage(['page:races/zephyrion'])) });
-  assert.equal(h.attentes.length, 0);
-  assert.equal(leMessage(dejaFini), '', 'un ancien résultat ne se répète pas au chargement');
+  // relecture finale (Fable m7) : le motif d'arrêt, les éléments à trancher et « Reprendre les lignes annulées » restent visibles après un rechargement
+  const arret = { titre: 'Ancrage d’essai', motif: 'un motif d’arrêt inventé.' };
+  const fini = { ...resultatDeLAncrage(['page:races/zephyrion']), arret, suite: true, a_trancher: [{ nom: 'Zephyrion inventé', raison: 'deux noms possibles' }] };
+  const dejaFini = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: etatFini(fini) });
+  assert.equal(h.attentes.length, 0, 'rien ne tourne : aucun suivi');
+  assert.equal(leMessage(dejaFini), rendu.messageDeLAncrage(fini), 'le dernier résultat se redit au chargement');
+  assert.ok(leMessage(dejaFini).includes('un motif d’arrêt inventé'));
+  assert.ok(leMessage(dejaFini).includes('deux noms possibles'), 'les éléments à trancher');
+  assert.ok(dejaFini.section().querySelector('[data-nv-ancrage-reprendre]'), '« Reprendre les lignes annulées » reste proposé');
+  assert.deepEqual(dejaFini.ecritures(), [], 'rien n’est relancé');
+
+  const enErreur = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: { en_cours: false, resultat: null, erreur: { statut: 500, message: 'une erreur inventée' } } });
+  assert.ok(leMessage(enErreur).includes('une erreur inventée'), leMessage(enErreur));
 
   const absent = await monter([]); // service d'avant cette route : 404 silencieux
   assert.equal(absent.section().hidden, false);

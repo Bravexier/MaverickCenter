@@ -606,11 +606,20 @@ async function suivreLAncrage() {
   await relireLaPage();
 }
 
-/** Une page rechargée pendant l'action en reprend le suivi ; quand rien ne tourne, rien ne s'affiche (ni un ancien résultat, ni l'absence de la route). */
+/**
+ * Une page rechargée pendant l'action en reprend le suivi. Quand rien ne tourne, elle redit le dernier résultat que garde le service (motif d'arrêt, « à trancher »,
+ * « Reprendre les lignes annulées » : relecture finale, Fable m7 / C5) ; sans résultat (service redémarré) ni route, rien ne s'affiche.
+ */
 async function reprendreLeSuiviDeLAncrage() {
   if (!lots.reponse) return; // les lots ne se lisent pas ici
   const etat = await appel('GET', 'edition/lots/ancrage/').catch(() => null);
-  if (!etat?.en_cours || lots.occupe) return;
+  if (lots.occupe) return;
+  if (!etat?.en_cours) {
+    if (!etat?.resultat && !etat?.erreur) return;
+    lots.message = messageDeLaFinDeLAncrage(etat);
+    rendreLesLots();
+    return;
+  }
   lots.occupe = true;
   try {
     lots.message = ANCRAGE_EN_COURS;
