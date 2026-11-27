@@ -145,6 +145,9 @@ function balisesDeLaPage(fichier) {
 async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', zone = true, deconnexion = [200, { connecte: false }] }) {
   const appels = [];
   const document = fauxDocument(el('main', {}));
+  const publications = []; // les `detail` de l'événement `maverick:moi`, dans l'ordre
+  document.addEventListener('maverick:moi', (e) => publications.push(e.detail));
+  delete globalThis.maverickMoi;
   if (zone) document.body.append(el('div', { class: 'site-compte', 'data-compte': '', hidden: '', 'data-api': '/api/', 'data-page-profil': '/profil/', 'data-page-connexion': '/connexion/', 'data-accueil': '/' }));
   if (contenu) {
     const page = el('div', {});
@@ -172,7 +175,7 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
   const module = await import(`${SOURCE.href}?page=${(numero += 1)}`);
   await module.pret;
   await attendre();
-  return { document, appels, allers, zone: document.querySelector('[data-compte]') };
+  return { document, appels, allers, publications, zone: document.querySelector('[data-compte]') };
 }
 
 test('menu connecté : avatar rond et nom dans un lien vers le profil ; une seule demande à /api/moi/', async () => {
@@ -366,4 +369,25 @@ test('un seul script de page importe lib/compte.mjs ; il n’importe que lui ; l
   const build = lire('../../tools/build-artifact.mjs');
   assert.match(build, /rel\.startsWith\('profil\/'\)/, 'la version portable n’emporte pas le profil');
   assert.match(build, /rel\.startsWith\('connexion\/'\)/, 'ni la connexion');
+});
+
+// Contrat avec scripts/personnages.mjs (une seule demande par page, sans module commun) : la réponse de GET /api/moi/ est publiée dans
+// `window.maverickMoi` (globalThis ici) puis par l'événement `maverick:moi` (detail : la réponse, ou null si la demande a échoué).
+test('la réponse de /api/moi/ est publiée : propriété globale et événement `maverick:moi`, sans seconde demande ; null si la demande échoue ou sans zone de compte', async () => {
+  const reponse = connecte();
+  const p = await ouvrir({ moi: [200, reponse] });
+  assert.deepEqual(globalThis.maverickMoi, reponse);
+  assert.deepEqual(p.publications, [reponse], 'un seul événement, avec la réponse en detail');
+  assert.equal(p.appels.filter((a) => a.adresse === '/api/moi/').length, 1);
+
+  for (const moi of [[500, {}], new Error('hors ligne')]) {
+    const e = await ouvrir({ moi });
+    assert.equal(globalThis.maverickMoi, null, 'échec : null (et non undefined, qui veut dire « pas encore arrivée »)');
+    assert.deepEqual(e.publications, [null]);
+  }
+
+  const sansZone = await ouvrir({ moi: [200, reponse], zone: false });
+  assert.equal(globalThis.maverickMoi, null);
+  assert.deepEqual(sansZone.publications, [null]);
+  assert.deepEqual(sansZone.appels, [], 'sans zone de compte, aucune demande');
 });

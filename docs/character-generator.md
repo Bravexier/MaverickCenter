@@ -1156,7 +1156,11 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
 
 ## La page `/personnages/`
 
-La liste montre tous les prétirés, et seulement (demande du propriétaire, 2026-10-14) : **portrait** (le carré cadré de l'image, le logo en attendant ;
+La liste montre les personnages que la session voit : les prétirés (visibles de tous, sans session) et, avec une session, les fiches de joueur que la base lui ouvre
+(décision R318, « Joueurs, prétirés, groupes et visibilité » plus bas). Elle est rangée en trois sections, sous un seul en-tête de colonnes : **Mes personnages**
+(les fiches rangées au compte de la session, `a_moi`, section vide mais visible pour une session connectée : le lien « Mes personnages » de l'Espace joueur et du
+profil mène à `/personnages/#mes-personnages`), les **Prétirés**, puis les **Fiches des joueurs** (celles des autres comptes qui se voient, avec le nom de leur propriétaire sous la
+ligne). Une section vide est cachée ; filtres et tri valent pour les trois (`sectionsDeLaListe`). Colonnes de chaque ligne (demande du propriétaire, 2026-10-14) : **portrait** (le carré cadré de l'image, le logo en attendant ;
 l'image vient de `GET /api/personnages/<id>/portrait/`, la liste n'en reçoit que l'empreinte et le style du cadrage), **nom**, **race**, **magies** (une
 case : l'innée puis l'acquise, « Feu, Eau »), **classes** (demande du propriétaire, 2026-10-29 : une case, par rang, la spécialité entre
 parenthèses s'il en a une, « Guerrier (Épéiste), Mage » : la classe telle que la base la donne, la spécialité avec juste une majuscule,
@@ -1167,6 +1171,16 @@ de chaque magie, `data-couleurs`, posées au build ; le script pose sur la ligne
 sans accents), race, magie (innée ou acquise), classe (1ʳᵉ ou 2ᵉ), niveaux, règles à revoir. Ni phrase d'introduction ni bouton de création (la fiche
 se crée depuis le menu, « Fiche de personnage »). Filtres et tri vivent dans l'adresse de la page : une recherche se garde et se partage. Logique pure
 et testée : `lib/personnages-liste.mjs`.
+
+**Réglages sous la ligne** (R318 ; hors du lien, qui est la ligne entière ; `scripts/personnages.mjs`, le niveau de la session vient de la réponse de `GET /api/moi/` que `scripts/compte.mjs` publie (`window.maverickMoi` et événement `maverick:moi` sur `document` : une seule demande par page, jamais une seconde ici), et le service reste
+juge de chaque droit) :
+- **« Visible par »**, sur chaque fiche de joueur que la session règle (la sienne, ou toute fiche pour une session Créateur) : un menu déroulant aux libellés du propriétaire,
+  « Tous (Joueurs et +) », « MJ (MJ et Créateur) » et « Privé (Utilisateur et Créateur) » (`VISIBILITES`). « MJ » n'est proposé qu'à une session de niveau MJ ou Créateur
+  (« option accessible que pour les MJ ») ; une fiche déjà en « MJ » l'affiche, non rechoisissable pour qui ne le peut pas (`optionsDeVisibilite`). Un changement part aussitôt
+  (`PUT /api/personnages/<id>/visibilite/`) ; un échec dit pourquoi et que rien n'a changé (`messageDEchec`), le menu revient à sa valeur. Jamais montré sur un prétiré ni à qui
+  ne peut pas s'en servir (`peutRegler`).
+- **« Ranger au compte »**, sur chaque fiche (prétiré compris) pour une session Créateur seulement (`peutRanger`) : un menu des comptes de `GET /api/utilisateurs/`
+  (nom d'affichage et niveau, sans le propriétaire actuel : `comptesRangeables`), une confirmation, `PUT /api/personnages/<id>/proprietaire/`, puis la liste est relue.
 
 ## Fiches dans la base
 
@@ -1198,22 +1212,26 @@ pas, et la note datée est le seul signal.
 
 - **Deux natures de fiche** (`personnage.nature`) : la fiche d'un **joueur** (`joueur`), qu'il crée pour son propre personnage, et le **prétiré** (`pretire`),
   qui n'est à personne (`proprietaire_id` vide) et que **tout le monde voit**.
-- **Visibilité** d'une fiche de joueur : **lui seul et les administrateurs** par défaut (`visibilite = 'privee'`). Il peut l'ouvrir à **tous les MJ**
-  (`'mj'` : les utilisateurs de rôle `mj`, le « groupe MJ »), à **tout le monde** (`'tous'`), et la montrer à des **utilisateurs désignés**, autant qu'il veut
-  (`personnage_partage`).
+- **Visibilité** d'une fiche de joueur (décision R318 : « Visible par : Tous (Joueurs et +) / MJ (MJ et Créateur) (option accessible que pour les MJ) / Privé (Utilisateur et
+  Créateur) ») : `visibilite = 'privee'` (**le propriétaire et le Créateur**), `'mj'` (les comptes de **niveau** MJ ou Créateur, option que seules
+  les sessions MJ ou Créateur choisissent) ou `'tous'` (les comptes de niveau Joueur, MJ ou Créateur, jamais l'Observateur). Le prétiré est toujours « tous » (`CHECK` du schéma). La visibilité se lit dans
+  `utilisateur.niveau` (R310, migration 0134), pas dans les rôles. Le propriétaire pourra aussi la montrer à des **utilisateurs désignés** (`personnage_partage` : lot suivant).
 - **Groupes de jeu** (`groupe` : un one-shot ou une campagne ; `groupe_membre`) : un joueur peut avoir plusieurs fiches et être dans plusieurs groupes, mais
   n'inscrit **qu'une fiche par groupe** (une ligne par membre et par groupe) : en inscrire une autre **désinscrit** la précédente. La fiche inscrite devient
   **visible de tous les membres de ce groupe**, et d'eux seuls : ses autres fiches restent cachées. On inscrit sa propre fiche ou un prétiré (`v_groupe_controle`).
-- **Rôles** (`utilisateur_role`, cumulables) : `mj`, `editeur` (modification des règles, phase 2), `admin` (voit et gère tout) ; tout utilisateur connecté est
-  lecteur. La page de gestion de ces règles n'est pas encore faite : les tables et les vues les portent déjà.
-- `v_personnage_visible` dit qui voit quelle fiche : une ligne par (fiche, utilisateur, motif), motif `proprietaire`, `admin`, `tous`, `mj`, `groupe`
-  (avec le groupe) ou `partage`. Un utilisateur voit une fiche s'il y a au moins une ligne.
+- **Niveaux** (`utilisateur.niveau`, R310 : `observateur`, `joueur`, `mj`, `createur`, donnés par les rôles du serveur Discord) : ce sont eux, et non plus `utilisateur_role`
+  (`mj`, `editeur`, `admin`, jamais rempli), qui décident de la visibilité depuis la migration 0134 (R318) ; le niveau `createur` voit et règle toutes les fiches.
+- `v_personnage_visible` dit qui voit quelle fiche : une ligne par (fiche, utilisateur, motif), motif `proprietaire`, `admin` (niveau `createur`), `tous`, `mj`, `groupe`
+  (avec le groupe) ou `partage`. Un utilisateur voit une fiche s'il y a au moins une ligne. Le prétiré n'est pas dans la vue : le service l'ouvre à tout visiteur (R307).
+- **Ranger une fiche** (R318) : une session Créateur la range au compte de son choix (`PUT /api/personnages/<id>/proprietaire/`) ; elle devient une fiche de joueur et garde sa
+  visibilité. Les six fiches du site, qui ne sont pas des prétirés mais celles du propriétaire, passent ainsi à son profil, en « Tous ». Hors de ce lot : partage, création d'une
+  fiche à son nom par un joueur, copie d'un prétiré, fiches détachées (R313 (2)).
 
 ### Les tables
 
 | Table | Contenu (cellules de la fiche) |
 | --- | --- |
-| `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage) et ses rôles : connexion Discord prévue à la 1.0 (`feuille-de-route.md`) |
+| `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage, **niveau** : R310, la visibilité des fiches le lit depuis la migration 0134, R318) ; `utilisateur_role` (rôles `mj`, `editeur`, `admin`) ne décide plus de la visibilité |
 | `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements (plus de statut depuis la migration 0038) ; **portrait** et son cadrage (demande du propriétaire, migration 0031) ; **gains de niveau** en deux totaux, `gains_sante` et `gains_chakra` (la santé et le chakra gagnés par les niveaux atteints, décision R73) : migration 0045, qui a remplacé la table `personnage_progression` (une ligne par niveau) par la somme de ses lignes (l'entraînement en texte, `entrainement`, ajouté par la même migration (R71), est retiré par la migration 0062 : `personnage_entrainement`) ; les **NM du MJ**, `nm_mj`, pour toute la fiche (décision R118, migration 0066) ; le **Mode Hyper** et le **Mode Hyper 100 %** du moment, `mode_hyper` et `mode_hyper_100` (0/1, décision R172, migration 0084 ; le 100 % exige le Mode Hyper : contrainte `personnage_mode_hyper_100_avec_mode_hyper`, la base ne décoche rien d'elle-même ; les niveaux qui les débloquent sont au moteur), et le compteur « une fois par semaine », `mode_hyper_semaine` (les utilisations qui restent, NULL au maximum), dans la note du tableur (« Mode Hyper : actif, 100 %, semaine 0/1 ») |
 | `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche |
 | `personnage_classe` | Classes 1 et 2 (A9, A11) et leur spécialité (choisie au niveau de classe 10) |

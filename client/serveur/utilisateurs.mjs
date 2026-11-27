@@ -46,9 +46,17 @@ export function lireLeProfil(db, id) {
 }
 
 /**
+ * Les comptes du site pour le menu de transfert d'une fiche (R318) : `{ id, nom_affichage, niveau }`, dans l'ordre alphabétique des noms. Jamais l'identifiant
+ * Discord, ni les images ni les dates : la route (GET /api/utilisateurs/) n'est ouverte qu'à une session de niveau Créateur.
+ */
+export function listerLesComptes(db) {
+  return db.prepare('SELECT id, nom_affichage, niveau FROM utilisateur ORDER BY nom_affichage COLLATE NOCASE, id').all().map((l) => ({ ...l }));
+}
+
+/**
  * Efface le compte du titulaire Discord `discordId` s'il existe (R312 : le compte d'un non-membre du serveur ne se garde pas). Les comptes en `ON DELETE CASCADE`
  * (`utilisateur_role`, `personnage_partage`, `groupe_membre`) partent avec lui ; une référence SANS cascade (`personnage.proprietaire_id`, `modification_lot.auteur_id`)
- * l'en empêche : rien n'est effacé, et la réponse dit lesquelles (état provisoire, R313 : jusqu'à E8, où les fiches resteront, détachées, sans propriétaire). Jamais de requête hors de la base vivante ouverte avec
+ * l'en empêche : rien n'est effacé, et la réponse dit lesquelles (état provisoire, R313 : tant que les fiches détachées (R313 (2)) ne sont pas faites, un compte qui a une fiche n'est pas effacé). Jamais de requête hors de la base vivante ouverte avec
  * `foreign_keys = ON` (refusé sinon : l'effacement laisserait des références rompues).
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {string} discordId

@@ -14,7 +14,7 @@ import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import { aideDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
+import { COLONNES, FILTRES_PAR_DEFAUT, sectionsDeLaListe } from '../src/lib/personnages-liste.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 import { RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
@@ -388,8 +388,15 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   assert.ok(entetes.every((e) => e.classe === e.cle), 'la classe de chaque en-tête suit sa clé');
   assert.deepEqual(entetes.filter((e) => !e.triable).map((e) => e.cle), ['portrait'], 'seul le portrait ne se trie pas');
   assert.ok(!/data-cle="statut"/.test(html) && !/<th scope="col"/.test(html), 'ni colonne de statut ni tableau');
-  // les lignes, remplies par le script de la page (chacune tout entière un lien vers la fiche)
-  assert.match(html, /<ol class="personnages-lignes" id="lignes" aria-label="Personnages"><\/ol>/);
+  // les lignes, remplies par le script de la page (chacune tout entière un lien vers la fiche), rangées en trois sections (R318) : une liste par section, nommée
+  // par son titre ; « Mes personnages » porte l'ancre (id) que vise l'entrée du menu Espace joueur
+  const sections = [...html.matchAll(/<section class="personnages-section" id="([a-z-]+)" aria-labelledby="([a-z-]+)" hidden>\s*<h2 id="([a-z-]+)">[^<]+<\/h2>\s*<ol class="personnages-lignes" id="([a-z-]+)" aria-labelledby="([a-z-]+)"><\/ol>\s*<\/section>/g)];
+  assert.deepEqual(sections.map((m) => m[1]), ['mes-personnages', 'pretires', 'fiches-des-joueurs'], 'les trois sections de sectionsDeLaListe, dans l’ordre');
+  assert.equal(Object.keys(sectionsDeLaListe([])).length, sections.length, 'une section par clé de sectionsDeLaListe');
+  for (const m of sections) assert.ok(m[2] === m[3] && m[5] === m[3], `la liste de ${m[1]} est nommée par son titre`);
+  assert.equal(new Set(sections.map((m) => m[4])).size, sections.length, 'une liste (id) par section');
+  assert.ok(html.includes('id="mes-personnages"'), 'l’ancre #mes-personnages, que vise le menu Espace joueur');
+  assert.ok(!html.includes('id="lignes"'), 'plus de liste unique');
 });
 
 test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Espace joueur du menu', options, () => {
@@ -398,6 +405,7 @@ test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fich
   const scripts = [lire('404.html'), ...readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.js')).map((f) => lire(`_astro/${f}`))];
   assert.ok(scripts.some((s) => /"generateur\/":`fiche\/`|"generateur\/":"fiche\/"/.test(s)), 'correspondance /generateur/ → /fiche/ dans le script de la page 404');
   const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="joueur"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Fiche de personnage /fiche/', 'Personnages /personnages/']);
+  // les entrées qui mènent à une page (les « bientôt » n'ont pas de lien) : la fiche, la liste, puis sa section « Mes personnages » (R318)
+  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]), ['/fiche/', '/personnages/', '/personnages/#mes-personnages']);
   assert.match(lire('fiche/index.html'), /<button type="button" class="nav-group__toggle" data-group="joueur" aria-pressed="true" aria-current="true">/, 'rubrique ouverte sur la fiche');
 });

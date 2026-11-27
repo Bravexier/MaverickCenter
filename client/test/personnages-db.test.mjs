@@ -61,12 +61,10 @@ function inserer(table, ligne) {
 // Lignes de la base construite, avant les fiches de ce test (data/rows les garde vides).
 const LIGNES_AU_DEPART = Object.fromEntries(TABLES.map((t) => [t, db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n]));
 
-// Utilisateurs : quatre joueurs, une MJ (rôle 'mj') et un administrateur, tous des comptes Discord (plus de compte local : migration 0132, R310).
-const UTILISATEURS = { alice: [], bob: [], dan: [], eve: [], claire: ['mj'], root: ['admin'] };
-for (const [id, roles] of Object.entries(UTILISATEURS)) {
-  inserer('utilisateur', compteDEssai(id, id, INSTANT));
-  for (const role of roles) inserer('utilisateur_role', { utilisateur_id: id, role });
-}
+// Utilisateurs : quatre joueurs, une MJ et un Créateur, tous des comptes Discord (plus de compte local : migration 0132, R310). La visibilité suit leur
+// niveau (décision R318, migration 0134 ; les niveaux un par un, Observateur compris : test/db-0134-visibilite-par-niveau.test.mjs).
+const UTILISATEURS = { alice: 'joueur', bob: 'joueur', dan: 'joueur', eve: 'joueur', claire: 'mj', root: 'createur' };
+for (const [id, niveau] of Object.entries(UTILISATEURS)) inserer('utilisateur', compteDEssai(id, id, INSTANT, { niveau }));
 const voit = (utilisateur, personnage) => db.prepare('SELECT motif FROM v_personnage_visible WHERE utilisateur_id = ? AND personnage_id = ? ORDER BY motif').all(utilisateur, personnage).map((r) => r.motif);
 const spectateurs = (personnage) => [...new Set(db.prepare('SELECT utilisateur_id FROM v_personnage_visible WHERE personnage_id = ?').all(personnage).map((r) => r.utilisateur_id))].sort();
 

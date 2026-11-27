@@ -304,7 +304,9 @@ export function routeNormalisee(adresse) {
     case 'personnages':
       if (seul(1)) return r('personnages');
       if (seul(2)) return r('personnages', '{id}');
-      return seul(3) && c === 'portrait' ? r('personnages', '{id}', 'portrait') : ROUTE_INCONNUE;
+      return seul(3) && (c === 'portrait' || c === 'proprietaire' || c === 'visibilite') ? r('personnages', '{id}', c) : ROUTE_INCONNUE;
+    case 'utilisateurs':
+      return seul(1) ? r('utilisateurs') : ROUTE_INCONNUE;
     case 'edition':
       if (seul(1)) return r('edition');
       if (b === 'extrait' && seul(3)) return c === 'meta' ? r('edition', 'extrait', 'meta') : ROUTE_INCONNUE;

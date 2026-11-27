@@ -38,12 +38,17 @@ const TABLE = [
   [LECTURE, /^\/api\/tipeee$/, 'lecture'],
   [['POST'], /^\/api\/classeur$/, 'lecture'],
   [['POST'], /^\/api\/metriques\/page$/, 'lecture'],
-  // prétirés : « Importer » et la page /personnages/ se lisent avec la lecture ; les créer, les modifier et les supprimer demande un Créateur
+  // prétirés et fiches de joueur : « Importer » et la page /personnages/ se lisent avec la lecture (MJ au moins ; le service montre à chacun ce que
+  // v_personnage_visible lui ouvre, R318) ; les créer, les modifier et les supprimer demande un Créateur
   [LECTURE, /^\/api\/personnages$/, 'lecture'],
   [LECTURE, /^\/api\/personnages\/[^/]+$/, 'lecture'],
   [LECTURE, /^\/api\/personnages\/[^/]+\/portrait$/, 'lecture'],
   [['POST'], /^\/api\/personnages$/, 'ecriture'],
   [['PUT', 'DELETE'], /^\/api\/personnages\/[^/]+$/, 'ecriture'],
+  // R318 : ranger une fiche à un compte et régler son « Visible par » (écritures : un Créateur à la porte ; le service exige en plus le Créateur pour le transfert,
+  // le propriétaire ou un Créateur pour la visibilité), et la liste des comptes du menu de transfert (la lecture à la porte ; le service exige une session Créateur)
+  [['PUT'], /^\/api\/personnages\/[^/]+\/(proprietaire|visibilite)$/, 'ecriture'],
+  [LECTURE, /^\/api\/utilisateurs$/, 'lecture'],
   // édition : ce que les pages lisent au chargement pour montrer la base vivante (surcouche), puis les écritures
   [LECTURE, /^\/api\/edition\/(en-attente|listes|pages|mots-cles|chronologie|plan|page-de-l-adresse)$/, 'lecture'],
   [['POST'], /^\/api\/edition\/(lignes|race|classe|bestiaire|portrait|evenement)$/, 'lecture'],

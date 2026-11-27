@@ -184,7 +184,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
   adhésion en attente, exclusion temporaire en cours, ou membre sans rôle correspondant : R311) ; **Joueur** (membre du serveur portant un rôle Joueur, R311) ; **MJ** (lecture du site de dev ; campagnes et scénarios à venir, E9) ; **Créateur** (modifie les règles : édition et mise à jour du site de dev).
   À chaque connexion, le service lit l'appartenance au serveur (portée OAuth `guilds.members.read`) ; le bot de l'application la relit et recalcule le niveau pendant la session, au plus toutes les 5 minutes (API REST, relecture seule ; fait, R314, en avance sur E10 : `serveur.md`, « Connexion par Discord »). À terme, l'Observateur ne verra que les rubriques Règles et Personnage du menu
   (réponse du 2026-10-29), sur la production.
-- **Joueur, MJ et Créateur d'après les rôles Discord** (R311) : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; la correspondance du propriétaire (neuf rôles Joueur, deux MJ, un Créateur) est dans `serveur.md`, « Connexion par Discord ». Le lien avec `utilisateur_role` (visibilité des fiches, `v_personnage_visible`) reste à faire avec E8.
+- **Joueur, MJ et Créateur d'après les rôles Discord** (R311) : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; la correspondance du propriétaire (neuf rôles Joueur, deux MJ, un Créateur) est dans `serveur.md`, « Connexion par Discord ». La visibilité des fiches (`v_personnage_visible`) suit le niveau depuis E8 (R318, migration 0134).
 - **Conservation des comptes** (R312) : pas de date d'expiration ; le compte s'efface quand son titulaire quitte le serveur Discord, constaté pour l'instant à la connexion seulement (appel membre en 404 ou 403, jamais sur une panne de Discord ; jamais de compte créé pour
   un non-membre). R313 (2) : quand un joueur quitte le serveur, son compte est effacé et **ses fiches restent, sans propriétaire** ; d'ici E8, état provisoire : un compte référencé par une fiche (`personnage.proprietaire_id`) ou par le journal n'est pas effacé, noté au journal du service.
 - **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, la production reste ouverte (R307) et le site de dev reste fermé (les clés de lecture et de dépôt restent, R275, R291) ; le compte local que prévoyait la
@@ -196,9 +196,12 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 
 - **Déjà là** : tout le modèle (fiche de joueur ou prétiré, propriétaire, visibilité privée / MJ / tous, partage à des utilisateurs désignés,
   `v_personnage_visible`), voir « Fiches de personnages » plus bas.
-- **À faire** : le service ne lit que les fiches de `v_personnage_visible` et n'écrit que pour leur propriétaire (ou un administrateur) ; « Mes
-  personnages » dans l’Espace joueur du menu ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
-  ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
+- **Entamé** (R318, lot `feature/fiches-de-joueur`) : `v_personnage_visible` suit `utilisateur.niveau` (migration 0134 ; `utilisateur_role` reste, vide) ; le
+  service lit les fiches de joueur selon la vue (prétirés ouverts à tout visiteur, R307) et ne les écrit que pour leur propriétaire ou un Créateur ; le
+  Créateur range une fiche à un compte ; menu « Visible par » (Tous, MJ, Privé) ; « Mes personnages » dans l’Espace joueur, `/personnages/` ne liste que
+  les fiches visibles.
+- **À faire** : création d'une fiche à son nom par un joueur ; partage à des utilisateurs désignés ; copie d'un prétiré vers un joueur ; écriture de sa fiche
+  par un MJ propriétaire sur le site de dev (la porte demande aujourd'hui le Créateur).
 - **Fiches détachées** (R313 (2)) : la fiche d'un joueur qui quitte le serveur **reste, sans propriétaire**, et son compte est effacé (R312). Aujourd'hui une fiche sans propriétaire est un prétiré : le schéma (`personnage.proprietaire_id`, `CHECK` de `nature`) devra
   distinguer une fiche détachée d'un prétiré. D'ici là, le service n'efface pas un compte que référence une fiche.
 

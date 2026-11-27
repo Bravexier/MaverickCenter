@@ -6,6 +6,10 @@
 //   - la page /profil/ (`[data-profil-page]`) : avatar, bannière, nom, niveau, date d'arrivée sur le serveur, « Se déconnecter » ; ou l'invitation à se connecter ;
 //   - la page /connexion/ (`[data-connexion-page]`) : le message du code `?erreur=`, le bouton de connexion qui garde `retour`, et, si l'on est connecté,
 //     de quoi se déconnecter (un niveau trop bas n'est pas une impasse).
+// Publication de la réponse (contrat avec scripts/personnages.mjs, qui n'a pas le droit de refaire la demande ni de partager un module : skill
+// site-version-portable) : `window.maverickMoi` garde la réponse de `GET /api/moi/` (undefined avant son arrivée, null si la demande a échoué), puis
+// l'événement `maverick:moi` est émis sur `document` avec la même réponse en `detail`. Un script de page lit la propriété si l'événement a déjà eu lieu,
+// sinon il attend l'événement.
 // Les images (avatar, bannière) sont chargées depuis cdn.discordapp.com par le navigateur (R310 (5)), jamais copiées. La logique (choix du menu, `retour`
 // filtré, messages, dates) est dans lib/compte.mjs, que ce script est seul à importer (skill site-version-portable). Absent de la version portable (le
 // composant n'est pas posé) et de la page de maintenance.
@@ -21,6 +25,12 @@ async function lireMoi(api) {
   } catch {
     return null;
   }
+}
+
+/** Publie la réponse de `GET /api/moi/` (ou null) : propriété `window.maverickMoi`, puis événement `maverick:moi` (`detail`) sur `document`. */
+function publier(moi) {
+  globalThis.maverickMoi = moi;
+  document.dispatchEvent(new CustomEvent('maverick:moi', { detail: moi }));
 }
 
 function image(src, classe) {
@@ -140,7 +150,10 @@ function afficherLaConnexion(page, moi, config) {
 }
 
 async function demarrer() {
-  if (!zone) return;
+  if (!zone) {
+    publier(null); // pas de zone de compte : aucune demande, et les scripts de page qui attendent la réponse ne restent pas en suspens
+    return;
+  }
   const config = {
     api: zone.getAttribute('data-api') || '/api/',
     pageProfil: zone.getAttribute('data-page-profil') || '/profil/',
@@ -148,6 +161,7 @@ async function demarrer() {
     accueil: zone.getAttribute('data-accueil') || '/',
   };
   const moi = await lireMoi(config.api);
+  publier(moi);
   afficherLeMenu(choixDuMenu(moi, { ...config, chemin: location.pathname, recherche: location.search ?? '' }));
   const profil = document.querySelector('[data-profil-page]');
   if (profil) afficherLeProfil(profil, moi, config);

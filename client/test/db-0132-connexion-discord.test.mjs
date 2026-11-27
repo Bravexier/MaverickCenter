@@ -44,11 +44,12 @@ function poser(db, l) {
   db.prepare(`INSERT INTO utilisateur (${COLONNES.join(', ')}) VALUES (${COLONNES.map(() => '?').join(', ')})`).run(...COLONNES.map((c) => l[c]));
 }
 
-/** Une base neuve ramenée à la forme d'avant de la table (la vue qui la lit refaite dessus), clés étrangères coupées comme dans migrer(). */
+/** Une base neuve ramenée à la forme d'avant de la table (la vue qui la lit refaite dessus, dans le corps qu'elle avait alors : celui que la 0132
+ * recrée, la migration 0134 l'ayant changé depuis), clés étrangères coupées comme dans migrer(). */
 function baseDAvant() {
   const db = new DatabaseSync(':memory:', { enableForeignKeyConstraints: false });
   db.exec(SCHEMA);
-  const vue = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_personnage_visible'").get().sql;
+  const vue = MIGRATION.match(/CREATE VIEW v_personnage_visible AS[\s\S]*?;/)[0];
   db.exec('DROP VIEW v_personnage_visible; DROP TABLE utilisateur;');
   db.exec(FORME_D_AVANT);
   db.exec(vue);

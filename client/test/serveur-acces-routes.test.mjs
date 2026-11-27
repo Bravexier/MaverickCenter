@@ -74,6 +74,7 @@ test('le classement : seul le nécessaire est ouvert, la lecture (session MJ ou 
     lecture: [
       ['GET', '/api/tipeee/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'],
       ['GET', '/api/personnages/'], ['GET', '/api/personnages/essai/'], ['GET', '/api/personnages/essai/portrait/'],
+      ['GET', '/api/utilisateurs/'], // R318 : la porte laisse la lecture ; le service exige une session Créateur
       ['GET', '/api/edition/en-attente/'], ['GET', '/api/edition/listes/'], ['GET', '/api/edition/pages/'], ['GET', '/api/edition/mots-cles/'],
       ['GET', '/api/edition/chronologie/'], ['GET', '/api/edition/plan/'], ['GET', '/api/edition/page-de-l-adresse/'],
       ['POST', '/api/edition/lignes/'], ['POST', '/api/edition/race/'], ['POST', '/api/edition/classe/'], ['POST', '/api/edition/bestiaire/'],
@@ -97,6 +98,7 @@ test('le classement : seul le nécessaire est ouvert, la lecture (session MJ ou 
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
       ['POST', '/api/mise-a-jour/conflits/'], ['POST', '/api/mise-a-jour/copier/'], // « Copier vers le dépôt » (lot 8, base source)
       ['POST', '/api/personnages/'], ['PUT', '/api/personnages/essai/'], ['DELETE', '/api/personnages/essai/'],
+      ['PUT', '/api/personnages/essai/proprietaire/'], ['PUT', '/api/personnages/essai/visibilite/'], // R318 : ranger une fiche, « Visible par »
       ['POST', '/api/v1/metiers/'], ['PATCH', '/api/v1/metiers/essai/'], ['DELETE', '/api/v1/metiers/essai/'],
     ],
   };

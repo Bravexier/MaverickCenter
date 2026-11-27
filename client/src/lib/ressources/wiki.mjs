@@ -456,15 +456,15 @@ export const RESSOURCES = [
   },
 ];
 
-const FICHES = 'servie par /api/personnages/ (serveur/fiches.mjs) ou à venir avec les comptes (connexion Discord, E7), jamais par /api/v1/ : section 13, ' +
+const FICHES = 'servie par /api/personnages/ (serveur/fiches.mjs ; une fiche de joueur selon son propriétaire et sa visibilité, R318) et /api/utilisateurs/ (les comptes, à un Créateur), jamais par /api/v1/ : section 13, ' +
   'vide dans data/rows, vit dans la base vivante du service (db/), dans TABLES_INTERDITES du journal';
 const JOURNAL = 'journal de l’édition du site de dev (section 14), servi par /api/edition/ : vide dans data/rows, dans TABLES_INTERDITES du journal';
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
 export const HORS_RESSOURCE = {
   page_ancienne_adresse: 'Registre technique des renvois : l’adresse quittée d’une page renommée (décision R316, migration 0133), écrite par le service au renommage, qui sert à la page 404 ; pas un élément de l’API.',
-  utilisateur: `Compte utilisateur (identifiant Discord, nom affiché) : ${FICHES} ; aucun code ne le remplit encore.`,
-  utilisateur_role: `Rôles cumulables d’un compte (mj, editeur, admin), tirés d’une configuration des rôles Discord : ${FICHES}.`,
+  utilisateur: `Compte utilisateur (identifiant Discord, nom affiché, niveau : observateur, joueur, mj ou créateur, R310), écrit à chaque connexion par Discord ; le niveau dit aussi qui voit quelle fiche (R318) : ${FICHES}.`,
+  utilisateur_role: `Rôles cumulables d’un compte (mj, editeur, admin) : table laissée vide, rien ne l’écrit ni ne la lit depuis R318 (la visibilité des fiches suit \`utilisateur.niveau\`) : ${FICHES}.`,
   personnage: `Fiche de personnage (prétiré ou fiche de joueur, ses choix seulement) : ${FICHES}.`,
   personnage_partage: `Partage d’une fiche de joueur avec des utilisateurs désignés (hors du JSON d’une fiche) : ${FICHES}.`,
   personnage_classe: `Classes d’une fiche (partie de la fiche) : ${FICHES}.`,
