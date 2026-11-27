@@ -7,14 +7,15 @@
 .site-compte__avatar { flex: none; width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; background: var(--border); }
 .site-compte__avatar--vide { display: inline-grid; place-items: center; color: var(--text); text-transform: uppercase; }
 .site-compte__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* le bouton de connexion (menu, profil, connexion) : l'action principale, comme les boutons pleins du site */
+/* le bouton de connexion (menu, profil, connexion) : la couleur et le symbole officiels de Discord, les mêmes dans les deux thèmes (demande du propriétaire du
+   2026-11-27 : « Le bouton "Connexion avec Discord" devrait reprendre exactement le logo et la couleur de discord officiel ») */
 .site-compte__connexion, .bouton-connexion {
   display: inline-block;
   padding: 0.4rem 0.9rem;
   border-radius: var(--radius);
-  border: 1px solid var(--good);
-  background: var(--good);
-  color: var(--texte-sur-good);
+  border: 1px solid var(--discord);
+  background: var(--discord);
+  color: var(--texte-sur-fonce);
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -43,7 +44,9 @@
    - sous 72rem : plus de marge, le compte reprend sa place dans la ligne du menu (avatar ou icône seuls : le menu des 7 rubriques tient encore sur une ligne) ;
    - sous 60rem : le menu passe sous le logo, le compte reste en haut à droite de la ligne du logo. Aucun défilement horizontal à aucune largeur. */
 .site-compte__nom { max-width: 10rem; }
-.site-compte__icone {
+/* le symbole, à gauche du libellé : un élément dans le menu (scripts/compte.mjs), un pseudo-élément sur les pages /connexion/ et /profil/ */
+.bouton-connexion::before { content: ""; }
+.site-compte__icone, .bouton-connexion::before {
   flex: none;
   display: inline-block;
   width: 1.3em;
@@ -54,8 +57,8 @@
   mask: var(--dessin-discord) center / contain no-repeat;
   -webkit-mask: var(--dessin-discord) center / contain no-repeat;
 }
-/* Logo Discord : tracé exact de simple-icons 16.38.1 (icons/discord.svg, CC0), https://cdn.jsdelivr.net/npm/simple-icons@16.38.1/icons/discord.svg */
-.site-compte { --dessin-discord: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z'/%3E%3C/svg%3E"); }
+/* Symbole officiel de Discord : le tracé du fichier « Symbol.svg » de la page de marque https://discord.com/branding (viewBox 0 0 59 44), sans retouche */
+.site-compte, .bouton-connexion { --dessin-discord: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 59 44'%3E%3Cpath d='M37.1937 0C36.6265 1.0071 36.1172 2.04893 35.6541 3.11392C31.2553 2.45409 26.7754 2.45409 22.365 3.11392C21.9136 2.04893 21.3926 1.0071 20.8254 0C16.6928 0.70613 12.6644 1.94475 8.84436 3.69271C1.27372 14.9098 -0.775214 25.8374 0.243466 36.6146C4.67704 39.8906 9.6431 42.391 14.9333 43.9884C16.1256 42.391 17.179 40.6893 18.0819 38.9182C16.3687 38.2815 14.7133 37.4828 13.1274 36.5567C13.5442 36.2557 13.9493 35.9432 14.3429 35.6422C23.6384 40.0179 34.4039 40.0179 43.711 35.6422C44.1046 35.9663 44.5097 36.2789 44.9264 36.5567C43.3405 37.4943 41.6852 38.2815 39.9604 38.9298C40.8633 40.7009 41.9167 42.4025 43.109 44C48.3992 42.4025 53.3653 39.9137 57.7988 36.6377C59.0027 24.1358 55.7383 13.3007 49.1748 3.70429C45.3663 1.95633 41.3379 0.717706 37.2053 0.0231518L37.1937 0ZM19.3784 29.9816C16.5192 29.9816 14.1461 27.3886 14.1461 24.1821C14.1461 20.9755 16.4266 18.371 19.3669 18.371C22.3071 18.371 24.6455 20.9871 24.5992 24.1821C24.5529 27.377 22.2956 29.9816 19.3784 29.9816ZM38.6639 29.9816C35.7931 29.9816 33.4431 27.3886 33.4431 24.1821C33.4431 20.9755 35.7236 18.371 38.6639 18.371C41.6042 18.371 43.9309 20.9871 43.8846 24.1821C43.8383 27.377 41.581 29.9816 38.6639 29.9816Z'/%3E%3C/svg%3E"); }
 @media (max-width: 92.99rem) {
   .site-compte__nom, .site-compte__libelle {
     position: absolute;

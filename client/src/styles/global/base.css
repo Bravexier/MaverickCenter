@@ -35,6 +35,7 @@
   --sheet-google: #1b7340;        /* l'étiquette d'un Google Sheet des Archives, le vert de son icône */
   --sheet-google-fond: #e1f3e8;
   --bandeau-dev: #b45309;         /* le bandeau du site de dev (styles/global/site-shell.css), le même dans les deux thèmes ; la valeur de --a-choisir, un autre sens (« Garder séparées ») */
+  --discord: #5865f2;             /* le « Blurple », couleur officielle de Discord (https://discord.com/branding) : le fond du bouton « Connexion via Discord » (styles/global/compte.css), texte et symbole --texte-sur-fonce (4,6:1), le même dans les deux thèmes */
   --regard-evite: #c27a12;        /* le niveau `evitee` de l'échelle des relations entre les peuples (styles/race/base.css : --regard-evitee, mêlé à la surface), le même dans les deux thèmes */
   --radius: 8px;
   --radius-xs: 4px;
