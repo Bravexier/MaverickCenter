@@ -31,6 +31,7 @@ import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
+import { tenirLIndexDesPages } from './index-des-pages.mjs';
 import { ErreurBaseSource, estEnBascule2, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { creerLesInterrupteursDeGithub } from './bascule-2-etat.mjs';
@@ -384,6 +385,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       etat.erreur = `${etat.erreur ? `${etat.erreur} ; ` : ''}base vivante illisible : ${e.message}`;
       journal(`ERREUR ouverture de la base vivante : ${e.message}`);
     }
+    if (etat.db) tenirLIndexALOuverture();
     attester(preparation);
   }
 
@@ -421,7 +423,22 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       if (auDemarrage) throw e;
       return;
     }
+    tenirLIndexALOuverture();
     attester({ appliquee: true, problemes: 0 });
+  }
+
+  /**
+   * L'index de recherche des pages (`page_fts`) tenu à l'ouverture de la base, après ses migrations : une ligne par page (serveur/index-des-pages.mjs). Répare une base
+   * qu'une version d'avant a laissée en écart (les pages créées par le service n'y entraient pas), avant toute requête, donc avant tout paquet ou extrait. Écriture
+   * hors du journal (table dérivée) ; un échec est noté et n'empêche jamais le service de démarrer (les écritures suivantes tiennent l'index à leur tour).
+   */
+  function tenirLIndexALOuverture() {
+    try {
+      const r = tenirLIndexDesPages(etat.db);
+      if (r.ajoutees || r.retirees) journal(`base vivante : index de recherche des pages réparé, ${r.ajoutees} ligne(s) ajoutée(s), ${r.retirees} retirée(s)`, { categorie: 'base' });
+    } catch (e) {
+      journal(`ERREUR base vivante : index de recherche des pages laissé tel quel (${e.message})`, { categorie: 'base' });
+    }
   }
 
   /**

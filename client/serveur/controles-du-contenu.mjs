@@ -97,13 +97,6 @@ export function controleNomCle(db, tables, normalize) {
 }
 
 /**
- * L'emplacement du problème « page_fts : une ligne par page attendue » : l'index de recherche des pages, table dérivée que la fabrication du site refait
- * (scripts/db-derive.mjs) et que le service n'écrit jamais. serveur/edition-lots.mjs le reconnaît par cet emplacement, jamais par son message, pour ne pas
- * refuser un lot qui crée ou retire une page de notion (docs/chantier-pages-de-notion.md, §4).
- */
-export const ECART_DE_L_INDEX_DES_PAGES = Object.freeze({ table: 'page_fts', regle: 'table_derivee' });
-
-/**
  * Contrôle le contenu d'une base.
  * @param {import('node:sqlite').DatabaseSync} db la base (lecture seule suffit), clés étrangères activées par l'appelant
  * @param {{ heritees?: Set<string>, types?: object }} [options] `heritees` : les familles « héritées » dont les clés étrangères rompues sont tolérées
@@ -492,7 +485,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
 
   // Tables dérivées cohérentes avec leurs sources.
   const n = (sql) => db.prepare(sql).get().n;
-  if (n('SELECT count(*) AS n FROM page_fts') !== n('SELECT count(*) AS n FROM page')) signaler(ECART_DE_L_INDEX_DES_PAGES.table, null, ECART_DE_L_INDEX_DES_PAGES.regle, 'page_fts : une ligne par page attendue');
+  if (n('SELECT count(*) AS n FROM page_fts') !== n('SELECT count(*) AS n FROM page')) signaler('page_fts', null, 'table_derivee', 'page_fts : une ligne par page attendue');
   const liens = n('SELECT count(*) AS n FROM lien');
   bilan.liens = liens;
   bilan.entite_fts = n('SELECT count(*) AS n FROM entite_fts');

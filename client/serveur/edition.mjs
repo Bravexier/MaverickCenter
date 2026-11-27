@@ -100,6 +100,7 @@ import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/me
 import { analyserEffetDArme, refusDesCransPropres } from '../src/lib/arme-champs.mjs';
 import { ErreurHttp, jsonOuNull } from './partage.mjs';
 import { ErreurJournal, ORDRE_DE_REJEU, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
+import { tenirLIndexDesPages } from './index-des-pages.mjs';
 import {
   ecrireLesNmGagnes, famillesDuLecteur, illisiblesDeLaClasse, illisiblesDuDon, partsAEcrire, sourcesDeLaClasse, sourcesDuDon, sourcesRefaitesParLeLot,
 } from './edition-maitrises.mjs';
@@ -3825,6 +3826,8 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
     }
     retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     noterLesRetraits(db, ctx.retraits, instant);
+    // l'index de recherche des pages : edition-lots.mjs#problemesNes l'a déjà tenu avant les contrôles ; ceci garde toute autre écriture d'un lot (serveur/index-des-pages.mjs)
+    if (w.lignes.some((l) => l.table === 'page' && l.operation !== 'modifier')) tenirLIndexDesPages(db);
     // le titre est un résumé comme un autre : un marqueur de suppression forcée ou de fusion qu'il porterait serait lu au rejeu (`marqueursDuResume`)
     w.terminer(neutraliserLeMarqueur(titre), { entete: marqueursDuLot(ctx) });
     try {
@@ -3895,6 +3898,8 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
     retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     // les notes des fiches touchées, dans la transaction du lot (SQL direct, hors du journal) : un refus plus haut les aurait annulées avec le reste
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
+    // une page créée ou supprimée : sa ligne de l'index de recherche, dans la transaction (serveur/index-des-pages.mjs ; hors du journal, table dérivée)
+    if (w.lignes.some((l) => l.table === 'page' && l.operation !== 'modifier')) tenirLIndexDesPages(db);
     w.terminer(resumes.map(neutraliserLeMarqueur).join(' ; '), { entete: marqueursDuLot(ctx) });
     try {
       db.exec('COMMIT');

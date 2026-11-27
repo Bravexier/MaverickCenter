@@ -36,13 +36,12 @@ import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
 import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-potions.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
-import { estDansDecouvrir, estDuGuideDuMj } from '../src/lib/livres.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { lecteurDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { controlerLeContenu, ECART_DE_L_INDEX_DES_PAGES } from './controles-du-contenu.mjs';
+import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
 import { tableDeLElement } from './edition-adresses.mjs';
 import { lectureDesBalises } from './edition-ancrage.mjs';
@@ -52,7 +51,7 @@ import { corpsEntierDesArmures } from './edition-armures.mjs';
 import { corpsEntierDeLaPageDesComposants } from './edition-composants.mjs';
 import { contexteDuCorpsDesPotions, potionsParPage } from './edition-consommables.mjs';
 import { lireLigne, monterLePlafond, nouveauLot, plusHautNumero, structure } from './edition-journal.mjs';
-import { estUnePageDeNotion } from './edition-notions.mjs';
+import { tenirLIndexDesPages } from './index-des-pages.mjs';
 
 /** Le format de l'essai enregistré (`lot_de_changements.essai`). */
 export const FORMAT_DE_L_ESSAI = 1;
@@ -346,7 +345,6 @@ function ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o, note
  */
 function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new Set(), enregistrer = null }) {
   const sorties = { operations: [], numeros: [], verrous: [] };
-  const pagesDeNotion = toucheUnePageDeNotion(db, depose.lot); // lu sur la base d'avant le lot (une page retirée n'y est plus après)
   const travail = (hote) => {
     const { lot: resolu, numeros } = donnerLesNumeros(depose.lot, (table, colonne) => plusHautNumero(db, table, colonne));
     sorties.numeros = numeros;
@@ -384,7 +382,7 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
         throw new ErreurEdition(409, 'Rien à écrire : chaque opération du lot a changé entre-temps (le site prime). Le lot reste proposé : refusez-le, ou déposez-en un nouveau.', { operations: sorties.operations.map(resumerLOperation) });
       }
       // les contrôles du contenu, dans la transaction : un problème né du lot refuse l'application (rien n'est écrit)
-      const nouveaux = problemesNes(db, baseline, { pagesDeNotion });
+      const nouveaux = problemesNes(db, baseline);
       if (nouveaux.length) {
         throw new ErreurEdition(409, `Les contrôles du contenu refusent le lot depuis l’essai (${nombreDe(nouveaux.length, 'problème', 'problèmes')}) : ${nouveaux.slice(0, 5).join(' ; ')}. Refaites l’essai.`, { problemes: nouveaux.slice(0, 40) });
       }
@@ -407,28 +405,13 @@ function resumerLOperation(o) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * L'écart que fait une page de notion créée ou retirée par un lot : `page_fts`, l'index de recherche des pages, ne compte plus une ligne par page. C'est une table
- * dérivée que la fabrication du site refait (scripts/db-derive.mjs) et que le service n'écrit jamais, pas plus pour une page créée par une route. Reconnu par sa
- * table et sa règle (controles-du-contenu.mjs, `emplacements`), jamais par son message.
+ * Les problèmes du contenu de `db` qui ne sont pas dans `connus` (ceux d'avant le lot, ou d'avant l'annulation), après les écritures du lot. L'index de recherche
+ * des pages est d'abord tenu (serveur/index-des-pages.mjs : la ligne d'une page créée, plus celle d'une page partie), dans la transaction en cours : les contrôles
+ * jugent la base telle qu'elle sera validée. Tout problème né du lot compte.
  */
-const estLEcartDeLIndexDesPages = (e) => e?.table === ECART_DE_L_INDEX_DES_PAGES.table && e?.regle === ECART_DE_L_INDEX_DES_PAGES.regle;
-
-/**
- * Les problèmes du contenu de `db` qui ne sont pas dans `connus` (ceux d'avant le lot, ou d'avant l'annulation). `pagesDeNotion` : le lot crée ou retire une page
- * de notion (`toucheUnePageDeNotion`, `annulationDUnePageDeNotion`) ; l'écart de `page_fts` n'est alors pas compté. Tout autre problème né du lot compte.
- */
-function problemesNes(db, connus, { pagesDeNotion = false } = {}) {
-  const { problemes, emplacements } = controlerLeContenu(db);
-  return problemes.filter((p, i) => !connus.has(p) && !(pagesDeNotion && estLEcartDeLIndexDesPages(emplacements[i])));
-}
-
-/**
- * Vrai si le lot crée une page de notion (la forme du lot : `ancrage: { notion: true }`) ou retire une page de notion de `db`, la base d'avant le lot : la définition
- * du service (serveur/edition-notions.mjs#estUnePageDeNotion), que le texte de la page, complété ou non, ne change pas.
- */
-function toucheUnePageDeNotion(db, lot) {
-  return (lot?.operations ?? []).some((o) => o.table === 'page'
-    && ((o.operation === 'inserer' && o.ancrage?.notion === true) || (o.operation === 'supprimer' && estUnePageDeNotion(db, o.cle?.id))));
+function problemesNes(db, connus) {
+  tenirLIndexDesPages(db);
+  return controlerLeContenu(db).problemes.filter((p) => !connus.has(p));
 }
 
 /** Le verdict d'un essai : `a_corriger` (une opération refusée, un problème né du lot, rien à écrire), `verrous` (il faut l'accord du propriétaire), `applicable`. */
@@ -450,7 +433,6 @@ export function essayerLeLot({ source, dossier, depose }) {
   return surUneCopie({ source, dossier }, (db) => {
     const avant = controlerLeContenu(db).problemes;
     const connus = new Set(avant);
-    const pagesDeNotion = toucheUnePageDeNotion(db, depose.lot);
     let sorties = { operations: [], numeros: [], verrous: [] };
     let refusDeLApplication = null;
     try {
@@ -460,7 +442,7 @@ export function essayerLeLot({ source, dossier, depose }) {
       if (!(e instanceof ErreurEdition)) throw e;
       refusDeLApplication = e.message;
     }
-    const nouveaux = refusDeLApplication ? [] : problemesNes(db, connus, { pagesDeNotion });
+    const nouveaux = refusDeLApplication ? [] : problemesNes(db, connus);
     const comptes = { applicables: 0, changees: 0, verrouillees: 0, refusees: 0 };
     for (const o of sorties.operations) comptes[{ applicable: 'applicables', changee: 'changees', verrouillee: 'verrouillees', refusee: 'refusees' }[o.etat]] += 1;
     if (refusDeLApplication) comptes.refusees += 1;
@@ -771,7 +753,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
           ? 'Rien à remettre pour cette ligne : ses valeurs ont changé depuis (le site prime), ou sont déjà revenues à ce qu’elles étaient. Le lot reste appliqué.'
           : 'Rien à remettre : chaque valeur du lot a changé depuis (le site prime), ou est déjà revenue à ce qu’elle était. Le lot reste appliqué.', { operations: sorties.operations.map(resumerLOperation) });
       }
-      const nouveaux = problemesNes(db, baseline, { pagesDeNotion: depose.pages_de_notion === true });
+      const nouveaux = problemesNes(db, baseline);
       if (nouveaux.length) {
         throw new ErreurEdition(409, `Les contrôles du contenu refusent l’annulation (${nombreDe(nouveaux.length, 'problème', 'problèmes')}) : ${nouveaux.slice(0, 5).join(' ; ')}. Le lot reste appliqué.`, { problemes: nouveaux.slice(0, 40) });
       }
@@ -1406,40 +1388,12 @@ function verdictDeLAnnulation(comptes, verrous, nouveaux) {
 /** Le lot d'un lot de changements appliqué, tel que l'annulation le demande : le lot du journal, le titre de son annulation, sa nature et sa décision. */
 const aAnnuler = (db, ligne, lignes = null) => ({
   id: ligne.id, lot_id: ligne.lot_id, titre: `Annulation de « ${ligne.titre} »`, nature: ligne.nature, decision: ligne.decision ?? null,
-  problemes_toleres: problemesToleres(db, ligne, lignes), pages_de_notion: annulationDUnePageDeNotion(db, ligne, lignes),
+  problemes_toleres: problemesToleres(db, ligne, lignes),
 });
 
 /**
- * Vrai si cette annulation retire une page de notion que le lot a insérée, ou remet une page de notion qu'il a retirée (`lignes` : les lignes réellement annulées,
- * sinon le lot entier) : l'écart de `page_fts` qu'elle fait n'est pas un problème (`problemesNes`).
- */
-function annulationDUnePageDeNotion(db, ligne, lignes = null) {
-  if (!ligne.lot_id) return false;
-  let nets;
-  try {
-    nets = netsDuLot(db, ligne.lot_id);
-  } catch (e) {
-    if (e instanceof ErreurEdition) return false; // un lot qui n'est plus au journal, ou en conflit : l'annulation le refuse avec son motif
-    throw e;
-  }
-  return nets.some((n) => (!lignes || lignes.includes(n.rang)) && (estUnePageDeNotionInseree(n) || estUnePageDeNotionRetiree(n, nets)));
-}
-
-/**
- * Une ligne de l'effet net : une page retirée par le lot qui était une page de notion. C'est la définition du service (serveur/edition-notions.mjs#estUnePageDeNotion :
- * du type `guide`, pas d'exemple, hors de tout menu), lue sur la ligne d'avant le lot (`origine`) puisque la page n'est plus dans la base ; son texte n'y entre pas. Une
- * entrée de menu que le lot a retirée avec elle dit qu'elle était dans un onglet.
- */
-function estUnePageDeNotionRetiree(n, nets) {
-  const o = n.origine;
-  if (n.table !== 'page' || n.genre !== 'supprimer' || !o || o.type !== 'guide' || o.statut === 'example') return false;
-  if (estDansDecouvrir(n.cle.id) || estDuGuideDuMj(n.cle.id)) return false;
-  return !nets.some((e) => e.table === 'regles_onglet_entree' && e.genre === 'supprimer' && e.origine?.page_id === n.cle.id);
-}
-
-/**
  * Les problèmes du contenu que cette annulation peut ramener : ceux d'avant le lot (son essai), seulement si elle remet un élément ancré qu'il a retiré, encore absent et
- * hors d'un groupe gardé (il revient avec ses anciens textes, et l'écart de `page_fts`). Toute autre annulation que refusent les contrôles reste refusée : un lot
+ * hors d'un groupe gardé (il revient avec ses anciens textes). Toute autre annulation que refusent les contrôles reste refusée : un lot
  * correctif ne ramène pas le défaut qu'il a corrigé. `lignes` : les lignes réellement annulées (groupe compris), sinon le lot entier.
  */
 function problemesToleres(db, ligne, lignes = null) {
@@ -1492,7 +1446,7 @@ export function essayerLAnnulation({ source, dossier, depose }) {
       if (!(e instanceof ErreurEdition)) throw e;
       refus = e.message; // un lot qui n'est plus au journal, en conflit, une clé étrangère refusée à la validation
     }
-    const nouveaux = refus ? [] : problemesNes(db, connus, { pagesDeNotion: depose.pages_de_notion === true });
+    const nouveaux = refus ? [] : problemesNes(db, connus);
     const comptes = { remises: 0, gardees: 0, deja: 0, verrouillees: 0, refusees: 0 };
     for (const o of sorties.operations) comptes[{ remise: 'remises', gardee: 'gardees', deja: 'deja', verrouillee: 'verrouillees', refusee: 'refusees' }[o.etat]] += 1;
     if (refus) comptes.refusees += 1;

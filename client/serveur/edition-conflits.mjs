@@ -38,6 +38,7 @@ import {
 import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, raisonDuGel, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
 import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
+import { tenirLIndexDesPages } from './index-des-pages.mjs';
 import {
   detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
 } from './fiches-retraits.mjs';
@@ -1111,6 +1112,7 @@ function resoudreUnLotGarde(db, lot, diag, choix, resolution, { instant, id }) {
     const marque = db.prepare('UPDATE modification_lot SET resolu_le = ?, resolu_par = ?, resolution = ? WHERE id = ? AND resolu_le IS NULL')
       .run(instant, reprise, JSON.stringify(resolution), lot.id);
     if (!marque.changes) throw erreur(409, 'Ce lot vient d’être résolu.');
+    tenirLIndexDesPages(db); // une page remise ou retirée par la résolution : sa ligne de l'index de recherche (serveur/index-des-pages.mjs)
     db.exec('COMMIT');
     ouverte = false;
     const vues = new Map([...touchees, ...ctx.w.lignes].map((l) => [cleDeLaLigne(l.table, l.cle), l]));
@@ -1273,6 +1275,7 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
     const marque = db.prepare('UPDATE modification_lot SET resolu_le = ?, resolu_par = ?, resolution = ? WHERE id = ? AND resolu_le IS NULL')
       .run(instant, ecrit ? id : null, JSON.stringify(resolution), lot.id);
     if (!marque.changes) throw erreur(409, 'Ce lot vient d’être résolu.');
+    tenirLIndexDesPages(db); // une page remise ou retirée par la résolution : sa ligne de l'index de recherche (serveur/index-des-pages.mjs)
     db.exec('COMMIT');
     ouverte = false;
     const vues = new Map(ctx.w.lignes.map((l) => [cleDeLaLigne(l.table, l.cle), l]));
