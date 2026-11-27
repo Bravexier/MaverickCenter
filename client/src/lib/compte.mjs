@@ -137,3 +137,18 @@ export const MESSAGE_DU_NON_MEMBRE = 'Vous êtes connecté, mais vous n’êtes 
 export function messageDErreur(code) {
   return typeof code === 'string' && Object.hasOwn(MESSAGES_DES_ERREURS, code) ? MESSAGES_DES_ERREURS[code] : null;
 }
+
+/**
+ * Ce qu'une entrée du menu du profil demande (lib/nav.mjs#MENU_DU_PROFIL, R319 (1)) : 'public' (Glossaire, Recherche : tout visiteur) ou 'connecte' (tout le reste : Mon
+ * profil, les espaces, Site de dev, Voir le site en tant que…, Se déconnecter). Un compte connecté, membre ou non, voit le même menu : rien n'est masqué selon le niveau
+ * avant le lot 4 (R319 (3)), et « Se déconnecter » vaut pour tout compte connecté (la page /profil/ dit au non-membre qu'il n'a aucun niveau).
+ * @returns {'public'|'connecte'}
+ */
+export function categorieDeLEntreeDuProfil(entree) {
+  return entree?.action || entree?.niveau || entree?.prodSeulement || entree?.externe || entree?.connecte ? 'connecte' : 'public';
+}
+
+/** Les catégories d'entrées du menu du profil que montre un état du compte (etatDuCompte) : un compte connecté (membre ou non-membre), tout ; sinon le public. */
+export function categoriesVisibles(etat) {
+  return etat === 'connecte' || etat === 'non_membre' ? ['public', 'connecte'] : ['public'];
+}

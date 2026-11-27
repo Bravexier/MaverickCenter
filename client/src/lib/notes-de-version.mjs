@@ -945,17 +945,28 @@ const nomDEntree = (e, x) => (e.page_id ? x.ligne('page', e.page_id)?.titre ?? e
  *   - une page qui change d'onglet : « Onglet : Les combats → Exploration », sur la page (déplacée dans l'autre onglet), rangée comme elle ;
  *   - l'ordre d'un menu, une ligne par onglet dont les entrées présentes des deux côtés ne se lisent plus dans le même ordre : « Ordre du menu : A · B →
  *     B · A », de la première à la dernière place qui diffère (comme l'ordre des blocs d'un panneau). Une entrée ajoutée (une page créée) ou retirée (une
- *     page supprimée, ou partie dans un autre onglet) ne compte pas : sa page le dit.
+ *     page supprimée, ou partie dans un autre onglet) ne compte pas : sa page le dit ;
+ *   - le titre d'un onglet (R319 (5) : la seule colonne de `regles_onglet` que le site modifie) : « Titre : Les combats → Combat », sous l'onglet renommé.
  * Rien tant que la production n'a pas le plan.
  */
 function comparerPlanDesRegles(ref, dev, x) {
   const a = lignesDe(ref, 'regles_onglet_entree');
   const b = lignesDe(dev, 'regles_onglet_entree');
-  if (!a || !b) return [];
-  const onglets = new Map([...(lignesDe(ref, 'regles_onglet') ?? []), ...(lignesDe(dev, 'regles_onglet') ?? [])].map((o) => [o.id, o]));
+  const avantOnglets = lignesDe(ref, 'regles_onglet');
+  const devOnglets = lignesDe(dev, 'regles_onglet');
+  const onglets = new Map([...(avantOnglets ?? []), ...(devOnglets ?? [])].map((o) => [o.id, o]));
   const titreDOnglet = (id) => onglets.get(id)?.titre ?? id;
   const rangDOnglet = (id) => onglets.get(id)?.ordre ?? 0;
   const sortie = [];
+  const titresAvant = new Map((avantOnglets ?? []).map((o) => [o.id, o.titre]));
+  for (const o of devOnglets ?? []) {
+    if (!titresAvant.has(o.id) || titresAvant.get(o.id) === o.titre) continue;
+    sortie.push(ligneDeNote({
+      def: { table: 'regles_onglet' }, domaine: 'guide', groupe: o.titre, entite: `Onglet « ${o.titre} »`, ordre: [rangDOnglet(o.id), -2], champ: 'Titre',
+      colonne: 'titre', nature: 'modifie', avant: titresAvant.get(o.id), apres: o.titre, cle: { id: o.id },
+    }));
+  }
+  if (!a || !b) return sortie;
   const avantParId = new Map(a.map((e) => [e.id, e]));
   for (const e of b) {
     const avant = avantParId.get(e.id);

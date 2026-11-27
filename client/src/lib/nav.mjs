@@ -1,157 +1,172 @@
-// Arborescence du menu principal (deux lignes). Module pur, sans dépendance Astro/navigateur.
-// Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
-// `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
-// grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Équipement, une page de `regles/`
-// les Règles). Une page ouvre la rubrique dont une entrée ou un début d'adresse est le plus long début de la sienne : /ressources/familiers/ ouvre le
-// Personnage, pas l'Équipement de /ressources/.
-// L'ancre d'une entrée, s'il y en a une, ne compte pas.
-// `devSeulement` : une entrée du site de dev seulement, absente du menu en production (entreesDuMenu).
-// Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
-// Sept rubriques (demande du propriétaire du 2026-10-29, après celles du 2026-10-16 et du 2026-10-18 : « éclater le guide pour retravailler pleinement
-// l'organisation des onglets et de la présentation ») : Règles (l'ancienne Découvrir, la vitrine, avec les onglets des règles), Personnage
-// (l'ancienne Règles), Équipement, Espace joueur, Espace MJ, Codex, Outils ; plus de rubrique Ressources ni d'entrée Guide (les pages du guide sont
-// rangées par lib/livres.mjs : Découvrir, les onglets des Règles — chacun en menu latéral —, Guide du MJ). Rien n'est caché ni filtré : « Pour l'instant comme
-// les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers onglets » (sic ; « ils » : les non-membres) ;
-// « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic) ; ces deux premières rubriques sont, depuis le 2026-10-29, « Règles et
-// Personnage » (réponse du propriétaire). Plus d'entrée « Pièces élémentaires » (demande du 2026-10-29 : « Le sous-menu
-// "pièce élémentaire" et sa page associé seront supprimées ») : son contenu est sur les pages Armes et Armures (« Fusionner dans Armes et Armures »).
-// La rubrique Équipement : les cinq pages de l'équipement (lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, « Cinq pages séparées », libellés « Comme les
-// onglets (pluriel) ») — Armes, Armures, Boucliers, Ceinture, Accessoires —, onglets d'une seule page « Équipement » du 2026-10-16 au 2026-10-29. La
-// ceinture (potions et huiles, carquois et sacs, bâtons magiques : décision R81) est la page Ceinture. Le bouclier ne va pas à la ceinture, son
-// emplacement est dans l'armure (décision R82) : c'est la page Boucliers. L'Artisanat n'y est plus (R184) : c'est une entrée du menu latéral de
-// l'onglet Exploration ; la page Composants reste dans l'Équipement (`ressources/`), son fil d'Ariane mène à l'Artisanat.
-// Les chemins de Découvrir (decouvrir/…) et du Guide du MJ (mj/) sont ceux de lib/livres.mjs, ceux des onglets des Règles (regles/<onglet>/) et leurs
-// libellés ceux de la table regles_onglet, écrits ici à part (nav.mjs n'importe rien : le script de la page 404 l'importe) ; test/livres.test.mjs et
-// test/nav.test.mjs vérifient qu'ils s'accordent.
+// Arborescence du menu du site : cinq rubriques sur une seule ligne d'en-tête, et à gauche de la page le menu latéral des entrées de la rubrique choisie
+// (R319, refonte du menu, lot 1). Module pur, sans dépendance Astro/navigateur, qui n'importe rien : le script de la page 404 l'importe.
+//
+// Une rubrique : { key, label, items, autres?, niveau? } ; une entrée (la forme que lib/menu-db.mjs résout d'après la base) :
+//   { label, path?, motCle?, libelleArbo?, onglet?, enfants?, cle?, niveau?, devSeulement?, prodSeulement? }
+//   - `path`          chemin relatif à la racine du site (sans préfixe de déploiement ni barre initiale) : le repli quand l'entrée n'a ni onglet ni adresse de
+//                     mot-clé, et ce que lisent la rubrique courante (activeGroup, groupIsCurrent) et le script de la page 404. Une entrée sans `path` (ni
+//                     onglet, ni mot-clé à adresse) est affichée grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu) ;
+//   - `motCle`        l'id entier d'un mot-clé du glossaire : l'entrée en prend l'adresse, l'habillage et le libellé, sauf `libelleArbo` (le libellé écrit ici
+//                     l'emporte : « Les races », « Boucliers »…) ; lib/menu-db.mjs ;
+//   - `onglet`        l'id d'un onglet des Règles (regles_onglet.id) : son libellé est le titre de l'onglet dans la base (sauf `libelleArbo`), son adresse regles/<id>/ ;
+//   - `enfants`       les sous-pages d'une entrée qui se déplie (Introduction : Découvrir, L'univers) ; une entrée à enfants n'a pas de lien. `cle` la nomme (l'état
+//                     replié ou déplié se garde par `cle`) ;
+//   - `niveau`        « joueur », « mj » ou « createur » : le niveau d'accès voulu ([J], [MJ], [C] de R319). Porté par les données, JAMAIS appliqué avant le lot 4
+//                     (« Structure d'abord ») : rien n'est caché selon le niveau, `entreesVisibles` ne filtre que `devSeulement` (et `prodSeulement` quand `prod` est faux : le menu du profil) ; une rubrique peut le porter ;
+//   - `devSeulement`  une entrée du site de dev seulement, absente du menu d'un build de production et de la version portable (entreesVisibles) ;
+//   - `prodSeulement` une entrée de la production seulement ([Prod]) : portée, pas encore appliquée non plus ;
+//   - `autres`        (rubrique) débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu : une page ouvre la rubrique dont une entrée ou un début
+//                     d'adresse est le plus long début de la sienne (l'ancre d'une entrée ne compte pas).
+// Cinq rubriques (R319 (1)) : Le Jeu, Règles, Ressources, Le monde, Taverne. Le compte est à droite de l'en-tête (components/Compte.astro) ; le menu du profil
+// (MENU_DU_PROFIL) rassemble ce qui n'est pas dans une rubrique : Glossaire et Recherche y sont des pages du profil, pas d'une rubrique. Toujours pas de barre
+// de recherche. Pas d'entrée pour le générateur /fiche/ (R319 (6)) : on y arrive par « Personnages prétirés » (/personnages/) et par l'onglet des Règles.
+// Les chemins de Découvrir (decouvrir/…) et du Guide du MJ (mj/) sont ceux de lib/livres.mjs, ceux des onglets des Règles (regles/<onglet>/) ceux de la table
+// regles_onglet, écrits ici à part (nav.mjs n'importe rien) ; test/livres.test.mjs et test/nav.test.mjs vérifient qu'ils s'accordent.
+
+/** Les niveaux que porte `niveau` (R319 (3)), du plus bas au plus haut : joueur [J], MJ [MJ], créateur [C]. */
+export const NIVEAUX_DU_MENU = Object.freeze(['joueur', 'mj', 'createur']);
+
+/** L'adresse du site de dev (entrée « Site de dev » du menu du profil) : celle de scripts/db-extrait.mjs#ADRESSE_DU_SITE_DE_DEV, que test/nav.test.mjs compare. */
+export const ADRESSE_DU_SITE_DE_DEV = 'https://dev.maverick-jdr.com/';
+
 export const NAV = [
+  {
+    key: 'jeu',
+    label: 'Le Jeu',
+    // `capacites/` : les dons de classe vont avec les classes ; `fiche/` : le générateur de fiche n'a pas d'entrée (R319 (6)), sa page est tout de même du Jeu.
+    // Familiers (la page `ressources/familiers`) : son adresse, plus longue que `ressources/` de
+    // la rubrique Ressources, fait ouvrir Le Jeu à sa page.
+    autres: ['capacites/', 'fiche/'],
+    items: [
+      // Introduction n'est pas une page : elle se déplie sur Découvrir et L'univers
+      {
+        cle: 'introduction',
+        label: 'Introduction',
+        enfants: [
+          { label: 'Découvrir', motCle: 44, libelleArbo: true, path: 'decouvrir/' },
+          { label: 'L’univers', motCle: 201, path: 'decouvrir/l-univers/' },
+        ],
+      },
+      { label: 'Les races', motCle: 298, libelleArbo: true, path: 'races/' },
+      { label: 'Les magies', motCle: 223, libelleArbo: true, path: 'magies/' },
+      { label: 'Les classes', motCle: 66, libelleArbo: true, path: 'classes/' },
+      { label: 'Les métiers', motCle: 240, libelleArbo: true, path: 'metiers/' },
+      { label: 'Les familiers', path: 'ressources/familiers/' },
+      // l'onglet des Règles (page d'ouverture : guide/creer-son-personnage) ; l'entrée garde le nom de l'arborescence (dix entrées en tout, R319 (4))
+      { label: 'La fiche de personnage', onglet: 'fiche-de-personnage', libelleArbo: true, path: 'regles/fiche-de-personnage/' },
+      { label: 'Personnages prétirés', path: 'personnages/' },
+    ],
+  },
   {
     key: 'regles',
     label: 'Règles',
-    // l'ancienne rubrique Découvrir, renommée « Règles » (demande du propriétaire du 2026-10-29 : « Le menu "Découvrir" sera renommé "Règles", le
-    // sous-menu "Bienvenue" sera renommé "Découvrir" »). Découvrir et L'univers, une page par entrée (choix du propriétaire du 2026-10-18 ; plus
-    // d'entrée « Liens » ni « Rejoindre une partie », demandes du 2026-10-22 et du 2026-11-05), puis les onglets des Règles (R184 : « Fiche de
-    // personnage », « Mécaniques générales », « Les combats », « Exploration » ; aucun onglet « Autre »), chacun à regles/<onglet>/, ouvert sur sa
-    // page d'ouverture à côté de son menu latéral (lib/livres.mjs). Plus d'entrée « Créer son personnage » (l'introduction de l'onglet Fiche de
-    // personnage), « Les bases » ni « Règles avancées ». `autres` : toute page sous regles/ (les pages des onglets, à plat, et l'Artisanat) ouvre les
-    // Règles ; l'onglet marqué vient du plan (`entree` de layouts/Base.astro), pas de l'adresse. Puis le Glossaire (/regles/glossaire/ : la liste de
-    // tous les mots-clés ; réponses du propriétaire du 2026-11-06 : « Glossaire » dans le menu Règles, après Exploration, une page seule), qui n'est pas
-    // un onglet du plan (table regles_onglet).
+    // toute page sous regles/ (les pages des onglets, à plat) ouvre les Règles ; l'onglet marqué sur ces pages (`entree` de layouts/Base.astro) vient du plan
+    // de la base, pas de l'adresse
     autres: ['regles/'],
     items: [
-      { label: 'Découvrir', path: 'decouvrir/' },
-      { label: 'L’univers', path: 'decouvrir/l-univers/' },
-      { label: 'Fiche de personnage', path: 'regles/fiche-de-personnage/' },
-      { label: 'Mécaniques générales', path: 'regles/mecaniques-generales/' },
-      { label: 'Les combats', path: 'regles/combats/' },
-      { label: 'Exploration', path: 'regles/exploration/' },
-      { label: 'Glossaire', path: 'regles/glossaire/' },
+      // les libellés sont les titres des onglets dans la base (le propriétaire les renomme sur le site de dev : Mécaniques de bases, Combat, Avancées)
+      { label: 'Mécaniques générales', onglet: 'mecaniques-generales', path: 'regles/mecaniques-generales/' },
+      { label: 'Les combats', onglet: 'combats', path: 'regles/combats/' },
+      { label: 'Exploration', onglet: 'exploration', path: 'regles/exploration/' },
+      { label: 'Guide du MJ', path: 'mj/', niveau: 'mj' },
+      { label: 'Mise à jour', path: 'mise-a-jour/', niveau: 'joueur' },
+      { label: 'Statistiques', niveau: 'joueur' },
     ],
   },
   {
-    key: 'personnage',
-    label: 'Personnage',
-    // l'ancienne rubrique Règles, renommée « Personnage » (demande du propriétaire du 2026-10-29 : « Il faudra renommer le menu "Règles" en
-    // "Personnage" ») ; les dons de classe vont avec les classes. Familiers (la page `ressources/familiers`, libellé : son titre dans la base) : réponse
-    // du propriétaire du 2026-10-29, « Famillier devrai être dans Personnage » (sic) ; son adresse, plus longue que `ressources/` de l'Équipement, fait
-    // ouvrir le Personnage à sa page.
-    autres: ['capacites/'],
-    items: [
-      { label: 'Races', path: 'races/' },
-      { label: 'Magies', path: 'magies/' },
-      { label: 'Classes', path: 'classes/' },
-      { label: 'Métiers', path: 'metiers/' },
-      { label: 'Familiers', path: 'ressources/familiers/' },
-    ],
-  },
-  {
-    key: 'equipement',
-    label: 'Équipement',
-    // demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement"
-    // Dedans tu y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau
-    // dans un sous-menu dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » Une entrée par page de l'équipement
-    // (« Cinq pages séparées » : lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT, même libellé, même adresse), puis Livres & Parchemins (l'Artisanat est dans
-    // l'onglet Exploration des Règles depuis R184), puis
-    // « Autres » (réponse du propriétaire du 2026-10-29 sur les pages /ressources/… hors menu : « Le reste dans equipement (sous menu-autres pour
-    // commencer) ») : la liste de toutes les pages de ressources, /ressources/ (pages/[type]/index.astro) ; toutes les pages /ressources/… (Composants,
-    // alchimie…) ouvrent cette rubrique, sauf Familiers (Personnage).
+    key: 'ressources',
+    label: 'Ressources',
+    niveau: 'joueur',
+    // toutes les pages /ressources/… (alchimie…) ouvrent cette rubrique, sauf Familiers (Le Jeu) ; « Autres » (/ressources/) liste toutes les pages de ressources
     autres: ['ressources/'],
     items: [
-      { label: 'Armes', path: 'ressources/armes/' },
-      { label: 'Armures', path: 'ressources/armures/' },
-      { label: 'Boucliers', path: 'ressources/bouclier/' },
-      { label: 'Ceinture', path: 'ressources/objets-a-la-ceinture/' },
-      { label: 'Accessoires', path: 'ressources/accessoires/' },
-      { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
+      { label: 'Armes', motCle: 20, path: 'ressources/armes/' },
+      { label: 'Armures', motCle: 23, path: 'ressources/armures/' },
+      { label: 'Boucliers', motCle: 49, libelleArbo: true, path: 'ressources/bouclier/' },
+      { label: 'Accessoires', motCle: 3, path: 'ressources/accessoires/' },
+      { label: 'Ceinture', motCle: 58, path: 'ressources/objets-a-la-ceinture/' },
+      { label: 'Livres & Parchemins', motCle: 198, libelleArbo: true, path: 'ressources/livre-parchemin/' },
+      // l'Artisanat est une page de l'onglet des Règles Exploration (menu latéral du plan), ouverte par cette entrée
+      { label: 'Artisanat', motCle: 25, path: 'regles/artisanat/' },
+      { label: 'Composants', motCle: 76, path: 'ressources/composants/' },
       { label: 'Autres', path: 'ressources/' },
     ],
   },
   {
-    key: 'joueur',
-    label: 'Espace joueur',
-    items: [
-      { label: 'Fiche de personnage', path: 'fiche/' },
-      { label: 'Personnages', path: 'personnages/' },
-      // R318 (étape E8) : la section « Mes personnages » de /personnages/ (les fiches rangées au compte de la session)
-      { label: 'Mes personnages', path: 'personnages/#mes-personnages' },
-      { label: 'Groupes d’aventures' },
-      { label: 'Table de jeu' },
-      { label: 'Chroniques' },
-    ],
-  },
-  {
-    key: 'mj',
-    label: 'Espace MJ',
-    items: [
-      { label: 'Guide du MJ', path: 'mj/' },
-      { label: 'Fiches de PNJ et scénarios' },
-      { label: 'Groupes de jeu' },
-    ],
-  },
-  {
-    key: 'codex',
-    label: 'Codex',
+    key: 'monde',
+    label: 'Le monde',
+    niveau: 'joueur',
     autres: ['bestiaire/', 'lore/', 'cartes/'],
     // Mythologie et Factions : les sommaires des parties « Les Divinités » et « Temples/Cultes/Guildes » du Google Doc « CODEX Maverick » (docs/codex.md) ;
     // Chronologie : les événements datés du Codex et des races, une page par événement (lib/chronologie.mjs, docs/chronologie.md)
     items: [
-      { label: 'Chronologie', path: 'chronologie/' },
-      { label: 'Carte & lieux' },
-      { label: 'Mythologie', path: 'lore/les-divinites/' },
-      { label: 'Bestiaire', path: 'bestiaire/' },
-      { label: 'Factions', path: 'lore/temples-cultes-guildes/' },
+      { label: 'Chronologie', motCle: 65, path: 'chronologie/' },
+      { label: 'Lieux' },
+      { label: 'Mythologie', motCle: 185, libelleArbo: true, path: 'lore/les-divinites/' },
+      { label: 'Bestiaire', motCle: 42, path: 'bestiaire/', niveau: 'mj' },
+      { label: 'Factions', motCle: 349, libelleArbo: true, path: 'lore/temples-cultes-guildes/' },
     ],
   },
   {
-    key: 'outils',
-    label: 'Outils',
+    key: 'taverne',
+    label: 'Taverne',
+    niveau: 'joueur',
     autres: ['pages/', 'donnees/'],
     items: [
-      { label: 'Statistiques' },
-      { label: 'Mise à jour', path: 'mise-a-jour/' },
-      { label: 'Boîte à idée' },
-      { label: 'Galeries', path: 'galeries/' },
-      { label: 'Recherche', path: 'recherche/' },
+      { label: 'Parties' },
+      { label: 'Planning' },
+      { label: 'Galerie', path: 'galeries/' },
+      { label: 'Suggestions' },
       { label: 'Archives', path: 'archives/' },
       // Debug (demande du propriétaire : « visible uniquement sur le serveur dev ») : système, performances, journaux du service et schéma de la base
-      // (pages/debug.astro) ;
-      // `devSeulement` : hors du menu d'un build de production (SITE_MODE=prod) et de la version portable (entreesDuMenu, layouts/Base.astro)
+      // (pages/debug.astro) ; `devSeulement` : hors du menu d'un build de production (SITE_MODE=prod) et de la version portable (entreesVisibles)
       { label: 'Debug', path: 'debug/', devSeulement: true },
     ],
   },
 ];
 
 /**
- * Les entrées d'une rubrique à afficher : sans celles du site de dev seulement (`devSeulement`) quand `dev` est faux (build de production,
- * version portable).
+ * Le menu du profil (R319 (1)), à droite de l'en-tête, rendu par le compte : des blocs d'entrées séparés par un filet. `connecte` : tout compte connecté, quel
+ * que soit son niveau (R319 : « Se déconnecter (tout compte connecté) »). `externe` : une adresse complète, hors du site. `action: 'deconnexion'` : l'entrée
+ * que le compte rend lui-même (script du compte), sans adresse. Les niveaux sont portés, pas appliqués (comme ceux de NAV). Un visiteur non connecté garde
+ * « Connexion via Discord » et un petit menu Glossaire et Recherche.
  */
-export function entreesDuMenu(group, { dev = true } = {}) {
-  return group.items.filter((i) => dev || !i.devSeulement);
+export const MENU_DU_PROFIL = [
+  [{ label: 'Mon profil', path: 'profil/', connecte: true }],
+  [
+    // R318 (étape E8) : la section « Mes personnages » de /personnages/ (les fiches rangées au compte de la session) ; le niveau est porté, pas appliqué (R319 (3))
+    { label: 'Mes personnages', path: 'personnages/#mes-personnages', niveau: 'joueur' },
+    { label: 'Mes groupes', niveau: 'joueur' },
+    { label: 'Mes scénarios', niveau: 'mj' },
+  ],
+  [
+    { label: 'Glossaire', path: 'regles/glossaire/' },
+    { label: 'Recherche', path: 'recherche/' },
+  ],
+  [
+    { label: 'Site de dev', externe: ADRESSE_DU_SITE_DE_DEV, prodSeulement: true, niveau: 'mj' },
+    { label: 'Voir le site en tant que…', niveau: 'createur' },
+  ],
+  [{ label: 'Se déconnecter', action: 'deconnexion', connecte: true }],
+];
+
+/** Les entrées de `entrees` et de leurs `enfants`, à plat, dans l'ordre. */
+export function entreesAPlat(entrees) {
+  return (entrees ?? []).flatMap((e) => [e, ...entreesAPlat(e.enfants)]);
 }
 
-/** Tous les chemins référencés par le menu. */
+/**
+ * Les entrées de `entrees` à afficher : sans celles du site de dev seulement (`devSeulement`) quand `dev` est faux (build de production, version portable), sans
+ * celles de la production seulement (`prodSeulement`) quand `prod` est faux (le site de dev : « Site de dev » du menu du profil), jusque dans les `enfants`. Les
+ * rubriques ne passent pas `prod` (vrai par défaut : rien n'y est de la production seulement). Rien d'autre n'est filtré : ni `niveau` (R319 (3), lot 4).
+ */
+export function entreesVisibles(entrees, { dev = true, prod = true } = {}) {
+  return (entrees ?? []).filter((e) => (dev || !e.devSeulement) && (prod || !e.prodSeulement)).map((e) => (e.enfants ? { ...e, enfants: entreesVisibles(e.enfants, { dev, prod }) } : e));
+}
+
+/** Tous les chemins référencés par le menu (rubriques, sous-pages comprises ; pas le menu du profil). */
 export function navPaths(nav = NAV) {
-  return nav.flatMap((g) => g.items.map((i) => i.path)).filter(Boolean);
+  return nav.flatMap((g) => entreesAPlat(g.items).map((i) => i.path)).filter(Boolean);
 }
 
 /** Le chemin de `pathname` relatif à la racine du site (préfixe de déploiement `base` retiré). */
@@ -160,17 +175,30 @@ function cheminRelatif(pathname, base) {
   return pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname.replace(/^\//, '');
 }
 
+/** Les débuts d'adresse d'une rubrique : ses entrées (sans leur ancre, sous-pages comprises) et ses `autres`. */
+const debutsDe = (group) => [...entreesAPlat(group.items).map((i) => i.path?.split('#')[0]), ...(group.autres ?? [])];
+
 /** La longueur du plus long début d'adresse du groupe (une entrée sans son ancre, ou une `autres`) qui commence `rel` ; -1 si aucun. */
 function correspondance(group, rel) {
   let longueur = -1;
-  for (const debut of [...group.items.map((i) => i.path?.split('#')[0]), ...(group.autres ?? [])]) {
+  for (const debut of debutsDe(group)) {
     if (debut && rel.startsWith(debut) && debut.length > longueur) longueur = debut.length;
   }
   return longueur;
 }
 
-/** La rubrique de `rel` : celle du plus long début d'adresse (la première en cas d'égalité), `null` si aucune. */
-function rubriqueDe(rel, nav) {
+/**
+ * La rubrique de `rel` (relatif à la racine) : une page du menu du profil n'est d'aucune rubrique (Glossaire, Recherche, profil) ; puis la rubrique dont une
+ * entrée est cette page même ; puis celle de l'entrée `entree` (l'onglet du plan d'une page qui n'est pas une entrée : une page d'un onglet des Règles, dont
+ * l'adresse ne dit pas l'onglet) ; puis celle du plus long début d'adresse (la première en cas d'égalité). `null` si aucune.
+ */
+function rubriqueDe(rel, nav, entree) {
+  const duProfil = entreesAPlat(MENU_DU_PROFIL.flat());
+  if (duProfil.some((e) => e.path === rel || (entree && e.path === entree))) return null;
+  const exacte = nav.find((g) => entreesAPlat(g.items).some((i) => i.path === rel));
+  if (exacte) return exacte;
+  const deLEntree = entree ? nav.find((g) => entreesAPlat(g.items).some((i) => i.path === entree)) : null;
+  if (deLEntree) return deLEntree;
   let meilleure = null;
   let longueur = -1;
   for (const g of nav) {
@@ -182,18 +210,25 @@ function rubriqueDe(rel, nav) {
 
 /**
  * Vrai si `pathname` (avec préfixe de déploiement `base`) est dans la section d'un groupe : une de ses entrées, ou une de ses `autres` pages, sans
- * qu'un autre groupe de `nav` en ait un début plus long (/ressources/familiers/ est au Personnage, pas à l'Équipement de /ressources/).
+ * qu'un autre groupe de `nav` en ait un début plus long (/ressources/familiers/ est au Jeu, pas aux Ressources de /ressources/). `entree` : l'entrée du menu
+ * (son `path`) par laquelle on atteint une page qui n'en est pas une (Base.astro, propriété `entree`).
  */
-export function groupIsCurrent(group, pathname, base = '/', nav = NAV) {
+export function groupIsCurrent(group, pathname, base = '/', nav = NAV, entree = undefined) {
   const rel = cheminRelatif(pathname, base);
   if (!nav.includes(group)) return correspondance(group, rel) >= 0;
-  return rubriqueDe(rel, nav) === group;
+  return rubriqueDe(rel, nav, entree) === group;
 }
 
-/** Rubrique à ouvrir pour cette page : celle de la page (groupIsCurrent), sinon la première, les Règles (accueil, page 404…). */
-export function activeGroup(pathname, base = '/', nav = NAV) {
-  return rubriqueDe(cheminRelatif(pathname, base), nav) ?? nav[0];
+/** La rubrique de la page, `null` quand elle n'est d'aucune (l'accueil, la page 404, les pages du menu du profil). */
+export function rubriqueCourante(pathname, base = '/', nav = NAV, entree = undefined) {
+  return rubriqueDe(cheminRelatif(pathname, base), nav, entree);
 }
+
+/** Rubrique dont le menu latéral est montré au départ : celle de la page (rubriqueCourante), sinon la première, Le Jeu (accueil, page 404…). */
+export function activeGroup(pathname, base = '/', nav = NAV, entree = undefined) {
+  return rubriqueCourante(pathname, base, nav, entree) ?? nav[0];
+}
+
 
 /**
  * Nouvelle adresse d'une ancienne adresse du wiki : les pages étaient sous `/wiki/` (`/wiki/races/elfe/` → `/races/elfe/`),

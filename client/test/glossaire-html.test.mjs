@@ -1,5 +1,5 @@
 // Le site CONSTRUIT et la migration 0098 (réponses du propriétaire du 2026-11-06, transmises par le leader-technique) :
-//   - le Glossaire (/regles/glossaire/, Q6 et Q7) : au menu Règles après Exploration ; le tableau de TOUS les mots-clés (décision R234 : au gabarit
+//   - le Glossaire (/regles/glossaire/, Q6 et Q7) : au menu du profil ; le tableau de TOUS les mots-clés (décision R234 : au gabarit
 //     commun ; ses noms, libellé et synonymes ; son type ; son lien, le titre de sa page ; le menu de ses pages, ses mentions de R196 ; le liseré de
 //     sa couleur ; sa définition dans une ligne en plus, ses balises rendues ; R309 : le texte de son élément à défaut, signalé, et `data-ancre`) ; les deux filtres (texte, type) ; les
 //     50 premières lignes visibles, les autres `hidden` (un <noscript> les redonne), aucune navigation sans JavaScript ; les couleurs que propose le mode
@@ -22,6 +22,7 @@ import { categoriesDesMotsCles, chargerVocabulaire, pagesDesLiens } from '../src
 import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
 import { FAMILLES_DE_LA_PALETTE } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { entreesDeLaListe, menuLateral, rubriquesDeLEntete } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'regles', 'glossaire', 'index.html'));
@@ -29,9 +30,12 @@ const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const lire = (chemin) => readFileSync(join(dist, chemin, 'index.html'), 'utf8');
 const decoder = (t) => t.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
-test('R234 : le Glossaire — au menu Règles après Exploration ; le tableau de tous les mots-clés au gabarit commun (noms, catégories, lien au titre de sa page, menu de ses pages = ses mentions, liseré, définition rendue) ; les deux filtres', options, () => {
+test('R234 : le Glossaire — au menu du profil ; le tableau de tous les mots-clés au gabarit commun (noms, catégories, lien au titre de sa page, menu de ses pages = ses mentions, liseré, définition rendue) ; les deux filtres', options, () => {
   const html = lire(join('regles', 'glossaire'));
-  assert.match(html, /<a href="\/regles\/exploration\/"[^>]*>Exploration<\/a><\/li>\s*<li>\s*<a href="\/regles\/glossaire\/" aria-current="page">Glossaire<\/a>/);
+  // R319 (1) : le Glossaire n'est plus au menu des Règles mais au menu du profil (le public : tout visiteur) ; sa page n'est d'aucune rubrique
+  assert.ok(!entreesDeLaListe(menuLateral(html)).some((e) => e.href === '/regles/glossaire/'), 'plus une entrée d’une rubrique');
+  assert.match(html, /<li data-categorie="public"><a class="site-compte__entree" href="\/regles\/glossaire\/" aria-current="page">[^<]+<\/a><\/li>/, 'au menu du profil, courant');
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.courante), [], 'aucune rubrique courante');
   assert.match(html, /<h1>Glossaire<\/h1>/);
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);

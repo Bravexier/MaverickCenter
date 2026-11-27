@@ -1,4 +1,4 @@
-// Les cinq pages de l'équipement (rubrique Équipement du menu ; demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et
+// Les cinq pages de l'équipement (rubrique Ressources du menu ; demande du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et
 // "Espace Joueur" il faudra un nouveau menu : "Equipement" Dedans tu y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les
 // sortant du sous-menu "Equipement" le remettant à nouveau dans un sous-menu dédié » ; à la question du sous-menu dédié : « Cinq pages séparées » ;
 // libellés : « Comme les onglets (pluriel) ») : Armes, Armures, Boucliers, Ceinture, Accessoires, chacune une vraie page à son adresse. Avant, les cinq

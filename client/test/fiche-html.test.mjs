@@ -17,6 +17,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT, sectionsDeLaListe } from '../src/lib/personnages-liste.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 import { RACES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { entreesDeLaListe, menuLateral, rubriquesDeLEntete } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'fiche', 'index.html'));
@@ -399,13 +400,17 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   assert.ok(!html.includes('id="lignes"'), 'plus de liste unique');
 });
 
-test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Espace joueur du menu', options, () => {
+test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; le générateur n’a pas d’entrée au menu (R319 (6)), mais sa page est du Jeu', options, () => {
   assert.ok(!existsSync(join(dist, 'generateur')), 'dossier dist/generateur/');
   // le script de la page 404 est inséré dans la page (petit) ou dans un fichier de _astro/
   const scripts = [lire('404.html'), ...readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.js')).map((f) => lire(`_astro/${f}`))];
   assert.ok(scripts.some((s) => /"generateur\/":`fiche\/`|"generateur\/":"fiche\/"/.test(s)), 'correspondance /generateur/ → /fiche/ dans le script de la page 404');
-  const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="joueur"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  // les entrées qui mènent à une page (les « bientôt » n'ont pas de lien) : la fiche, la liste, puis sa section « Mes personnages » (R318)
-  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => m[1]), ['/fiche/', '/personnages/', '/personnages/#mes-personnages']);
-  assert.match(lire('fiche/index.html'), /<button type="button" class="nav-group__toggle" data-group="joueur" aria-pressed="true" aria-current="true">/, 'rubrique ouverte sur la fiche');
+  // R319 (6) : pas d'entrée pour /fiche/ ; on y arrive par « Personnages prétirés » (/personnages/, dont chaque ligne mène à fiche/?id=…) et par l'onglet des Règles
+  const hrefs = entreesDeLaListe(menuLateral(lire('index.html'))).map((e) => e.href);
+  assert.ok(!hrefs.includes('/fiche/'), 'aucune entrée vers /fiche/');
+  assert.ok(hrefs.includes('/personnages/') && hrefs.includes('/regles/fiche-de-personnage/'), 'Personnages prétirés et l’onglet Fiche de personnage');
+  // la section « Mes personnages » de /personnages/ (R318, étape E8) est au menu du profil (R319), pas à une rubrique
+  assert.match(lire('index.html'), /<a class="site-compte__entree" href="\/personnages\/#mes-personnages">/);
+  assert.ok(!hrefs.includes('/personnages/#mes-personnages'));
+  assert.deepEqual(rubriquesDeLEntete(lire('fiche/index.html')).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, true]], 'rubrique du Jeu sur la fiche');
 });

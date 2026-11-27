@@ -1,5 +1,5 @@
 // Page /bestiaire/ construite (dist/) : deux onglets (monstres, créatures invoquées à part), un tableau filtrable chacun, une fiche sous chaque ligne,
-// l'entrée du menu Codex. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
+// l'entrée du menu Le monde. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,6 +16,7 @@ import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { texteAffiche } from './aide-texte-affiche.mjs';
+import { entreesDeLaListe, listeDeLaRubrique } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -286,8 +287,8 @@ test('sans JavaScript, une carte s’affiche par son lien (:target) ; le script 
   }
 });
 
-test('le menu Codex mène au bestiaire', options, () => {
-  assert.match(html, /<a[^>]*href="\/bestiaire\/"[^>]*aria-current="page"[^>]*>Bestiaire<\/a>|<a[^>]*aria-current="page"[^>]*href="\/bestiaire\/"[^>]*>Bestiaire<\/a>/);
+test('le menu Le monde mène au bestiaire (R319)', options, () => {
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'monde')).filter((e) => e.href === '/bestiaire/').map((e) => e.courant), ['page']);
 });
 
 test('glossaire du butin (demande du propriétaire : « retirer le glossaire du butin ») : plus de section, ses définitions en infobulles des cases de butin', options, () => {

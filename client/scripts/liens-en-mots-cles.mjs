@@ -35,7 +35,7 @@ import { ARTISANAT, partieDeLaPage } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { adresseDeRenvoi, NAV } from '../src/lib/nav.mjs';
+import { adresseDeRenvoi, entreesAPlat, NAV } from '../src/lib/nav.mjs';
 import { classeDeMagie, classeDePartie, classeDeRace, classeDUneClasse } from '../src/lib/palette-css.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -153,7 +153,7 @@ export function generer(db, { repris = MOTS_CLES_EXISTANTS_REPRIS, fusions = FUS
 
   // les routes du menu : chemin → libellé (un seul libellé par chemin)
   const routesDuMenu = new Map();
-  for (const rubrique of NAV) for (const item of rubrique.items) {
+  for (const rubrique of NAV) for (const item of entreesAPlat(rubrique.items)) {
     if (!item.path) continue;
     const chemin = `/${item.path}`;
     if (routesDuMenu.has(chemin) && routesDuMenu.get(chemin) !== item.label) erreurs.push(`route ${chemin} : deux libellés dans le menu`);

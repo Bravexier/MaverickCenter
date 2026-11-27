@@ -2,7 +2,7 @@
 // « Exploration », après Découvrir et L'univers (que le site écrit lui-même), chacun avec son menu latéral. Le plan est une donnée de la base (tables
 // regles_onglet et regles_onglet_entree, section 1 de data/schema.sql), lue ici et passée à lib/livres.mjs, qui reste sans import et range les pages
 // d'après lui. Sur le site de dev, les entrées se modifient (lot de l'édition des menus : ordre, onglet d'une page, page des Règles créée ou supprimée,
-// serveur/edition-plan.mjs) ; les onglets eux-mêmes sont fixes ; en lecture à /api/v1/onglets-des-regles/ (son action `ordre` exceptée).
+// serveur/edition-plan.mjs) ; les onglets eux-mêmes sont fixes, hors leur titre (R319 (5)) ; en lecture à /api/v1/onglets-des-regles/ (son action `ordre` exceptée).
 // Une entrée de page ne porte que l'id de la page : son libellé est le titre de la page, que l'appelant a déjà par les entrées du wiki (une page
 // renommée sur le site de dev change donc son entrée sans toucher au plan).
 // Pur, sans dépendance : la base est passée par l'appelant (lib/donnees.mjs#ouvrirBase au build, en lecture seule ; la base vivante pour le service).

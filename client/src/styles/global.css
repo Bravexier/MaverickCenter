@@ -1,5 +1,6 @@
 @import './global/base.css';
 @import './global/site-shell.css';
+@import './global/menu-site.css';
 @import './global/common.css';
 @import './global/wiki.css';
 @import './global/tableaux.css';

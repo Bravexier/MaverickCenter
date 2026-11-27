@@ -9,8 +9,11 @@ import { test } from 'node:test';
 import { CODES_D_ERREUR, NIVEAUX, RETOUR_PAR_DEFAUT, retourValide as retourDuService } from '../serveur/discord.mjs';
 import {
   LIBELLES_DES_NIVEAUX, MESSAGES_DES_ERREURS, MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, adresseDImage, choixDuMenu, dateFrancaise, etatDuCompte, libelleDuNiveau, messageDErreur,
-  profilAAfficher, retourDeLaPage, retourValide,
+  profilAAfficher, retourDeLaPage, retourValide, categorieDeLEntreeDuProfil, categoriesVisibles,
 } from '../src/lib/compte.mjs';
+import { MENU_DU_PROFIL, entreesVisibles } from '../src/lib/nav.mjs';
+import { resoudreLesEntrees } from '../src/lib/menu-db.mjs';
+import { htmlDuMenuDuProfil } from '../src/lib/menu-rendu.mjs';
 import { attendre, cliquer, el, fauxDocument } from './aide-faux-dom.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
@@ -148,11 +151,18 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
   const publications = []; // les `detail` de l'événement `maverick:moi`, dans l'ordre
   document.addEventListener('maverick:moi', (e) => publications.push(e.detail));
   delete globalThis.maverickMoi;
-  if (zone) document.body.append(el('div', { class: 'site-compte', 'data-compte': '', hidden: '', 'data-api': '/api/', 'data-page-profil': '/profil/', 'data-page-connexion': '/connexion/', 'data-accueil': '/' }));
+  // la page d'abord (ses boutons « Se déconnecter » se trouvent avant ceux du menu), puis la zone de compte avec le balisage de components/MenuDuProfil.astro
   if (contenu) {
     const page = el('div', {});
     page.innerHTML = contenu;
     document.body.append(page);
+  }
+  if (zone) {
+    const blocs = MENU_DU_PROFIL.map((bloc) => entreesVisibles(resoudreLesEntrees(bloc), { dev: true, prod: true }));
+    const z = el('div', { class: 'site-compte', 'data-compte': '', 'data-attente': '', 'data-api': '/api/', 'data-page-profil': '/profil/', 'data-page-connexion': '/connexion/', 'data-accueil': '/' });
+    z.innerHTML = '<button type="button" class="site-compte__petit" aria-expanded="false" aria-controls="menu-du-profil" data-profil-ouvrir></button>'
+      + `<div class="site-compte__panneau" id="menu-du-profil" hidden>${htmlDuMenuDuProfil(blocs, { adresse: (r) => `/${r}`, ici: '/' })}<p class="site-compte__erreur" role="alert" hidden data-profil-erreur></p></div>`;
+    document.body.append(z);
   }
   const allers = [];
   Object.assign(globalThis, {
@@ -178,13 +188,27 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
   return { document, appels, allers, publications, zone: document.querySelector('[data-compte]') };
 }
 
-test('menu connecté : avatar rond et nom dans un lien vers le profil ; une seule demande à /api/moi/', async () => {
+/** Les entrées montrées du menu du profil, leur texte, dans l'ordre. */
+const visibles = (zone) => [...zone.querySelectorAll('[data-categorie]')].filter((li) => !li.hidden).map((li) => li.textContent.trim().replace(/\s+/g, ' '));
+const entree = (zone, libelle) => [...zone.querySelectorAll('[data-categorie]')].find((li) => li.textContent.includes(libelle));
+
+test('menu connecté : l’avatar rond et le pseudo ouvrent le menu du profil (bouton, plus de lien) ; tout le menu y est ; une seule demande à /api/moi/', async () => {
   const p = await ouvrir({ moi: [200, connecte()] });
   assert.equal(p.zone.hidden, false);
-  const lien = p.zone.querySelector('a');
-  assert.equal(lien.getAttribute('href'), '/profil/');
-  assert.equal(lien.querySelector('img').getAttribute('src'), AVATAR);
-  assert.match(lien.textContent, /Aria/);
+  assert.equal(p.zone.hasAttribute('data-attente'), false, 'la zone se montre une fois la réponse lue');
+  const bouton = p.zone.querySelector('.site-compte__lien');
+  assert.equal(bouton.tagName, 'BUTTON');
+  assert.equal(bouton.getAttribute('aria-controls'), 'menu-du-profil');
+  assert.equal(bouton.getAttribute('aria-expanded'), 'false');
+  assert.ok(bouton.hasAttribute('data-profil-ouvrir'));
+  assert.equal(bouton.querySelector('img').getAttribute('src'), AVATAR);
+  assert.match(bouton.textContent, /Aria/);
+  assert.equal(p.zone.querySelector('.site-compte__petit').hidden, true, 'le petit bouton cède la place');
+  assert.equal(p.zone.getAttribute('data-etat'), 'connecte');
+  // le menu complet (R319 (1)) : le profil, les trois espaces « bientôt », Glossaire, Recherche, Site de dev (la production seulement : ici le balisage l'a), l'autre vue, se déconnecter
+  const tout = [...MENU_DU_PROFIL.flat()].map((e) => e.label);
+  assert.deepEqual(visibles(p.zone).map((t) => t.replace(' (bientôt)', '')), tout, 'dans l’ordre de MENU_DU_PROFIL');
+  assert.equal(p.zone.querySelector('a[href="/profil/"]').textContent.trim(), tout[0], 'Mon profil : un lien vers /profil/');
   assert.deepEqual(p.appels.map((a) => `${a.methode} ${a.adresse}`), ['GET /api/moi/']);
 });
 
@@ -194,21 +218,66 @@ test('menu connecté sans avatar lisible : l’initiale, jamais une image hors d
   assert.equal(p.zone.querySelector('.site-compte__avatar').textContent, 'A');
 });
 
-test('menu non connecté : le bouton de connexion, avec la page courante en `retour`', async () => {
+test('menu non connecté : le bouton de connexion avec la page courante en `retour`, à côté du petit menu réduit à Glossaire et Recherche', async () => {
   const p = await ouvrir({ moi: [200, deconnecte], chemin: '/regles/combats/', recherche: '?a=1' });
   assert.equal(p.zone.hidden, false);
-  const lien = p.zone.querySelector('a');
+  const lien = p.zone.querySelector('.site-compte__connexion');
   assert.equal(lien.getAttribute('href'), `/api/connexion/discord/?retour=${encodeURIComponent('/regles/combats/?a=1')}`);
   assert.ok(lien.textContent.trim(), 'un libellé');
+  assert.equal(p.zone.querySelector('.site-compte__petit').hidden, false, 'le petit menu reste');
+  assert.deepEqual(visibles(p.zone), ['Glossaire', 'Recherche']);
+  assert.equal(p.zone.querySelector('.site-compte__lien'), null);
+  assert.equal(entree(p.zone, 'Se déconnecter').hidden, true, 'pas de déconnexion sans compte');
 });
 
-test('menu : requête en échec, statut d’erreur ou connexion non réglée : rien, zone cachée et vide (pas de bouton mort)', async () => {
+test('R319 (1) : un compte connecté non membre garde « Connexion via Discord » et voit le même menu qu’un membre (Mon profil, les entrées à niveau, Se déconnecter) : rien n’est masqué selon le niveau', async () => {
+  const membre = visibles((await ouvrir({ moi: [200, connecte()] })).zone);
+  const p = await ouvrir({ moi: [200, nonMembre] });
+  assert.ok(p.zone.querySelector('.site-compte__connexion'));
+  assert.deepEqual(visibles(p.zone), membre, 'le même menu qu’un membre');
+  assert.equal(p.zone.getAttribute('data-etat'), 'non_membre');
+  cliquer(entree(p.zone, 'Se déconnecter').querySelector('[data-deconnexion]'));
+  await attendre();
+  await attendre();
+  assert.equal(p.appels.find((a) => a.adresse === '/api/deconnexion/').methode, 'POST');
+  assert.deepEqual(p.allers, ['/']);
+});
+
+test('menu du profil : « Se déconnecter » qui échoue le dit dans le menu et reste ; un bloc sans entrée montrée est caché', async () => {
+  const p = await ouvrir({ moi: [200, connecte()], deconnexion: new Error('réseau') });
+  cliquer(entree(p.zone, 'Se déconnecter').querySelector('[data-deconnexion]'));
+  await attendre();
+  await attendre();
+  assert.deepEqual(p.allers, []);
+  const erreur = p.zone.querySelector('[data-profil-erreur]');
+  assert.equal(erreur.hidden, false);
+  assert.ok(erreur.textContent.trim());
+  const visiteur = await ouvrir({ moi: [200, deconnecte] });
+  const blocs = [...visiteur.zone.querySelectorAll('.site-compte__bloc')].map((b) => !b.hidden);
+  assert.deepEqual(blocs, MENU_DU_PROFIL.map((bloc) => bloc.some((e) => categorieDeLEntreeDuProfil(e) === 'public')), 'seuls les blocs à entrées publiques');
+});
+
+test('menu : requête en échec, statut d’erreur ou connexion non réglée : le petit menu seul (Glossaire, Recherche), jamais de bouton mort', async () => {
   for (const moi of [new Error('réseau'), [500, { erreur: 'x' }], [200, { connexion_disponible: false, connecte: false, utilisateur: null }], [200, 'pas un objet']]) {
     const p = await ouvrir({ moi });
-    assert.equal(p.zone.hidden, true, JSON.stringify(moi));
-    assert.equal(p.zone.querySelector('a'), null);
+    assert.equal(p.zone.hidden, false, JSON.stringify(moi));
+    assert.equal(p.zone.hasAttribute('data-attente'), false);
+    assert.equal(p.zone.querySelector('.site-compte__connexion'), null);
+    assert.equal(p.zone.querySelector('.site-compte__lien'), null);
+    assert.equal(p.zone.querySelector('.site-compte__petit').hidden, false);
+    assert.deepEqual(visibles(p.zone), ['Glossaire', 'Recherche']);
     assert.equal(p.appels.length, 1);
   }
+});
+
+test('les catégories du menu du profil : le public (Glossaire, Recherche) ou le compte connecté (tout le reste) ; un non-membre comme un membre', () => {
+  const par = Object.fromEntries(MENU_DU_PROFIL.flat().map((e) => [e.label, categorieDeLEntreeDuProfil(e)]));
+  assert.deepEqual(par, {
+    'Mon profil': 'connecte', 'Mes personnages': 'connecte', 'Mes groupes': 'connecte', 'Mes scénarios': 'connecte', Glossaire: 'public', Recherche: 'public',
+    'Site de dev': 'connecte', 'Voir le site en tant que…': 'connecte', 'Se déconnecter': 'connecte',
+  });
+  for (const etat of ['connecte', 'non_membre']) assert.deepEqual(categoriesVisibles(etat), ['public', 'connecte'], etat);
+  for (const etat of ['deconnecte', 'indisponible', undefined]) assert.deepEqual(categoriesVisibles(etat), ['public'], String(etat));
 });
 
 test('sans zone (version portable, page de maintenance) : aucune demande', async () => {
@@ -273,7 +342,7 @@ test('/connexion/ : le message de ?erreur=, le bouton qui garde `retour` (chemin
   assert.equal(erreur.hidden, false);
   assert.equal(erreur.textContent, MESSAGES_DES_ERREURS.niveau);
   assert.equal(niveau.document.querySelector('[data-lien-connexion]').getAttribute('href'), `/api/connexion/discord/?retour=${encodeURIComponent('/regles/')}`);
-  assert.equal(niveau.zone.hidden, true, 'pas de second bouton dans le menu');
+  assert.equal(niveau.zone.querySelector('.site-compte__connexion'), null, 'pas de second bouton dans le menu');
   for (const code of CODES_D_ERREUR) {
     const p = await ouvrir({ moi: [200, deconnecte], chemin: '/connexion/', recherche: `?erreur=${code}`, contenu });
     assert.equal(p.document.querySelector('[data-connexion-erreur]').textContent, MESSAGES_DES_ERREURS[code], code);
@@ -325,11 +394,11 @@ test('/profil/ et /connexion/ non-membre : le message (celui de lib/compte.mjs),
 
 test('R317 (3) : en menu, le nom et le libellé restent dans la page (nom accessible), l’icône Discord est décorative', async () => {
   const connecteMenu = await ouvrir({ moi: [200, connecte({ nom: 'Lodjay' })] });
-  const lien = connecteMenu.zone.querySelector('a');
-  assert.equal(lien.querySelector('.site-compte__nom').textContent, 'Lodjay', 'le nom est dans le lien, même quand il est masqué à l’œil');
+  const lien = connecteMenu.zone.querySelector('.site-compte__lien');
+  assert.equal(lien.querySelector('.site-compte__nom').textContent, 'Lodjay', 'le nom est dans le bouton, même quand il est masqué à l’œil');
   assert.ok(lien.title.includes('Lodjay'), 'et dans l’infobulle');
   const non = await ouvrir({ moi: [200, deconnecte] });
-  const bouton = non.zone.querySelector('a');
+  const bouton = non.zone.querySelector('.site-compte__connexion');
   assert.ok(bouton.querySelector('.site-compte__libelle').textContent.trim(), 'le libellé est dans le lien');
   assert.equal(bouton.querySelector('.site-compte__icone').getAttribute('aria-hidden'), 'true');
   assert.ok(bouton.title.trim());
@@ -345,11 +414,11 @@ test('R317 (3) : le compte sort dans la marge sans élargir l’en-tête, et sur
   assert.doesNotMatch(css, /\.site-compte__(nom|libelle)[^{}]*\{[^}]*display:\s*none/);
   const coque = lire('../src/styles/global/site-shell.css');
   assert.doesNotMatch(coque, /\.site-header__inner \{[^}]*max-width/, 'l’en-tête garde la largeur du contenu : le logo reste aligné sur le texte');
-  assert.match(coque, /\.site-header__inner \{ position: relative;/, 'le compte se place par rapport à l’en-tête');
-  assert.match(css, /\.site-compte \{ position: absolute; left: 100%;/, 'le compte sort de la largeur, dans la marge à droite');
-  const enFlux = /@media \(max-width: (\d+(?:\.\d+)?)rem\) \{\s*\.site-compte \{ position: static;/.exec(css);
-  assert.ok(enFlux, 'sans marge, le compte reprend sa place dans la ligne');
-  assert.ok(Number(enFlux[1]) <= Number(etroit[1]), 'la marge loge l’avatar avant le nom');
+  assert.doesNotMatch(coque.match(/\.site-header__inner \{[^}]*\}/)[0], /position:/, 'le compte se place par rapport à l’en-tête entier (la colonne de l’en-tête suit celle de la page)');
+  assert.match(css, /\.site-compte \{[^}]*position: absolute;[^}]*right: max\(0\.75rem, calc\(\(100% - var\(--menu-courante, 0px\) - var\(--max\)\) \/ 2 - var\(--largeur-compte\) - 0\.75rem\)\);/s, 'le compte sort de la colonne, dans la marge à droite quand elle le loge, sinon au bord');
+  const enFlux = /@media \(max-width: (\d+(?:\.\d+)?)rem\) \{\s*\.site-compte \{ position: relative; top: auto; right: auto;/.exec(css);
+  assert.ok(enFlux, 'sous la largeur où les rubriques passent sous le logo, le compte reprend sa place dans la ligne du logo');
+  assert.ok(Number(enFlux[1]) <= Number(etroit[1]), 'les rubriques sont sous le logo avant que le nom soit masqué');
   assert.doesNotMatch(css, /\.site-compte \{[^}]*max-width/, 'la zone du compte ne se resserre pas : elle ne pousse pas le menu');
 });
 
@@ -364,8 +433,14 @@ test('un seul script de page importe lib/compte.mjs ; il n’importe que lui ; l
   const lib = sansCommentaires(lire('../src/lib/compte.mjs'));
   assert.ok(!/^import\s/m.test(lib) && !/\b(document|window|location|localStorage)\b/.test(lib), 'module pur : ni import, ni navigateur');
   const base = lire('../src/layouts/Base.astro');
-  assert.match(base, /\{!portable && !maintenance && <Compte \/>\}/);
+  assert.match(base, /\{!portable && !maintenance && <Compte prod=\{site\.prod\} dev=\{dev\} ici=\{here\} \/>\}/);
   assert.match(lire('../src/components/Compte.astro'), /import '\.\.\/scripts\/compte\.mjs';/);
+  // la version portable : le petit menu (Glossaire, Recherche), sans le script du compte ni entrée du compte
+  assert.match(base, /\{portable && <MenuDuProfil portable ici=\{here\} \/>\}/);
+  const menu = lire('../src/components/MenuDuProfil.astro');
+  assert.ok(!/scripts\/compte\.mjs/.test(menu.replace(/\/\/[^\n]*/g, '')), 'MenuDuProfil n’importe aucun module : le script du compte est celui de Compte.astro');
+  assert.match(menu, /data-page-profil=\{portable \? undefined : url\('profil\/'\)\}/, 'portable : aucune adresse vers une page absente (profil, connexion)');
+  assert.doesNotMatch(menu.match(/<script is:inline>[\s\S]*?<\/script>/)[0], /\bimport\b|\bfetch\(/, 'script en ligne, sans import ni demande');
   const build = lire('../../tools/build-artifact.mjs');
   assert.match(build, /rel\.startsWith\('profil\/'\)/, 'la version portable n’emporte pas le profil');
   assert.match(build, /rel\.startsWith\('connexion\/'\)/, 'ni la connexion');

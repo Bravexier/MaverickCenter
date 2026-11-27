@@ -101,8 +101,8 @@ export const RESSOURCES = [
       'Le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les onglets qui suivent Découvrir et L’univers (« Fiche de ' +
       'personnage », « Mécaniques générales », « Les combats », « Exploration »), dans l’ordre de `ordre` (à égalité, l’identifiant), chacun avec son ' +
       'titre et la page montrée à son adresse (`ouverture_page_id`, une page de son menu, pas forcément la première) ; son menu latéral en ' +
-      'sous-ressource ; liste fermée, en lecture seule (l’ordre des onglets et leur page d’ouverture sont fixes) ; l’action `ordre` donne l’ordre de ' +
-      'son menu d’un bloc.',
+      'sous-ressource ; liste fermée (aucun onglet ne se crée ni ne se retire) : seul le titre se modifie (PATCH, décision R319 (5) ; l’ordre des ' +
+      'onglets, leur page d’ouverture et leur adresse sont fixes) ; l’action `ordre` donne l’ordre de son menu d’un bloc.',
     table: 'regles_onglet',
     libelle: 'titre',
     liste: ['id', 'titre', 'ordre', 'ouverture_page_id'],

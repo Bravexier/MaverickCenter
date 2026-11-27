@@ -1,0 +1,75 @@
+---
+// Le compte du visiteur, à droite de l'en-tête, et son menu (R310 : connexion par Discord ; R319 (1) : le menu du profil), SANS le script du compte : components/Compte.astro
+// l'y ajoute (le service est là) ; la version portable (`portable`) pose ce composant seul. La zone porte, côté serveur, un petit bouton
+// (le menu réduit à Glossaire et Recherche : celui du visiteur non connecté, de la version portable et d'un service absent) et le panneau du menu (lib/nav.mjs#
+// MENU_DU_PROFIL, rendu par lib/menu-rendu.mjs#htmlDuMenuDuProfil ; seules les entrées du public sont montrées au départ). src/scripts/compte.mjs (qui importe lib/compte.mjs,
+// seul, posé par Compte.astro) demande UN `GET /api/moi/`, puis : connecté, remplace le petit bouton par l'avatar et le pseudo, qui ouvrent le menu complet ; sinon le bouton « Connexion via
+// Discord » s'ajoute au petit bouton ; sans réponse ou sans connexion réglée, le petit menu reste. Un petit script en ligne (sans import) ouvre et ferme le panneau : bouton
+// (`aria-expanded`), Échap, clic dehors, focus qui sort ; il se ferme quand le tiroir du menu latéral s'ouvre (et inversement). Dans la version
+// portable (`portable` : pas de service, pas de compte), seulement le petit menu et son script en ligne. Le même script du compte remplit aussi /profil/ et /connexion/ (jamais
+// deux scripts de page sur le même module : skill site-version-portable).
+import { url } from '../lib/wiki';
+import { MENU_DU_PROFIL, entreesVisibles } from '../lib/nav.mjs';
+import { menuDuSite } from '../lib/menu-db.mjs';
+import { htmlDuMenuDuProfil } from '../lib/menu-rendu.mjs';
+
+interface Props {
+  /** La version portable : ni service ni compte, le petit menu seulement. */
+  portable?: boolean;
+  /** Un build de production (SITE_MODE=prod) : « Site de dev » (prodSeulement) y est. */
+  prod?: boolean;
+  /** Le site de dev (ni production ni portable). */
+  dev?: boolean;
+  /** L'adresse de la page (avec barre finale). */
+  ici?: string;
+}
+const { portable = false, prod = false, dev = true, ici } = Astro.props;
+const blocs = MENU_DU_PROFIL.map((bloc) => entreesVisibles(menuDuSite(bloc), { dev, prod }));
+const menu = htmlDuMenuDuProfil(blocs, { adresse: url, ici, publicSeulement: portable });
+---
+<div class="site-compte" data-compte data-attente={portable ? undefined : ''} data-api={portable ? undefined : url('api/')} data-page-profil={portable ? undefined : url('profil/')} data-page-connexion={portable ? undefined : url('connexion/')} data-accueil={portable ? undefined : url()}>
+  <button type="button" class="site-compte__petit" aria-expanded="false" aria-controls="menu-du-profil" aria-label="Menu du profil" title="Glossaire et recherche" data-profil-ouvrir>
+    <span class="site-compte__chevron" aria-hidden="true"></span>
+  </button>
+  <div class="site-compte__panneau" id="menu-du-profil" aria-label="Menu du profil" hidden>
+    <Fragment set:html={menu} />
+    <p class="site-compte__erreur" role="alert" hidden data-profil-erreur></p>
+  </div>
+</div>
+<script is:inline>
+  (function () {
+    var zone = document.querySelector('[data-compte]');
+    var panneau = zone && zone.querySelector('.site-compte__panneau');
+    if (!panneau) return;
+    function ouvert() { return !panneau.hidden; }
+    function declencheur() {
+      var l = zone.querySelectorAll('[data-profil-ouvrir]');
+      for (var i = 0; i < l.length; i++) if (!l[i].hidden) return l[i];
+      return null;
+    }
+    function basculer(oui, rendreLeFocus) {
+      panneau.hidden = !oui;
+      Array.prototype.forEach.call(zone.querySelectorAll('[data-profil-ouvrir]'), function (d) { d.setAttribute('aria-expanded', oui ? 'true' : 'false'); });
+      if (oui) document.dispatchEvent(new Event('menu-du-profil:ouvert'));
+      else if (rendreLeFocus) { var d = declencheur(); if (d && d.focus) d.focus(); }
+    }
+    zone.addEventListener('click', function (e) {
+      var cible = e.target && e.target.closest ? e.target : null;
+      if (!cible) return;
+      var d = cible.closest('[data-profil-ouvrir]');
+      if (d && zone.contains(d)) basculer(!ouvert(), true);
+      else if (ouvert() && cible.closest('a[href]')) basculer(false, false);
+    });
+    document.addEventListener('click', function (e) {
+      if (ouvert() && e.target && !zone.contains(e.target)) basculer(false, false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && ouvert()) basculer(false, true);
+    });
+    zone.addEventListener('focusout', function (e) {
+      if (ouvert() && e.relatedTarget && !zone.contains(e.relatedTarget)) basculer(false, false);
+    });
+    // le tiroir du menu latéral s'ouvre : le menu du profil se referme
+    document.addEventListener('menu-du-site:tiroir-ouvert', function () { if (ouvert()) basculer(false, false); });
+  })();
+</script>

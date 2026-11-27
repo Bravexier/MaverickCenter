@@ -225,7 +225,7 @@ const progression = evenement ? `${((position / evenements.length) * 100).toFixe
     }
     // ce que le tiroir rend inerte : cherché à l'ouverture (le pied de page n'est pas encore lu quand ce script tourne)
     function autour() {
-      return [chrono.querySelector('.chrono-page'), barre, ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test')];
+      return [chrono.querySelector('.chrono-page'), barre, ouvrir, document.querySelector('.site-header'), document.querySelector('.menu-site'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test')];
     }
     // la place de la mini-frise : du haut de la grille (sous l'en-tête) ou du haut de l'écran, jusqu'au bas de la grille ou à la barre du bas
     function placer() {

@@ -9,7 +9,8 @@
 //   - la création d'une page des Règles (ENTITES.page_des_regles) et sa suppression, comme celle d'une page de notion (refusée si une raison la protège,
 //     lib/pages-protegees.mjs, ou si une autre page la cite, lib/citations-db.mjs) ;
 //   - le plan vivant pour la page (GET /api/edition/plan/ : planVivant).
-// Les onglets eux-mêmes (regles_onglet) ne changent jamais ici. Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
+// Les onglets eux-mêmes (regles_onglet) : seul leur TITRE se modifie (R319 (5) ; le domaine `onglet`) ; leur ordre et leur page d'ouverture sont fixes,
+// aucun onglet ne se crée ni ne se retire, et leur adresse (`regles/<id>/`) ne suit pas encore le titre (un lot à part). Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
 // idDejaEmploye, adressePrise, estUnePageDeNotion, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
 import { adresseDeLaPage, indexDesAdresses, slugsDAdresse } from '../src/lib/adresses-db.mjs';
 import { citationsBloquantes, citationsDe, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
@@ -45,7 +46,7 @@ export function rangsReordonnes(rangs, apres = 0) {
 }
 
 /**
- * Les domaines et l'opération du plan pour serveur/edition.mjs : { entree (DOMAINES.regles_onglet_entree), page: { creer, supprimer } (ENTITES
+ * Les domaines et l'opération du plan pour serveur/edition.mjs : { entree (DOMAINES.regles_onglet_entree), onglet (DOMAINES.regles_onglet), page: { creer, supprimer } (ENTITES
  * .page_des_regles, sur la table page), ordonner (opération du lot), idPris (l'identifiant d'une page des Règles est-il pris : serveur/edition-notions.mjs le lit) }.
  * @param {{ refus: Function, ErreurEdition: Function, creerPage: Function, supprimerPage: Function, idDejaEmploye: Function, adressePrise: Function,
  *   estUnePageDeNotion: Function, A_COMPLETER: string }} outils
@@ -117,6 +118,22 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
         throw new ErreurEdition(409, `${avant.page_id} ouvre l’onglet « ${ouvre.titre} » (sa page d’ouverture, fixe) : elle ne change pas d’onglet.`, { page: avant.page_id });
       }
       return { rang: rangSuivant(db, cible.id) };
+    },
+  };
+
+  /**
+   * regles_onglet (opération `modifier`) : le titre seulement (TABLES : les autres colonnes sont refusées en 400 avant ce domaine ; R319 (5), réponse
+   * « Ouvrir le titre, adresses renommées » du propriétaire, 2026-11-27, qui remplace « Non, fixe » pour lui seul). Un titre est obligatoire et d'une
+   * ligne (valeurDuChamp, comme celui d'une page) ; il ne se confond pas avec celui d'un AUTRE onglet (409, la comparaison de `normalize` : deux onglets de
+   * même nom ne se distingueraient plus dans le menu), comme le titre d'une page ne reprend pas celui d'une autre (PAGE.colonnes). L'identifiant et
+   * l'adresse (`regles/<id>/`) ne bougent pas : les adresses qui suivent les nouveaux noms sont un lot à part.
+   */
+  const onglet = {
+    colonnes(ctx, ligne, valeurs, avant) {
+      if (!('titre' in valeurs) || normalize(valeurs.titre) === normalize(avant.titre)) return {};
+      const pris = ctx.db.prepare('SELECT id, titre FROM regles_onglet WHERE id <> ? ORDER BY ordre, id').all(avant.id).find((o) => normalize(o.titre) === normalize(valeurs.titre));
+      if (pris) throw new ErreurEdition(409, `Titre « ${valeurs.titre} » : c’est déjà le nom de l’onglet « ${pris.titre} » (deux onglets ne se distingueraient plus dans le menu).`, { onglet: pris.id });
+      return {};
     },
   };
 
@@ -220,7 +237,7 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
     },
   };
 
-  return { entree, page, ordonner, idPris };
+  return { entree, onglet, page, ordonner, idPris };
 }
 
 /**

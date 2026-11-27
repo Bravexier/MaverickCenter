@@ -25,7 +25,7 @@ user-invocable: false
 - Couleur (Q3, Q4) : une référence `famille:id` d'une couleur de la palette, qui suit le site, toutes familles comprises, ou `#rrggbb` (le cercle).
 - La page vers laquelle mène un mot-clé coloré prend sa couleur (Q5) : le mot-clé coloré dont l'adresse y mène, le premier par libellé ; « il ne faut pas de changement par rapport à avant en terme de résultat ». Un mot-clé dont l'adresse a une ancre (`#…`) ne colore pas la page (R271, nouvelle lecture de Q5 : `lib/mots-cles-liens.mjs#motCleDeLaPage`) : il mène à une section, et garde sa couleur dans le texte (balise, tuile, infobulle ; Q13). Un mot-clé par page colorée (Q8), qui reprend la couleur de sa page (classes et races comprises, Q9).
 - « La couleur inclue la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle » (Q13).
-- Les routes du menu ont leur mot-clé, au libellé du menu ; le lien Discord de l'accueil reste un lien (Q10 : `LIENS_GARDES`, `/#lien-discord`).
+- Une entrée du menu du site prend de son mot-clé son adresse, son habillage et son libellé, sauf `libelleArbo` (R319 (4) ; skill `zone-menu`). Aucun mot-clé n'est créé pour une entrée qui n'en a pas ; le lien Discord de l'accueil reste un lien (Q10 : `LIENS_GARDES`, `/#lien-discord`).
 - Homonymes race et classe : Q14 et son suffixe « (classe) » sont caducs ; les deux s'appellent comme la race et se distinguent par leurs catégories (R232 (4) : skill `zone-mots-cles`). Collision avec un mot-clé existant : « Le mot-clé existant prend l'URL » (identifiant et définition gardés) ; la liste des mots-clés repris est `MOTS_CLES_EXISTANTS_REPRIS` du générateur, jamais recopiée ici. Résistance : aucun mot-clé fondu, on garde le nouveau.
 
 ## Choix du leader-technique

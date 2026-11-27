@@ -1,0 +1,245 @@
+---
+// Le menu latéral du site, à gauche de la page, et la page à côté de lui (R319 (2) ; refonte du menu en cinq rubriques, lot 1). Cliquer une rubrique de l'en-tête
+// (layouts/Base.astro) change ce menu sans changer de page ; chaque rubrique a sa liste, rendue côté serveur (la rubrique de la page est montrée : sans
+// JavaScript, c'est elle qu'on voit). Les entrées sont celles que lib/menu-db.mjs résout d'après la base, leur HTML celui de lib/menu-rendu.mjs (le lien d'une
+// entrée à mot-clé est un lien de mot-clé : R319 (4)).
+//
+// Le bouton en tête réduit le menu en une bande étroite à la mesure du bouton, qui ne bouge pas (styles/global/menu-site.css) ; le nom de la rubrique
+// est à côté de lui. L'état (réduit, entrées repliées) est gardé d'une page à l'autre dans localStorage (`menu-du-site:etat`, tolérant à son absence). Le menu
+// démarre réduit sur une page qui a déjà son menu de gauche (le guide, les races, les classes, les magies, les armes, la chronologie) et sur un écran étroit,
+// sans que cela s'écrive : on ne garde que ce que le visiteur a choisi sur les autres pages. Sous 56 rem, ce même balisage est le tiroir (bouton à trois barres de l'en-tête, voile, page inerte).
+//
+// Un seul script, en ligne et sans import (skill site-version-portable : deux scripts de page n'importent jamais le même module), posé après la page (le
+// <slot />) pour trouver, avant le premier affichage, ce que la page a d'elle-même.
+import { htmlDesEntrees } from '../lib/menu-rendu.mjs';
+import { url } from '../lib/wiki';
+
+interface Props {
+  /** Les rubriques : { key, label, entrees } (entrées résolues et filtrées). */
+  rubriques: { key: string; label: string; entrees: any[] }[];
+  /** La clé de la rubrique dont le menu est montré. */
+  montree: string;
+  /** L'adresse de la page, avec barre finale. */
+  ici: string;
+  /** L'`href` de l'entrée (onglet du plan) qui mène à la page sans en être une. */
+  entree?: string;
+  /** La page de maintenance : menu grisé et inerte. */
+  maintenance?: boolean;
+}
+const { rubriques, montree, ici, entree, maintenance = false } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, { rubrique: g.key, adresse: url, base, ici, entree });
+---
+
+<div class="site-corps">
+  <div class="menu-site__voile" data-menu-voile hidden></div>
+  <nav class:list={['menu-site', { 'menu-site--maintenance': maintenance }]} id="menu-du-site" aria-label="Menu latéral" data-menu-site inert={maintenance || undefined}>
+    <div class="menu-site__cadre">
+      <div class="menu-site__tete">
+        <button type="button" class="menu-site__reduire" aria-expanded="true" aria-controls="menu-du-site-contenu" aria-label="Réduire le menu latéral" data-menu-reduire>
+          <span class="menu-site__fleche" aria-hidden="true"></span>
+        </button>
+        <div class="menu-site__titres">
+          {rubriques.map((g) => <p class="menu-site__titre" data-group={g.key} hidden={g.key !== montree}>{g.label}</p>)}
+        </div>
+      </div>
+      <div class="menu-site__contenu" id="menu-du-site-contenu">
+        {
+          rubriques.map((g) => (
+            <ul class="menu-site__liste" data-group={g.key} hidden={g.key !== montree} aria-label={g.label}>
+              {g.entrees.length === 0 ? <li class="nav-soon">À compléter</li> : <Fragment set:html={liste(g)} />}
+            </ul>
+          ))
+        }
+      </div>
+    </div>
+  </nav>
+  <slot />
+  <script is:inline>
+    (function () {
+      var menu = document.querySelector('[data-menu-site]');
+      if (!menu) return;
+      var CLE = 'menu-du-site:etat';
+      // une page qui a déjà son menu de gauche (components/guide/MenuLateral.astro, race, classes, magies, armes, chronologie)
+      var MENU_PROPRE = 'main > .lateral, main > .classe-cadre, main > .magie-cadre, main > .chrono, main .armes-menu';
+      var ETROIT = '(max-width: 56rem)';
+      var bouton = menu.querySelector('[data-menu-reduire]');
+      var burger = document.querySelector('[data-menu-burger]');
+      var voile = document.querySelector('[data-menu-voile]');
+      var rubriques = document.querySelectorAll('.nav-group__toggle');
+      var groupes = menu.querySelectorAll('[data-menu-replier]');
+      var racine = document.documentElement;
+      var etat = { reduit: false, replie: [] };
+
+      // le stockage du navigateur, quand il existe et répond
+      function lire() {
+        try {
+          var brut = JSON.parse(window.localStorage.getItem(CLE) || 'null');
+          if (brut && typeof brut === 'object') {
+            etat.reduit = brut.reduit === true;
+            if (Array.isArray(brut.replie)) etat.replie = brut.replie.filter(function (c) { return typeof c === 'string'; });
+          }
+        } catch (e) {}
+      }
+      function ecrire() {
+        try { window.localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) {}
+      }
+
+      lire();
+      var mq = null;
+      try { mq = window.matchMedia ? window.matchMedia(ETROIT) : null; } catch (e) {}
+      function etroit() { return !!(mq && mq.matches); }
+      var propre = !!document.querySelector(MENU_PROPRE);
+      // réduit au départ, sans garder ce choix : la page a son menu, ou l'écran est étroit (le menu est alors le tiroir, fermé)
+      function sansMemoire() { return etroit() || propre; }
+      var reduit = sansMemoire() ? true : etat.reduit;
+      // une entrée qui contient la page est ouverte d'office
+      var replie = etat.replie.filter(function (c) {
+        var g = menu.querySelector('[data-cle="' + c + '"]');
+        return !g || !g.hasAttribute('data-contient-la-page');
+      });
+      // le tiroir (écran étroit) : ouvert quand le menu n'est pas réduit
+      var tiroir = false;
+      var retour = null;
+      var inertes = [];
+
+      function autour() { return document.querySelectorAll('.site-corps > main, .site-footer, .bandeau-test'); }
+      function focalisables() {
+        var liste = [];
+        ['.site-header', '[data-menu-site]'].forEach(function (sel) {
+          var racineDeLaListe = document.querySelector(sel);
+          if (!racineDeLaListe) return;
+          Array.prototype.forEach.call(racineDeLaListe.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'), function (e) {
+            var visible = e.getClientRects().length > 0 && window.getComputedStyle(e).visibility !== 'hidden';
+            if (visible) liste.push(e);
+          });
+        });
+        return liste;
+      }
+      function ouvrirLeTiroir() {
+        tiroir = true;
+        retour = document.activeElement && document.activeElement !== document.body ? document.activeElement : burger;
+        // sous l'en-tête, tant qu'il est visible
+        var entete = document.querySelector('.site-header');
+        var bas = entete ? Math.max(entete.getBoundingClientRect().bottom, 0) : 0;
+        racine.style.setProperty('--entete-bas', bas + 'px');
+        racine.classList.add('menu-ouvert');
+        if (voile) voile.hidden = false;
+        inertes = Array.prototype.slice.call(autour());
+        inertes.forEach(function (e) { e.inert = true; });
+        document.dispatchEvent(new Event('menu-du-site:tiroir-ouvert'));
+        var courante = menu.querySelector('[aria-current="page"]');
+        var cible = courante || bouton;
+        if (cible && cible.focus) {
+          if (courante && courante.scrollIntoView) courante.scrollIntoView({ block: 'center' });
+          cible.focus({ preventScroll: true });
+        }
+      }
+      function fermerLeTiroir(rendreLeFocus) {
+        tiroir = false;
+        racine.classList.remove('menu-ouvert');
+        if (voile) voile.hidden = true;
+        inertes.forEach(function (e) { e.inert = false; });
+        inertes = [];
+        if (rendreLeFocus) {
+          var cible = retour && retour.isConnected !== false ? retour : burger;
+          if (cible && cible.focus) cible.focus({ preventScroll: true });
+        }
+        retour = null;
+      }
+
+      function appliquer(rendreLeFocus) {
+        menu.setAttribute('data-reduit', reduit ? 'oui' : 'non');
+        bouton.setAttribute('aria-expanded', reduit ? 'false' : 'true');
+        bouton.setAttribute('aria-label', etroit() ? 'Fermer le menu latéral' : reduit ? 'Afficher le menu latéral' : 'Réduire le menu latéral');
+        if (burger) {
+          burger.setAttribute('aria-expanded', reduit ? 'false' : 'true');
+          burger.setAttribute('aria-label', reduit ? 'Ouvrir le menu latéral' : 'Fermer le menu latéral');
+        }
+        Array.prototype.forEach.call(groupes, function (b) {
+          var ferme = replie.indexOf(b.getAttribute('data-menu-replier')) >= 0;
+          b.setAttribute('aria-expanded', ferme ? 'false' : 'true');
+          b.parentNode.setAttribute('data-replie', ferme ? 'oui' : 'non');
+        });
+        var doitEtreOuvert = etroit() && !reduit;
+        if (doitEtreOuvert && !tiroir) ouvrirLeTiroir();
+        else if (!doitEtreOuvert && tiroir) fermerLeTiroir(rendreLeFocus);
+      }
+      function garder() {
+        etat.reduit = reduit;
+        etat.replie = replie.slice();
+        ecrire();
+      }
+      function basculer(oui) {
+        reduit = !oui;
+        appliquer(true);
+        if (!sansMemoire()) garder();
+      }
+
+      menu.setAttribute('data-js', '');
+      if (burger) {
+        burger.hidden = false;
+        burger.addEventListener('click', function () { basculer(reduit); });
+      }
+      bouton.addEventListener('click', function () { basculer(reduit); });
+      if (voile) voile.addEventListener('click', function () { basculer(false); });
+      Array.prototype.forEach.call(groupes, function (b) {
+        b.addEventListener('click', function () {
+          var c = b.getAttribute('data-menu-replier');
+          var i = replie.indexOf(c);
+          if (i >= 0) replie.splice(i, 1); else replie.push(c);
+          appliquer(false);
+          garder();
+        });
+      });
+      // choisir une entrée referme le tiroir
+      menu.addEventListener('click', function (e) {
+        var lien = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (tiroir && lien) basculer(false);
+      });
+      // cliquer une rubrique change le menu sans changer de page, et le rouvre s'il était réduit
+      Array.prototype.forEach.call(rubriques, function (r) {
+        r.addEventListener('click', function () {
+          var cle = r.getAttribute('data-group');
+          Array.prototype.forEach.call(rubriques, function (o) { o.setAttribute('aria-pressed', o === r ? 'true' : 'false'); });
+          Array.prototype.forEach.call(menu.querySelectorAll('[data-group]'), function (x) { x.hidden = x.getAttribute('data-group') !== cle; });
+          var etaitReduit = reduit;
+          reduit = false;
+          if (etaitReduit && !sansMemoire()) garder();
+          appliquer(false);
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (!tiroir) return;
+        if (e.key === 'Escape') { basculer(false); return; }
+        if (e.key !== 'Tab') return;
+        // le focus reste dans l'en-tête et le tiroir : le reste de la page est inerte
+        var l = focalisables();
+        if (!l.length) return;
+        var premier = l[0];
+        var dernier = l[l.length - 1];
+        var actif = document.activeElement;
+        if (e.shiftKey && (actif === premier || l.indexOf(actif) < 0)) { e.preventDefault(); dernier.focus(); }
+        else if (!e.shiftKey && (actif === dernier || l.indexOf(actif) < 0)) { e.preventDefault(); premier.focus(); }
+      });
+      // le profil du compte s'ouvre : le tiroir se referme
+      document.addEventListener('menu-du-profil:ouvert', function () { if (tiroir) basculer(false); });
+      // changement de taille : réduit comme au départ (tiroir fermé, ou l'état gardé sur grand écran)
+      if (mq && mq.addEventListener) {
+        mq.addEventListener('change', function () {
+          reduit = sansMemoire() ? true : etat.reduit;
+          appliquer(false);
+        });
+      }
+      // retour arrière vers une page gardée en mémoire (bfcache) : le tiroir fermé
+      window.addEventListener('pageshow', function (e) {
+        if (e && e.persisted && tiroir) basculer(false);
+      });
+
+      appliquer(false);
+      // les animations ne commencent qu'après le premier affichage : le menu ne se referme pas sous les yeux au chargement
+      var apres = window.requestAnimationFrame || function (f) { return setTimeout(f, 16); };
+      apres(function () { apres(function () { menu.setAttribute('data-anime', ''); }); });
+    })();
+  </script>
+</div>

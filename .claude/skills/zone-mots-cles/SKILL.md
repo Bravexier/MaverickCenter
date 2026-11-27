@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Clé : `lib/mots-cles-cles.mjs#clesDesMotsCles`, jumelle de `tools/db/maverick.py#cles_des_mots_cles` (comparées par `mots-cles-cles.test.mjs`).
 - Balises : `lib/mots-cles-balises.mjs` (`vocabulaireDesMotsCles`, `motCleDeLaRef`, `ambiguiteDe`, `formeCanonique`, `fautesDuSynonyme`, `EXCLUS`, `SANS_LIEN`).
-- Rendu : `src/middleware.mjs` (build et `astro dev`), `styles/global/mots-cles.css` ; site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant).
+- Rendu : `src/middleware.mjs` (build et `astro dev`), `styles/global/mots-cles.css` ; site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant), qui ignore `[data-menu-site]` : un lien du menu porte la page courante et le côté de sa bulle, que la balise ne dit pas (`mots-cles-vivants-menu.test.mjs`, skill `zone-menu`).
 - Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`, `estProtege`, `estVerrouille`), `lib/mots-cles-proteges.mjs`, `lib/mots-cles-db.mjs` (`motsClesDeLaBase`, `categoriesDesMotsCles`, `textesDeLaBase`).
 - Icônes : `lib/icones.mjs` (`ICONES`, `icone`, `fauteDeLIcone`), la seule liste (3 familles : `monnaie`, `degats`, `magie`) : `db:check`, le service (`refuserLIcone`), `GET /api/edition/listes/` et l'éditeur la lisent. Dessins des dégâts et des magies : skill `ui-monnaies`.
 - Importeurs : `tools/db/maverick.py`, `tools/db/homonymes.py`, `tools/docs/codex.py --vocabulaire`.

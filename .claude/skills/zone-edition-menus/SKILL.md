@@ -1,7 +1,7 @@
 ---
 name: zone-edition-menus
 description: "Mode modification des menus latéraux (Règles, races) et des pages des Règles : ordre par glisser-déposer, onglet d'une page, création et suppression, pages protégées ou citées, plan vivant /api/edition/plan/. À charger avant de lire, modifier ou relire ce code ou ses tests."
-paths: ["client/serveur/edition-plan.mjs", "client/src/scripts/edition/menus.mjs", "client/src/scripts/edition/glisser.mjs", "client/src/lib/ordre-des-menus.mjs", "client/src/lib/pages-protegees.mjs", "client/src/lib/citations-db.mjs", "client/test/ordre-des-menus.test.mjs", "client/test/serveur-edition-plan.test.mjs", "client/test/serveur-edition-pages-regles.test.mjs", "client/test/pages-protegees.test.mjs", "client/test/citations-db.test.mjs", "client/test/db-pages-du-site.test.mjs"]
+paths: ["client/serveur/edition-plan.mjs", "client/src/scripts/edition/menus.mjs", "client/src/scripts/edition/glisser.mjs", "client/src/lib/ordre-des-menus.mjs", "client/src/lib/pages-protegees.mjs", "client/src/lib/citations-db.mjs", "client/test/ordre-des-menus.test.mjs", "client/test/serveur-edition-plan.test.mjs", "client/test/serveur-edition-pages-regles.test.mjs", "client/test/pages-protegees.test.mjs", "client/test/citations-db.test.mjs", "client/test/db-pages-du-site.test.mjs", "client/test/serveur-edition-onglets.test.mjs"]
 user-invocable: false
 ---
 # Menus latéraux et pages des Règles (mode modification)
@@ -16,13 +16,15 @@ user-invocable: false
 - `docs/serveur.md`, « Édition des règles (site de dev) » (ligne « Plan des Règles et liste des races », route `/api/edition/plan/`) ; `docs/api.md` (action `ordre`, `pages-du-guide/`).
 
 ## Choix du propriétaire
-- Ordre des menus par glisser-déposer : les 4 onglets des Règles, l'Artisanat et les races ; entrées « bientôt » déplaçables ; ordre des onglets fixe.
+- Ordre des menus par glisser-déposer : les 4 onglets des Règles, l'Artisanat et les races ; entrées « bientôt » déplaçables ; ordre des onglets et page d'ouverture fixes.
+- Le titre d'un onglet des Règles se modifie (R319 (5), qui remplace « Non, fixe » pour lui seul) ; aucun onglet ne se crée ni ne se retire. L'adresse `regles/<id>/` ne suit pas encore le titre (un lot à part).
 - Pages des Règles ajoutées et supprimées (Guide du MJ, Découvrir et pages typées hors périmètre). Création : titre, onglet, résumé, tous obligatoires, texte écrit ensuite en place, aucune source ; adresse `/regles/<slug>/` tirée du titre et figée ; page en fin de menu. Une entrée « bientôt » se remplit (son libellé pour titre). L'onglet d'une page se change par une liste, l'adresse reste.
 - Suppression : refusée tant qu'une page la cite (le service donne la liste), puis son adresse donne la 404 ; pas de table des renvois. Aucun bouton « Supprimer » sur une page protégée (`boutonSupprimer`, décision du leader-technique) ; une page seulement citée garde le bouton, et le refus 409 liste les textes qui la citent. Une page que l'adresse d'un mot-clé verrouillé vise ne se supprime pas (R221) : 409 avec `details.mots_cles_verrouilles` (`citations-db.mjs#motsClesVerrouillesQuiYMenent`, `refusDuMotCleVerrouille`, appelés par `edition-plan.mjs`) ; le bouton ne le prévoit pas, le service tranche (R221).
 - Un titre modifié change le libellé de son entrée de menu (« Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »).
 
 ## Invariants
 - `ordonner` : la liste exacte des ids de l'onglet, sinon 409 ; pour les races, un groupe (pures ou hybrides) dont les rangs sont redonnés. `rang` n'est jamais unique (l'id départage) ; seules les lignes dont le rang change vont au journal.
+- Titre d'un onglet : domaine `onglet` de `serveur/edition-plan.mjs` (`regles_onglet.titre` seul ; toute autre colonne, création, suppression : 400) ; un titre déjà pris par un autre onglet (comparaison de `normalize`) : 409. Le menu du site suit le titre (`lib/menu-db.mjs`, skill `zone-menu`).
 - Changer d'onglet (`modifier` de `regles_onglet_entree.onglet_id`) : la page passe en fin du menu cible ; refus avant écriture pour une page d'ouverture, un lien, une entrée « bientôt ».
 - Création : famille `docs` (`FAMILLE_DES_PAGES_DU_SITE`, d'accord en JS et en Python, skill `modifier-une-page-wiki`), statut `draft`, corps « À compléter. ». Titre déjà pris : 409. Identifiant pris (page, historique, page supprimée, absorbée ou retirée, nom réservé, id d'onglet) : suffixe `-2`, `-3`. Remplir une entrée « bientôt » : dans le même lot, retrait de `bientot:…` et insertion de `page:<id>` au même onglet et rang.
 - Suppression, refus avant écriture : 404 inconnue, 400 hors des Règles, 409 protégée (`details.raisons`), 409 citée (`details.citations`). La citation d'une page d'exemple ne bloque pas. L'entrée de menu part d'abord, puis `supprimerPage`, qui refuse seule une page protégée.
@@ -35,4 +37,4 @@ user-invocable: false
 - La page d'une Règle créée est dessinée sur la 404 (`edition/nouvelles.mjs`) tant que le site n'est pas reconstruit ; le plan vivant redessine les menus.
 
 ## Tests
-- `ordre-des-menus`, `serveur-edition-plan`, `serveur-edition-pages-regles`, `pages-protegees`, `citations-db`, `db-pages-du-site` (une page créée sur le site de dev vit dans sa base ; `data/rows` en reçoit la copie par le workflow), `edition-tous-ecrans`.
+- `ordre-des-menus`, `serveur-edition-plan`, `serveur-edition-pages-regles`, `pages-protegees`, `citations-db`, `db-pages-du-site` (une page créée sur le site de dev vit dans sa base ; `data/rows` en reçoit la copie par le workflow), `serveur-edition-onglets` (titre d'onglet : lot, refus, API, annulation d'une ligne), `edition-tous-ecrans`.

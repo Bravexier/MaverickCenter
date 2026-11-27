@@ -243,14 +243,14 @@ test('pages du Codex : type lore, famille docs, brouillon, la copie du propriét
     assert.ok(db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(p.id, CODEX), `${p.id} : mot-clé « codex »`);
     assert.doesNotMatch(p.corps_md, /!\[|\[image\d+\]/, `${p.id} : pas d’image du document dans la page`);
   }
-  // sommaires : le Codex entier, puis une page par partie à plusieurs pages ; le menu Codex y mène
+  // sommaires : le Codex entier, puis une page par partie à plusieurs pages ; le menu Le monde y mène
   for (const id of ['lore/codex', 'lore/les-divinites', 'lore/temples-cultes-guildes', 'lore/les-races-non-jouable', 'lore/les-civilisations', 'lore/erisia', 'lore/mrode',
     'lore/les-outils-legendaires-uniques', 'lore/glossaire']) {
     assert.ok(pagesDuCodex.some((p) => p.id === id), id);
   }
-  const codex = NAV.find((g) => g.key === 'codex').items;
-  assert.equal(codex.find((i) => i.label === 'Mythologie').path, 'lore/les-divinites/');
-  assert.equal(codex.find((i) => i.label === 'Factions').path, 'lore/temples-cultes-guildes/');
+  const monde = NAV.find((g) => g.key === 'monde').items;
+  assert.equal(monde.find((i) => i.label === 'Mythologie').path, 'lore/les-divinites/');
+  assert.equal(monde.find((i) => i.label === 'Factions').path, 'lore/temples-cultes-guildes/');
 });
 
 // La sortie de l'import (le texte des pages tel que codex.py l'a écrit), lue dans la base d'import (aide-base-d-import.mjs) : un renvoi est la balise du

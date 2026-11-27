@@ -38,7 +38,8 @@ user-invocable: false
 
 ## Épreuve
 - `serveur/epreuve-des-lots.mjs`, commande `npm run db:epreuve-lots` (`client/scripts/epreuve-des-lots.mjs` : `fabriquer` une fois avec git, `refaire` sur une copie). Lots : `client/test/fixtures/lots-0122-0124/` ; `complement.json` porte les lignes que l'entité emporte (`COUVERT_PAR_L_ENTITE`). Détail : `docs/serveur.md`, « Lots de changements (épreuve) ».
-- Partage : (a) passe par un lot ; (b) reste hors édition sans base source (appliqué seulement par l'option de test `ouvertHorsEdition`, liste épinglée par table) ; (c) refusé par le service même ouvert (la page protégée « La montée de niveau », bloc « niveaux »). Comparaison modulo les numéros donnés.
+- Partage : (a) passe par un lot ; (b) reste hors édition sans base source (appliqué seulement par l'option de test `ouvertHorsEdition`, liste épinglée par table ; `regles_onglet` n'y est plus : table connue du service, son titre est ouvert, R319 (5)) ; (c) refusé par le service même ouvert (la page protégée « La montée de niveau », bloc « niveaux »). Comparaison modulo les numéros donnés.
+- La voie générique du journal écrit encore `regles_onglet.ordre` et `ouverture_page_id` (colonnes que le service ne connaît pas : la ligne de la 0122 qui change l'ouverture d'un onglet passe par elle) ; elle n'est pas fermée, le propriétaire en est informé.
 - L'annulation des lots 0123 et 0124 est refusée par les gardes du service (ancres figées, adresse R272) et le test l'épingle : ne rien relâcher.
 
 ## Tests

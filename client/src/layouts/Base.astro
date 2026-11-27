@@ -2,12 +2,15 @@
 import '../styles/global.css';
 import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
-import { NAV, activeGroup, entreesDuMenu, groupIsCurrent } from '../lib/nav.mjs';
+import { NAV, entreesVisibles, rubriqueCourante } from '../lib/nav.mjs';
+import { menuDuSite } from '../lib/menu-db.mjs';
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
 import Acces from '../components/Acces.astro';
 import Compte from '../components/Compte.astro';
+import MenuDuProfil from '../components/MenuDuProfil.astro';
+import MenuDuSite from '../components/MenuDuSite.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 import { cssDeLaPalette } from '../lib/palette-css.mjs';
 import { classeDeLaPageDuSite, cssDesMotsClesDuSite } from '../lib/couleur-de-la-page.mjs';
@@ -23,7 +26,7 @@ interface Props {
   /**
    * L'entrée du menu (son `path`, lib/nav.mjs) d'une page qui n'en est pas une mais qu'on atteint par elle (une page d'un onglet des Règles, ou
    * l'Artisanat : l'onglet du plan de la base, lib/livres.mjs, jamais déduit de l'adresse) : marquée courante (`aria-current="true"`, l'entrée de la
-   * page elle-même ayant `aria-current="page"`).
+   * page elle-même ayant `aria-current="page"`), et sa rubrique est celle de la page.
    */
   entree?: string;
   /**
@@ -37,11 +40,17 @@ const { title, description = 'Wiki et outils pour le JDR Maverick', edition, mai
 const portable = process.env.INLINE_CSS === '1';
 
 const base = import.meta.env.BASE_URL;
-const active = activeGroup(Astro.url.pathname, base);
 const here = Astro.url.pathname.replace(/\/?$/, '/');
 const site = modeDuSite(process.env, packageInfo.version);
-// Entrées du site de dev seulement (la page Debug : lib/nav.mjs#entreesDuMenu) : ni en production ni dans la version portable (sans service)
+// Entrées du site de dev seulement (la page Debug : lib/nav.mjs#entreesVisibles) : ni en production ni dans la version portable (sans service)
 const dev = !site.prod && !portable;
+// Le menu : cinq rubriques dans l'en-tête, les entrées de la rubrique montrée dans le menu latéral (components/MenuDuSite.astro). Les entrées sont résolues d'après
+// la base (lib/menu-db.mjs : adresse, libellé et habillage du mot-clé ; titre d'un onglet des Règles), sans celles du site de dev seulement hors du site de dev.
+// La rubrique courante (accent) est celle de la page, `null` pour l'accueil, la page 404 et les pages du menu du profil ; le menu montré au départ est le sien,
+// sinon celui de la première rubrique.
+const courante = rubriqueCourante(Astro.url.pathname, base, NAV, entree);
+const montree = courante ?? NAV[0];
+const rubriques = NAV.map((g) => ({ key: g.key, label: g.label, entrees: entreesVisibles(menuDuSite(g.items), { dev }) }));
 // Balise des pages (métriques du navigateur, page Debug) : dans tous les builds, production comprise (décision du propriétaire du 2026-10-15 :
 // « Active-le aussi en prod dans un premier temps ») ; SITE_METRIQUES_PAGES=0 au build la retire (l'interrupteur pour plus tard, comme
 // MAVERICK_METRIQUES_PAGES=0 côté service). Ni dans la version portable (pas de service) ni sur la page de maintenance.
@@ -99,6 +108,8 @@ const adressesRenommees = jsonDesAdressesRenommees();
                   document.documentElement.setAttribute('data-maintenance', '');
                   var entete = document.querySelector('.site-header__inner');
                   if (entete) entete.inert = true;
+                  var lateral = document.querySelector('.menu-site');
+                  if (lateral) lateral.inert = true;
                   location.replace(page + '?retour=' + encodeURIComponent(location.pathname + location.search + location.hash));
                 })
                 .catch(function () {});
@@ -124,45 +135,38 @@ const adressesRenommees = jsonDesAdressesRenommees();
     }
     <header class:list={['site-header', { 'site-header--maintenance': maintenance }]}>
       <div class="site-header__inner" inert={maintenance || undefined}>
+        {/* le bouton à trois barres du tiroir du menu latéral (écran étroit) : caché jusqu'à ce que le script du menu (components/MenuDuSite.astro) l'affiche */}
+        <button type="button" class="menu-site__burger" aria-expanded="false" aria-controls="menu-du-site" aria-label="Ouvrir le menu latéral" data-menu-burger hidden>
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+        </button>
         <a class="brand" href={url()}><img src={url('logo.webp')} alt="Maverick Center" width="319" height="320" /></a>
         <div class="site-header__menu">
-          <nav class="site-nav" aria-label="Navigation principale">
+          {/* les cinq rubriques sur la ligne de l'en-tête (R319 (1)) : cliquer l'une change le menu latéral (components/MenuDuSite.astro) sans changer de page ;
+              `aria-current` : la rubrique de la page, `aria-pressed` : celle dont le menu latéral est montré */}
+          <nav class="site-nav" aria-label="Rubriques du site">
             <ul class="site-nav__groups">
               {
-                NAV.map((group) => (
+                rubriques.map((group) => (
                   <li>
-                    <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === active.key ? 'true' : 'false'} aria-current={groupIsCurrent(group, Astro.url.pathname, base) ? 'true' : undefined}>
+                    <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === montree.key ? 'true' : 'false'} aria-current={courante && group.key === courante.key ? 'true' : undefined}>
                       {group.label}
                     </button>
                   </li>
                 ))
               }
             </ul>
-            {
-              NAV.map((group) => (
-                <ul class="site-nav__items" data-group={group.key} hidden={group.key !== active.key}>
-                  {entreesDuMenu(group, { dev }).length === 0 && <li class="nav-soon">À compléter</li>}
-                  {entreesDuMenu(group, { dev }).map((item) => (
-                    <li>
-                      {item.path ? (
-                        <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : item.path === entree ? 'true' : undefined}>{item.label}</a>
-                      ) : (
-                        <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ))
-            }
           </nav>
         </div>
-        {/* le compte (R310 (7)) : avatar et nom, ou « Connexion via Discord » ; ni dans la version portable (pas de service) ni sur la page de maintenance */}
-        {!portable && !maintenance && <Compte />}
+        {/* le compte (R310 (7), R319 (1)) : avatar et pseudo qui ouvrent le menu du profil, ou « Connexion via Discord » ; ni dans la version portable (pas de service : seulement le petit menu Glossaire et Recherche) ni sur la page de maintenance */}
+        {!portable && !maintenance && <Compte prod={site.prod} dev={dev} ici={here} />}
+        {portable && <MenuDuProfil portable ici={here} />}
       </div>
     </header>
-    <main class={couleurDeLaPage ? `page-coloree ${couleurDeLaPage}` : undefined}>
-      <slot />
-    </main>
+    <MenuDuSite rubriques={rubriques} montree={montree.key} ici={here} entree={entree} maintenance={maintenance}>
+      <main class={couleurDeLaPage ? `page-coloree ${couleurDeLaPage}` : undefined}>
+        <slot />
+      </main>
+    </MenuDuSite>
     <footer class="site-footer">
       <span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span>
       {/* les règles de confidentialité (demande du propriétaire, 2026-11-21 : Google les exige pour le bouton « Exporter » de la fiche) : lien discret */}
@@ -213,17 +217,5 @@ const adressesRenommees = jsonDesAdressesRenommees();
         </script>
       )
     }
-    <script is:inline>
-      (function () {
-        var toggles = document.querySelectorAll('.nav-group__toggle');
-        var rows = document.querySelectorAll('.site-nav__items');
-        toggles.forEach(function (t) {
-          t.addEventListener('click', function () {
-            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
-            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
-          });
-        });
-      })();
-    </script>
   </body>
 </html>

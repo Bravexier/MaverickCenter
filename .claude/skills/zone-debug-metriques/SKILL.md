@@ -17,7 +17,7 @@ user-invocable: false
 - `docs/serveur.md`, « Métriques et volume » (où, rétention, volume, bornes, jauge de l'espace disque, tout ce qui grossit) et le journal du service dans « API REST `/api/v1/` et page Debug ».
 
 ## Choix du propriétaire
-- Site de dev seulement : `devSeulement` de `lib/nav.mjs#entreesDuMenu` (skill `zone-menu`). Ni au menu d'un build `SITE_MODE=prod` (la page n'y dit qu'une phrase, sans script) ni dans la version portable.
+- Site de dev seulement : `devSeulement` de `lib/nav.mjs#entreesVisibles` (skill `zone-menu`). Ni au menu d'un build `SITE_MODE=prod` (la page n'y dit qu'une phrase, sans script) ni dans la version portable.
 - Sous le titre et la ligne d'état du service, quatre menus déroulants fermés par défaut, dans l'ordre Système, Performances, Journaux, DB, et rien d'autre (demande du propriétaire du 2026-10-15). Plus de testeur de l'API (« Tester l'API sera donc supprimé car devenu inutile après le schéma ») ; `/api/v1/openapi.json` reste pour les outils externes.
 - Système : choix de l'instance, synchronisé avec Performances (adaptation, pas une demande : Performances fermé n'a pas à s'ouvrir pour changer l'instance de Système) ; processus, disque, fichiers, évènements, volume des métriques, alertes, et la jauge « Espace disque du serveur » : somme = taille du disque, un segment coloré par type de données, réserve de root à part ; sur le VPS, complétée par le relevé de l'hôte `volume.sh`.
 - Performances : temps de réponse par route normalisée, pages vues mesurées par le navigateur, navigateurs, origines, requêtes récentes, export CSV. Instance production ou site de dev, jamais mélangées (décision du propriétaire).

@@ -346,6 +346,15 @@ test('guide : une page qui n’a plus de place dans le plan (PAGES_RETIREES, PAG
   assert.ok(!lignes.some((l) => ['Les bases', 'Règles avancées'].includes(l.groupe)));
 });
 
+test('R319 : le titre d’un onglet des Règles renommé sur le site est dit en une ligne « Titre », sous l’onglet ; un titre inchangé, ou un onglet absent d’un côté, n’en dit aucune', () => {
+  const onglet = (id, titre, ordre) => ({ id, titre, ordre, ouverture_page_id: `guide/${id}` });
+  const ref = { tables: { regles_onglet: [onglet('a', 'Premier', 1), onglet('b', 'Deuxième', 2)] } };
+  const dev = { tables: { regles_onglet: [onglet('a', 'Premier', 1), onglet('b', 'Autre titre', 2), onglet('c', 'Créé', 3)] } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'regles_onglet');
+  assert.deepEqual(lignes.map((l) => [l.champ, l.nature, l.avant, l.apres, l.groupe, l.cle]), [['Titre', 'modifie', 'Deuxième', 'Autre titre', 'Autre titre', { id: 'b' }]]);
+  assert.deepEqual(comparerBases(ref, ref).filter((l) => l.table_nom === 'regles_onglet'), []);
+});
+
 test('plan des Règles et liste des races (lot de l’édition des menus) : une ligne par menu dont l’ordre change, « Onglet » d’une page déplacée, l’ordre des races en une ligne', () => {
   const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
   const onglets = [

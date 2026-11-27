@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  NAV, activeGroup, adresseComplete, adresseDeRenvoi, adresseEclatee, cheminVersUnePageEclatee, entreesDuMenu, groupIsCurrent, legacyWikiRedirect, navPaths,
-  nouvelleAdresse,
+  ADRESSE_DU_SITE_DE_DEV, MENU_DU_PROFIL, NAV, NIVEAUX_DU_MENU, activeGroup, adresseComplete, adresseDeRenvoi, adresseEclatee, cheminVersUnePageEclatee, entreesAPlat,
+  entreesVisibles, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse, rubriqueCourante,
 } from '../src/lib/nav.mjs';
+import { ADRESSE_DU_SITE_DE_DEV as ADRESSE_DE_L_EXTRAIT } from '../scripts/db-extrait.mjs';
 import { RENVOIS_DES_PAGES_ECLATEES } from '../src/lib/equipement.mjs';
 import { PARAMETRE_MOT_CLE } from '../src/lib/recherche-mots-cles.mjs';
 import { TYPE_KEYS } from '../src/lib/types.mjs';
@@ -12,55 +13,105 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
+const rubrique = (cle) => NAV.find((g) => g.key === cle);
+const chemins = (g) => entreesAPlat(g.items).map((i) => i.path ?? null);
 
-test('le menu a les rubriques et les entrées voulues par le propriétaire, dans l’ordre (2026-10-29 : sept rubriques, rien de caché)', () => {
-  const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`) + (i.devSeulement ? ' (site de dev)' : '')).join(', ')}`);
-  assert.deepEqual(plan, [
-    // « Le menu "Découvrir" sera renommé "Règles", le sous-menu "Bienvenue" sera renommé "Découvrir" » ; « Efface la page "Rejoindre une partie" et son
-    // lien. » (2026-11-05) ; les onglets des Règles (R184 : ligne 2 = Découvrir, L'univers, Fiche de personnage, Mécaniques générales, Les combats,
-    // Exploration ; plus de Créer son personnage, Les bases ni Règles avancées) ; puis le Glossaire (réponses du propriétaire du 2026-11-06, Q6 et Q7 :
-    // « Glossaire » dans le menu Règles, après Exploration, une page seule)
-    'Règles : Découvrir, L’univers, Fiche de personnage, Mécaniques générales, Les combats, Exploration, Glossaire',
-    // « renommer le menu "Règles" en "Personnage" » ; « Famillier devrai être dans Personnage » (sic, réponse du 2026-10-29)
-    'Personnage : Races, Magies, Classes, Métiers, Familiers',
-    // « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" » : cinq pages séparées, libellés « Comme
-    // les onglets (pluriel) », puis Livres & Parchemins (l'Artisanat est dans l'onglet Exploration des Règles depuis R184) ; plus d'entrée Pièces
-    // élémentaires ; « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du 2026-10-29) : Autres, en dernier
-    'Équipement : Armes, Armures, Boucliers, Ceinture, Accessoires, Livres & Parchemins, Autres',
-    'Espace joueur : Fiche de personnage, Personnages, Mes personnages, Groupes d’aventures (bientôt), Table de jeu (bientôt), Chroniques (bientôt)',
-    'Espace MJ : Guide du MJ, Fiches de PNJ et scénarios (bientôt), Groupes de jeu (bientôt)',
-    'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
-    'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
-  ]);
-  assert.deepEqual(NAV.map((g) => g.key), ['regles', 'personnage', 'equipement', 'joueur', 'mj', 'codex', 'outils']);
-  assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/', 'personnages/#mes-personnages'], 'la fiche, la liste des personnages, puis sa section « Mes personnages » (R318)');
-  assert.deepEqual(NAV.find((g) => g.key === 'regles').items.map((i) => i.path), [
-    'decouvrir/', 'decouvrir/l-univers/', 'regles/fiche-de-personnage/', 'regles/mecaniques-generales/', 'regles/combats/', 'regles/exploration/',
-    'regles/glossaire/',
-  ]);
-  assert.deepEqual(NAV.find((g) => g.key === 'personnage').items.map((i) => i.path), ['races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/']);
-  assert.deepEqual(NAV.find((g) => g.key === 'equipement').items.map((i) => i.path), [
-    'ressources/armes/', 'ressources/armures/', 'ressources/bouclier/', 'ressources/objets-a-la-ceinture/', 'ressources/accessoires/',
-    'ressources/livre-parchemin/', 'ressources/',
-  ], 'les adresses d’avant la page « Équipement » (identifiants figés), puis la liste des pages de ressources (Autres)');
-  assert.ok(!navPaths().some((p) => (p.includes('#') && p.startsWith('ressources/')) || p.startsWith('ressources/equipement')), 'plus d’entrée vers l’ancienne page « Équipement » ni ses onglets');
-  assert.ok(!navPaths().includes('ressources/pieces-elementaires/'), 'plus d’entrée Pièces élémentaires (2026-10-29)');
-  assert.ok(!navPaths().includes('guide/') && !navPaths().includes('ressources/composants/'), 'plus d’entrée Guide ; Composants est sous Artisanat');
-  assert.ok(!navPaths().includes('regles/artisanat/'), 'plus d’entrée Artisanat (R184 : dans le menu latéral de l’onglet Exploration)');
-  assert.ok(NAV.every((g) => g.items.every((i) => Object.keys(i).every((k) => ['label', 'path', 'devSeulement'].includes(k)))), 'aucun drapeau de visibilité : rien n’est caché');
-  // l'entrée Familiers porte le titre de sa page dans la base
-  const familiers = NAV.find((g) => g.key === 'personnage').items.find((i) => i.path === 'ressources/familiers/');
-  assert.equal(familiers?.label, ouvrirBase().prepare('SELECT titre FROM page WHERE id = ?').get('ressources/familiers')?.titre, 'Familiers : le titre de sa page');
+test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leurs entrées, leurs sous-pages et leurs entrées « bientôt »', () => {
+  assert.deepEqual(NAV.map((g) => [g.key, g.label]), [['jeu', 'Le Jeu'], ['regles', 'Règles'], ['ressources', 'Ressources'], ['monde', 'Le monde'], ['taverne', 'Taverne']]);
+  const plan = (g) => g.items.map((i) => (i.enfants ? `${i.label} [${i.enfants.map((e) => e.label).join(', ')}]` : i.path || i.onglet || i.motCle ? i.label : `${i.label} (bientôt)`));
+  assert.deepEqual(plan(rubrique('jeu')), ['Introduction [Découvrir, L’univers]', 'Les races', 'Les magies', 'Les classes', 'Les métiers', 'Les familiers', 'La fiche de personnage', 'Personnages prétirés']);
+  assert.deepEqual(plan(rubrique('regles')).slice(3), ['Guide du MJ', 'Mise à jour', 'Statistiques (bientôt)'], 'après les trois onglets des Règles');
+  assert.deepEqual(plan(rubrique('ressources')), ['Armes', 'Armures', 'Boucliers', 'Accessoires', 'Ceinture', 'Livres & Parchemins', 'Artisanat', 'Composants', 'Autres']);
+  assert.deepEqual(plan(rubrique('monde')), ['Chronologie', 'Lieux (bientôt)', 'Mythologie', 'Bestiaire', 'Factions']);
+  assert.deepEqual(plan(rubrique('taverne')), ['Parties (bientôt)', 'Planning (bientôt)', 'Galerie', 'Suggestions (bientôt)', 'Archives', 'Debug']);
+  assert.deepEqual(chemins(rubrique('jeu')), [null, 'decouvrir/', 'decouvrir/l-univers/', 'races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/', 'regles/fiche-de-personnage/', 'personnages/']);
+  assert.deepEqual(chemins(rubrique('ressources')), [
+    'ressources/armes/', 'ressources/armures/', 'ressources/bouclier/', 'ressources/accessoires/', 'ressources/objets-a-la-ceinture/', 'ressources/livre-parchemin/',
+    'regles/artisanat/', 'ressources/composants/', 'ressources/',
+  ], 'les adresses d’avant (identifiants figés) ; Autres, la liste des pages de ressources, en dernier');
+  assert.deepEqual(chemins(rubrique('monde')), ['chronologie/', null, 'lore/les-divinites/', 'bestiaire/', 'lore/temples-cultes-guildes/']);
+  assert.deepEqual(chemins(rubrique('taverne')), [null, null, 'galeries/', null, 'archives/', 'debug/']);
+  assert.ok(chemins(rubrique('regles')).includes('mj/') && chemins(rubrique('regles')).includes('mise-a-jour/'));
+  // Introduction n'est pas une page : pas de lien à elle, ses sous-pages seulement ; navPaths les compte, et les `autres` gardent les pages hors menu
+  const introduction = rubrique('jeu').items[0];
+  assert.ok(!introduction.path && !introduction.motCle && !introduction.onglet && introduction.cle, 'une entrée qui se déplie, nommée par `cle` (l’état replié)');
+  assert.ok(navPaths().includes('decouvrir/l-univers/') && !navPaths().some((p) => p.includes('#')));
+  assert.deepEqual(rubrique('ressources').autres, ['ressources/']);
+  assert.deepEqual(rubrique('regles').autres, ['regles/']);
+  assert.ok(!navPaths().includes('fiche/'), 'R319 (6) : pas d’entrée pour le générateur de fiche ; on y arrive par Personnages prétirés et par l’onglet des Règles');
+  assert.ok(!NAV.flatMap((g) => g.autres ?? []).includes('tags/'), 'plus de pages /tags/ dans le menu');
 });
 
-test('chaque lien du menu pointe vers une page qui existe', () => {
+test('R319 (3) : les niveaux sont portés par les données, jamais appliqués avant le lot 4 ; seul `devSeulement` retire une entrée', () => {
+  const champs = ['label', 'path', 'motCle', 'libelleArbo', 'onglet', 'enfants', 'cle', 'niveau', 'devSeulement', 'prodSeulement'];
+  for (const e of NAV.flatMap((g) => entreesAPlat(g.items))) {
+    assert.ok(Object.keys(e).every((k) => champs.includes(k)), `${e.label} : un champ que lib/menu-db.mjs ne connaît pas`);
+    assert.ok(e.niveau === undefined || NIVEAUX_DU_MENU.includes(e.niveau), `${e.label} : niveau ${e.niveau}`);
+  }
+  assert.deepEqual(NIVEAUX_DU_MENU, ['joueur', 'mj', 'createur']);
+  // les niveaux voulus ([J] [MJ] de R319 (1)) : un par entrée, ou celui de la rubrique
+  assert.deepEqual(NAV.filter((g) => g.niveau).map((g) => [g.key, g.niveau]), [['ressources', 'joueur'], ['monde', 'joueur'], ['taverne', 'joueur']], 'les rubriques [J] ; Le Jeu et Règles sans niveau');
+  const parNiveau = (g) => g.items.filter((i) => i.niveau).map((i) => `${i.label} ${i.niveau}`);
+  assert.deepEqual(parNiveau(rubrique('regles')), ['Guide du MJ mj', 'Mise à jour joueur', 'Statistiques joueur']);
+  assert.deepEqual(parNiveau(rubrique('monde')), ['Bestiaire mj']);
+  // rien n'est caché selon le niveau : toutes les entrées, sauf celles du site de dev seulement hors du site de dev
+  for (const g of NAV) {
+    assert.deepEqual(entreesVisibles(g.items), g.items, `${g.key} : sur le site de dev, tout`);
+    assert.deepEqual(entreesVisibles(g.items, { dev: false }), g.items.filter((i) => !i.devSeulement), `${g.key} : seul devSeulement est retiré`);
+  }
+  assert.ok(NAV.every((g) => g.items.every((i) => !i.prodSeulement)), 'prodSeulement : porté (le menu du profil), pas appliqué');
+  // jusque dans les sous-pages
+  const arbre = [{ label: 'A', enfants: [{ label: 'a1' }, { label: 'a2', devSeulement: true }] }, { label: 'B', devSeulement: true, niveau: 'createur' }];
+  assert.deepEqual(entreesVisibles(arbre, { dev: false }), [{ label: 'A', enfants: [{ label: 'a1' }] }]);
+  assert.deepEqual(entreesVisibles(arbre), arbre);
+  assert.deepEqual(entreesAPlat(arbre).map((e) => e.label), ['A', 'a1', 'a2', 'B']);
+  // prodSeulement : filtré seulement quand `prod` est faux (le menu du profil : « Site de dev » n'est que de la production) ; les rubriques ne le passent pas
+  const profil = [{ label: 'Prod', prodSeulement: true }, { label: 'Niveau', niveau: 'mj' }, { label: 'Dev', devSeulement: true }];
+  assert.deepEqual(entreesVisibles(profil, { prod: false }).map((e) => e.label), ['Niveau', 'Dev']);
+  assert.deepEqual(entreesVisibles(profil, { dev: false, prod: true }).map((e) => e.label), ['Prod', 'Niveau']);
+  assert.deepEqual(entreesVisibles(profil).map((e) => e.label), ['Prod', 'Niveau', 'Dev'], 'sans option : tout (les rubriques)');
+  assert.deepEqual(NAV.flatMap((g) => entreesAPlat(g.items).filter((i) => i.devSeulement).map((i) => `${g.key} ${i.label} ${i.path}`)), ['taverne Debug debug/'], 'la seule entrée du site de dev seulement');
+  // le menu (layouts/Base.astro) n'affiche que entreesVisibles, sans les entrées du site de dev en production (SITE_MODE=prod) ni dans la version portable
+  const base = readFileSync(new URL('../src/layouts/Base.astro', import.meta.url), 'utf8');
+  assert.match(base, /const dev = !site\.prod && !portable;/);
+  assert.match(base, /entreesVisibles\(menuDuSite\(g\.items\), \{ dev \}\)/);
+  const code = base.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\*\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(code, /\.niveau|prodSeulement/, 'ni le niveau ni prodSeulement ne sont lus par l’en-tête avant le lot 4');
+});
+
+test('R319 (4) : les entrées à mot-clé citent un mot-clé qui existe ; les huit entrées au nom de l’arborescence ; les onglets des Règles sont ceux de la table', () => {
+  const db = ouvrirBase();
+  const toutes = NAV.flatMap((g) => entreesAPlat(g.items));
+  for (const e of toutes.filter((x) => x.motCle !== undefined)) {
+    assert.ok(Number.isInteger(e.motCle), `${e.label} : l’id entier figé du mot-clé`);
+    assert.ok(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(e.motCle), `${e.label} : le mot-clé ${e.motCle}`);
+  }
+  assert.equal(new Set(toutes.filter((x) => x.motCle !== undefined).map((x) => x.motCle)).size, toutes.filter((x) => x.motCle !== undefined).length, 'un mot-clé par entrée');
+  // « Nom de l'arborescence » : huit entrées gardent leur nom (Découvrir, Les races, Les classes, Les métiers, Boucliers, Livres & Parchemins, Mythologie, Factions)
+  // et, depuis la réponse du propriétaire (« Nom de l'arborescence » pour « Les magies » et « La fiche de personnage »), dix entrées au total
+  assert.deepEqual(toutes.filter((x) => x.libelleArbo).map((x) => x.motCle ?? x.onglet), [44, 298, 223, 66, 240, 'fiche-de-personnage', 49, 198, 185, 349]);
+  assert.ok(toutes.filter((x) => x.libelleArbo).every((x) => x.motCle !== undefined || x.onglet !== undefined), 'libelleArbo ne vaut que pour une entrée à mot-clé ou à onglet');
+  // les onglets (R184, R319 (5)) : l'entrée de chacun est lue dans la table (titre modifiable), son chemin regles/<id>/ ; ils se partagent entre Le Jeu et les Règles, dans l'ordre de la table
+  const onglets = db.prepare('SELECT id FROM regles_onglet ORDER BY ordre, id').all().map((o) => o.id);
+  const entrees = toutes.filter((x) => x.onglet);
+  assert.deepEqual(entrees.map((x) => x.path), entrees.map((x) => `regles/${x.onglet}/`));
+  assert.deepEqual(entrees.map((x) => x.onglet).sort(), [...onglets].sort(), 'un onglet par entrée, aucun oublié ni inventé');
+  assert.deepEqual(rubrique('jeu').items.filter((i) => i.onglet).map((i) => i.onglet), ['fiche-de-personnage']);
+  assert.deepEqual(rubrique('regles').items.filter((i) => i.onglet).map((i) => i.onglet), onglets.filter((o) => o !== 'fiche-de-personnage'), 'dans l’ordre de la table');
+  // le chemin de Découvrir est celui de lib/livres.mjs ; les adresses d'un mot-clé sont lues dans la base à l'affichage (lib/menu-db.mjs), le chemin écrit n'est que le repli
+  assert.equal(entreesAPlat(rubrique('jeu').items).find((e) => e.label === 'Découvrir').path, 'decouvrir/');
+});
+
+test('chaque lien du menu et du menu du profil pointe vers une page qui existe', () => {
   const pages = new URL('../src/pages/', import.meta.url);
   // les adresses des pages du guide (lib/livres.mjs, par cheminDePage) : /decouvrir/…, /regles/…, /mj/…
   const duGuide = new Set(readdirSync(new URL('guide/', content)).filter((f) => f.endsWith('.md')).map((f) => cheminDePage(`guide/${f.slice(0, -3)}`)));
   // les onglets des Règles (/regles/<onglet>/, servis par pages/regles/[...page].astro d'après la table regles_onglet)
   const onglets = new Set(ouvrirBase().prepare('SELECT id FROM regles_onglet').all().map((o) => `regles/${o.id}/`));
   assert.ok(existsSync(new URL('regles/[...page].astro', pages)));
-  for (const path of navPaths().map((p) => p.split('#')[0])) {
+  const duProfil = entreesAPlat(MENU_DU_PROFIL.flat()).map((e) => e.path).filter(Boolean);
+  assert.deepEqual(duProfil, ['profil/', 'personnages/#mes-personnages', 'regles/glossaire/', 'recherche/']);
+  for (const path of [...navPaths(), ...duProfil].map((p) => p.split('#')[0])) {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (duGuide.has(path) || onglets.has(path)) continue;
     if (m && TYPE_KEYS.includes(m[1])) {
@@ -73,58 +124,67 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
   }
 });
 
-test('la rubrique courante est repérée, avec ou sans préfixe de déploiement', () => {
-  const rubrique = (cle) => NAV.find((g) => g.key === cle);
-  assert.equal(groupIsCurrent(rubrique('personnage'), '/races/elfe/'), true);
-  assert.equal(groupIsCurrent(rubrique('joueur'), '/MaverickCenter/fiche/', '/MaverickCenter/'), true);
-  assert.equal(groupIsCurrent(rubrique('joueur'), '/personnages/'), true);
-  assert.equal(groupIsCurrent(rubrique('personnage'), '/fiche/'), false, 'la fiche est dans l’Espace joueur');
-  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/armes/'), true, 'une page de l’équipement');
-  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/objets-a-la-ceinture/'), true, 'la Ceinture');
-  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/composants/'), true, 'Composants, sous Artisanat');
-  assert.equal(groupIsCurrent(rubrique('personnage'), '/ressources/familiers/'), true, 'Familiers, au Personnage');
-  assert.equal(groupIsCurrent(rubrique('equipement'), '/ressources/familiers/'), false, 'une seule rubrique courante');
-  assert.equal(groupIsCurrent(rubrique('regles'), '/races/'), false);
-  // R184 : /regles/artisanat/ (une entrée du menu latéral de l'onglet Exploration) ouvre les Règles, plus l'Équipement (une seule rubrique courante)
-  assert.equal(groupIsCurrent(rubrique('equipement'), '/regles/artisanat/'), false);
-  assert.equal(groupIsCurrent(rubrique('regles'), '/regles/artisanat/'), true);
-  assert.equal(groupIsCurrent(rubrique('regles'), '/regles/la-magie/'), true, 'une page d’un onglet (adresse à plat)');
-  assert.equal(groupIsCurrent(rubrique('regles'), '/regles/combats/'), true, 'un onglet');
-  assert.equal(groupIsCurrent(rubrique('outils'), '/archives/'), true);
-  assert.equal(groupIsCurrent(rubrique('outils'), '/pages/'), true, 'index du wiki, hors menu');
-  assert.equal(groupIsCurrent(rubrique('mj'), '/MaverickCenter/mj/un-maitre-du-jeu/', '/MaverickCenter/'), true);
+test('la rubrique courante est repérée, avec ou sans préfixe de déploiement ; une seule ; l’entrée du plan et les pages du profil comptent', () => {
+  const courante = (chemin, o = {}) => rubriqueCourante(chemin, o.base ?? '/', NAV, o.entree)?.key ?? null;
+  assert.equal(groupIsCurrent(rubrique('jeu'), '/races/elfe/'), true);
+  assert.equal(groupIsCurrent(rubrique('jeu'), '/MaverickCenter/personnages/', '/MaverickCenter/'), true, 'Personnages prétirés');
+  assert.equal(groupIsCurrent(rubrique('jeu'), '/fiche/'), true, 'le générateur n’a pas d’entrée (R319 (6)) mais sa page est du Jeu');
+  assert.equal(groupIsCurrent(rubrique('jeu'), '/capacites/clerc-zelote/'), true, 'un don de classe va avec les classes');
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/armes/'), true);
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/composants/'), true, 'Composants');
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/alchimie/'), true, 'une ressource hors menu');
+  assert.equal(courante('/ressources/'), 'ressources', 'Autres');
+  assert.equal(courante('/ressources/familiers/'), 'jeu', 'Les familiers : son adresse, plus longue que ressources/, ouvre Le Jeu');
+  assert.equal(courante('/MaverickCenter/ressources/familiers/', { base: '/MaverickCenter/' }), 'jeu');
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/familiers/'), false, 'une seule rubrique courante');
+  assert.equal(courante('/regles/artisanat/'), 'ressources', 'R319 : l’Artisanat est une entrée des Ressources');
+  assert.equal(courante('/regles/artisanat/', { entree: 'regles/exploration/' }), 'ressources', 'la page elle-même est une entrée : elle l’emporte sur l’onglet du plan');
+  assert.equal(courante('/regles/meteo/'), 'regles', 'une page d’un onglet (adresse à plat)');
+  assert.equal(courante('/regles/'), 'regles');
+  assert.equal(courante('/regles/combats/'), 'regles', 'un onglet');
+  // l'adresse d'une page d'un onglet ne dit pas l'onglet : l'entrée du plan (`entree` de Base.astro) décide, ici l'onglet Fiche de personnage, du Jeu
+  assert.equal(courante('/regles/creer-son-personnage/'), 'regles');
+  assert.equal(courante('/regles/creer-son-personnage/', { entree: 'regles/fiche-de-personnage/' }), 'jeu');
+  assert.equal(courante('/regles/la-magie/', { entree: 'regles/mecaniques-generales/' }), 'regles');
+  assert.equal(courante('/decouvrir/l-univers/'), 'jeu', 'une sous-page d’Introduction');
+  assert.equal(courante('/mj/guide-pour-mj-maverick/'), 'regles', 'le Guide du MJ est dans les Règles');
+  assert.equal(courante('/mise-a-jour/'), 'regles');
+  assert.equal(courante('/bestiaire/zombi/'), 'monde');
+  assert.equal(courante('/bestiaire/monstres/loup-garou/loup-garou-superieur/'), 'monde', 'la page d’un monstre');
+  assert.equal(courante('/lore/'), 'monde');
+  assert.equal(courante('/chronologie/grande-croisade/'), 'monde', 'un événement de la chronologie');
+  assert.equal(courante('/archives/'), 'taverne');
+  assert.equal(courante('/pages/'), 'taverne', 'index du wiki, hors menu');
+  assert.equal(courante('/donnees/'), 'taverne');
+  assert.equal(courante('/debug/'), 'taverne');
+  // les pages du menu du profil et l'accueil ne sont d'aucune rubrique : le menu montré est celui de la première
+  for (const chemin of ['/', '/recherche/', '/regles/glossaire/', '/profil/', '/404/']) assert.equal(courante(chemin), null, chemin);
+  assert.equal(courante('/regles/une-page-du-glossaire/', { entree: 'regles/glossaire/' }), null, 'une page du glossaire est atteinte par le profil');
+  assert.equal(activeGroup('/').key, 'jeu', 'le menu latéral montré par défaut : Le Jeu');
+  assert.equal(activeGroup('/recherche/').key, 'jeu');
+  assert.equal(activeGroup('/MaverickCenter/', '/MaverickCenter/').key, 'jeu');
+  assert.equal(activeGroup('/ressources/alchimie/').key, 'ressources');
+  assert.equal(activeGroup('/regles/creer-son-personnage/', '/', NAV, 'regles/fiche-de-personnage/').key, 'jeu');
 });
 
-test('la 2e ligne suit la rubrique de la page, même hors menu ; la première (Règles) par défaut', () => {
-  assert.equal(activeGroup('/ressources/alchimie/').key, 'equipement', 'une ressource hors menu ouvre l’Équipement');
-  assert.equal(activeGroup('/ressources/maladie/').key, 'equipement', 'hors menu, en attendant d’être rangée');
-  assert.equal(activeGroup('/ressources/').key, 'equipement', 'la liste des pages de ressources : Autres');
-  // « Famillier devrai être dans Personnage » : son entrée, plus longue que `ressources/` de l'Équipement, l'emporte
-  assert.equal(activeGroup('/ressources/familiers/').key, 'personnage', 'Familiers ouvre le Personnage, pas l’Équipement');
-  assert.equal(activeGroup('/MaverickCenter/ressources/familiers/', '/MaverickCenter/').key, 'personnage');
-  assert.equal(activeGroup('/ressources/bouclier/').key, 'equipement');
-  assert.equal(activeGroup('/ressources/pieces-elementaires/').key, 'equipement', 'hors menu depuis le 2026-10-29');
-  assert.equal(activeGroup('/MaverickCenter/ressources/accessoires/', '/MaverickCenter/').key, 'equipement');
-  assert.equal(activeGroup('/regles/meteo/').key, 'regles');
-  assert.equal(activeGroup('/regles/artisanat/').key, 'regles', 'Artisanat : l’onglet Exploration des Règles (R184)');
-  assert.equal(activeGroup('/ressources/composants/').key, 'equipement', 'Composants reste dans l’Équipement');
-  assert.equal(activeGroup('/decouvrir/l-univers/').key, 'regles');
-  assert.equal(activeGroup('/regles/').key, 'regles', 'le premier onglet (menu latéral, ouvert sur sa page d’ouverture)');
-  assert.equal(activeGroup('/regles/exploration/').key, 'regles', 'un onglet');
-  assert.equal(activeGroup('/regles/les-degats/').key, 'regles', 'une page d’un onglet');
-  assert.equal(activeGroup('/mj/').key, 'mj');
-  assert.equal(activeGroup('/mj/guide-pour-mj-maverick/').key, 'mj');
-  assert.equal(activeGroup('/fiche/').key, 'joueur');
-  assert.equal(activeGroup('/bestiaire/zombi/').key, 'codex');
-  assert.equal(activeGroup('/bestiaire/monstres/loup-garou/loup-garou-superieur/').key, 'codex', 'la page d’un monstre ouvre le Codex');
-  assert.equal(activeGroup('/lore/').key, 'codex');
-  assert.equal(activeGroup('/chronologie/grande-croisade/').key, 'codex', 'un événement de la chronologie ouvre le Codex');
-  assert.equal(activeGroup('/capacites/clerc-zelote/').key, 'personnage', 'un don de classe va avec les classes');
-  assert.equal(activeGroup('/races/elfe/').key, 'personnage');
-  assert.equal(activeGroup('/recherche/').key, 'outils');
-  assert.equal(activeGroup('/donnees/').key, 'outils');
-  assert.equal(activeGroup('/').key, 'regles');
-  assert.equal(activeGroup('/MaverickCenter/', '/MaverickCenter/').key, 'regles');
+test('R319 (1) : le menu du profil, ses niveaux portés (J, MJ, C, production seulement, tout compte connecté) et l’adresse du site de dev lue du code', () => {
+  const blocs = MENU_DU_PROFIL.map((b) => b.map((e) => e.label));
+  assert.deepEqual(blocs, [['Mon profil'], ['Mes personnages', 'Mes groupes', 'Mes scénarios'], ['Glossaire', 'Recherche'], ['Site de dev', 'Voir le site en tant que…'], ['Se déconnecter']]);
+  const e = (libelle) => entreesAPlat(MENU_DU_PROFIL.flat()).find((x) => x.label === libelle);
+  assert.deepEqual([e('Mes personnages').niveau, e('Mes groupes').niveau, e('Mes scénarios').niveau, e('Voir le site en tant que…').niveau], ['joueur', 'joueur', 'mj', 'createur']);
+  assert.deepEqual([e('Site de dev').prodSeulement, e('Site de dev').niveau], [true, 'mj']);
+  assert.ok(e('Mon profil').connecte && e('Se déconnecter').connecte, 'tout compte connecté, quel que soit son niveau');
+  assert.equal(e('Se déconnecter').action, 'deconnexion', 'rendu par le compte');
+  for (const x of entreesAPlat(MENU_DU_PROFIL.flat())) assert.ok(x.niveau === undefined || NIVEAUX_DU_MENU.includes(x.niveau), x.label);
+  // « Mes personnages » : la section de /personnages/ (R318, étape E8), son niveau porté sans être appliqué ; les autres : pas de page encore, « bientôt » ; Glossaire et Recherche : des pages (pas d'une rubrique)
+  assert.equal(e('Mes personnages').path, 'personnages/#mes-personnages');
+  assert.deepEqual(['Mes groupes', 'Mes scénarios', 'Voir le site en tant que…'].filter((l) => e(l).path), []);
+  assert.deepEqual([e('Glossaire').path, e('Recherche').path, e('Mon profil').path], ['regles/glossaire/', 'recherche/', 'profil/']);
+  // l'adresse du site de dev : celle que le code connaît déjà (scripts/db-extrait.mjs), nav.mjs n'important rien
+  assert.equal(e('Site de dev').externe, ADRESSE_DU_SITE_DE_DEV);
+  assert.equal(ADRESSE_DU_SITE_DE_DEV, `${ADRESSE_DE_L_EXTRAIT}/`);
+  assert.ok(!navPaths().some((p) => ['profil/', 'recherche/', 'regles/glossaire/'].includes(p)), 'le menu du profil n’est pas une rubrique');
+  assert.equal(rubriqueCourante('/personnages/')?.key, 'jeu', 'la page /personnages/ reste du Jeu (Personnages prétirés) : l’entrée du profil porte une ancre');
 });
 
 test('les pages ne sont plus sous /wiki/ : une ancienne adresse mène à la nouvelle (page 404)', () => {
@@ -238,35 +298,4 @@ test('/tags/<clé>/ n’existe plus : la page 404 mène aux éléments du mot-cl
   assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?mot-cle=glace'), '/recherche/?mot-cle=feu', 'le mot-clé de l’adresse l’emporte');
   assert.equal(adresseComplete('/fiche/', '?id=12', '#notes'), '/fiche/?id=12#notes');
   assert.equal(adresseComplete('/races/nain/', '', ''), '/races/nain/');
-});
-
-test('la page Debug n’est au menu que sur le site de dev (demande du propriétaire : « visible uniquement sur le serveur dev »)', () => {
-  const outils = NAV.find((g) => g.key === 'outils');
-  assert.deepEqual(NAV.flatMap((g) => g.items.filter((i) => i.devSeulement).map((i) => `${g.key} ${i.label} ${i.path}`)), ['outils Debug debug/'],
-    'la seule entrée du site de dev seulement');
-  assert.deepEqual(entreesDuMenu(outils).map((i) => i.label), ['Statistiques', 'Mise à jour', 'Boîte à idée', 'Galeries', 'Recherche', 'Archives', 'Debug']);
-  assert.deepEqual(entreesDuMenu(outils, { dev: false }).map((i) => i.label), ['Statistiques', 'Mise à jour', 'Boîte à idée', 'Galeries', 'Recherche', 'Archives'],
-    'production et version portable : sans Debug');
-  for (const g of NAV.filter((x) => x.key !== 'outils')) assert.deepEqual(entreesDuMenu(g, { dev: false }), g.items, g.key);
-  assert.equal(activeGroup('/debug/').key, 'outils');
-  // le menu (layouts/Base.astro) n'affiche que entreesDuMenu, sans les entrées du site de dev en production (SITE_MODE=prod) ni dans la version portable
-  const base = readFileSync(new URL('../src/layouts/Base.astro', import.meta.url), 'utf8');
-  assert.match(base, /const dev = !site\.prod && !portable;/);
-  assert.match(base, /entreesDuMenu\(group, \{ dev \}\)\.map\(\(item\) =>/);
-  assert.doesNotMatch(base, /group\.items\.map\(/, 'jamais toutes les entrées');
-});
-
-test('R184 : les onglets des Règles au menu (ligne 2, après Découvrir et L’univers, avant le Glossaire) sont ceux de la table regles_onglet, dans son ordre (libellé = titre, chemin = regles/<id>/)', () => {
-  // nav.mjs n'importe rien (le script de la page 404 l'importe) : ses libellés et chemins sont écrits à part, et doivent suivre le plan de la base
-  const onglets = ouvrirBase().prepare('SELECT id, titre FROM regles_onglet ORDER BY ordre, id').all();
-  assert.ok(onglets.length >= 4, `${onglets.length} onglets`);
-  const regles = NAV.find((g) => g.key === 'regles');
-  assert.deepEqual(regles.items.slice(2, -1).map((i) => [i.label, i.path]), onglets.map((o) => [o.titre, `regles/${o.id}/`]));
-  // le Glossaire, en dernier : une page seule (pages/regles/glossaire.astro), pas un onglet du plan ; son nom est réservé (lib/livres.mjs#NOMS_RESERVES)
-  assert.deepEqual(regles.items.at(-1), { label: 'Glossaire', path: 'regles/glossaire/' });
-  assert.ok(!onglets.some((o) => o.id === 'glossaire'), 'pas un onglet');
-  assert.deepEqual(regles.items.slice(0, 2).map((i) => [i.label, i.path]), [['Découvrir', 'decouvrir/'], ['L’univers', 'decouvrir/l-univers/']]);
-  // toute page sous regles/ (pages des onglets à plat, Artisanat, anciennes adresses) ouvre les Règles ; l'onglet marqué vient du plan (Base.astro#entree)
-  assert.deepEqual(regles.autres, ['regles/']);
-  for (const libelle of ['Créer son personnage', 'Les bases', 'Règles avancées']) assert.ok(!regles.items.some((i) => i.label === libelle), `plus d’entrée « ${libelle} »`);
 });

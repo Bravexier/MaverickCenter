@@ -7,7 +7,7 @@ import { url } from '../lib/wiki';
 // (layouts/Base.astro). Le texte dit ce que fait le code, et rien d'autre : fiches (serveur/api.mjs, serveur/fiches.mjs), « Exporter »
 // (scripts/fiche.mjs#envoyerAGoogle : jeton en mémoire, jamais envoyé au service), « Importer (en ligne) » (serveur/classeur.mjs), métriques
 // (serveur/metriques.mjs, docs/serveur.md « Métriques et volume »), journaux des conteneurs (docker-compose.yml : 5 fichiers de 10 Mo), sessionStorage
-// (chronologie, bestiaire), connexion par Discord (R310, R312, R313, R314, R315 : serveur/discord.mjs, serveur/utilisateurs.mjs, table `utilisateur` ; cookies `maverick_session`
+// (chronologie, bestiaire), localStorage (état du menu latéral : `menu-du-site:etat`, R319), connexion par Discord (R310, R312, R313, R314, R315 : serveur/discord.mjs, serveur/utilisateurs.mjs, table `utilisateur` ; cookies `maverick_session`
 // DUREE_SESSION_DEV_S / DUREE_SESSION_PROD_S et `maverick_etat` DUREE_DE_L_ETAT_S ; images chargées par le navigateur depuis cdn.discordapp.com), sauvegardes de
 // db/ (deploy/installateur/sauvegarde/), Tipeee (serveur/tipeee.mjs). Ce que le code ne dit pas
 // (responsable, hébergeur, base légale, durée des journaux) n'y est pas : le propriétaire le complète. La conservation d'un compte suit R312 (1) et R313 (2) ; la relecture des rôles en session, R314 ; la connexion commune aux deux sites (cookie `Domain`, compte créé à la première visite de l'autre site), R315. Hors de tout menu.
@@ -94,6 +94,7 @@ const miseAJourLisible = new Date(`${MISE_A_JOUR}T00:00:00Z`).toLocaleDateString
     <ul>
       <li>Le site ne dépose aucun cookie tant que vous ne vous connectez pas.</li>
       <li>Il utilise le stockage de session du navigateur, effacé à la fermeture de l’onglet, pour deux commodités : retrouver la position de la frise chronologique, et revenir au tableau du bestiaire depuis la page d’un monstre. Ces données restent dans votre navigateur.</li>
+      <li>Il garde aussi dans le stockage local du navigateur, sans date d’expiration, l’état de son menu latéral : s’il est réduit et quelles entrées sont repliées (clé <code>menu-du-site:etat</code>). Cette donnée reste dans votre navigateur : elle n’est jamais envoyée au serveur, et vous l’effacez avec les données du site.</li>
       <li>La connexion par Discord dépose deux cookies, réservés au service du site (le contenu des pages ne les lit pas) : <code>maverick_etat</code>, pendant la connexion seulement (10 minutes), pour vérifier que le retour de Discord répond bien à votre demande ; puis <code>maverick_session</code>, qui vous garde connecté (12 heures sur le site de développement, 7 jours sur le site public) jusqu’à votre déconnexion ou son expiration. Si les deux sites partagent la connexion, ce cookie vaut pour les deux.</li>
       <li>La fenêtre de connexion de Google, lors d’un export, relève des règles de Google.</li>
     </ul>

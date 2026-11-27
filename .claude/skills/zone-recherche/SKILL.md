@@ -1,6 +1,6 @@
 ---
 name: zone-recherche
-description: "Page /recherche/ (menu Outils) : recherche mêlée au glossaire, vue d'un mot-clé (?mot-cle=<clé>), index search-index.json. À charger avant de lire, modifier ou relire cette page, son script, ses modules ou leurs tests."
+description: "Page /recherche/ (menu du profil) : recherche mêlée au glossaire, vue d'un mot-clé (?mot-cle=<clé>), index search-index.json. À charger avant de lire, modifier ou relire cette page, son script, ses modules ou leurs tests."
 paths: ["client/src/pages/recherche.astro", "client/src/pages/search-index.json.ts", "client/src/scripts/recherche.mjs", "client/src/lib/search.mjs", "client/src/lib/recherche-*.mjs", "client/src/lib/recherche-index.ts", "client/src/styles/recherche/**", "client/test/recherche-*.test.mjs", "client/test/search.test.mjs"]
 user-invocable: false
 ---
@@ -15,7 +15,7 @@ user-invocable: false
 - `docs/content-guide.md`, « Mots-clés (glossaire) », paragraphe « Le Glossaire » : adresse `/recherche/?mot-cle=<clé>`, pastilles, vue d'un mot-clé.
 
 ## La page
-- Menu Outils ; plus de barre dans l'en-tête. Mêlée au glossaire : tous les mots-clés sans recherche, ceux dont le libellé ou un synonyme correspond sinon (R233 (1) ; `filtrerMotsCles` sur `search.mjs#cleDeRecherche`, jamais la clé : les catégories d'un homonyme ne sont pas son nom), puis les pages et les événements de la chronologie (cherchés par leur texte et le nom de leurs catégories ; ils ne portent pas d'étiquette ; une page servie par un panneau de règles est aussi cherchée dans ses blocs).
+- Menu du profil (R319 : d'aucune rubrique) ; plus de barre dans l'en-tête. Mêlée au glossaire : tous les mots-clés sans recherche, ceux dont le libellé ou un synonyme correspond sinon (R233 (1) ; `filtrerMotsCles` sur `search.mjs#cleDeRecherche`, jamais la clé : les catégories d'un homonyme ne sont pas son nom), puis les pages et les événements de la chronologie (cherchés par leur texte et le nom de leurs catégories ; ils ne portent pas d'étiquette ; une page servie par un panneau de règles est aussi cherchée dans ses blocs).
 - Tous les mots-clés affichés, même sans page, chacun avec l'infobulle de sa définition et le nombre de ses pages visibles qui le portent ou le citent. La pastille est `mots-cles-balises.mjs#htmlDeLaPastille` : le libellé seul, « Libellé · n » (R233 (9)) ; un mot-clé qui a une icône (R235, les monnaies) : le libellé suivi de son icône (`htmlDuNomDuMotCle` ; R63, « Libellé + icône »).
 - Les pastilles (ici et au pied d'une page) mènent toujours à la liste des pages du mot-clé, `?mot-cle=<clé>` (R232 (3)), jamais à son adresse (Q12). Une clé quittée y mène encore (`idDeLaCle`, `data-anciennes-cles`) ; un renommage casse les adresses partagées, c'est voulu (R232 (3)).
 - Chaque `li` de la liste porte `data-id` (l'id entier), `data-cle`, `data-synonymes` et `data-anciennes-cles` (JSON, absents sans valeur).

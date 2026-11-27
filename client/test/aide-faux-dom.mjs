@@ -230,6 +230,10 @@ export class Element extends EventTarget {
       notifier(this, { type: 'childList', target: this, addedNodes: [noeud] });
     }
   }
+  prepend(...noeuds) {
+    const repere = this.noeuds[0] ?? null;
+    for (const n of noeuds) this.insertBefore(typeof n === 'string' ? new Texte(n) : n, repere);
+  }
   replaceChildren(...noeuds) {
     this.textContent = '';
     this.append(...noeuds);

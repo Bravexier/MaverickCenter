@@ -1916,7 +1916,8 @@ const DOMAINES = {
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE,
   // une page du guide ou du Codex (titre, texte, résumé) ; une page des Règles créée ou supprimée (serveur/edition-plan.mjs)
   page: { ...PAGE, ...PLAN.page },
-  // le menu latéral d'un onglet des Règles : l'onglet d'une page, sa place (serveur/edition-plan.mjs)
+  // un onglet des Règles : son titre seulement (R319 (5)) ; le menu latéral d'un onglet : l'onglet d'une page, sa place (serveur/edition-plan.mjs)
+  regles_onglet: PLAN.onglet,
   regles_onglet_entree: PLAN.entree,
   // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
   ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant, reference }),

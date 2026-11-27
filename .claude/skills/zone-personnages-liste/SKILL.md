@@ -1,6 +1,6 @@
 ---
 name: zone-personnages-liste
-description: "Recherche des personnages (/personnages/, « Personnages » de l'Espace joueur) : filtres, liste à 6 colonnes triable en trois sections, ligne entière en lien vers la fiche, bordure aux couleurs des magies, réglages « Visible par » et « Ranger au compte ». À charger avant de lire, modifier ou relire cette page, son script, son module ou ses tests."
+description: "Recherche des personnages (/personnages/, entrée « Personnages prétirés » du Jeu) : filtres, liste à 6 colonnes triable en trois sections, ligne entière en lien vers la fiche, bordure aux couleurs des magies, réglages « Visible par » et « Ranger au compte ». À charger avant de lire, modifier ou relire cette page, son script, son module ou ses tests."
 paths: ["client/src/pages/personnages.astro", "client/src/scripts/personnages.mjs", "client/src/lib/personnages-liste.mjs", "client/src/styles/personnages/**", "client/test/personnages-liste.test.mjs", "client/test/personnages-fiches-de-joueur.test.mjs"]
 user-invocable: false
 ---
@@ -15,8 +15,9 @@ user-invocable: false
 
 - `docs/character-generator.md`, « La page `/personnages/` ».
 
-## La page (« Personnages » de l'Espace joueur)
+## La page
 
+- Entrée « Personnages prétirés » du Jeu (R319) ; « Mes personnages » du menu du profil mène à `personnages/#mes-personnages` (skill `zone-menu`).
 - Filtres, puis une liste de 6 colonnes seulement : portrait, nom, race, magies (« Innée, Acquise »), classes, niveau (demande du propriétaire).
 - Classes : par rang, chacune suivie de sa spécialité entre parenthèses s'il en a une, « Guerrier (Épéiste), Mage » : la classe telle que la base la donne, la spécialité avec juste une majuscule et le reste en minuscules (`lib/personnages-liste.mjs#casseDeSpecialite`, demande du propriétaire) ; la base et la fiche gardent leur casse, le tri ignore la casse (`#classesDe`, résumé `GET /api/personnages/` : `classes[].classe`, `classes[].specialite`).
 - Triée par chaque colonne sauf le portrait.

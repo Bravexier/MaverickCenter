@@ -1,11 +1,18 @@
 ---
-// Le compte du visiteur, à droite de l'en-tête (R310 (7) : connecté, avatar et nom, lien vers /profil/ ; sinon le bouton « Connexion via Discord »). La zone est
-// vide et cachée : src/scripts/compte.mjs (qui importe lib/compte.mjs, seul) y met le lien après UN `GET /api/moi/` ; sans réponse ou sans connexion réglée,
-// elle reste vide. Posé par layouts/Base.astro, jamais dans la version portable (pas de service) ni sur la page de maintenance (en-tête inerte). Le même
-// script remplit aussi les pages /profil/ et /connexion/ (jamais deux scripts de page sur le même module : skill site-version-portable).
-import { url } from '../lib/wiki';
+// Le compte du visiteur, à droite de l'en-tête (R310 : connexion par Discord ; R319 (1) : le menu du profil) : le menu (components/MenuDuProfil.astro) et le script du
+// compte, src/scripts/compte.mjs (qui importe lib/compte.mjs, seul), qui demande UN `GET /api/moi/` et le remplit. Posé par layouts/Base.astro, jamais dans la version
+// portable (pas de service : elle ne pose que MenuDuProfil, avec `portable`) ni sur la page de maintenance (en-tête inerte). Le même script remplit aussi les pages
+// /profil/ et /connexion/ (jamais deux scripts de page sur le même module : skill site-version-portable).
+import MenuDuProfil from './MenuDuProfil.astro';
+
+interface Props {
+  prod?: boolean;
+  dev?: boolean;
+  ici?: string;
+}
+const { prod = false, dev = true, ici } = Astro.props;
 ---
-<div class="site-compte" data-compte hidden data-api={url('api/')} data-page-profil={url('profil/')} data-page-connexion={url('connexion/')} data-accueil={url()}></div>
+<MenuDuProfil prod={prod} dev={dev} ici={ici} />
 <script>
   import '../scripts/compte.mjs';
 </script>

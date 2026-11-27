@@ -412,15 +412,16 @@ CREATE TABLE annonce (
 
 -- Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats »,
 -- « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral
--- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée, que l'édition du site de dev ne modifie pas : elle n'en
--- crée ni n'en retire, et l'ordre des onglets comme leur page d'ouverture sont fixes (choix du propriétaire, lot de l'édition des menus : « Non,
--- fixe ») ; seules leurs entrées se modifient. La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree,
+-- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée : l'édition du site de dev n'en crée ni n'en retire, et
+-- l'ordre des onglets comme leur page d'ouverture sont fixes (choix du propriétaire, lot de l'édition des menus : « Non, fixe »). Seuls se modifient
+-- leurs entrées et, depuis R319 (5), leur titre (domaine `onglet`) ; l'adresse `regles/<id>/` ne suit pas encore le titre. La page d'ouverture est une
+-- entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree,
 -- vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est
 -- refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
 CREATE TABLE regles_onglet (
   id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
                                                        -- 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration'
-  titre             TEXT    NOT NULL CHECK (length(titre) > 0),   -- le nom de l'onglet (« Les combats »)
+  titre             TEXT    NOT NULL CHECK (length(titre) > 0),   -- le nom de l'onglet (« Les combats ») ; modifiable sur le site de dev (R319 (5))
   ordre             INTEGER NOT NULL CHECK (ordre >= 1),          -- place parmi ces onglets (1 = le premier après L'univers) ; pas UNIQUE, pour qu'un
                                                                   -- réordonnancement puisse échanger deux ordres dans un même lot (à égalité, l'id)
   ouverture_page_id TEXT    NOT NULL,                             -- la page montrée à l'adresse de l'onglet, qui n'est pas forcément la première du menu

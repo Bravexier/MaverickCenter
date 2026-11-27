@@ -1,8 +1,20 @@
 /* Le compte du visiteur (src/scripts/compte.mjs ; R310) : à droite de l'en-tête (avatar rond et nom, ou « Connexion via Discord »), et les pages /profil/ et
    /connexion/. Jetons du thème seulement (skill ui-couleurs-theme). */
-.site-compte { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.75rem; }
+.site-compte {
+  --largeur-compte: 18rem; /* ce que la zone prend à droite de la colonne : l'avatar et le nom, ou « Connexion via Discord » et le petit bouton */
+  position: absolute;
+  top: 50%;
+  /* dans la marge à droite de la colonne (la place qui reste à droite de l'en-tête, une fois le menu latéral ôté) quand elle la loge, sinon au bord de l'écran */
+  right: max(0.75rem, calc((100% - var(--menu-courante, 0px) - var(--max)) / 2 - var(--largeur-compte) - 0.75rem));
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
 .site-compte[hidden] { display: none; }
-.site-compte__lien { display: flex; align-items: center; gap: 0.5rem; color: var(--text); text-decoration: none; font-weight: 700; min-width: 0; }
+/* le temps de la réponse de `GET /api/moi/` : ni petit bouton ni avatar qui sauteraient (scripts/compte.mjs ôte `data-attente`) */
+.site-compte[data-attente] { visibility: hidden; }
+.site-compte__lien { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text); text-decoration: none; font-weight: 700; min-width: 0; }
 .site-compte__lien:hover, .site-compte__lien:focus-visible { color: var(--accent); }
 .site-compte__avatar { flex: none; width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; background: var(--border); }
 .site-compte__avatar--vide { display: inline-grid; place-items: center; color: var(--text); text-transform: uppercase; }
@@ -36,13 +48,12 @@
 .profil__infos dd { margin: 0; font-weight: 600; }
 .profil__erreur, .connexion__erreur { color: var(--danger); font-weight: 600; }
 .connexion__erreur { padding: 0.6rem 0.9rem; border: 1px solid var(--danger); border-radius: var(--radius); }
-/* Le compte ne fait JAMAIS passer le menu à la ligne (R317 (3)). Le logo et le menu gardent la largeur du contenu (`--max`, alignés sur le texte : « Le logo reste
-   aligné sur le texte, et c'est la zone du compte qui déborde à droite de la page ») ; le compte, hors du flux, se place dans la marge à droite de l'en-tête
-   (`left: 100%` de `.site-header__inner`). Seuils (mesurés au rendu, 64rem de contenu, marge = (largeur - 64rem) / 2) :
-   - 93rem et plus : la marge (14,5rem) loge l'avatar et le nom (tronqué à 10rem), ou « Connexion via Discord » ;
-   - de 72rem à 93rem : seul l'avatar, ou l'icône Discord, tient dans la marge ; le nom et le libellé restent dans la page, masqués à l'œil seulement (nom accessible) ;
-   - sous 72rem : plus de marge, le compte reprend sa place dans la ligne du menu (avatar ou icône seuls : le menu des 7 rubriques tient encore sur une ligne) ;
-   - sous 60rem : le menu passe sous le logo, le compte reste en haut à droite de la ligne du logo. Aucun défilement horizontal à aucune largeur. */
+/* Le compte ne fait JAMAIS passer le menu à la ligne (R317 (3)). Le logo et les rubriques restent alignés sur le texte de la page (la colonne centrée dans la place qui reste à
+   droite du menu latéral : styles/global/menu-site.css) ; c'est la zone du compte, hors du flux, qui déborde à droite : dans la marge à droite de la colonne quand elle la loge, sinon au
+   bord de l'écran (`right`, calculé sur `--menu-courante`, la largeur du menu latéral). Seuils (mesurés au rendu avec le menu ouvert, le pire cas) :
+   - 76rem et plus : l'avatar et le nom (tronqué à 10rem), ou « Connexion via Discord » ; la zone ne rencontre pas les rubriques ;
+   - de 60rem à 76rem : seul l'avatar, ou l'icône Discord, avec le petit bouton ; le nom et le libellé restent dans la page, masqués à l'œil seulement (accessibles) ;
+   - sous 60rem : le menu des rubriques passe sous le logo, le compte reste en haut à droite de la ligne du logo (et du bouton du tiroir). Aucun défilement horizontal. */
 .site-compte__nom { max-width: 10rem; }
 /* le symbole, à gauche du libellé : un élément dans le menu (scripts/compte.mjs), un pseudo-élément sur les pages /connexion/ et /profil/ */
 .bouton-connexion::before { content: ""; }
@@ -59,7 +70,36 @@
 }
 /* Symbole officiel de Discord : le tracé du fichier « Symbol.svg » de la page de marque https://discord.com/branding (viewBox 0 0 59 44), sans retouche */
 .site-compte, .bouton-connexion { --dessin-discord: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 59 44'%3E%3Cpath d='M37.1937 0C36.6265 1.0071 36.1172 2.04893 35.6541 3.11392C31.2553 2.45409 26.7754 2.45409 22.365 3.11392C21.9136 2.04893 21.3926 1.0071 20.8254 0C16.6928 0.70613 12.6644 1.94475 8.84436 3.69271C1.27372 14.9098 -0.775214 25.8374 0.243466 36.6146C4.67704 39.8906 9.6431 42.391 14.9333 43.9884C16.1256 42.391 17.179 40.6893 18.0819 38.9182C16.3687 38.2815 14.7133 37.4828 13.1274 36.5567C13.5442 36.2557 13.9493 35.9432 14.3429 35.6422C23.6384 40.0179 34.4039 40.0179 43.711 35.6422C44.1046 35.9663 44.5097 36.2789 44.9264 36.5567C43.3405 37.4943 41.6852 38.2815 39.9604 38.9298C40.8633 40.7009 41.9167 42.4025 43.109 44C48.3992 42.4025 53.3653 39.9137 57.7988 36.6377C59.0027 24.1358 55.7383 13.3007 49.1748 3.70429C45.3663 1.95633 41.3379 0.717706 37.2053 0.0231518L37.1937 0ZM19.3784 29.9816C16.5192 29.9816 14.1461 27.3886 14.1461 24.1821C14.1461 20.9755 16.4266 18.371 19.3669 18.371C22.3071 18.371 24.6455 20.9871 24.5992 24.1821C24.5529 27.377 22.2956 29.9816 19.3784 29.9816ZM38.6639 29.9816C35.7931 29.9816 33.4431 27.3886 33.4431 24.1821C33.4431 20.9755 35.7236 18.371 38.6639 18.371C41.6042 18.371 43.9309 20.9871 43.8846 24.1821C43.8383 27.377 41.581 29.9816 38.6639 29.9816Z'/%3E%3C/svg%3E"); }
-@media (max-width: 92.99rem) {
+/* le menu du profil (R319 (1), components/MenuDuProfil.astro) : le bouton (l'avatar et le pseudo d'un compte connecté, ou le petit bouton du visiteur) ouvre un panneau sous le
+   compte, à droite : des blocs d'entrées séparés par un filet. Jetons du thème seulement. */
+.site-compte__chevron { flex: none; width: 0; height: 0; border-inline: 5px solid transparent; border-top: 6px solid var(--muted); }
+.site-compte__lien:hover .site-compte__chevron, .site-compte__petit:hover .site-compte__chevron { border-top-color: var(--accent); }
+.site-compte__lien[aria-expanded='true'] .site-compte__chevron, .site-compte__petit[aria-expanded='true'] .site-compte__chevron { transform: rotate(180deg); }
+.site-compte__petit { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; cursor: pointer; }
+.site-compte__petit:hover { border-color: var(--accent); }
+.site-compte__lien:focus-visible, .site-compte__petit:focus-visible, .site-compte__entree:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.site-compte__panneau {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  width: min(16.5rem, calc(100vw - 1rem));
+  padding: 0.25rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 3px 12px var(--ombre-bulle);
+}
+.site-compte [hidden] { display: none !important; }
+.site-compte__bloc ul { margin: 0; padding: 0.3rem 0; list-style: none; }
+.site-compte__bloc:not([hidden]) ~ .site-compte__bloc:not([hidden]) { border-top: 1px solid var(--border); }
+.site-compte__entree, .site-compte__panneau .nav-soon { display: block; box-sizing: border-box; width: 100%; padding: 0.3rem 0; border: 0; background: none; font: inherit; text-align: left; }
+.site-compte__entree { color: var(--text); text-decoration: none; cursor: pointer; }
+.site-compte__entree:hover { color: var(--accent); text-decoration: underline; }
+.site-compte__entree[aria-current='page'] { color: var(--accent); font-weight: 700; }
+.site-compte__erreur { margin: 0 0 0.5rem; color: var(--danger); font-weight: 600; }
+@media (max-width: 75.99rem) {
   .site-compte__nom, .site-compte__libelle {
     position: absolute;
     width: 1px;
@@ -71,10 +111,15 @@
   .site-compte__connexion { padding: 0.4rem 0.55rem; }
   .site-compte__icone { margin-right: 0; width: 1.5em; height: 1.5em; vertical-align: -0.4em; }
 }
-@media (max-width: 71.99rem) {
-  .site-compte { position: static; transform: none; margin-left: auto; align-self: center; flex: none; }
+@media (max-width: 75.99rem) {
+  .site-compte { --largeur-compte: 6rem; }
+}
+@media (max-width: 56rem) {
+  .site-compte__petit { width: 2.75rem; height: 2.75rem; }
+  .site-compte__lien { min-height: 2.75rem; }
+  .site-compte__entree, .site-compte__panneau .nav-soon { min-height: 2.75rem; display: flex; align-items: center; gap: 0.3em; }
 }
 @media (max-width: 60rem) {
-  .site-compte { grid-column: 2; grid-row: 1; justify-self: end; }
+  .site-compte { position: relative; top: auto; right: auto; transform: none; grid-column: 3; grid-row: 1; justify-self: end; align-self: center; }
 }
 @media print { .site-compte { display: none !important; } }

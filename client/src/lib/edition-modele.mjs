@@ -698,11 +698,17 @@ export const TABLES = {
       resume: { type: 'ligne', libelle: 'Résumé', requis: true },
     },
   },
+  // Les onglets eux-mêmes (regles_onglet) : l'ordre et la page d'ouverture sont fixes (réponse « Non, fixe », R184), seul le TITRE se modifie (R319 (5),
+  // réponse « Ouvrir le titre, adresses renommées » du 2026-11-27, qui remplace « Non, fixe » pour lui seul : serveur/edition-plan.mjs#domainesDuPlan
+  // `onglet`). L'adresse d'un onglet (`regles/<id>/`) ne suit pas son titre dans ce lot (un lot à part) ; ni création ni suppression d'onglet.
+  regles_onglet: {
+    libelle: 'Onglet des Règles',
+    colonnes: { titre: { type: 'ligne', libelle: 'Titre', requis: true } },
+  },
   // Le menu latéral d'un onglet des Règles (migration 0091, R184, R185 ; lot de l'édition des menus, demandes du propriétaire « changer l'ordre des menu
   // latéraux (par un glisser déposer) », « Oui, par une liste ») : l'onglet d'une page (une liste « Onglet » : la page passe en fin du menu de l'autre
   // onglet ; refusé pour une page d'ouverture d'onglet, un lien ou une entrée « bientôt ») et sa place (`rang`, jamais unique : à égalité, l'id) ; l'ordre
   // d'un menu se donne d'un bloc par l'opération `ordonner` ; une entrée naît et part avec sa page (ENTITES.page_des_regles) ; serveur/edition-plan.mjs.
-  // Les onglets eux-mêmes (regles_onglet : ordre, titre, page d'ouverture) sont fixes (réponse « Non, fixe »)
   regles_onglet_entree: {
     libelle: 'Entrée du menu d’un onglet des Règles',
     colonnes: {
