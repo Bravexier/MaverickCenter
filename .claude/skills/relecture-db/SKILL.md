@@ -88,6 +88,6 @@ Par lots thématiques, une branche et une PR par lot (`docs/flux-git.md`). Un ch
 
 - **Lecture seule** : `var/maverick.db` ouverte en lecture seule, ou une copie ; jamais la base vivante d'un serveur, jamais le contenu des tables des sections 13 et 14 (fiches, journal : vides dans `data/rows`).
 - **Règle d'or** (`CLAUDE.md`) : aucune valeur déduite ; une incohérence de contenu est une question, pas une correction.
-- **Identifiants figés** : un nom corrigé l'est partout et sa clé `*_cle` est recalculée, mais son identifiant ne change jamais (skill `base-orthographe`).
+- **Identifiants figés** : un nom corrigé l'est partout et sa clé `*_cle` est recalculée, mais son identifiant ne change jamais ; l'adresse d'une page suit son titre (R316) : un renommage écrit `slug_adresse` et `page_ancienne_adresse`, jamais une migration (skill `base-orthographe`).
 - **Le site de dev est la source** de ce qu'il modifie : une valeur qui diffère de l'import n'est pas une erreur en soi (`historique_modification`, `lib/historique-site.mjs`).
 - `data/rows` ne se modifie jamais à la main.
