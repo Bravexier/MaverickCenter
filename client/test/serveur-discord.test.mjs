@@ -888,6 +888,8 @@ test('R314 : Discord ou le bot en échec (401, 403/50001, 404 autre que 10007, 4
     const tout = m.journal.join('\n');
     assert.equal(m.journal.filter((l) => /revérification du niveau impossible/.test(l)).length, 1, nom);
     assert.match(tout, /revérification du niveau rétablie/, nom);
+    // 10004 : ce que Discord répond aussi tant que le bot n'est pas invité (constaté le 2026-11-27) ; la ligne le dit
+    if (bot.corps?.code === 10004) assert.match(tout, /serveur inconnu du bot \(404, code 10004 : le bot est-il invité dans le serveur/, nom);
     for (const secret of [JETON_DU_BOT_D_ESSAI, IDENTIFIANT_D_ESSAI]) assert.ok(!tout.includes(secret), `${nom} : « ${secret.slice(0, 10)}… » au journal`);
   }
   // le même échec qui dure : toujours une seule ligne au journal
