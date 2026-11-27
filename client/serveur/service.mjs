@@ -26,7 +26,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { creerAcces } from './acces.mjs';
 import { COOKIE_SESSION, creerConnexion } from './discord.mjs';
-import { discordIdDe, effacerLeCompte, mettreAJourLeNiveau } from './utilisateurs.mjs';
+import { discordIdDe, effacerLeCompte, enregistrerLaConnexion, mettreAJourLeNiveau } from './utilisateurs.mjs';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -680,7 +680,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       return { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
     };
     /**
-     * R314 : la revérification du niveau de la session par le bot de l'application (serveur/discord.mjs#reverifier). Rend null (rien à faire : le chemin reste synchrone),
+     * R314 : la revérification du niveau de la session par le bot de l'application (serveur/discord.mjs#reverifier), et la conversion d'une session venue de l'autre
+     * site avec la connexion commune (R315). Rend null (rien à faire : le chemin reste synchrone),
      * un résultat ou une promesse. Jamais sur /api/connexion/ ni /api/deconnexion/ (elles posent ou retirent le cookie) ; jamais sans base ni pendant un gel des écritures.
      */
     const reverifierLaSession = () => {
@@ -695,6 +696,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         discordIdDe: (u) => discordIdDe(base(), u),
         mettreAJour: (u, niveau) => mettreAJourLeNiveau(base(), u, niveau),
         effacer: (discordId) => effacerLeCompte(base(), discordId),
+        // R315 : la session venue de l'autre site (connexion commune) retrouve ou crée son compte comme au retour de Discord
+        enregistrer: (profil) => enregistrerLaConnexion(base(), profil),
       });
     };
     /** La requête avec le cookie réémis : le nouveau jeton de session remplace l'ancien dans les en-têtes (la porte et /api/moi/ l'appliquent dès cette requête). */

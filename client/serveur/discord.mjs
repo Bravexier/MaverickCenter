@@ -17,6 +17,11 @@
 // Revérification pendant la session (R314) : avec le jeton du BOT de l'application (`jeton_du_bot` du réglage, secret de l'instance), `reverifier` relit le membre
 // par l'API REST de Discord, au plus toutes les 5 minutes par personne, lors de ses visites ; sans jeton de bot, rien ne change. Une panne de Discord ou un bot mal
 // réglé ne change jamais un niveau ni n'efface un compte (la session garde son dernier niveau vérifié, au plus jusqu'à son expiration).
+//
+// Connexion commune (R315) : avec `domaine_commun` dans le réglage (le même sur le site de dev et la production, avec le même secret de session), le cookie de
+// session est posé sur ce domaine et vaut pour les deux sites ; il porte alors `d` (l'identifiant Discord d'un membre) et `i` (le site qui a calculé `n` : dev ou
+// prod). Un site ne croit jamais le niveau calculé par l'autre : `session` ignore le cookie de l'autre site, et `reverifier` le convertit en session de ce site (le bot
+// est exigé) : le membre est relu, son compte retrouvé ou créé par son identifiant Discord, son niveau calculé avec la correspondance des rôles de ce site.
 import { createHmac, randomBytes } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { connexionSecurisee, egaux, valeursDuCookie } from './acces.mjs';
@@ -49,6 +54,8 @@ const RESULTATS_RECENTS_MAX = 1000;
 export const RETOUR_PAR_DEFAUT = '/profil/';
 /** Les codes d'erreur de `/connexion/?erreur=<code>` : refus (l'utilisateur a refusé), indisponible, discord (Discord a échoué), etat (état OAuth faux ou périmé). */
 export const CODES_D_ERREUR = Object.freeze(['refus', 'indisponible', 'discord', 'etat']);
+/** R315 : les deux sites de la connexion commune ; `i` du cookie de session dit lequel a calculé le niveau (le site de dev : celui qui a l'édition). */
+export const SITES = Object.freeze(['dev', 'prod']);
 
 export const rangDuNiveau = (niveau) => NIVEAUX.indexOf(niveau);
 export const estUnNiveau = (valeur) => NIVEAUX.includes(valeur);
@@ -167,24 +174,43 @@ export function lireSigne(secret, type, jeton) {
 
 /**
  * Le jeton d'une session : `u` l'identifiant de l'utilisateur du site, `n` son niveau, `exp` l'expiration (secondes depuis 1970), `v` (facultatif) l'instant de la
- * dernière vérification du niveau auprès de Discord (R314) ; sans `v`, la session est à revérifier.
+ * dernière vérification du niveau auprès de Discord (R314) ; sans `v`, la session est à revérifier. Connexion commune (R315) : `d` l'identifiant Discord d'un membre,
+ * `i` le site qui a calculé `n` (`dev` ou `prod`).
  */
-export const creerJetonDeSession = (secret, { u, n, exp, v }) => signer(secret, 'session', Number.isInteger(v) ? { u, n, exp, v } : { u, n, exp });
+export const creerJetonDeSession = (secret, { u, n, exp, v, d, i }) => signer(secret, 'session', {
+  u, n, exp,
+  ...(Number.isInteger(v) ? { v } : {}),
+  ...(typeof d === 'string' && d ? { d } : {}),
+  ...(SITES.includes(i) ? { i } : {}),
+});
 
 /** La session d'un jeton bien signé, valide et pas encore expiré : { u, n, exp, v? } (`u` null : sans compte ; `v` absent d'un ancien cookie), sinon null. */
 export function lireJetonDeSession(secret, jeton, maintenantS) {
   const c = lireSigne(secret, 'session', jeton);
   // `u` : l'identifiant du site, ou null pour un non-membre du serveur (R312 : aucun compte n'est gardé, la session n'est qu'Observateur)
   if (!c || !(c.u === null || (typeof c.u === 'string' && c.u && c.u.length <= 100)) || !estUnNiveau(c.n) || !Number.isInteger(c.exp) || c.exp <= maintenantS) return null;
-  return { u: c.u, n: c.n, exp: c.exp, ...(Number.isInteger(c.v) && c.v >= 0 ? { v: c.v } : {}) };
+  return {
+    u: c.u, n: c.n, exp: c.exp,
+    ...(Number.isInteger(c.v) && c.v >= 0 ? { v: c.v } : {}),
+    ...(typeof c.d === 'string' && SNOWFLAKE.test(c.d) ? { d: c.d } : {}),
+    ...(SITES.includes(c.i) ? { i: c.i } : {}),
+  };
 }
 
-const attributs = (chemin, securise, duree) => `; Path=${chemin}; HttpOnly; SameSite=Lax${duree === null ? '' : `; Max-Age=${duree}`}${securise ? '; Secure' : ''}`;
+const attributs = (chemin, securise, duree, domaine = null) => `; Path=${chemin}${domaine ? `; Domain=${domaine}` : ''}; HttpOnly; SameSite=Lax${duree === null ? '' : `; Max-Age=${duree}`}${securise ? '; Secure' : ''}`;
 const RETIRE = '; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
-/** L'en-tête Set-Cookie d'une session ouverte. */
-export const cookieDeSession = (jeton, { securise, dureeS }) => `${COOKIE_SESSION}=${jeton}${attributs('/', securise, dureeS)}`;
-/** L'en-tête Set-Cookie qui retire la session. */
-export const cookieDeSessionRetire = ({ securise }) => `${COOKIE_SESSION}=; Max-Age=0${RETIRE}${attributs('/', securise, null)}`;
+/** L'en-tête Set-Cookie d'une session ouverte ; `domaine` (R315) : le domaine commun aux deux sites. */
+export const cookieDeSession = (jeton, { securise, dureeS, domaine = null }) => `${COOKIE_SESSION}=${jeton}${attributs('/', securise, dureeS, domaine)}`;
+/** L'en-tête Set-Cookie qui retire la session (`domaine` : le cookie commun, R315 ; sans lui, le cookie propre à l'hôte). */
+export const cookieDeSessionRetire = ({ securise, domaine = null }) => `${COOKIE_SESSION}=; Max-Age=0${RETIRE}${attributs('/', securise, null, domaine)}`;
+/**
+ * Les en-têtes Set-Cookie d'une session, le cookie de session en premier. Avec un domaine commun (R315), le cookie vaut pour les deux sites, et l'ancien cookie propre à
+ * l'hôte, de même nom, est retiré (passage des sessions ouvertes avant la connexion commune).
+ */
+export const cookiesDeSession = (jeton, { securise, dureeS, domaine = null }) => [
+  cookieDeSession(jeton, { securise, dureeS, domaine }),
+  ...(domaine ? [cookieDeSessionRetire({ securise })] : []),
+];
 /** Le cookie de l'état OAuth : court (10 min), limité aux routes de connexion ; SameSite=Lax le laisse accompagner le retour de Discord (navigation de haut niveau). */
 export const cookieDeLEtat = (jeton, { securise }) => `${COOKIE_ETAT}=${jeton}${attributs('/api/connexion/', securise, DUREE_DE_L_ETAT_S)}`;
 export const cookieDeLEtatRetire = ({ securise }) => `${COOKIE_ETAT}=; Max-Age=0${RETIRE}${attributs('/api/connexion/', securise, null)}`;
@@ -194,6 +220,8 @@ export const cookieDeLEtatRetire = ({ securise }) => `${COOKIE_ETAT}=; Max-Age=0
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 const HEX64 = /^[0-9a-f]{64}$/;
+/** Un nom de domaine (R315 : le domaine commun aux deux sites), en minuscules, d'au moins deux étiquettes. */
+const DOMAINE = /^(?=.{3,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
 
 /** L'adresse de retour : une adresse complète en HTTPS, sans identifiants, ni fragment, ni chaîne de requête. */
 export function adresseDeRetourValide(texte) {
@@ -229,6 +257,15 @@ export function validerReglage(brut) {
   // le jeton du bot de l'application (R314), facultatif : absent, le niveau n'est pas revérifié pendant la session
   const bot = o.jeton_du_bot;
   if (bot !== undefined && (typeof bot !== 'string' || bot.length < 20 || bot.length > 200 || /\s/.test(bot))) throw new Error('jeton du bot invalide (20 à 200 caractères, sans espace)');
+  // la connexion commune (R315), facultative : le domaine commun aux deux sites. Elle exige le bot (chaque site recalcule le niveau avec sa propre correspondance) et
+  // une adresse de retour dans ce domaine (le cookie posé au retour de Discord doit valoir pour ce site)
+  const commun = o.domaine_commun;
+  if (commun !== undefined) {
+    if (typeof commun !== 'string' || !DOMAINE.test(commun)) throw new Error('domaine commun invalide (par exemple maverick-jdr.com : minuscules, sans point au début)');
+    if (bot === undefined) throw new Error('la connexion commune (R315) demande le bot (--bot) : chaque site recalcule le niveau avec ses propres rôles');
+    const hote = new URL(adresse).hostname;
+    if (hote !== commun && !hote.endsWith(`.${commun}`)) throw new Error(`l’adresse de retour (${hote}) n’est pas dans le domaine commun ${commun}`);
+  }
   return {
     version: 1,
     client_id: String(o.client_id),
@@ -238,6 +275,7 @@ export function validerReglage(brut) {
     roles,
     secret_de_session: o.secret_de_session,
     ...(bot === undefined ? {} : { jeton_du_bot: bot }),
+    ...(commun === undefined ? {} : { domaine_commun: commun }),
     pose_le: typeof o.pose_le === 'string' ? o.pose_le.slice(0, 40) : null,
   };
 }
@@ -245,11 +283,14 @@ export function validerReglage(brut) {
 /**
  * Le réglage qui suit une commande de l'hôte. `definir` (identifiant, secret, adresse de retour, serveur) pose ou change l'application et garde les rôles et
  * les sessions et le jeton du bot ; `role` / `sansRole` changent la correspondance ; `serveur` en change l'identifiant ; `nouvelleSession` renouvelle le secret des
- * sessions ; `jetonDuBot` pose le jeton du bot de l'application (R314), `sansBot` le retire.
+ * sessions ; `jetonDuBot` pose le jeton du bot de l'application (R314), `sansBot` le retire ; `domaineCommun` et `secretDeSession` posent la connexion commune
+ * (R315 : le domaine des deux sites, le secret de session de l'autre), `sansDomaineCommun` la retire.
  * @param {{ ancien?: object|null, definir?: { clientId: string, clientSecret: string, adresseDeRetour: string, serveur?: string }, role?: { id?: string, ids?: string[], niveau: string },
- *   sansRole?: string, serveur?: string, nouvelleSession?: boolean, jetonDuBot?: string|null, sansBot?: boolean, maintenant?: Date }} o
+ *   sansRole?: string, serveur?: string, nouvelleSession?: boolean, jetonDuBot?: string|null, sansBot?: boolean, domaineCommun?: string|null, secretDeSession?: string|null,
+ *   sansDomaineCommun?: boolean, maintenant?: Date }} o
  */
-export function reglageApres({ ancien = null, definir = null, role = null, sansRole = null, serveur = null, nouvelleSession = false, jetonDuBot = null, sansBot = false, maintenant = new Date() }) {
+export function reglageApres({ ancien = null, definir = null, role = null, sansRole = null, serveur = null, nouvelleSession = false, jetonDuBot = null, sansBot = false, domaineCommun = null,
+  secretDeSession = null, sansDomaineCommun = false, maintenant = new Date() }) {
   const garde = ancien ? validerReglage(ancien) : null;
   if (!definir && !garde) throw new Error('aucune application Discord n’est posée : lancez d’abord la commande sans option');
   const base = garde ?? { version: 1, roles: {}, secret_de_session: randomBytes(32).toString('hex'), serveur: SERVEUR_PAR_DEFAUT };
@@ -277,6 +318,12 @@ export function reglageApres({ ancien = null, definir = null, role = null, sansR
     if (!Object.hasOwn(suivant, 'jeton_du_bot')) throw new Error('aucun jeton de bot n’est posé');
     delete suivant.jeton_du_bot;
   }
+  if (domaineCommun !== null) suivant.domaine_commun = String(domaineCommun).trim().toLowerCase();
+  if (sansDomaineCommun) {
+    if (!Object.hasOwn(suivant, 'domaine_commun')) throw new Error('aucune connexion commune n’est posée');
+    delete suivant.domaine_commun;
+  }
+  if (secretDeSession !== null) suivant.secret_de_session = String(secretDeSession).trim();
   if (nouvelleSession || !base.secret_de_session) suivant.secret_de_session = randomBytes(32).toString('hex');
   suivant.pose_le = maintenant.toISOString();
   return validerReglage(suivant);
@@ -284,7 +331,11 @@ export function reglageApres({ ancien = null, definir = null, role = null, sansR
 
 /** Le réglage résumé SANS secret : pour `--etat` et les journaux (`bot` : un jeton de bot est posé, jamais sa valeur). */
 export function resumeDuReglage(reglage) {
-  return { client_id: reglage.client_id, serveur: reglage.serveur, adresse_de_retour: reglage.adresse_de_retour, roles: { ...reglage.roles }, bot: Boolean(reglage.jeton_du_bot), pose_le: reglage.pose_le };
+  return {
+    client_id: reglage.client_id, serveur: reglage.serveur, adresse_de_retour: reglage.adresse_de_retour, roles: { ...reglage.roles }, bot: Boolean(reglage.jeton_du_bot),
+    ...(reglage.domaine_commun ? { domaine_commun: reglage.domaine_commun } : {}),
+    pose_le: reglage.pose_le,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -309,6 +360,8 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
   let vu = null; // { cle, etat }
   const maintenantS = () => Math.floor(horloge() / 1000);
   const dureeS = edition ? DUREE_SESSION_DEV_S : DUREE_SESSION_PROD_S;
+  /** R315 : ce site, pour la connexion commune (le site de dev est celui qui a l'édition). */
+  const instance = edition ? 'dev' : 'prod';
 
   /** Le réglage courant : { reglage } posé, { invalide } illisible, null absent. */
   function lire() {
@@ -343,15 +396,39 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
   const reglage = () => lire()?.reglage ?? null;
   const disponible = () => reglage() !== null;
 
-  /** La session portée par les en-têtes d'une requête : { u, n, exp } ou null. */
-  function session(entetes = {}) {
+  /** Les sessions valides des en-têtes : tous les cookies `maverick_session` (R315 : celui du domaine commun et l'ancien, propre à l'hôte, peuvent coexister). */
+  function sessionsValides(entetes = {}) {
     const secret = reglage()?.secret_de_session;
-    if (!secret) return null;
-    for (const jeton of valeursDuCookie(entetes.cookie, COOKIE_SESSION)) {
-      const s = lireJetonDeSession(secret, jeton, maintenantS());
-      if (s) return s;
-    }
-    return null;
+    if (!secret) return [];
+    const maintenant = maintenantS();
+    return valeursDuCookie(entetes.cookie, COOKIE_SESSION).map((jeton) => lireJetonDeSession(secret, jeton, maintenant)).filter(Boolean);
+  }
+  /** La session la plus récemment vérifiée (`v` le plus haut ; à égalité, la première). */
+  const plusRecente = (liste) => liste.reduce((a, b) => (a === null || (b.v ?? -1) > (a.v ?? -1) ? b : a), null);
+
+  /**
+   * La session de ce site portée par les en-têtes d'une requête : { u, n, exp, v?, d?, i? } ou null. R315 : une session dont l'autre site a calculé le niveau (`i`)
+   * n'en est pas une ici tant que `reverifier` ne l'a pas convertie ; celle d'un non-membre (`u` null : Observateur sans compte) vaut pour les deux sites.
+   */
+  function session(entetes = {}) {
+    return plusRecente(sessionsValides(entetes).filter((s) => s.u === null || s.i === undefined || s.i === instance));
+  }
+
+  /** R315 : la session d'un membre ouverte ou revérifiée par l'autre site (connexion commune), que `reverifier` convertit. */
+  function sessionDeLAutreSite(entetes = {}) {
+    return plusRecente(sessionsValides(entetes).filter((s) => s.u !== null && s.i !== undefined && s.i !== instance && s.d !== undefined));
+  }
+
+  /** R315 : avec la connexion commune, la session dit quel site a calculé son niveau (`i`) et, pour un membre, son identifiant Discord (`d`, que l'autre site relit). */
+  const marquer = (r, s, d = null) => (r.domaine_commun ? { ...s, i: instance, ...(d ? { d: String(d) } : {}) } : s);
+  /** Les cookies d'une session de ce site, sur le domaine commun quand il est posé (R315). */
+  const cookiesPour = (r, jeton, securise, duree) => cookiesDeSession(jeton, { securise, dureeS: duree, domaine: r.domaine_commun ?? null });
+
+  /** Les cookies qui retirent la session (POST /api/deconnexion/) : celui de l'hôte et, avec la connexion commune (R315 (3)), celui du domaine : déconnecté des deux sites. */
+  function cookiesDeDeconnexion(entetes = {}) {
+    const securise = connexionSecurisee(entetes);
+    const domaine = reglage()?.domaine_commun ?? null;
+    return [cookieDeSessionRetire({ securise }), ...(domaine ? [cookieDeSessionRetire({ securise, domaine })] : [])];
   }
 
   /** Le début de la connexion : { location, cookies } (302 vers Discord), ou { erreur } si la connexion n'est pas disponible. */
@@ -495,8 +572,11 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
       const niveau = niveauDuMembre({ membre: objetMembre, roles: r.roles, maintenant });
       const instant = new Date(maintenant).toISOString().replace(/\.\d{3}Z$/, 'Z');
       const exp = maintenantS() + dureeS;
-      // `v` : le niveau vient d'être vérifié (R314)
-      const poser = (u, niveauDeLaSession) => ({ location: retour, cookies: [cookieDeSession(creerJetonDeSession(r.secret_de_session, { u, n: niveauDeLaSession, exp, v: maintenantS() }), { securise, dureeS }), ...retire] });
+      // `v` : le niveau vient d'être vérifié (R314) ; `d` : l'identifiant Discord d'un membre, pour l'autre site (R315)
+      const poser = (u, niveauDeLaSession, d = null) => ({
+        location: retour,
+        cookies: [...cookiesPour(r, creerJetonDeSession(r.secret_de_session, marquer(r, { u, n: niveauDeLaSession, exp, v: maintenantS() }, d)), securise, dureeS), ...retire],
+      });
       // R312 : on n'arrive ici que sur un 200, 404 ou 403 de l'appel membre ; la session d'un non-membre reste celle d'un Observateur, sans identifiant de compte.
       if (!objetMembre) {
         effacerLeNonMembre(effacer, utilisateur.id, 'non-membre');
@@ -520,7 +600,7 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
         return echec('indisponible');
       }
       journal?.(`connexion : ${niveau} (utilisateur ${id}, session de ${dureeS / 3600} h)`);
-      return poser(id, niveau);
+      return poser(id, niveau, utilisateur.id);
     } catch (e) {
       if (e instanceof ErreurDeConnexion) {
         journal?.(`connexion : ${e.message}`);
@@ -546,17 +626,56 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
     while (recents.size > RESULTATS_RECENTS_MAX) recents.delete(recents.keys().next().value);
   }
 
-  /** Un échec : le niveau de la session est gardé, une pause globale avant tout nouvel appel, une ligne au journal par épisode (jamais le jeton ni l'identifiant Discord). */
-  function echecDeLaVerification(u, cle, texte, pauseS = PAUSE_APRES_ECHEC_S) {
+  /**
+   * Un échec : le niveau de la session est gardé, une pause globale avant tout nouvel appel, une ligne au journal par épisode (jamais le jeton ni l'identifiant Discord).
+   * `qui` : la session en cause, pour le journal (« utilisateur <id du site> », ou une session venue de l'autre site, R315).
+   */
+  function echecDeLaVerification(qui, cle, texte, pauseS = PAUSE_APRES_ECHEC_S) {
     const s = Math.min(Math.max(pauseS, PAUSE_APRES_ECHEC_S), PAUSE_MAX_S);
     pauseJusqua = Math.max(pauseJusqua, horloge() + s * 1000);
-    if (dernierEchec !== cle) journal?.(`connexion : revérification du niveau impossible (${texte}, utilisateur ${u}) : le niveau de la session est gardé, aucun nouvel appel avant ${Math.round(s / 60)} min`);
+    if (dernierEchec !== cle) journal?.(`connexion : revérification du niveau impossible (${texte}, ${qui}) : le niveau de la session est gardé, aucun nouvel appel avant ${Math.round(s / 60)} min`);
     dernierEchec = cle;
     return null;
   }
 
+  /**
+   * L'appel au bot pour le membre `discordId` : { membre } (200 : l'objet membre), { depart: true } (404 de code 10007 : le seul constat de départ), ou null après un
+   * échec (noté, pause posée).
+   */
+  async function membreParLeBot(r, discordId, qui) {
+    let rep;
+    try {
+      rep = await appeler(`${API_DISCORD}/guilds/${r.serveur}/members/${discordId}`, { entetes: { Authorization: `Bot ${r.jeton_du_bot}`, 'User-Agent': 'MaverickCenter (niveaux)' } });
+    } catch (e) {
+      return echecDeLaVerification(qui, 'reseau', e instanceof ErreurDeConnexion ? e.message : 'appel à Discord impossible');
+    }
+    // Codes d'erreur JSON de Discord : https://discord.com/developers/docs/topics/opcodes-and-status-codes#json
+    //   10007 Unknown Member (la personne a quitté le serveur : le seul constat de départ), 10004 Unknown Guild (serveur mal réglé), 10013 Unknown User,
+    //   50001 Missing Access (le bot n'est pas dans le serveur) ; 401 jeton du bot refusé ; 429 limite d'appels (`retry_after` en secondes).
+    const code = rep.corps && typeof rep.corps === 'object' ? rep.corps.code : null;
+    if (rep.statut === 200 && rep.corps && typeof rep.corps === 'object' && !Array.isArray(rep.corps) && (rep.corps.user?.id === undefined || String(rep.corps.user.id) === String(discordId))) {
+      if (dernierEchec) journal?.('connexion : revérification du niveau rétablie');
+      dernierEchec = null;
+      return { membre: rep.corps };
+    }
+    if (rep.statut === 404 && code === 10007) {
+      dernierEchec = null;
+      return { depart: true };
+    }
+    if (rep.statut === 401) return echecDeLaVerification(qui, '401', 'jeton du bot refusé par Discord (401)');
+    if (rep.statut === 403) return echecDeLaVerification(qui, `403:${code}`, `accès refusé (403, code ${code ?? '?'} : le bot est-il dans le serveur ?)`);
+    if (rep.statut === 404) return echecDeLaVerification(qui, `404:${code}`, `réponse 404 sans départ constaté (code ${code ?? '?'})`);
+    if (rep.statut === 429) {
+      const attente = Math.ceil(Number(rep.corps?.retry_after ?? rep.retryApres));
+      return echecDeLaVerification(qui, '429', 'limite d’appels (429)', Number.isFinite(attente) ? attente : PAUSE_APRES_ECHEC_S);
+    }
+    if (rep.statut >= 500) return echecDeLaVerification(qui, '5xx', `Discord indisponible (${rep.statut})`);
+    return echecDeLaVerification(qui, `reponse:${rep.statut}`, `réponse inattendue (${rep.statut})`);
+  }
+
   /** L'appel au bot pour une session ; rend { session, jeton } (nouvelle session signée) ou null (rien ne change). Ne rejette jamais. */
   async function verifier(s, r, { discordIdDe, mettreAJour, effacer }) {
+    const qui = `utilisateur ${s.u}`;
     try {
       const discordId = discordIdDe(s.u);
       if (!discordId) {
@@ -564,70 +683,142 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
         const v = Math.floor(horloge() / 1000);
         if (s.exp <= v) return null;
         journal?.(`connexion : observateur sans compte (utilisateur ${s.u} introuvable, compte effacé depuis, session gardée jusqu'à son terme)`);
-        const session = { u: null, n: 'observateur', exp: s.exp, v };
+        const session = marquer(r, { u: null, n: 'observateur', exp: s.exp, v });
         return { session, jeton: creerJetonDeSession(r.secret_de_session, session) };
       }
       if (!SNOWFLAKE.test(String(discordId))) return null; // identifiant Discord invalide : rien ne change
-      let rep;
-      try {
-        rep = await appeler(`${API_DISCORD}/guilds/${r.serveur}/members/${discordId}`, { entetes: { Authorization: `Bot ${r.jeton_du_bot}`, 'User-Agent': 'MaverickCenter (niveaux)' } });
-      } catch (e) {
-        return echecDeLaVerification(s.u, 'reseau', e instanceof ErreurDeConnexion ? e.message : 'appel à Discord impossible');
-      }
-      // Codes d'erreur JSON de Discord : https://discord.com/developers/docs/topics/opcodes-and-status-codes#json
-      //   10007 Unknown Member (la personne a quitté le serveur : le seul constat de départ), 10004 Unknown Guild (serveur mal réglé), 10013 Unknown User,
-      //   50001 Missing Access (le bot n'est pas dans le serveur) ; 401 jeton du bot refusé ; 429 limite d'appels (`retry_after` en secondes).
-      const code = rep.corps && typeof rep.corps === 'object' ? rep.corps.code : null;
+      const lu = await membreParLeBot(r, discordId, qui);
+      if (!lu) return null;
       const maintenant = horloge();
-      const nouvelle = (u, n) => {
-        const session = { u, n, exp: s.exp, v: Math.floor(maintenant / 1000) };
+      const nouvelle = (u, n, d = null) => {
+        const session = marquer(r, { u, n, exp: s.exp, v: Math.floor(maintenant / 1000) }, d);
         return session.exp > session.v ? { session, jeton: creerJetonDeSession(r.secret_de_session, session) } : null;
       };
-      if (rep.statut === 200 && rep.corps && typeof rep.corps === 'object' && !Array.isArray(rep.corps) && (rep.corps.user?.id === undefined || String(rep.corps.user.id) === String(discordId))) {
-        const niveau = niveauDuMembre({ membre: rep.corps, roles: r.roles, maintenant });
+      if (lu.membre) {
+        const niveau = niveauDuMembre({ membre: lu.membre, roles: r.roles, maintenant });
         try {
           mettreAJour(s.u, niveau);
         } catch (e) {
           journal?.(`connexion : niveau revérifié non écrit (utilisateur ${s.u} : ${e?.message ?? e})`);
         }
-        if (dernierEchec) journal?.('connexion : revérification du niveau rétablie');
-        dernierEchec = null;
         if (niveau !== s.n) journal?.(`connexion : niveau revérifié ${s.n} -> ${niveau} (utilisateur ${s.u})`);
-        return nouvelle(s.u, niveau);
+        return nouvelle(s.u, niveau, discordId);
       }
-      if (rep.statut === 404 && code === 10007) {
-        dernierEchec = null;
-        effacerLeNonMembre(effacer, discordId, 'départ du serveur constaté');
-        journal?.(`connexion : observateur sans compte (utilisateur ${s.u} a quitté le serveur, session gardée jusqu'à son terme)`);
+      effacerLeNonMembre(effacer, discordId, 'départ du serveur constaté');
+      journal?.(`connexion : observateur sans compte (utilisateur ${s.u} a quitté le serveur, session gardée jusqu'à son terme)`);
+      return nouvelle(null, 'observateur');
+    } catch (e) {
+      return echecDeLaVerification(qui, 'exception', `erreur inattendue : ${e?.message ?? e}`);
+    }
+  }
+
+  /**
+   * R315 : la session d'un membre venue de l'autre site devient une session de ce site. Le bot relit le membre ; son compte est retrouvé ou créé par son identifiant
+   * Discord (`enregistrer`, comme au retour de Discord) et son niveau calculé avec la correspondance des rôles de CE site ; un départ constaté se traite comme à la
+   * connexion (R312 (1)). L'expiration est gardée, sans dépasser la durée des sessions de ce site. Rend { session, jeton } ou null (la session ne vaut rien ici). Ne
+   * rejette jamais.
+   */
+  async function accueillir(a, r, { enregistrer, effacer }) {
+    const qui = 'session venue de l’autre site';
+    try {
+      const lu = await membreParLeBot(r, a.d, qui);
+      if (!lu) return null;
+      const maintenant = horloge();
+      const v = Math.floor(maintenant / 1000);
+      const exp = Math.min(a.exp, v + dureeS);
+      if (exp <= v) return null;
+      const nouvelle = (u, n, d = null) => {
+        const session = marquer(r, { u, n, exp, v }, d);
+        return { session, jeton: creerJetonDeSession(r.secret_de_session, session) };
+      };
+      if (lu.depart) {
+        effacerLeNonMembre(effacer, a.d, 'départ du serveur constaté');
+        journal?.(`connexion : observateur sans compte (${qui} : départ du serveur constaté)`);
         return nouvelle(null, 'observateur');
       }
-      if (rep.statut === 401) return echecDeLaVerification(s.u, '401', 'jeton du bot refusé par Discord (401)');
-      if (rep.statut === 403) return echecDeLaVerification(s.u, `403:${code}`, `accès refusé (403, code ${code ?? '?'} : le bot est-il dans le serveur ?)`);
-      if (rep.statut === 404) return echecDeLaVerification(s.u, `404:${code}`, `réponse 404 sans départ constaté (code ${code ?? '?'})`);
-      if (rep.statut === 429) {
-        const attente = Math.ceil(Number(rep.corps?.retry_after ?? rep.retryApres));
-        return echecDeLaVerification(s.u, '429', 'limite d’appels (429)', Number.isFinite(attente) ? attente : PAUSE_APRES_ECHEC_S);
+      const membre = lu.membre;
+      const utilisateur = membre.user;
+      // le profil se lit comme au retour de Discord ; un compte bot ou système n'est jamais écrit (R310 (2))
+      if (!utilisateur || typeof utilisateur !== 'object' || String(utilisateur.id) !== a.d) {
+        journal?.(`connexion : ${qui} non acceptée (membre lu sans son compte Discord)`);
+        return null;
       }
-      if (rep.statut >= 500) return echecDeLaVerification(s.u, '5xx', `Discord indisponible (${rep.statut})`);
-      return echecDeLaVerification(s.u, `reponse:${rep.statut}`, `réponse inattendue (${rep.statut})`);
+      if (utilisateur.bot === true || utilisateur.system === true) {
+        journal?.(`connexion : ${qui} non acceptée (compte bot ou système), rien d’écrit`);
+        return null;
+      }
+      const niveau = niveauDuMembre({ membre, roles: r.roles, maintenant });
+      let id;
+      try {
+        id = enregistrer({
+          discord_id: a.d,
+          nom_affichage: nomAffiche({ membre, utilisateur }),
+          niveau,
+          avatar_url: adresseDAvatar({ membre, utilisateur, serveur: r.serveur }),
+          banniere_url: adresseDeBanniere({ membre, utilisateur, serveur: r.serveur }),
+          serveur_rejoint_le: instantDeDiscord(membre.joined_at),
+          instant: new Date(maintenant).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        });
+      } catch (e) {
+        journal?.(`connexion : ${qui}, compte non écrit (${e?.message ?? e})`);
+        return null;
+      }
+      journal?.(`connexion : ${niveau} (utilisateur ${id}, ${qui})`);
+      return nouvelle(id, niveau, a.d);
     } catch (e) {
-      return echecDeLaVerification(s.u, 'exception', `erreur inattendue : ${e?.message ?? e}`);
+      return echecDeLaVerification(qui, 'exception', `erreur inattendue : ${e?.message ?? e}`);
     }
+  }
+
+  /**
+   * R315 : la conversion de la session venue de l'autre site, si elle existe. Mêmes garde-fous que `reverifier` (pause après un échec, base absente ou gelée) ; une
+   * conversion récente (≤ 5 min) de la même session se redonne sans nouvel appel (les requêtes parties avec l'ancien cookie, le forward_auth du site de dev).
+   */
+  function convertir(entetes, r, rappels) {
+    const a = sessionDeLAutreSite(entetes);
+    if (!a || typeof rappels.enregistrer !== 'function') return null;
+    const securise = connexionSecurisee(entetes);
+    const cle = `d:${a.d}`;
+    const source = `${a.i}:${a.exp}:${a.v ?? ''}`;
+    const fin = (res) => {
+      const reste = res ? res.session.exp - maintenantS() : 0;
+      return reste > 0 ? { session: res.session, jeton: res.jeton, cookies: cookiesPour(r, res.jeton, securise, reste) } : null;
+    };
+    const recent = recents.get(cle);
+    if (recent && recent.source === source && maintenantS() - recent.session.v < INTERVALLE_DE_REVERIFICATION_S) return fin(recent);
+    if (horloge() < pauseJusqua) return null;
+    if (rappels.permis && !rappels.permis()) return null;
+    let promesse = enCours.get(cle);
+    if (!promesse) {
+      promesse = accueillir(a, r, rappels).then((res) => {
+        if (res) {
+          recents.delete(cle);
+          recents.set(cle, { ...res, source });
+          oublierLesPerimes();
+        }
+        return res;
+      }).finally(() => enCours.delete(cle));
+      enCours.set(cle, promesse);
+    }
+    return promesse.then(fin);
   }
 
   /**
    * R314 : revérifie le niveau de la session des en-têtes auprès de Discord, par le bot de l'application. Rend `null` tout de suite (sans promesse) quand il n'y a rien à
    * faire : pas de jeton de bot, pas de session, session sans compte, session vérifiée il y a moins de 5 minutes, pause après un échec. Sinon un résultat
    * `{ session, jeton, cookies }` (le cookie réémis, même `exp`), ou une promesse qui n'est jamais rejetée et rend ce résultat ou `null` (rien ne change : le niveau est gardé).
+   * R315 : sans session de ce site, la session d'un membre venue de l'autre site (connexion commune) est convertie (`convertir`).
    * @param {object} entetes les en-têtes de la requête
-   * @param {{ discordIdDe: (u: string) => string|null, mettreAJour: (u: string, niveau: string) => void, effacer: (discordId: string) => object, permis?: () => boolean }} rappels
-   *   `permis` : faux quand la base est absente ou que les écritures sont gelées (rien ne se fait alors)
+   * @param {{ discordIdDe: (u: string) => string|null, mettreAJour: (u: string, niveau: string) => void, effacer: (discordId: string) => object, permis?: () => boolean,
+   *   enregistrer?: (profil: object) => string }} rappels
+   *   `permis` : faux quand la base est absente ou que les écritures sont gelées (rien ne se fait alors) ; `enregistrer` : comme au retour de Discord (R315)
    */
   function reverifier(entetes = {}, rappels) {
     const r = reglage();
     if (!r?.jeton_du_bot) return null;
     const s = session(entetes);
-    if (!s || s.u === null) return null;
+    if (!s) return r.domaine_commun ? convertir(entetes, r, rappels) : null;
+    if (s.u === null) return null;
     const maintenant = maintenantS();
     const securise = connexionSecurisee(entetes);
     // le résultat appliqué à une session garde toujours SON expiration : la promesse est partagée par les sessions d'une même personne (autres appareils)
@@ -639,7 +830,7 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
         session = { ...session, exp: s.exp };
         jeton = creerJetonDeSession(r.secret_de_session, session);
       }
-      return { session, jeton, cookies: [cookieDeSession(jeton, { securise, dureeS: session.exp - maintenantS() })] };
+      return { session, jeton, cookies: cookiesPour(r, jeton, securise, session.exp - maintenantS()) };
     };
     const recent = recents.get(s.u);
     // une revérification récente de cette session : une requête qui arrive avec l'ancien cookie reçoit son résultat, sans nouvel appel
@@ -662,7 +853,7 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
     return promesse.then(fin);
   }
 
-  return { lire, disponible, session, commencer, terminer, reverifier, dureeS, maintenantS };
+  return { lire, disponible, session, commencer, terminer, reverifier, cookiesDeDeconnexion, dureeS, maintenantS, instance };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -681,6 +872,7 @@ async function lireEntree(entree) {
 /**
  * @param {string[]} argv `definir <identifiant> <adresse de retour> [<serveur>]` (le secret sur l'entrée) | `role <identifiant de rôle>… joueur|mj|createur` (un ou plusieurs rôles, le niveau en dernier) | `sans-role <identifiant>`
  *   | `serveur <identifiant>` | `nouvelle-session` | `bot` (le jeton du bot sur l'entrée, R314) | `sans-bot`
+ *   | `commune <domaine>` (R315 : le secret de session de l'autre site sur l'entrée) | `sans-commune`
  * @param {{ entree?: AsyncIterable<Buffer>, sortie?: (ligne: string) => void, erreur?: (ligne: string) => void, fichier?: string, maintenant?: Date }} [o]
  * @returns {Promise<number>} le code de sortie
  */
@@ -719,8 +911,14 @@ export async function commandeDiscord(argv, { entree = process.stdin, sortie = (
       demande = { ancien: intact, jetonDuBot: (await lireEntree(entree)).split('\n')[0].replace(/\r$/, '') };
     } else if (action === 'sans-bot') {
       demande = { ancien: intact, sansBot: true };
+    } else if (action === 'commune') {
+      // R315 : le secret de session de l'autre site arrive sur l'entrée standard (première ligne), jamais en argument, comme les autres secrets : le cookie commun se lit
+      // alors sur les deux sites
+      demande = { ancien: intact, domaineCommun: options[0] ?? '', secretDeSession: (await lireEntree(entree)).split('\n')[0].replace(/\r$/, '') };
+    } else if (action === 'sans-commune') {
+      demande = { ancien: intact, sansDomaineCommun: true };
     } else {
-      throw new Error('commande inconnue (definir, role, sans-role, serveur, nouvelle-session, bot, sans-bot)');
+      throw new Error('commande inconnue (definir, role, sans-role, serveur, nouvelle-session, bot, sans-bot, commune, sans-commune)');
     }
     if ((ancien || illisible) && !intact && action !== 'definir') throw new Error('le réglage actuel est illisible : posez-le de nouveau (commande sans option)');
     sortie(`REGLAGE ${JSON.stringify(reglageApres({ ...demande, maintenant }))}`);
