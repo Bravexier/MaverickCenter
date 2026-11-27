@@ -12,7 +12,7 @@ import { cheminDeLAdresse, decouperLAdresse } from './mots-cles-liens.mjs';
 
 /**
  * Les routes fixes du site (fichiers de src/pages hors des pages tirées de la base : test/adresses-db.test.mjs les compare au dossier), où un mot-clé
- * peut mener : l'accueil, la fiche, les rubriques et pages à part. Les pages du site de dev seulement (Debug, Maintenance, Mise à jour) n'y sont pas.
+ * peut mener : l'accueil, la fiche, les rubriques et pages à part. Les pages du site de dev seulement (Debug, Maintenance, Mise à jour) et les pages du compte (Connexion, Profil : R310) n'y sont pas.
  * « /regles/glossaire/ » : la page du Glossaire, que les refus du service citent (créée par le même lot, côté pages).
  */
 export const ADRESSES_FIXES = Object.freeze([

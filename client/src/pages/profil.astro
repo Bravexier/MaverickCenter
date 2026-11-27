@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/wiki';
+
+// Le profil (R310 (7) : « Page profil : avatar, bannière, nom, niveau, date d'arrivée sur le serveur, "Se déconnecter". »). Le lien du menu (à droite de
+// l'en-tête, components/Compte.astro) y mène. La page est vide à la construction : src/scripts/compte.mjs (le même que celui du menu : un seul
+// `GET /api/moi/` par page) y met ce que le service dit de la session, ou l'invitation à se connecter. Les images viennent de cdn.discordapp.com (R310 (5)).
+// Hors de tout menu ; absente de la version portable (pas de service : tools/build-artifact.mjs).
+---
+
+<Base title="Profil" description="Votre compte sur le site Maverick Center, connecté par Discord.">
+  <section class="profil" data-profil-page>
+    <h1>Profil</h1>
+    <p data-profil-chargement>Chargement…</p>
+    <div data-profil-connecte hidden>
+      <figure class="profil__banniere" data-profil-banniere hidden><img alt="" referrerpolicy="no-referrer" /></figure>
+      <div class="profil__tete">
+        <img class="profil__avatar" data-profil-avatar alt="" width="80" height="80" referrerpolicy="no-referrer" hidden />
+        <h2 data-profil-nom></h2>
+      </div>
+      <dl class="profil__infos">
+        <div><dt>Niveau</dt><dd data-profil-niveau></dd></div>
+        <div data-profil-ligne-arrivee><dt>Sur le serveur depuis</dt><dd data-profil-arrivee></dd></div>
+      </dl>
+      <p><button type="button" data-deconnexion>Se déconnecter</button></p>
+    </div>
+    <div data-profil-invite hidden>
+      <p>Vous n’êtes pas connecté. Connectez-vous avec votre compte Discord pour retrouver votre profil.</p>
+      <p><a class="bouton-connexion" data-lien-connexion href={url('api/connexion/discord/')}>Connexion via Discord</a></p>
+    </div>
+    <p data-profil-indisponible hidden>La connexion par Discord n’est pas disponible sur ce serveur pour le moment.</p>
+    <p class="profil__erreur" role="alert" data-profil-erreur hidden></p>
+    <p><a href={url('confidentialite/')}>Ce que le site garde de votre connexion</a></p>
+  </section>
+</Base>

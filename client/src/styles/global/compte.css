@@ -1,0 +1,46 @@
+/* Le compte du visiteur (src/scripts/compte.mjs ; R310) : à droite de l'en-tête (avatar rond et nom, ou « Connexion via Discord »), et les pages /profil/ et
+   /connexion/. Jetons du thème seulement (skill ui-couleurs-theme). */
+.site-compte { flex: none; margin-left: auto; align-self: center; max-width: 14rem; }
+.site-compte[hidden] { display: none; }
+.site-compte__lien { display: flex; align-items: center; gap: 0.5rem; color: var(--text); text-decoration: none; font-weight: 700; min-width: 0; }
+.site-compte__lien:hover, .site-compte__lien:focus-visible { color: var(--accent); }
+.site-compte__avatar { flex: none; width: 2rem; height: 2rem; border-radius: 50%; object-fit: cover; background: var(--border); }
+.site-compte__avatar--vide { display: inline-grid; place-items: center; color: var(--text); text-transform: uppercase; }
+.site-compte__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* le bouton de connexion (menu, profil, connexion) : l'action principale, comme les boutons pleins du site */
+.site-compte__connexion, .bouton-connexion {
+  display: inline-block;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--good);
+  background: var(--good);
+  color: var(--texte-sur-good);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.site-compte__connexion:hover, .site-compte__connexion:focus-visible, .bouton-connexion:hover, .bouton-connexion:focus-visible { filter: brightness(1.1); }
+.bouton-connexion[hidden] { display: none; }
+/* la page /profil/ */
+.profil, .connexion { max-width: 40rem; }
+.profil [hidden], .connexion [hidden] { display: none; }
+.profil__banniere { margin: 0 0 1rem; border-radius: var(--radius-lg); overflow: hidden; background: var(--border); }
+.profil__banniere img { display: block; width: 100%; max-height: 12rem; object-fit: cover; }
+.profil__tete { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.profil__tete h2 { margin: 0; overflow-wrap: anywhere; }
+.profil__avatar { flex: none; width: 5rem; height: 5rem; border-radius: 50%; object-fit: cover; background: var(--border); }
+.profil__infos { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0 0 1.25rem; }
+.profil__infos > div { display: contents; }
+.profil__infos dt { color: var(--muted); }
+.profil__infos dd { margin: 0; font-weight: 600; }
+.profil__erreur, .connexion__erreur { color: var(--danger); font-weight: 600; }
+.connexion__erreur { padding: 0.6rem 0.9rem; border: 1px solid var(--danger); border-radius: var(--radius); }
+/* écran étroit : le nom se raccourcit (points de suspension), le bouton reste lisible */
+@media (max-width: 40rem) {
+  .site-compte__nom { max-width: 6rem; }
+  .site-compte__connexion { padding: 0.35rem 0.7rem; white-space: normal; text-align: center; }
+}
+@media (max-width: 60rem) {
+  .site-compte { grid-column: 2; grid-row: 1; justify-self: end; }
+}
+@media print { .site-compte { display: none !important; } }

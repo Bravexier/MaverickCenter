@@ -3,7 +3,7 @@
 // du patchnote. » puis « Il n'y aura pas à confirmer une modification ni de mofication en attente ou quoi que ce soit. juste le bouton de suppression (qui lui
 // devra être confirmé) »). Une session dépose avec la clé de dépôt : la modification est appliquée aussitôt, sans clic. La page la montre comme les notes de
 // version, ligne par ligne (la table et la ligne par leur nom, l'avant et l'après), et chaque ligne qui s'annule seule porte « Annuler cette modification » ;
-// un clic ouvre une confirmation avec l'aperçu de ce que l'annulation remettrait (mot de passe : scripts/acces.mjs le demande). Une ligne qui ne s'annule
+// un clic ouvre une confirmation avec l'aperçu de ce que l'annulation remettrait (refus de la porte : scripts/acces.mjs le dit). Une ligne qui ne s'annule
 // pas seule dit pourquoi. Les propositions déposées avant R291, ou tant que la clé de dépôt n'est pas posée (état « propose »), gardent leur aperçu et leurs
 // boutons « Appliquer » / « Refuser » dans un bloc à part, qui n'apparaît que s'il en reste ; les dépôts refusés laissent une trace discrète (titre, motifs).
 // Le service (GET /api/edition/lots/…, serveur/edition-lots.mjs) rend les noms : la table et la ligne par leur nom, chaque colonne par son libellé ; ce module

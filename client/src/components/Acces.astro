@@ -1,10 +1,12 @@
 ---
-// L'accès au site de dev, côté navigateur (R275 option b : un mot de passe pour modifier et lancer une mise à jour, la lecture reste ouverte) :
-// un script, inclus une fois par layouts/Base.astro, dans l'en-tête, pour qu'il s'exécute AVANT les scripts de page (modules différés, dans l'ordre du
-// document). La balise donne l'adresse du service ; le script (src/scripts/acces.mjs, qui n'importe rien) enveloppe `fetch` pour ces adresses.
+// L'accès au site de dev, côté navigateur (R310 : la connexion par Discord remplace le mot de passe) : un script, inclus une fois par layouts/Base.astro, dans
+// l'en-tête, pour qu'il s'exécute AVANT les scripts de page (modules différés, dans l'ordre du document). Les balises donnent l'adresse du service et celle de
+// la page de connexion ; le script (src/scripts/acces.mjs, qui n'importe rien) enveloppe `fetch` pour les adresses du service : sur un refus de la porte, il
+// propose de se connecter (401) ou dit que le niveau ne suffit pas (403).
 import { url } from '../lib/wiki';
 ---
 <meta name="maverick-api" content={url('api/')} />
+<meta name="maverick-connexion" content={url('connexion/')} />
 <script>
   import '../scripts/acces.mjs';
 </script>
