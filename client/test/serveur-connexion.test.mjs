@@ -8,12 +8,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { COOKIE_ETAT, COOKIE_SESSION, reglageApres } from '../serveur/discord.mjs';
+import { COOKIE_ETAT, COOKIE_SESSION, INTERVALLE_DE_REVERIFICATION_S, lireJetonDeSession, reglageApres } from '../serveur/discord.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil } from '../serveur/utilisateurs.mjs';
 import { ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SERVEUR_D_ESSAI, poserLAcces } from './aide-acces-d-essai.mjs';
 import { poserUnCompte } from './aide-compte-d-essai.mjs';
-import { IDENTIFIANT_D_ESSAI, MEMBRE_D_ESSAI, UTILISATEUR_D_ESSAI, discordSimule } from './aide-discord-simule.mjs';
+import { IDENTIFIANT_D_ESSAI, JETON_DU_BOT_D_ESSAI, MEMBRE_D_ESSAI, UTILISATEUR_D_ESSAI, discordSimule } from './aide-discord-simule.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const JSON_ = { 'content-type': 'application/json' };
@@ -73,16 +73,16 @@ test('R310 (5) : la première connexion écrit la ligne (identifiant du site tir
 
 /**
  * Un service HTTP réel (site de dev ou production) avec sa connexion Discord simulée ; `appel` ne suit jamais les redirections.
- * @param {{ edition?: boolean, simule?: object, roles?: Record<string, string> }} [o]
+ * @param {{ edition?: boolean, simule?: object, roles?: Record<string, string>, bot?: boolean, horloge?: () => number }} [o] `bot` : le jeton du bot est posé (R314) ; `horloge` : l'heure de la connexion (ms)
  */
-async function service({ edition = true, simule = {}, roles } = {}) {
+async function service({ edition = true, simule = {}, roles, bot = false, horloge = null } = {}) {
   const { dossier, regles } = reglesVides();
   const d = discordSimule({ client: { id: '999000111222333444', secret: 'secret-d-essai-de-l-application' }, ...simule });
-  const a = poserLAcces({ prefixe: 'connexion', fetch: d.fetch, edition, roles });
+  const a = poserLAcces({ prefixe: 'connexion', fetch: d.fetch, edition, roles, ...(bot ? { jetonDuBot: JETON_DU_BOT_D_ESSAI } : {}) });
   const lignes = [];
   const s = await demarrerService({
     regles, dossier: join(dossier, 'service-db'), port: 0, intervalle: 0, edition, metriques: false, journal: (l) => lignes.push(l),
-    connexion: { fichier: a.fichierDiscord, fetch: d.fetch }, ...(edition ? { acces: a.fichierDesCles } : {}),
+    connexion: { fichier: a.fichierDiscord, fetch: d.fetch, ...(horloge ? { horloge } : {}) }, ...(edition ? { acces: a.fichierDesCles } : {}),
   });
   const appel = (methode, chemin, { entetes = {}, corps } = {}) => fetch(`${s.url}${chemin}`, {
     method: methode, redirect: 'manual', headers: { ...(corps === undefined ? {} : JSON_), ...entetes }, ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
@@ -266,9 +266,9 @@ test('R313 (1) : `non_membre: true` n’est dans /api/moi/ que pour la session d
     const { session } = await seConnecter(nonMembre);
     const moi = await (await nonMembre.appel('GET', '/api/moi/', { entetes: session })).json();
     assert.deepEqual(moi, { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
-    // le cookie signé ne porte ni nom ni identifiant Discord : seulement { u: null, n, exp }
+    // le cookie signé ne porte ni nom ni identifiant Discord : seulement { u: null, n, exp, v }
     const charge = JSON.parse(Buffer.from(session.cookie.split('=')[1].split('.')[1], 'base64url').toString('utf8'));
-    assert.deepEqual(Object.keys(charge).sort(), ['exp', 'n', 'u']);
+    assert.deepEqual(Object.keys(charge).sort(), ['exp', 'n', 'u', 'v']); // `v` : l'instant de la vérification du niveau (R314), jamais un nom
     assert.equal(charge.u, null);
     assert.ok(!session.cookie.includes('Nom') && !Buffer.from(session.cookie.split('=')[1].split('.')[1], 'base64url').toString('utf8').includes(IDENTIFIANT_D_ESSAI));
     assert.deepEqual(nonMembre.comptes(), []);
@@ -533,4 +533,137 @@ test('le retour ne s’exécute pas pendant un gel des écritures ni sans base :
   const { ecritureGelee } = await import('../serveur/gel.mjs');
   assert.equal(ecritureGelee('POST', '/api/deconnexion/'), false);
   assert.equal(ecritureGelee('POST', '/api/acces/'), true, 'plus de mot de passe : cette route n’est plus exemptée');
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// R314 : la revérification du niveau pendant la session, sur le service HTTP réel (le bot de l'application, Discord simulé)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+const sessionsPosees = (reponse) => reponse.headers.getSetCookie().filter((c) => c.startsWith(`${COOKIE_SESSION}=`));
+/** Un service avec le bot posé, une horloge qu'on avance, et une session ouverte par la vraie connexion. */
+async function serviceDuBot({ simule, edition = true } = {}) {
+  const h = { t: Date.now() };
+  const m = await service({ bot: true, edition, horloge: () => h.t, simule });
+  const c = await seConnecter(m);
+  const lire = (cookie) => lireJetonDeSession(m.a.reglage.secret_de_session, cookie.split(';')[0].split('=')[1], h.t / 1000);
+  return { ...m, h, c, lire, depuis: (secondes) => { h.t += secondes * 1000; } };
+}
+
+test('R314 : le rôle retiré en cours de session — rien avant 5 minutes ; puis, dès la requête qui revérifie, la ligne, la porte (403) et /api/moi/ suivent, le cookie est réémis avec la même expiration, et l’ancien cookie en route reçoit le même résultat sans nouvel appel', async () => {
+  const m = await serviceDuBot({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  try {
+    const avant = m.comptes()[0];
+    const exp = m.lire(m.c.session.cookie).exp;
+    assert.equal(m.lire(m.c.session.cookie).v, Math.floor(m.h.t / 1000), 'la connexion vient de vérifier le niveau');
+    assert.equal((await m.appel('GET', '/api/v1/', { entetes: m.c.session })).status, 200, 'MJ : lecture');
+    m.d.etat.membre = { ...MEMBRE_D_ESSAI, roles: [ROLE_JOUEUR] };
+    // moins de 5 minutes : le niveau du cookie, aucun appel au bot, aucun cookie réémis
+    m.depuis(INTERVALLE_DE_REVERIFICATION_S - 1);
+    const tot = await m.appel('GET', '/api/moi/', { entetes: m.c.session });
+    assert.equal((await tot.json()).utilisateur.niveau, 'mj');
+    assert.deepEqual([m.d.appelsDuBot().length, sessionsPosees(tot).length], [0, 0]);
+    // 5 minutes : la requête revérifie, et la porte applique le niveau revérifié dès elle
+    m.depuis(1);
+    const r = await m.appel('GET', '/api/v1/', { entetes: m.c.session });
+    assert.equal(r.status, 403, 'Joueur : la porte du site de dev se ferme dès cette requête');
+    assert.equal(m.d.appelsDuBot().length, 1);
+    const [pose] = sessionsPosees(r);
+    assert.match(pose, /; Path=\/; HttpOnly; SameSite=Lax; Max-Age=\d+$/);
+    assert.deepEqual(m.lire(pose), { u: avant.id, n: 'joueur', exp, v: Math.floor(m.h.t / 1000) });
+    // la ligne : le niveau seul change (ce n'est pas une connexion)
+    assert.deepEqual(m.comptes()[0], { ...avant, niveau: 'joueur' });
+    // l'ancien cookie, encore dans le navigateur (requête simultanée) : même résultat, sans nouvel appel ; le nouveau n'est plus à revérifier
+    const moi = await m.appel('GET', '/api/moi/', { entetes: m.c.session });
+    assert.equal((await moi.json()).utilisateur.niveau, 'joueur');
+    assert.equal(sessionsPosees(moi).length, 1);
+    const nouveau = { cookie: pose.split(';')[0] };
+    const moi2 = await m.appel('GET', '/api/moi/', { entetes: nouveau });
+    assert.equal((await moi2.json()).utilisateur.niveau, 'joueur');
+    assert.deepEqual([m.d.appelsDuBot().length, sessionsPosees(moi2).length], [1, 0]);
+    // le niveau remonte à la visite suivante après 5 minutes
+    m.d.etat.membre = { ...MEMBRE_D_ESSAI, roles: [ROLE_CREATEUR] };
+    m.depuis(INTERVALLE_DE_REVERIFICATION_S);
+    const monte = await m.appel('GET', '/api/acces/', { entetes: nouveau });
+    assert.equal((await monte.json()).niveau, 'createur');
+    assert.equal(m.lire(sessionsPosees(monte)[0]).exp, exp);
+    assert.equal(m.comptes()[0].niveau, 'createur');
+    // aucun secret au journal
+    const journal = m.lignes.join('\n');
+    for (const secret of [JETON_DU_BOT_D_ESSAI, IDENTIFIANT_D_ESSAI, nouveau.cookie.split('=')[1]]) assert.ok(!journal.includes(secret), `« ${secret.slice(0, 10)}… » au journal`);
+  } finally {
+    await m.fin();
+  }
+});
+
+test('R314, R312 : un départ constaté pendant la session efface le compte, la session devient Observateur sans compte (`non_membre`), la porte se ferme ; la requête en cours n’est pas cassée', async () => {
+  const m = await serviceDuBot({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  try {
+    const exp = m.lire(m.c.session.cookie).exp;
+    assert.equal(m.comptes().length, 1);
+    m.d.etat.membre = null;
+    m.depuis(INTERVALLE_DE_REVERIFICATION_S);
+    const r = await m.appel('GET', '/api/moi/', { entetes: m.c.session });
+    assert.equal(r.status, 200);
+    assert.deepEqual(await r.json(), { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
+    assert.equal(m.comptes().length, 0, 'R312 : le compte est effacé');
+    assert.deepEqual(m.lire(sessionsPosees(r)[0]), { u: null, n: 'observateur', exp, v: Math.floor(m.h.t / 1000) });
+    assert.equal((await m.appel('GET', '/api/v1/', { entetes: m.c.session })).status, 403);
+    assert.match(m.lignes.join('\n'), /départ du serveur constaté, compte .* effacé \(R312\)/);
+    // la session sans compte n'est plus revérifiée
+    m.depuis(3600);
+    const apres = await m.appel('GET', '/api/moi/', { entetes: { cookie: sessionsPosees(r)[0].split(';')[0] } });
+    assert.equal((await apres.json()).non_membre, true);
+    assert.equal(m.d.appelsDuBot().length, 1);
+  } finally {
+    await m.fin();
+  }
+});
+
+test('R314 : une panne de Discord ou un bot mal réglé (5xx, 401, 403, 429, réseau) : la requête aboutit, la session garde son dernier niveau, rien n’est effacé ni réémis, un seul appel pendant la pause, une ligne au journal', async () => {
+  for (const bot of [{ statut: 500, corps: { message: 'panne' } }, { statut: 401, corps: { code: 0 } }, { statut: 403, corps: { code: 50001 } }, { statut: 429, corps: { retry_after: 120 } }, { panne: 'reseau' }]) {
+    const m = await serviceDuBot({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+    try {
+      Object.assign(m.d.etat.bot, bot);
+      m.d.etat.membre = null; // le membre est parti, mais une panne ne le dit pas
+      m.depuis(INTERVALLE_DE_REVERIFICATION_S);
+      for (let n = 0; n < 3; n += 1) {
+        const r = await m.appel('GET', '/api/v1/', { entetes: m.c.session });
+        assert.equal(r.status, 200, `${JSON.stringify(bot)} : le niveau MJ est gardé`);
+        assert.equal(sessionsPosees(r).length, 0);
+      }
+      assert.equal(m.d.appelsDuBot().length, 1, `${JSON.stringify(bot)} : pas de rafale`);
+      assert.equal(m.comptes().length, 1, 'rien n’est effacé');
+      assert.equal(m.comptes()[0].niveau, 'mj');
+      assert.equal(m.lignes.filter((l) => /revérification du niveau impossible/.test(l)).length, 1);
+    } finally {
+      await m.fin();
+    }
+  }
+});
+
+test('R314 : sans jeton de bot, rien ne change — aucun appel, aucun cookie réémis, le niveau du cookie jusqu’à son expiration ; la connexion et la déconnexion ne revérifient jamais ; la déconnexion ne remet pas la session', async () => {
+  const h = { t: Date.now() };
+  const sans = await service({ horloge: () => h.t, simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  try {
+    const { session } = await seConnecter(sans);
+    sans.d.etat.membre = { ...MEMBRE_D_ESSAI, roles: [] };
+    h.t += 3600_000;
+    const r = await sans.appel('GET', '/api/moi/', { entetes: session });
+    assert.equal((await r.json()).utilisateur.niveau, 'mj');
+    assert.equal(sessionsPosees(r).length, 0);
+    assert.equal(sans.d.appelsDuBot().length, 0);
+  } finally {
+    await sans.fin();
+  }
+  const m = await serviceDuBot({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  try {
+    m.depuis(3600);
+    const sortie = await m.appel('POST', '/api/deconnexion/', { entetes: m.c.session, corps: {} });
+    assert.equal(sortie.status, 200);
+    assert.match(sessionsPosees(sortie).join(), /^maverick_session=; Max-Age=0/, 'la déconnexion retire le cookie, elle n’en pose pas un autre');
+    assert.equal(sessionsPosees(sortie).length, 1);
+    assert.equal(m.d.appelsDuBot().length, 0);
+  } finally {
+    await m.fin();
+  }
 });

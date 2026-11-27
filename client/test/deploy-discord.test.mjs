@@ -226,3 +226,49 @@ test('le secret se saisit sur un terminal : hors terminal (sans MAVERICK_ESSAI) 
   assert.match(r.out, /à lancer en root|terminal/);
   assert.ok(!existsSync(i.fichier));
 });
+
+test('R314 : --bot pose le jeton du bot saisi sur l’entrée (jamais à l’écran ni en argument) dans le réglage, et montre l’adresse d’invitation avec le vrai identifiant de l’application ; --etat dit « posé » sans le montrer ; --sans-bot le retire ; un jeton vide ou invalide ne change rien', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
+  const JETON = 'jeton-du-bot-d-essai-pour-discord-sh-0123456789';
+  const i = instance(t);
+  // sans application posée, rien à faire
+  const sans = i.lancer(['--bot'], { input: `${JETON}\n` });
+  assert.equal(sans.code, 1, sans.out);
+  assert.ok(!existsSync(i.fichier), 'rien n’est écrit');
+  i.lancer([], { input: saisie() });
+  const avant = i.reglage();
+  assert.equal(avant.jeton_du_bot, undefined);
+  assert.match(i.lancer(['--etat']).out, /Bot de revérification : non posé/);
+  // jeton vide ou invalide : refus, réglage identique
+  for (const entree of ['\n', 'trop court\n', `${JETON} avec espace\n`]) {
+    const r = i.lancer(['--bot'], { input: entree });
+    assert.equal(r.code, 1, r.out);
+    assert.deepEqual(i.reglage(), avant, 'rien n’est modifié');
+  }
+  // pose
+  const r = i.lancer(['--bot'], { input: `${JETON}\n` });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(i.reglage().jeton_du_bot, JETON);
+  assert.equal(mode(i.fichier), 0o600);
+  assert.equal(i.reglage().secret_de_session, avant.secret_de_session, 'poser le bot ne ferme aucune session');
+  assert.equal(i.reglage().client_secret, SECRET_D_ESSAI, 'le reste du réglage est gardé');
+  assert.ok(!r.out.includes(JETON), 'le jeton ne s’affiche jamais');
+  assert.ok(!i.appels().includes(JETON), 'le jeton ne passe jamais en argument');
+  assert.ok(r.out.includes(`https://discord.com/oauth2/authorize?client_id=${CLIENT_D_ESSAI}&scope=bot&permissions=0`), r.out);
+  assert.match(r.out, /Rien à redémarrer/);
+  assert.equal(validerReglage(i.reglage()).jeton_du_bot, JETON, 'le service le lit tel quel');
+  // état : posé, jamais montré
+  const etat = i.lancer(['--etat']);
+  assert.equal(etat.code, 0);
+  assert.match(etat.out, /Bot de revérification : posé/);
+  assert.ok(!etat.out.includes(JETON) && !etat.out.includes(SECRET_D_ESSAI), 'aucun secret dans l’état');
+  // une repose de l'application et un rôle gardent le jeton
+  i.lancer(['--role', ROLE_MJ, 'mj']);
+  assert.equal(i.reglage().jeton_du_bot, JETON);
+  // retrait
+  const retire = i.lancer(['--sans-bot']);
+  assert.equal(retire.code, 0, retire.out);
+  assert.equal(i.reglage().jeton_du_bot, undefined);
+  assert.equal(i.reglage().client_id, CLIENT_D_ESSAI);
+  assert.match(i.lancer(['--etat']).out, /Bot de revérification : non posé/);
+  assert.notEqual(i.lancer(['--sans-bot']).code, 0, 'rien à retirer');
+});
