@@ -31,7 +31,7 @@ const RETRY_AFTER_MAX_S = 300;
  * @type {ReadonlyArray<{ methodes: string[], motif: RegExp, raison: string }>}
  */
 export const ROUTES_EXEMPTEES = Object.freeze([
-  { methodes: ['POST', 'DELETE'], motif: /^\/api\/acces$/, raison: 'ouvre et ferme une session (cookie) : n’écrit aucun contenu ni aucune fiche ; sans elle, le propriétaire ne pourrait pas se connecter pour voir le gel' },
+  { methodes: ['POST'], motif: /^\/api\/deconnexion$/, raison: 'ferme la session (retire le cookie) : n’écrit aucun contenu ni aucune fiche ; se connecter (GET /api/connexion/discord/retour/) est une lecture que la route elle-même refuse pendant un gel' },
   { methodes: ['POST'], motif: /^\/api\/classeur$/, raison: 'lit une feuille Google et renvoie ses octets : n’écrit rien dans la base' },
   { methodes: ['POST'], motif: /^\/api\/metriques\/page$/, raison: 'balise des pages vues : écrit dans la base des métriques, jamais dans la base vivante' },
   { methodes: ['POST'], motif: /^\/api\/edition\/(lignes|race|classe|bestiaire|portrait|evenement)$/, raison: 'lectures faites en POST (corps de liste) : le service d’édition ne les écrit pas' },

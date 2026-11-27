@@ -332,6 +332,14 @@ export function routeNormalisee(adresse) {
     case 'acces':
       if (seul(1)) return r('acces');
       return seul(2) && b === 'verifier' ? r('acces', 'verifier') : ROUTE_INCONNUE;
+    // la connexion par Discord (R310) : jamais la chaîne de requête (le code et l'état du retour), jamais un nom d'utilisateur
+    case 'connexion':
+      if (seul(2) && b === 'discord') return r('connexion', 'discord');
+      return seul(3) && b === 'discord' && c === 'retour' ? r('connexion', 'discord', 'retour') : ROUTE_INCONNUE;
+    case 'moi':
+      return seul(1) ? r('moi') : ROUTE_INCONNUE;
+    case 'deconnexion':
+      return seul(1) ? r('deconnexion') : ROUTE_INCONNUE;
     case 'classeur':
       return seul(1) ? r('classeur') : ROUTE_INCONNUE;
     case 'tipeee':

@@ -17,6 +17,7 @@ import { empreinte } from '../src/lib/portrait.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SEUL_LINUX } from './aide-plateforme.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
@@ -370,7 +371,7 @@ test('GET /api/personnages/<id>/portrait/ : les octets de l’image, son type et
 });
 
 test('fiche de joueur : ni listée, ni lue (ni son portrait), ni modifiable sans comptes', () => {
-  db.exec("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('alice', 'Alice', '2026-10-10T00:00:00Z')");
+  poserUnCompte(db, 'alice', 'Alice', '2026-10-10T00:00:00Z');
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
       alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, portrait)
     VALUES ('fiche-alice', 'joueur', 'alice', 'privee', 'Secret', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, '2026-10-10T00:00:00Z', '2026-10-10T00:00:00Z', ?)`).run(IMAGES.webp);

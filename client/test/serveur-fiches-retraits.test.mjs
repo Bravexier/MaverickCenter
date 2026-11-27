@@ -18,6 +18,7 @@ import { jourDuRetrait, ligneDeRetrait, TABLES_FICHES } from '../src/lib/fiche-f
 import { normalize } from '../src/lib/text.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 const racine = dossierTemporaire('fiches-retraits');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
@@ -97,7 +98,7 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   const sort = ligne('SELECT s.id, s.nom, s.niveau, m.nom AS magie FROM sort s JOIN magie m ON m.id = s.magie_id ORDER BY s.id LIMIT 1');
 
   // un prétiré qui a tout (avec des notes), une fiche de joueur créée APRÈS l'instant qui a un don de la spécialité sans elle (fiche non conforme)
-  inserer('utilisateur', { id: 'u-retraits', nom_affichage: 'Joueur', cree_le: '2026-10-01T00:00:00Z' });
+  inserer('utilisateur', compteDEssai('u-retraits', 'Joueur', '2026-10-01T00:00:00Z'));
   inserer('personnage', { ...FICHE, id: 'p-retraits', nature: 'pretire', nom: 'Témoin des retraits', notes: 'Note du joueur.', metier_id: metier });
   inserer('personnage_classe', { personnage_id: 'p-retraits', rang: 1, classe_id: classe, specialite_id: spec });
   inserer('personnage_capacite', { personnage_id: 'p-retraits', capacite_id: donA });

@@ -1161,6 +1161,7 @@ test('la sonde : une référence, la fabrication, un après ; les deux instances
   assert.equal(sonde.format, 'maverick-sonde/1');
   assert.equal(sonde.disponible, true);
   assert.deepEqual(sonde.cibles, ['/', '/api/personnages/']);
+  assert.deepEqual(sonde.cibles_dev, ['/', '/api/etat/'], 'R310 : le site de dev est fermé, la sonde y lit l’état du service, resté ouvert (la liste des prétirés y répondrait 401)');
   assert.equal(sonde.delai_s, 5);
   assert.equal(sonde.arretee, null);
   for (const instance of ['prod', 'dev']) {
@@ -1179,7 +1180,7 @@ test('la sonde : une référence, la fabrication, un après ; les deux instances
   const appels = appelsDeCurl(m);
   assert.ok(appels.length >= 8);
   const urls = new Set(appels.map((a) => a.split(' ').at(-1)));
-  assert.deepEqual([...urls].sort(), ['http://127.0.0.1:8080/', 'http://127.0.0.1:8080/api/personnages/', 'http://127.0.0.1:8081/', 'http://127.0.0.1:8081/api/personnages/']);
+  assert.deepEqual([...urls].sort(), ['http://127.0.0.1:8080/', 'http://127.0.0.1:8080/api/personnages/', 'http://127.0.0.1:8081/', 'http://127.0.0.1:8081/api/etat/']);
   for (const appel of appels) {
     assert.match(appel, /--max-time 5 /);
     assert.match(appel, /-s -A maverick-atelier-sonde\/1 -o \/dev\/null -w %\{http_code\} %\{time_total\}/);
@@ -1232,7 +1233,7 @@ test('la sonde lit MAVERICK_PORT=<port> et MAVERICK_PORT=127.0.0.1:<port> (la fo
     ecrire(join(m.dossier, 'maverick-center', '.env'), `MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=${prod}\n`);
     ecrire(join(m.instance, '.env'), `MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=${dev}\nMAVERICK_EDITION=1\n`);
   };
-  const urls = (m) => [...new Set(appelsDeCurl(m).map((a) => a.split(' ').pop().replace(/\/(api\/personnages\/)?$/, '')))].sort();
+  const urls = (m) => [...new Set(appelsDeCurl(m).map((a) => a.split(' ').pop().replace(/\/(api\/(personnages|etat)\/)?$/, '')))].sort();
   // avec l'hôte, comme sur le serveur
   const avecHote = monde({ sonde: true });
   ecrireLesPorts(avecHote, '127.0.0.1:8080', '127.0.0.1:8081');

@@ -25,6 +25,7 @@ import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { creerAcces } from './acces.mjs';
+import { creerConnexion } from './discord.mjs';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -50,6 +51,8 @@ import { creerOmbre } from './essai-dans-l-ombre.mjs';
 import { INTERVALLE_DES_DEMANDES_MS, creerEssaiDeStructure } from './essai-de-structure.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
+/** L'adresse d'une requête pour le journal : la chaîne de requête des routes de connexion (le code d'autorisation et l'état du retour de Discord, R310) n'y va jamais. */
+const adresseDeJournal = (url) => String(url ?? '/').replace(/^(\/api\/connexion\/[^?#]*)[?#].*$/, '$1');
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
 
 /** Le chemin d'un appel à l'API GitHub, sans le dépôt ni les identifiants (évènement « github » des métriques). */
@@ -113,9 +116,14 @@ const inode = (chemin) => {
  * @param {string} [o.depot] dépôt GitHub du workflow de mise à jour
  * @param {string|null} [o.adresse] adresse publique du site (https://dev.<domaine>) ; sinon l'hôte de la requête
  * @param {string|null} [o.jetonFichier] fichier du jeton GitHub (permission Actions) ; sans lui, le workflow se lance à la main
- * @param {string|{ controler: Function, droit: Function, protege: Function, portee: Function, connecter: Function }|null} [o.acces] accès au site de dev
- *   (serveur/acces.mjs, docs/serveur.md, « Accès au site de dev ») : le fichier de réglage (secrets/acces.json ; MAVERICK_ACCES_FICHIER), relu quand il
- *   change ; absent ou sans fichier, rien n'est protégé ; jamais lu sans l'édition (la production n'est pas concernée)
+ * @param {string|{ controler: Function, droit: Function, depot: Function, lire: Function }|null} [o.acces] la porte du site de dev (serveur/acces.mjs,
+ *   docs/serveur.md, « Accès au site de dev », R310) : le fichier des clés (secrets/acces.json ; MAVERICK_ACCES_FICHIER), relu quand il change ; donné, le site de
+ *   dev est FERMÉ (rien sans une session Discord de niveau MJ ou une clé, même sans fichier) ; null (tests) : aucune porte, tout est ouvert ; jamais lu sans
+ *   l'édition (la production n'a aucune porte)
+ * @param {string|{ fichier: string, fetch?: typeof fetch, horloge?: () => number, aleatoire?: () => string, delai?: number }|{ commencer: Function, terminer: Function, session: Function, disponible: Function }|null} [o.connexion]
+ *   la connexion par Discord (serveur/discord.mjs, R310), sur les deux instances : le fichier de réglage (secrets/discord.json ; MAVERICK_DISCORD_FICHIER), relu quand
+ *   il change, ou ses options (un `fetch` simulé : aucun appel réseau dans les tests), ou une connexion déjà faite ; null : pas de connexion (`/api/moi/` dit
+ *   « indisponible »)
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
  * @param {string|null} [o.paquets] dossier partagé des paquets de la production (MAVERICK_PAQUETS ; lot 11, PR 5a, serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet
@@ -158,7 +166,7 @@ const inode = (chemin) => {
  *   par l'essai, ou d'une autre structure que le schema.sql livré : la promesse est rejetée, le service ne démarre pas
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
-  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, paquets = null, versionParDefaut = 'développement',
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, connexion: reglageConnexion = null, maintenance = null, paquets = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
   tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {}, structure: reglagesStructure = {} }) {
   const lancementDuService = performance.now();
@@ -185,9 +193,18 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       return { version: versionParDefaut, empreinte: null };
     }
   })();
-  // accès au site de dev (serveur/acces.mjs) : le réglage est relu quand le fichier change ; lu une fois ici pour que le démarrage le note au journal
-  const acces = edition && reglageAcces ? (typeof reglageAcces === 'string' ? creerAcces({ fichier: reglageAcces, journal }) : reglageAcces) : null;
-  acces?.protege();
+  // la connexion par Discord (serveur/discord.mjs, R310) : sur les deux instances ; le réglage est relu quand le fichier change, lu une fois ici pour que le démarrage le note
+  const connexion = !reglageConnexion ? null
+    : typeof reglageConnexion === 'string' ? creerConnexion({ fichier: reglageConnexion, journal, edition: Boolean(edition) })
+      : typeof reglageConnexion.commencer === 'function' ? reglageConnexion
+        : creerConnexion({ journal, edition: Boolean(edition), ...reglageConnexion });
+  connexion?.lire?.();
+  // la porte du site de dev (serveur/acces.mjs) : les clés se relisent quand le fichier change ; la session est celle de la connexion (le niveau de la porte est
+  // celui du cookie). Une porte posée ferme le site ; sans elle (tests), tout est ouvert comme avant
+  const acces = edition && reglageAcces
+    ? (typeof reglageAcces === 'string' ? creerAcces({ fichier: reglageAcces, session: connexion ? (entetes) => connexion.session(entetes) : null, journal }) : reglageAcces)
+    : null;
+  acces?.lire?.();
   // page « Mise à jour » (site de dev) : le jeton GitHub du serveur, relu à chaque appel (fichier monté dans le conteneur, jamais dans site/)
   const lireJeton = () => {
     if (!jetonFichier) return null;
@@ -584,7 +601,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     // chaque requête /api/ au journal (catégorie http, avec ses champs isolés), sans son corps, sur le site de dev ; en production, seulement un
     // échec du service (5xx) ; les relèves du journal, de la version de la base, des métriques et de la maintenance n'y vont pas (journal-du-service.mjs)
     const noterLaRequete = (statut, octets) => {
-      const adresse = req.url ?? '/';
+      // la chaîne de requête du retour de Discord porte le code d'autorisation et l'état (R310) : jamais au journal ; l'adresse de la connexion en perd la sienne
+      const adresse = adresseDeJournal(req.url);
       if (!adresse.startsWith('/api/') || (!edition && (statut < 500 || gelee))) return;
       const duree = performance.now() - debut;
       journal(`${req.method} ${adresse} ${statut} ${Math.round(duree)} ms`, {
@@ -609,8 +627,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       // le visiteur est parti pendant une réponse attendue (POST /api/classeur/, GET /api/tipeee/) : terminer() a déjà noté 499, rien à écrire
       if (res.destroyed || res.writableEnded) return;
       // un 304 n'a pas de corps : ni Content-Type ni Content-Length (RFC 9110 § 15.4.5 ; un cache recopierait le type sur l'image qu'il garde) ;
-      // un 204 (balise des pages vues) non plus
-      if (statut === 304 || statut === 204) {
+      // un 204 (balise des pages vues) non plus, ni une redirection (302 : la connexion par Discord)
+      if (statut === 304 || statut === 204 || (statut === 302 && entetes.Location)) {
         if (mesure) mesure.tTraite = performance.now();
         envoyee = { statut, octets: 0 };
         res.writeHead(statut, { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...entetes });
@@ -656,7 +674,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     /** Un échec du traitement : journal, évènement erreur_5xx (avec l'empreinte de la pile), réponse 500. */
     const echec = (e) => {
       exception = true;
-      journal(`ERREUR ${req.method} ${req.url} : ${e?.stack ?? e?.message ?? e}`);
+      journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : ${e?.stack ?? e?.message ?? e}`);
       evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut: 500, ...empreinteDePile(e) } });
       return { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
     };
@@ -671,7 +689,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github, interrupteursGithub,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, connexion, essaiDeStructure, atelier, source: estSource,
             bascule2: enBascule2, paquets, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {
           const mesureSql = sql.terminer();
@@ -684,7 +702,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       // une promesse (POST /api/classeur/, GET /api/tipeee/ : les routes asynchrones ; la mesure SQL, synchrone, est déjà prise) : la réponse part
       // quand elle arrive
       if (typeof reponse?.then === 'function') {
-        reponse.then((r) => r, echec).then(envoyer).catch((e) => journal(`ERREUR ${req.method} ${req.url} : envoi de la réponse : ${e?.message ?? e}`));
+        reponse.then((r) => r, echec).then(envoyer).catch((e) => journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : envoi de la réponse : ${e?.message ?? e}`));
         return;
       }
       envoyer(reponse);

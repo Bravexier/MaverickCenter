@@ -9,8 +9,11 @@
 //                        compte) ; la page « Mise à jour » compare la base dev à ce contenu, et à défaut à la copie ci-dessous
 //   MAVERICK_REFERENCE   repli de la page « Mise à jour » quand la production n'est pas lisible : la copie de master tirée du dépôt (défaut : site/donnees/reference.db)
 //   MAVERICK_GITHUB_JETON_FICHIER  fichier du jeton GitHub (permission Actions seulement) qui déclenche le workflow de mise à jour
-//   MAVERICK_ACCES_FICHIER  réglage de l'accès au site de dev (mot de passe pour modifier, clé de lecture : serveur/acces.mjs ; défaut : acces.json à côté du
-//                        jeton GitHub, donc secrets/acces.json de l'instance) ; absent, rien n'est protégé ; sans effet sans MAVERICK_EDITION=1
+//   MAVERICK_ACCES_FICHIER  les clés de lecture et de dépôt du site de dev (serveur/acces.mjs ; défaut : acces.json à côté du jeton GitHub, donc
+//                        secrets/acces.json de l'instance) ; le site de dev est FERMÉ qu'il existe ou non (R310 : session Discord de niveau MJ ou clé) ; sans effet
+//                        sans MAVERICK_EDITION=1
+//   MAVERICK_DISCORD_FICHIER  réglage de la connexion par Discord, sur les deux instances (serveur/discord.mjs ; défaut : discord.json à côté du jeton GitHub, donc
+//                        secrets/discord.json de l'instance) ; absent, la connexion est indisponible (et le site de dev, fermé)
 //   MAVERICK_DEPOT       dépôt GitHub (défaut : Bravexier/MaverickCenter) ; MAVERICK_ADRESSE_PUBLIQUE : adresse du site de dev (https://…)
 //   MAVERICK_PAQUETS     dossier partagé des paquets de la production (serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet de la mise à jour, avec db/bascule-2
 //   MAVERICK_MAINTENANCE dossier partagé de l'annonce de maintenance pendant une mise à jour (serveur/maintenance.mjs), le même pour les deux
@@ -21,6 +24,8 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from './service.mjs';
+import { FICHIER_PAR_DEFAUT as DISCORD_PAR_DEFAUT } from './discord.mjs';
+import { FICHIER_PAR_DEFAUT as ACCES_PAR_DEFAUT } from './acces.mjs';
 import { reglagesTipeee } from './tipeee.mjs';
 
 const ici = (relatif) => fileURLToPath(new URL(relatif, import.meta.url));
@@ -36,7 +41,9 @@ const service = await demarrerService({
   // la production d'abord (son dossier monté en lecture seule, MAVERICK_PRODUCTION), puis la copie tirée du dépôt (site/donnees/reference.db)
   reference: { production: process.env.MAVERICK_PRODUCTION || null, depot: process.env.MAVERICK_REFERENCE || ici('../../donnees/reference.db') },
   jetonFichier: process.env.MAVERICK_GITHUB_JETON_FICHIER || null,
-  acces: process.env.MAVERICK_ACCES_FICHIER || (process.env.MAVERICK_GITHUB_JETON_FICHIER ? join(dirname(process.env.MAVERICK_GITHUB_JETON_FICHIER), 'acces.json') : null),
+  // le site de dev est toujours fermé (R310) : une porte est posée même sans fichier de clés, et aucune variable ne la retire ; la production n'en a pas (le service l'ignore sans édition)
+  acces: process.env.MAVERICK_ACCES_FICHIER || (process.env.MAVERICK_GITHUB_JETON_FICHIER ? join(dirname(process.env.MAVERICK_GITHUB_JETON_FICHIER), 'acces.json') : ACCES_PAR_DEFAUT),
+  connexion: process.env.MAVERICK_DISCORD_FICHIER || (process.env.MAVERICK_GITHUB_JETON_FICHIER ? join(dirname(process.env.MAVERICK_GITHUB_JETON_FICHIER), 'discord.json') : DISCORD_PAR_DEFAUT),
   depot: process.env.MAVERICK_DEPOT || 'Bravexier/MaverickCenter',
   adresse: process.env.MAVERICK_ADRESSE_PUBLIQUE || null,
   maintenance: process.env.MAVERICK_MAINTENANCE || null,

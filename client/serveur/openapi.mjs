@@ -473,12 +473,12 @@ function cheminsDuService() {
     '/edition/lots/': {
       get: {
         operationId: 'edition_lots', tags: [SERVICE], summary: 'Les lots de changements proposés',
-        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc ; un lot appliqué dit « lignes_nettes » (le nombre de ses lignes, sans lire son détail ; absent si son journal est illisible) et, la référence de la production lisible, « ecart_production ». Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc ; un lot appliqué dit « lignes_nettes » (le nombre de ses lignes, sans lire son détail ; absent si son journal est illisible) et, la référence de la production lisible, « ecart_production ». Clé de lecture ou session Créateur.${SITE_DE_DEV}`,
         responses: { 200: reponse('Les propositions.', objet), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
       },
       post: {
         operationId: 'edition_lot_deposer', tags: [SERVICE], summary: 'Déposer un lot de changements',
-        description: `Le lot (maverick-lot/1 : titre, nature, decision, auteur, operations de table, cle, operation, avant, apres) est contrôlé, enregistré « propose » et essayé à blanc sur une copie de la base ; la réponse porte l’essai (opérations applicables, changées entre-temps, verrouillées par une décision, refusées ; aperçu avant et après ; problèmes du contenu nés du lot). Tant que la clé de dépôt n’est pas posée (état sûr), rien n’est écrit dans le contenu : la clé de lecture ou le mot de passe déposent une proposition que le propriétaire applique ou refuse d’un clic. Une fois la clé de dépôt posée (R291), seules la clé de dépôt (mêmes en-têtes que la clé de lecture) et le mot de passe déposent — la clé de lecture est refusée en 403 — et le lot est APPLIQUÉ aussitôt, par le même code que le clic (essai à blanc, une transaction, contrôles du contenu rejoués) : 201 avec le lot « applique » (bilan.application dit par quoi) ; un lot que l’essai ou l’application refuse n’écrit rien, il est enregistré « refuse » et la réponse est un 409 avec ses motifs (motifs, lot). verrous_ouverts (facultatif, liste de « R… ») ouvre ce que le gel lève (R218, R219) comme le clic, avec le mot de passe seulement : porté avec la clé de dépôt, il est refusé (403), et un lot qui demande un verrou n’entre pas (409, « refuse »). 400 dit l’opération à corriger.${SITE_DE_DEV}`,
+        description: `Le lot (maverick-lot/1 : titre, nature, decision, auteur, operations de table, cle, operation, avant, apres) est contrôlé, enregistré « propose » et essayé à blanc sur une copie de la base ; la réponse porte l’essai (opérations applicables, changées entre-temps, verrouillées par une décision, refusées ; aperçu avant et après ; problèmes du contenu nés du lot). Tant que la clé de dépôt n’est pas posée (état sûr), rien n’est écrit dans le contenu : la clé de lecture ou une session Créateur déposent une proposition que le propriétaire applique ou refuse d’un clic. Une fois la clé de dépôt posée (R291), seules la clé de dépôt (mêmes en-têtes que la clé de lecture) et une session Créateur déposent — la clé de lecture est refusée en 403 — et le lot est APPLIQUÉ aussitôt, par le même code que le clic (essai à blanc, une transaction, contrôles du contenu rejoués) : 201 avec le lot « applique » (bilan.application dit par quoi) ; un lot que l’essai ou l’application refuse n’écrit rien, il est enregistré « refuse » et la réponse est un 409 avec ses motifs (motifs, lot). verrous_ouverts (facultatif, liste de « R… ») ouvre ce que le gel lève (R218, R219) comme le clic, avec une session Créateur seulement : porté avec la clé de dépôt, il est refusé (403), et un lot qui demande un verrou n’entre pas (409, « refuse »). 400 dit l’opération à corriger.${SITE_DE_DEV}`,
         requestBody: { required: true, ...json(objet, { example: { format: 'maverick-lot/1', titre: 'Redonner à un mot-clé sa couleur', nature: 'decision', decision: 'R275', operations: [{ table: 'mot_cle', cle: { id: 1 }, operation: 'modifier', avant: { couleur: null }, apres: { couleur: '#aa3322' } }] } }) },
         responses: { 201: reponse('Proposée et essayée, ou (clé de dépôt posée) appliquée aussitôt.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Dépôt appliqué aussitôt : l’essai ou l’application refuse (motifs), le lot est enregistré « refuse », rien n’est écrit.', objet), 415: ref('responses', 'TypeDeCorps'), 503: ref('responses', 'Indisponible') },
       },
@@ -487,7 +487,7 @@ function cheminsDuService() {
       parameters: [idLot],
       get: {
         operationId: 'edition_lot_lire', tags: [SERVICE], summary: 'Un lot de changements',
-        description: `Le contenu déposé, l’essai à blanc (aperçu avant et après, verdict, verrous à ouvrir) et, appliqué, le bilan (opérations écrites, valeurs changées entre-temps avec la valeur trouvée, numéros donnés, application : directe ou non, par la clé de dépôt ou le mot de passe). Un lot appliqué ou annulé porte aussi \`lignes\` (R291) : chaque ligne de son effet net avec son numéro n, sa table et sa ligne par leur nom, ses colonnes (avant, après), son état (en_place, annulee, modifiee_depuis, comme_avant), annulable_seule (et motif, depend_de sinon). Un lot refusé à son dépôt porte ses motifs dans \`refus\`. Clé de lecture, clé de dépôt ou mot de passe.${SITE_DE_DEV}`,
+        description: `Le contenu déposé, l’essai à blanc (aperçu avant et après, verdict, verrous à ouvrir) et, appliqué, le bilan (opérations écrites, valeurs changées entre-temps avec la valeur trouvée, numéros donnés, application : directe ou non, par la clé de dépôt ou une session Créateur). Un lot appliqué ou annulé porte aussi \`lignes\` (R291) : chaque ligne de son effet net avec son numéro n, sa table et sa ligne par leur nom, ses colonnes (avant, après), son état (en_place, annulee, modifiee_depuis, comme_avant), annulable_seule (et motif, depend_de sinon). Un lot refusé à son dépôt porte ses motifs dans \`refus\`. Clé de lecture, clé de dépôt ou session Créateur.${SITE_DE_DEV}`,
         responses: { 200: reponse('La proposition.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable') },
       },
     },
@@ -495,7 +495,7 @@ function cheminsDuService() {
       parameters: [idLot],
       post: {
         operationId: 'edition_lot_essai', tags: [SERVICE], summary: 'Refaire l’essai à blanc d’un lot',
-        description: `Refait l’essai sur une copie de la base d’aujourd’hui ; n’écrit que l’essai de la proposition. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Refait l’essai sur une copie de la base d’aujourd’hui ; n’écrit que l’essai de la proposition. Clé de lecture ou session Créateur.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet) },
         responses: { 200: reponse('La proposition et son essai.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est plus proposé.', objet) },
       },
@@ -504,7 +504,7 @@ function cheminsDuService() {
       parameters: [idLot],
       post: {
         operationId: 'edition_lot_appliquer', tags: [SERVICE], summary: 'Appliquer un lot de changements',
-        description: `Le clic du propriétaire (mot de passe) : écrit le lot d’un bloc par le service d’édition, dans la transaction de l’édition. Une valeur changée depuis l’essai n’est pas écrite (le site prime), elle est listée. 409 : l’essai a des refus à corriger, un verrou de décision n’est pas ouvert dans verrous_ouverts, un contrôle du contenu échoue, ou rien ne reste à écrire.${SITE_DE_DEV}`,
+        description: `Le clic du propriétaire (session Créateur) : écrit le lot d’un bloc par le service d’édition, dans la transaction de l’édition. Une valeur changée depuis l’essai n’est pas écrite (le site prime), elle est listée. 409 : l’essai a des refus à corriger, un verrou de décision n’est pas ouvert dans verrous_ouverts, un contrôle du contenu échoue, ou rien ne reste à écrire.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
         responses: { 200: reponse('Appliquée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
       },
@@ -513,7 +513,7 @@ function cheminsDuService() {
       parameters: [idLot],
       post: {
         operationId: 'edition_lot_refuser', tags: [SERVICE], summary: 'Refuser un lot de changements',
-        description: `Le propriétaire refuse la proposition (mot de passe) : rien n’est écrit dans le contenu, elle reste lisible.${SITE_DE_DEV}`,
+        description: `Le propriétaire refuse la proposition (session Créateur) : rien n’est écrit dans le contenu, elle reste lisible.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet) },
         responses: { 200: reponse('Refusée.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est plus proposé.', objet) },
       },
@@ -522,7 +522,7 @@ function cheminsDuService() {
       parameters: [idLot],
       get: {
         operationId: 'edition_lot_annulation', tags: [SERVICE], summary: 'Aperçu de l’annulation d’un lot appliqué',
-        description: `Ce que « Annuler ce lot » ferait aujourd’hui, calculé sur une copie de la base (rien n’est écrit) : par ligne du lot du journal, remise si la valeur vaut encore ce que le lot a écrit, gardée (avec la valeur trouvée : le site prime) sinon ; une ligne créée par le lot n’est supprimée que si elle vaut encore ce qu’il a inséré, une ligne qu’il a retirée n’est réinsérée que si elle est encore absente. Avec l’aperçu avant et après de chaque ligne, les verrous de décision à ouvrir et les problèmes du contenu nés de l’annulation. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Ce que « Annuler ce lot » ferait aujourd’hui, calculé sur une copie de la base (rien n’est écrit) : par ligne du lot du journal, remise si la valeur vaut encore ce que le lot a écrit, gardée (avec la valeur trouvée : le site prime) sinon ; une ligne créée par le lot n’est supprimée que si elle vaut encore ce qu’il a inséré, une ligne qu’il a retirée n’est réinsérée que si elle est encore absente. Avec l’aperçu avant et après de chaque ligne, les verrous de décision à ouvrir et les problèmes du contenu nés de l’annulation. Clé de lecture ou session Créateur.${SITE_DE_DEV}`,
         responses: { 200: reponse('L’aperçu de l’annulation.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est pas appliqué.', objet) },
       },
     },
@@ -530,7 +530,7 @@ function cheminsDuService() {
       parameters: [idLot],
       post: {
         operationId: 'edition_lot_annuler', tags: [SERVICE], summary: 'Annuler un lot de changements appliqué',
-        description: `Le clic du propriétaire (mot de passe) : refait la comparaison et, d’un bloc, sous le verrou de l’édition, remet « avant » là où la valeur vaut encore ce que le lot a écrit (une valeur changée depuis est gardée, listée). Écrit par le service d’édition, rejoue les contrôles du contenu, note un lot du journal « Annulation de … » de la même nature et du même numéro de décision, passe la proposition à « annule ». Les numéros donnés ne sont jamais rendus. 409 : rien à remettre, une ligne refusée, un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué.${SITE_DE_DEV}`,
+        description: `Le clic du propriétaire (session Créateur) : refait la comparaison et, d’un bloc, sous le verrou de l’édition, remet « avant » là où la valeur vaut encore ce que le lot a écrit (une valeur changée depuis est gardée, listée). Écrit par le service d’édition, rejoue les contrôles du contenu, note un lot du journal « Annulation de … » de la même nature et du même numéro de décision, passe la proposition à « annule ». Les numéros donnés ne sont jamais rendus. 409 : rien à remettre, une ligne refusée, un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
         responses: { 200: reponse('Annulée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
       },
@@ -547,7 +547,7 @@ function cheminsDuService() {
       parameters: [idLot, { name: 'n', in: 'path', required: true, description: 'Le numéro de la ligne (champ n des lignes du lot).', schema: { type: 'integer', minimum: 1 } }],
       post: {
         operationId: 'edition_lot_ligne_annuler', tags: [SERVICE], summary: 'Annuler une seule ligne d’un lot appliqué',
-        description: `« Annuler cette modification » (mot de passe, après confirmation de la page) : remet cette ligne seule, d’un bloc, sous le même verrou que le lot entier, les contrôles du contenu rejoués ; un lot du journal « Annulation d’une ligne de … » de la même nature et du même numéro de décision. L’état de la ligne est gardé dans bilan.lignes_annulees (quand, par quel lot du journal) ; quand plus aucune ligne n’est en place, le lot passe « annule ». 409 : rien à remettre pour cette ligne (le site prime), une ligne que tient une autre ligne du lot (depend_de), un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué. Les numéros donnés ne sont jamais rendus.${SITE_DE_DEV}`,
+        description: `« Annuler cette modification » (session Créateur, après confirmation de la page) : remet cette ligne seule, d’un bloc, sous le même verrou que le lot entier, les contrôles du contenu rejoués ; un lot du journal « Annulation d’une ligne de … » de la même nature et du même numéro de décision. L’état de la ligne est gardé dans bilan.lignes_annulees (quand, par quel lot du journal) ; quand plus aucune ligne n’est en place, le lot passe « annule ». 409 : rien à remettre pour cette ligne (le site prime), une ligne que tient une autre ligne du lot (depend_de), un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué. Les numéros donnés ne sont jamais rendus.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
         responses: { 200: reponse('Ligne annulée : le lot, avec ses lignes_annulees.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
       },
@@ -555,7 +555,7 @@ function cheminsDuService() {
     '/edition/lots/recalcul/': {
       post: {
         operationId: 'edition_lots_recalcul', tags: [SERVICE], summary: 'Tout recalculer : déposer les écarts du code',
-        description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Comme tout dépôt : proposé (rien n’est écrit, le propriétaire l’applique d’un clic) tant que la clé de dépôt n’est pas posée, appliqué aussitôt avec la clé de dépôt ou le mot de passe une fois posée (R291 ; la clé de lecture est alors refusée en 403). 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère.${SITE_DE_DEV}`,
+        description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Comme tout dépôt : proposé (rien n’est écrit, le propriétaire l’applique d’un clic) tant que la clé de dépôt n’est pas posée, appliqué aussitôt avec la clé de dépôt ou une session Créateur une fois posée (R291 ; la clé de lecture est alors refusée en 403). 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet) },
         responses: { 200: reponse('Rien à recalculer.', objet), 201: reponse('Déposé et essayé.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Plus d’écarts que ce qu’un lot porte.', objet), 503: ref('responses', 'Indisponible') },
       },
@@ -564,7 +564,7 @@ function cheminsDuService() {
       ...lectureDuService('edition_lots_ancrage_etat', 'État de la préparation de l’ancrage', `{ en_cours, resultat, erreur } : resultat est ce que l’action a rendu { lots, arret, suite, a_trancher, ecartees, comptes } (arret : le lot refusé et son premier motif), erreur { statut, message } si elle a échoué. Le dernier état reste lisible jusqu’au lancement suivant ; après un redémarrage du service, en_cours vaut false et les deux autres null.${SITE_DE_DEV}`),
       post: {
         operationId: 'edition_lots_ancrage', tags: [SERVICE], summary: 'Lancer la préparation de l’ancrage des mots-clés',
-        description: `Décision R309 : en tâche de fond (202 { en_cours: true } ; la fin se lit par GET), calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite ; un gel des écritures posé en cours de route l’arrête aussi avant le lot suivant. Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose.${SITE_DE_DEV}`,
+        description: `Décision R309 : en tâche de fond (202 { en_cours: true } ; la fin se lit par GET), calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou une session Créateur une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite ; un gel des écritures posé en cours de route l’arrête aussi avant le lot suivant. Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json({ type: 'object', additionalProperties: false, properties: { reprendre: { type: 'boolean', description: 'Redéposer les lignes annulées.' } } }) },
         responses: { 202: reponse('Lancée : { en_cours: true }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Une préparation tourne déjà.', objet), 503: ref('responses', 'Indisponible') },
       },
@@ -680,27 +680,44 @@ function cheminsDuService() {
     '/acces/': {
       get: {
         operationId: 'etat_de_l_acces', tags: [SERVICE], summary: 'Où en est ce visiteur (accès au site de dev)',
-        description: 'Toujours ouverte. { protege, portee (ecriture | tout | null), connecte (une session ouverte par le mot de passe), droit (ecriture : le mot de passe ; depot : la clé de dépôt, R291 ; lecture : la clé de lecture ; aucun), expire_le }. Sans réglage d’accès (secrets/acces.json, posé par la commande acces.sh de l’hôte), protege est faux et tout reste ouvert comme avant.',
+        description: 'Toujours ouverte. { protege (le site de dev est fermé : une porte est posée), connecte (une session Discord valide), niveau (observateur | joueur | mj | createur | null : celui du cookie), droit (ecriture : session Créateur ; depot : la clé de dépôt, R291 ; lecture : session MJ ou clé de lecture ; aucun), expire_le }. Sans porte (la production), protege est faux et droit vaut « ecriture » : rien n’est fermé.',
         responses: { 200: reponse('L’état d’accès.', objet) },
-      },
-      post: {
-        operationId: 'se_connecter', tags: [SERVICE], summary: 'Ouvrir une session avec le mot de passe',
-        description: 'Le mot de passe du site de dev (un seul, pour modifier et lancer une mise à jour ; avec la portée « tout », pour tout le site). Rend l’état d’accès et pose le cookie de session maverick_acces (HttpOnly, SameSite, Secure derrière https, 12 h). 401 { erreur, acces: "mot_de_passe" } : mot de passe faux ; 429 { attente_s } : trop d’essais ratés ; 409 : aucun mot de passe n’est posé. Mêmes refus que les écritures (corps JSON, requête d’une page de ce site).',
-        requestBody: { required: true, ...json(objet, { example: { mot_de_passe: '<le mot de passe>' } }) },
-        responses: { 200: reponse('Session ouverte.', objet), 400: ref('responses', 'Requete'), 401: reponse('Mot de passe incorrect.', ref('schemas', 'Erreur')), 403: ref('responses', 'Fermee'),
-          409: ref('responses', 'Conflit'), 415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop d’essais ratés : attendre attente_s secondes.', ref('schemas', 'Erreur')) },
-      },
-      delete: {
-        operationId: 'se_deconnecter', tags: [SERVICE], summary: 'Fermer la session',
-        description: 'Retire le cookie de session et rend l’état d’accès. Refusée si le navigateur dit la requête venue d’un autre site.',
-        responses: { 200: reponse('Session fermée.', objet), 403: ref('responses', 'Fermee'), 409: ref('responses', 'Conflit') },
       },
     },
     '/acces/verifier/': {
       get: {
         operationId: 'verifier_l_acces', tags: [SERVICE], summary: 'Vérification d’accès pour un mandataire',
-        description: '204 sans corps si la requête a au moins le droit de lecture (cookie de session, ou en-tête X-Maverick-Cle ou X-Maverick-Key), 401 { erreur, acces } sinon : la route que le forward_auth de Caddy interroge le jour où le propriétaire choisit la portée « tout » (docs/serveur.md, « Accès au site de dev »). Sans réglage posé : 204.',
-        responses: { 204: { description: 'Accès permis (pas de corps).' }, 401: reponse('Accès refusé.', ref('schemas', 'Erreur')) },
+        description: '204 sans corps si la requête a au moins le droit de lecture (cookie de session de niveau MJ au moins, ou en-tête X-Maverick-Cle ou X-Maverick-Key), 401 { erreur, acces: "connexion" } sans session ni clé, 403 { erreur, acces: "niveau" } avec une session de niveau trop bas : la route que le forward_auth de Caddy interroge pour fermer les pages du site de dev (docs/serveur.md, « Accès au site de dev »). Sans porte : 204.',
+        responses: { 204: { description: 'Accès permis (pas de corps).' }, 401: reponse('Pas de session ni de clé.', ref('schemas', 'Erreur')), 403: reponse('Session de niveau trop bas.', ref('schemas', 'Erreur')) },
+      },
+    },
+    '/moi/': {
+      get: {
+        operationId: 'mon_profil', tags: [SERVICE], summary: 'Le profil de la session (connexion par Discord)',
+        description: 'Toujours ouverte, sur les deux instances. { connexion_disponible (la connexion par Discord est réglée sur cette instance), connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null } (R310). Jamais l’identifiant Discord, l’e-mail ni un jeton.',
+        responses: { 200: reponse('Le profil, ou « non connecté ».', objet) },
+      },
+    },
+    '/connexion/discord/': {
+      get: {
+        operationId: 'connexion_discord', tags: [SERVICE], summary: 'Commencer la connexion par Discord',
+        description: 'Redirige (302) vers Discord (portées identify et guilds.members.read seulement) et pose le cookie signé de l’état OAuth (10 minutes). ?retour=<chemin> : où revenir ensuite (un chemin du site seulement, défaut /profil/). Connexion non réglée : 302 vers /connexion/?erreur=indisponible.',
+        responses: { 302: { description: 'Vers Discord (en-tête Location).' } },
+      },
+    },
+    '/connexion/discord/retour/': {
+      get: {
+        operationId: 'connexion_discord_retour', tags: [SERVICE], summary: 'Le retour de Discord',
+        description: 'Vérifie l’état, échange le code, lit le profil et l’appartenance au serveur, écrit la ligne de utilisateur, révoque le jeton Discord, pose le cookie de session maverick_session (12 h sur le site de dev, 7 jours en production) et redirige (302) vers le chemin demandé. Échec : 302 vers /connexion/?erreur=refus|indisponible|discord|etat. Un compte bot ou système : 403 { acces: "bot" }, rien d’écrit.',
+        responses: { 302: { description: 'Vers le chemin demandé, ou vers /connexion/?erreur=…' }, 403: reponse('Compte bot ou système.', ref('schemas', 'Erreur')) },
+      },
+    },
+    '/deconnexion/': {
+      post: {
+        operationId: 'deconnexion', tags: [SERVICE], summary: 'Se déconnecter',
+        description: 'Retire le cookie de session (le jeton n’est pas révoqué : il expire seul). Corps JSON (par exemple {}), requête d’une page du site.',
+        requestBody: { required: true, ...json(objet, { example: {} }) },
+        responses: { 200: reponse('{ connecte: false }.', objet), 403: ref('responses', 'Fermee'), 415: ref('responses', 'TypeDeCorps') },
       },
     },
     '/tipeee/': {
@@ -826,9 +843,8 @@ export function descriptionOpenApi(catalogue) {
         '(décision du propriétaire, 2026-10-15 : en production, tout /api/v1/ répond 403 ; la base ne se lit que par les pages du site). Toute écriture ' +
         'passe par le service d’édition : un lot du journal, rapatrié dans data/rows par la mise à jour. Les adresses finissent par « / » ; la clé d’une ' +
         'ligne y est écrite valeur par valeur (encodée : « / » → %2F, « # » → %23), jointes par « , ». Les écritures exigent Content-Type: ' +
-        'application/json ; If-Match (la version, ETag) protège une modification ou une suppression. Accès : quand le propriétaire a posé un mot de passe sur le site de dev ' +
-        '(commande acces.sh de l’hôte), l’API /api/v1/ se lit avec la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) ou la session du mot de passe, et s’écrit avec la ' +
-        'session seule ; un refus est un 401 { erreur, acces: "cle" | "mot_de_passe" } (GET /api/acces/, POST /api/acces/).',
+        'application/json ; If-Match (la version, ETag) protège une modification ou une suppression. Accès : le site de dev est fermé (R310) ; l’API /api/v1/ se lit avec la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) ou une session Discord de niveau MJ au moins, et s’écrit avec une session Créateur seule ; ' +
+        'un refus est un 401 { erreur, acces: "connexion" } sans session ni clé, un 403 { acces: "niveau" } avec une session de niveau trop bas, ou un 403 { acces: "cle" } avec une clé qui ne suffit pas (GET /api/acces/).',
     },
     servers: [{ url: '/api', description: 'Le service du site (le préfixe de déploiement du site s’y ajoute).' }],
     tags,

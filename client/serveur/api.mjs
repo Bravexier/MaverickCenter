@@ -44,7 +44,7 @@
 //   POST /api/edition/atelier/      « le bouton » de l'atelier du site de dev (serveur/atelier.mjs#refaireMaintenant) : l'extrait du contenu est refait TOUT DE SUITE, sans le délai de 10 minutes qui suit les
 //                                   saisies ; root le voit à sa ronde (minuteur « contenu », au plus 10 minutes) et, avec l'interrupteur <atelier>/servir, fabrique et pose le site. Sans corps. 200 { format:
 //                                   'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le } ; 409 `occupe` (déjà en cours) ou `inactif` (atelier non installé) ; 500 `echec` ;
-//                                   503 sans atelier ; 403 en production ; classe `ecriture` (le mot de passe)
+//                                   503 sans atelier ; 403 en production ; classe `ecriture` (session Créateur)
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Lots de changements (R274, R275, R291 ; serveur/edition-lots.mjs), site de dev seulement. Tant que la clé de dépôt n'est pas posée, une session de Claude DÉPOSE
 // une proposition (rien n'est écrit dans le contenu) que le propriétaire applique ou refuse d'un clic ; une fois posée, le dépôt par la clé de dépôt ou le mot de
@@ -54,21 +54,21 @@
 //                                              essai à blanc sur une copie ; proposition (201, « propose ») ou, avec la clé de dépôt posée, lot appliqué (201, « applique »)
 //                                              ou refusé (409, « refuse », motifs) ; 400 dit l'opération à corriger ; 401 / 403 : la clé de dépôt est nécessaire
 //   GET  /api/edition/lots/<id>/               un lot : contenu déposé, essai (aperçu avant et après), bilan, et pour un lot appliqué ses lignes (état, annulable seule ou non)
-//   GET  /api/edition/lots/<id>/lignes/<n>/annulation/  l'aperçu de l'annulation d'une seule ligne d'un lot appliqué (copie de la base ; rien n'est écrit ; mot de passe)
-//   POST /api/edition/lots/<id>/lignes/<n>/annuler/     { verrous_ouverts? } → remet cette ligne seule, sous le même verrou que le lot entier (mot de passe) ; 409 dit ce qui la refuse
+//   GET  /api/edition/lots/<id>/lignes/<n>/annulation/  l'aperçu de l'annulation d'une seule ligne d'un lot appliqué (copie de la base ; rien n'est écrit ; session Créateur)
+//   POST /api/edition/lots/<id>/lignes/<n>/annuler/     { verrous_ouverts? } → remet cette ligne seule, sous le même verrou que le lot entier (session Créateur) ; 409 dit ce qui la refuse
 //   POST /api/edition/lots/<id>/essai/         refait l'essai (n'écrit que `essai`) → la proposition
-//   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (mot de passe) ; 409 dit ce qui le refuse
-//   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
+//   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (session Créateur) ; 409 dit ce qui le refuse
+//   POST /api/edition/lots/<id>/refuser/       refuse la proposition (session Créateur) ; rien n'est écrit dans le contenu
 //   GET  /api/edition/lots/<id>/annulation/    l'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (la réponse est une promesse ; rien n'est écrit) :
 //                                              par ligne du lot du journal, « remise » si la valeur vaut encore ce que le lot a écrit, « gardée » sinon
 //   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers, magies, armes, armures, boucliers, composants, potions) et ce que le
 //                                              code d'aujourd'hui en dérive, calculés sur une copie et DÉPOSÉS comme un lot de nature « code » (essai à blanc, clic du propriétaire :
 //                                              comme tout lot) ; la réponse (une promesse) porte { lot, recalcul } (lot null sans écart ; rien n'est écrit dans le contenu)
 //   POST /api/edition/lots/ancrage/            { reprendre? } → lance « préparer l'ancrage » (R309, serveur/edition-ancrage-lots.mjs) sans l'attendre : 202 { en_cours: true }, 409 s'il tourne déjà ;
-//                                              les lots du plan, enchaînés avec la clé de dépôt ou le mot de passe, un seul en proposition sinon
+//                                              les lots du plan, enchaînés avec la clé de dépôt ou une session Créateur, un seul en proposition sinon
 //   GET  /api/edition/lots/ancrage/            → { en_cours, resultat, erreur } : `resultat` { lots, arret, suite, a_trancher, ecartees, comptes } ou `erreur` { statut, message }, gardés jusqu'au
 //                                              lancement suivant ; tous deux à null après un redémarrage du service
-//   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (mot de passe) ; 409 dit ce qui le refuse
+//   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (session Créateur) ; 409 dit ce qui le refuse
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
@@ -123,17 +123,25 @@
 //                                   429 trop de balises cette minute
 // Gel des écritures (serveur/gel.mjs ; docs/serveur.md, « Gel des écritures ») : avec le fichier db/gel.json non échu, toute écriture de /api/ répond 503 (échéance, motif,
 // geste qui lève le gel ; routes exemptées : ROUTES_EXEMPTEES) et /api/etat/ porte `gel` ; les lectures restent ouvertes. Sans fichier, rien ne change.
-// Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
-// Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
-// { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle ou X-Maverick-Key, OU le mot de passe) :
-//   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | depot | lecture | aucun) ; toujours ouverte
-//   POST /api/acces/                { mot_de_passe } → ouvre une session (cookie HttpOnly, 12 h) ; 401 mot de passe faux, 429 trop d'essais, 409 sans mot de passe posé
-//   DELETE /api/acces/              ferme la session (retire le cookie)
-//   GET  /api/acces/verifier/       204 si la requête a au moins le droit de lecture (clé ou session), 401 sinon : pour un forward_auth de Caddy (portée « tout »)
+// Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275, R310). Sur le site de dev seulement, une porte unique : chaque
+// route est classée (serveur/acces-routes.mjs : ouverte, lecture, proposition, ecriture) et le site est FERMÉ sans session Discord de niveau MJ au moins ou clé ;
+// refus : 401 { erreur, acces: 'connexion' } sans session ni clé, 403 { erreur, acces: 'niveau', niveau, niveau_requis } avec une session de niveau trop bas,
+// 403 { acces: 'cle' } avec une clé qui ne suffit pas, { acces: 'cle_de_depot' } pour un dépôt une fois la clé de dépôt posée (clés : en-tête X-Maverick-Cle ou
+// X-Maverick-Key). Hors du site de dev (production), aucune porte : seules la connexion et le profil existent (R307, R310 (4)).
+//   GET  /api/acces/                { protege, connecte, niveau, droit, expire_le } : où en est ce visiteur (droit : ecriture | depot | lecture | aucun) ; toujours ouverte
+//   GET  /api/acces/verifier/       204 si la requête a au moins le droit de lecture (session MJ ou clé), 401 sans rien, 403 avec une session de niveau trop bas :
+//                                   pour le forward_auth de Caddy, qui ferme les pages du site de dev
+// Connexion par Discord (serveur/discord.mjs ; R310) : toutes ouvertes, sur les deux instances ; sans réglage Discord (secrets/discord.json), « indisponible »
+//   GET  /api/connexion/discord/    302 vers Discord (état aléatoire dans un cookie signé de 10 min) ; ?retour=<chemin> : un chemin du site seulement
+//   GET  /api/connexion/discord/retour/            le retour de Discord : vérifie l'état, lit le profil et l'appartenance au serveur, écrit `utilisateur`, révoque le
+//                                   jeton, pose le cookie de session `maverick_session` (12 h sur le site de dev, 7 jours en production) et renvoie (302) vers `retour` ;
+//                                   erreur : 302 vers /connexion/?erreur=refus|indisponible|discord|etat ; compte bot ou système : 403 { acces: 'bot' }, rien d'écrit
+//   GET  /api/moi/                  { connexion_disponible, connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null }
+//   POST /api/deconnexion/          (JSON, requête d'une page du site) retire le cookie de session → { connecte: false }
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
-// Pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
+// Les prétirés se lisent et s'écrivent selon les classes ci-dessus (site de dev) ou sans porte (production). Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
 import {
@@ -164,7 +172,9 @@ import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
 import { etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { ErreurExtrait } from './extrait.mjs';
 import { etatDeLaProduction, retraitsBloquantsPourLaProduction } from './attestation.mjs';
-import { COOKIE, MOT_DE_PASSE_MAX, connexionSecurisee, cookiesDeSession } from './acces.mjs';
+import { connexionSecurisee, refus as refusDeLAcces } from './acces.mjs';
+import { cookieDeSessionRetire } from './discord.mjs';
+import { enregistrerLaConnexion, lireLeProfil } from './utilisateurs.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -225,7 +235,7 @@ function idDeFiche(brut) {
  *   journalDuService?: { lire: (filtres: object) => object } }} service
  * @returns {{ statut: number, corps: object, entetes: Record<string, string> } | Promise<object>} la réponse ; une promesse de réponse pour
  *   POST /api/classeur/ (requete.signal : le visiteur est parti ; service.classeur : serveur/classeur.mjs#creerClasseurEnLigne) et GET /api/tipeee/
- *   (service.tipeee : serveur/tipeee.mjs#creerTipeee) seulement
+ *   (service.tipeee : serveur/tipeee.mjs#creerTipeee) et GET /api/connexion/discord/retour/ (service.connexion : serveur/discord.mjs#creerConnexion, qui parle à Discord) seulement
  */
 export function traiter(requete, service) {
   const { methode, entetes = {} } = requete;
@@ -238,7 +248,7 @@ export function traiter(requete, service) {
   const [ressource, brut, ...reste] = morceaux;
   const permis = (...methodes) => (methodes.includes(methode) ? null : json(405, { erreur: `Méthode ${methode} non permise ici.` }, { Allow: methodes.join(', ') }));
 
-  // accès au site de dev : une seule porte, avant toute route (serveur/acces-routes.mjs classe chacune ; une route inconnue demande le mot de passe).
+  // accès au site de dev : une seule porte, avant toute route (serveur/acces-routes.mjs classe chacune ; une route inconnue demande une session Créateur).
   // Sans réglage (ou hors du site de dev), `controler` rend null : rien ne change.
   const acces = service.edition ? service.acces ?? null : null;
   if (acces) {
@@ -253,7 +263,7 @@ export function traiter(requete, service) {
     service = { ...entier, etat: () => {
       const etat = entier.etat();
       // `erreur` (pourquoi la base vivante n'a pas pu se refaire) peut citer une fiche : réservée à la lecture, comme `retraits`
-      return etat?.base ? { ...etat, base: { ...etat.base, retraits: null, erreur: etat.base.erreur ? 'La base vivante est en erreur (le détail demande la clé de lecture ou le mot de passe).' : null } } : etat;
+      return etat?.base ? { ...etat, base: { ...etat.base, retraits: null, erreur: etat.base.erreur ? 'La base vivante est en erreur (le détail demande la clé de lecture ou une session Créateur).' : null } } : etat;
     } };
   }
 
@@ -273,6 +283,9 @@ export function traiter(requete, service) {
   }
 
   if (ressource === 'acces') return traiterAcces(requete, service, acces, brut, reste, permis);
+  if (ressource === 'connexion') return traiterConnexion(requete, service, brut, reste, permis, params);
+  if (ressource === 'moi' && brut === undefined) return traiterMoi(requete, service, permis);
+  if (ressource === 'deconnexion' && brut === undefined) return traiterDeconnexion(requete, permis);
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture);
@@ -430,7 +443,7 @@ function traiterLeRecalcul(requete, service, permis) {
     if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
     throw e;
   };
-  // R291 : la clé de dépôt posée, le dépôt par elle ou par le mot de passe s'applique aussitôt
+  // R291 : la clé de dépôt posée, le dépôt par elle ou par une session Créateur s'applique aussitôt
   const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false };
   try {
     return lots.recalculerTout(service.base, depot.direct ? { ...options, par: depot.par } : options).then(({ lot, recalcul }) => {
@@ -526,7 +539,7 @@ function traiterLots(requete, service, reste, permis) {
       // la base source (db/source, lot 8 : serveur/base-source.mjs) : un lot vaut pour toutes les tables de contenu, hors édition comprises (la voie générique du
       // journal) ; sans elle, le défaut du module (LOT_OUVERT_AUX_TABLES_HORS_EDITION, faux) : seules les tables de l'édition
       const controle = service.source?.() ? { ouvertHorsEdition: true } : {};
-      // R291 : la clé de dépôt posée, le dépôt par elle ou par le mot de passe est appliqué aussitôt (un refus enregistre le lot « refuse », 409 avec ses motifs) ;
+      // R291 : la clé de dépôt posée, le dépôt par elle ou par une session Créateur est appliqué aussitôt (un refus enregistre le lot « refuse », 409 avec ses motifs) ;
       // sinon (clé pas posée, ou aucun réglage d'accès) une proposition qui attend le clic, comme avant
       const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false };
       if (depot.direct) {
@@ -767,54 +780,95 @@ export function memeOrigine(entetes) {
   }
 }
 
-/** L'état d'accès de ce visiteur, pour les pages : { protege, portee, connecte, droit, expire_le }. */
-function etatDAcces(acces, entetes) {
-  if (!acces?.protege()) return { protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null };
-  const d = acces.droit(entetes);
-  return { protege: true, portee: acces.portee(), connecte: d.session, droit: d.droit, expire_le: d.expire_s ? new Date(d.expire_s * 1000).toISOString() : null };
-}
-
-/** Une requête qui vient d'une page de ce site (Sec-Fetch-Site) ; la déconnexion n'a pas de corps JSON, seul ce garde-fou lui sert. */
-function memeSite(entetes) {
-  const site = String(entetes['sec-fetch-site'] ?? '').toLowerCase();
-  return !site || site === 'same-origin' || site === 'none';
+/**
+ * L'état d'accès de ce visiteur, pour les pages : { protege, connecte, niveau, droit, expire_le }. `protege` : le site de dev ferme ses routes (une porte est posée) ;
+ * `connecte` / `niveau` : la session Discord du cookie ; `droit` : ecriture (session Créateur ; tout est permis sans porte) | depot (clé de dépôt) | lecture (session MJ ou
+ * clé de lecture) | aucun.
+ */
+function etatDAcces(service, acces, entetes) {
+  const session = service.connexion?.session(entetes) ?? null;
+  const d = acces ? acces.droit(entetes) : null;
+  const expire = d?.expire_s ?? session?.exp ?? null;
+  return {
+    protege: Boolean(acces),
+    connecte: Boolean(session),
+    niveau: session?.n ?? null,
+    droit: d ? d.droit : 'ecriture',
+    expire_le: expire ? new Date(expire * 1000).toISOString() : null,
+  };
 }
 
 /**
- * Les routes /api/acces/… (serveur/acces.mjs) : se connecter (POST { mot_de_passe } : cookie de session), se déconnecter (DELETE), savoir où l'on en est
- * (GET) et la vérification d'un mandataire (GET …/verifier/ : 204 ou 401, sans corps utile). Toujours ouvertes (la porte ne les arrête pas) ; sans réglage
- * posé, ou hors du site de dev, il n'y a rien à ouvrir : GET dit « pas protégé », POST et DELETE rendent 409.
+ * Les routes /api/acces/… (serveur/acces.mjs) : savoir où l'on en est (GET) et la vérification d'un mandataire (GET …/verifier/ : 204, 401 sans rien, 403 avec une session
+ * de niveau trop bas ; sans corps utile). Toujours ouvertes (la porte ne les arrête pas). Se connecter se fait par Discord (/api/connexion/discord/), plus par un mot de passe (R310).
  */
 function traiterAcces(requete, service, acces, action, reste, permis) {
   const entetes = requete.entetes ?? {};
   if (reste.length || ![undefined, 'verifier'].includes(action)) return erreur(404, 'Adresse inconnue.');
-  if (action === 'verifier') {
-    const refus = permis('GET');
-    if (refus) return refus;
-    if (!acces || acces.droit(entetes).droit !== 'aucun') return { statut: 204, corps: null, entetes: {} };
-    return json(401, { erreur: 'Accès refusé : la clé de lecture ou le mot de passe est nécessaire.', acces: 'cle' });
-  }
-  const refus = permis('GET', 'POST', 'DELETE');
+  const refus = permis('GET');
   if (refus) return refus;
-  if (requete.methode === 'GET') return json(200, etatDAcces(acces, entetes));
-  if (!acces?.protege()) return erreur(409, 'Aucun mot de passe n’est posé sur ce serveur : il n’y a rien à ouvrir.');
-  const securise = connexionSecurisee(entetes);
-  if (requete.methode === 'DELETE') {
-    if (!memeSite(entetes)) return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
-    return json(200, etatDAcces(acces, {}), { 'Set-Cookie': cookiesDeSession(null, { portee: acces.portee(), securise }) });
+  if (action === 'verifier') {
+    const d = acces?.droit(entetes);
+    if (!acces || d.droit !== 'aucun') return { statut: 204, corps: null, entetes: {} };
+    return refusDeLAcces('lecture', d);
   }
-  const { valeur, refus: interdit } = lireEcriture(requete);
+  return json(200, etatDAcces(service, acces, entetes));
+}
+
+/** Une redirection (302) : `Location` et les cookies à poser ; jamais de corps. */
+const redirection = ({ location, cookies = [] }) => ({ statut: 302, corps: null, entetes: { Location: location, ...(cookies.length ? { 'Set-Cookie': cookies } : {}), 'Cache-Control': 'no-store' } });
+
+/**
+ * Les routes /api/connexion/discord/ (le début : 302 vers Discord) et …/retour/ (le retour de Discord : une promesse, car le service parle à Discord ; serveur/discord.mjs).
+ * Ouvertes sur les deux instances ; sans réglage Discord, ou sans base, ou pendant un gel des écritures : 302 vers /connexion/?erreur=indisponible, rien d'écrit.
+ */
+function traiterConnexion(requete, service, action, reste, permis, params) {
+  if (action !== 'discord' || reste.length > 1 || (reste.length === 1 && reste[0] !== 'retour')) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('GET');
+  if (refus) return refus;
+  const entetes = requete.entetes ?? {};
+  const connexion = service.connexion ?? null;
+  const indisponible = () => redirection({ location: '/connexion/?erreur=indisponible' });
+  if (!connexion) return indisponible();
+  if (reste.length === 0) {
+    const debut = connexion.commencer({ retour: params.get('retour'), entetes });
+    return debut.erreur ? indisponible() : redirection(debut);
+  }
+  // le retour écrit la ligne de `utilisateur` : jamais pendant un gel des écritures (la base se prépare), ni sans base
+  if (service.gel?.refus('POST', '/api/connexion/discord/retour/', { sansGeste: true })) return indisponible();
+  const db = service.base();
+  if (!db) return indisponible();
+  return connexion.terminer({
+    code: params.get('code'),
+    etat: params.get('state'),
+    erreur: params.get('error'),
+    entetes,
+    enregistrer: (profil) => enregistrerLaConnexion(db, profil),
+  }).then((r) => (r.interdit
+    ? json(403, { erreur: 'Connexion refusée : les comptes bot et système n’ont pas accès au site.', acces: 'bot' }, { 'Set-Cookie': r.cookies })
+    : redirection(r)));
+}
+
+/** GET /api/moi/ : le profil de la session de l'appelant (jamais l'identifiant Discord), ou « non connecté ». Ouverte. */
+function traiterMoi(requete, service, permis) {
+  const refus = permis('GET');
+  if (refus) return refus;
+  const connexion = service.connexion ?? null;
+  const session = connexion?.session(requete.entetes ?? {}) ?? null;
+  const db = session ? service.base() : null;
+  const profil = db ? lireLeProfil(db, session.u) : null;
+  // le niveau est celui du cookie (celui que la porte applique) : une autre session plus récente ne change pas celle-ci
+  const utilisateur = profil ? { ...profil, niveau: session.n } : null;
+  return json(200, { connexion_disponible: Boolean(connexion?.disponible()), connecte: Boolean(utilisateur), utilisateur });
+}
+
+/** POST /api/deconnexion/ : retire le cookie de session (sans révocation côté serveur : le jeton expire seul). Mêmes refus que les écritures : JSON, requête d'une page du site. */
+function traiterDeconnexion(requete, permis) {
+  const refus = permis('POST');
+  if (refus) return refus;
+  const { refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
-  const mot = valeur?.mot_de_passe;
-  if (typeof mot !== 'string' || !mot || mot.length > MOT_DE_PASSE_MAX) return erreur(400, 'Corps attendu : { mot_de_passe } (un texte).');
-  const r = acces.connecter(mot, entetes);
-  if (r.ok) {
-    const connecte = etatDAcces(acces, { cookie: `${COOKIE}=${r.jeton}` });
-    return json(200, connecte, { 'Set-Cookie': cookiesDeSession(r.jeton, { portee: acces.portee(), securise }) });
-  }
-  if (r.raison === 'limite') return json(429, { erreur: 'Trop d’essais refusés : attendez avant de réessayer.', acces: 'mot_de_passe', attente_s: r.attente_s }, { 'Retry-After': String(r.attente_s) });
-  if (r.raison === 'ferme') return erreur(503, 'Le réglage d’accès de ce serveur est illisible : refaites-le avec la commande acces.sh.', { acces: 'mot_de_passe' });
-  return erreur(401, 'Mot de passe incorrect.', { acces: 'mot_de_passe' });
+  return json(200, { connecte: false }, { 'Set-Cookie': [cookieDeSessionRetire({ securise: connexionSecurisee(requete.entetes ?? {}) })] });
 }
 
 const sansMaintenance = { active: false };

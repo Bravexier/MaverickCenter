@@ -91,6 +91,11 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
     '/api/debug/base?x=1': '/api/debug/base/',
     '/api/debug/tables/metier/?limite=100': '/api/debug/tables/{table}/',
     '/api/metriques/page/': '/api/metriques/page/',
+    // la connexion par Discord (R310) : un gabarit par route, jamais le code ni l'état du retour
+    '/api/connexion/discord/?retour=/regles/': '/api/connexion/discord/',
+    '/api/connexion/discord/retour/?code=abc&state=def': '/api/connexion/discord/retour/',
+    '/api/moi/': '/api/moi/',
+    '/api/deconnexion/': '/api/deconnexion/',
     '/api/classeur/': '/api/classeur/',
     '/api/classeur': '/api/classeur/',
     '/api/tipeee/': '/api/tipeee/',

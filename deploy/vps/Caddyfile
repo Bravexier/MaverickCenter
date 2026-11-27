@@ -5,8 +5,8 @@
 #   https://www.maverick-jdr.com    redirigé vers maverick-jdr.com
 #
 # Chaque instance est un nginx (docker-compose.yml de l'installateur) protégé par un mot de passe INTERNE : les visiteurs n'en voient pas.
-# Caddy le présente à leur place (variables ci-dessous). Pour fermer le site au public (connexion Discord, 1.0), retirer les lignes
-# « header_up Authorization » et ne plus donner ce mot de passe à Caddy : le site redemande alors une identification.
+# Caddy le présente à leur place (variables ci-dessous). Le site de dev, lui, est fermé par la connexion Discord (R310 : bloc « dev. » ci-dessous) ; la production
+# reste ouverte (R307). Pour fermer aussi la production, il faudrait lui donner la même porte : rien n'est décidé.
 #
 # Variables, lues par systemd dans /etc/caddy/maverick.env (écrit par instances.sh, droits 600, jamais dans git) :
 #   MAVERICK_DOMAINE        maverick-jdr.com (défaut ci-dessous)
@@ -56,34 +56,45 @@ dev.{$MAVERICK_DOMAINE:maverick-jdr.com} {
 	# Serveur de test : jamais de copie gardée par le navigateur (on y modifie les règles, la page doit toujours être celle du serveur).
 	header Cache-Control "no-store"
 
-	# Accès au site de dev (R275) : le mot de passe pour modifier et lancer une mise à jour se pose avec « sudo sh /srv/maverick-center-test/acces/acces.sh »
-	# et c'est le service qui le demande (docs/serveur.md, « Accès au site de dev ») : rien à changer ici. Le service ne voit jamais l'en-tête Authorization
-	# ci-dessous (nginx l'efface) : la clé de lecture des sessions de Claude passe par X-Maverick-Cle ou X-Maverick-Key, que Caddy transmet tels quels.
-	#
-	# OPTION c, NON ACTIVÉE (« un mot de passe pour tout le site ») : le jour où le propriétaire la choisit, poser la portée avec
-	# « sudo sh /srv/maverick-center-test/acces/acces.sh --portee tout », puis remplacer le « handle { … } » ci-dessous par ce qui suit (même mot de passe, une
-	# seule saisie : le cookie de session est alors posé pour tout le site ; jamais essayé ici : à relire et à tester sur le serveur avant de s'y fier) :
-	#
-	#	@ouvert path /api/acces/* /api/mise-a-jour/lots/* /connexion/* /_astro/* /robots.txt
-	#	handle @ouvert {
-	#		reverse_proxy 127.0.0.1:8081 {
-	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
-	#		}
-	#	}
-	#	handle {
-	#		forward_auth 127.0.0.1:8081 {
-	#			uri /api/acces/verifier/
-	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
-	#		}
-	#		reverse_proxy 127.0.0.1:8081 {
-	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
-	#		}
-	#	}
-	#
-	# /api/mise-a-jour/lots/* reste ouvert : le workflow GitHub y télécharge le lot figé (adresse à uuid aléatoire, ni fiche ni compte). Un visiteur sans
-	# session reçoit le 401 du service (JSON) : la page /connexion/ vers laquelle le renvoyer reste à écrire (tech-front) quand l'option c est choisie.
+	# Site de dev FERMÉ (R310, docs/serveur.md, « Accès au site de dev ») : plus rien sans une connexion Discord de niveau MJ au moins (ou une clé, pour les
+	# sessions de Claude, la CI et les workflows). Deux portes, qui disent la même chose :
+	#   - /api/ : le service juge lui-même chaque route (serveur/acces-routes.mjs) et répond en JSON (401 sans session, 403 de niveau trop bas) ; il ne voit jamais
+	#     l'en-tête Authorization (nginx l'efface) : les clés passent par X-Maverick-Cle ou X-Maverick-Key, que Caddy transmet tels quels, et la session par le cookie
+	#     maverick_session. Y passent donc aussi, sans connexion : la connexion elle-même, le lot figé de la mise à jour (le workflow GitHub le télécharge) et l'état du service.
+	#   - les pages (nginx) : « forward_auth » interroge /api/acces/verifier/ avant de les servir ; sans session (401), le visiteur est renvoyé vers /connexion/?retour=<la page> ;
+	#     avec une session de niveau trop bas (403), vers /connexion/?erreur=niveau. Restent ouvertes les pages /connexion/ et /confidentialite/ et ce qu'elles chargent (/_astro/, l'icône, le logo).
+	#     `retour` porte le chemin décodé (`orig_uri.path`) : Caddy ne documente aucun marqueur de chemin encodé, et les chemins du site sont des identifiants ASCII ; le service
+	#     remet `retour` en forme (serveur/discord.mjs#retourValide : encodé, jamais « // » ni une autre origine), et un chemin illisible ramène à /profil/.
+	# Jamais essayé sur le serveur avant ce lot : à contrôler après « caddy validate » (https://dev.<domaine>/ sans session doit renvoyer vers /connexion/).
+	# La production n'a rien de tel (R307 : aucune restriction nouvelle) : sa connexion et son profil sont ouverts, comme le reste.
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy 127.0.0.1:8081 {
+			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+		}
+	}
+
+	@ouvert path /connexion /connexion/* /confidentialite /confidentialite/* /_astro/* /favicon.png /apple-touch-icon.png /logo.webp
+	handle @ouvert {
+		reverse_proxy 127.0.0.1:8081 {
+			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+		}
+	}
 
 	handle {
+		forward_auth 127.0.0.1:8081 {
+			uri /api/acces/verifier/
+			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+			@sans_session status 401
+			handle_response @sans_session {
+				redir * /connexion/?retour={http.request.orig_uri.path} 302
+			}
+			@niveau_trop_bas status 403
+			handle_response @niveau_trop_bas {
+				redir * /connexion/?erreur=niveau 302
+			}
+		}
 		reverse_proxy 127.0.0.1:8081 {
 			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
 		}

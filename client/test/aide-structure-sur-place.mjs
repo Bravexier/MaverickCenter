@@ -147,10 +147,12 @@ export function annulerLesMigrations(db) {
   const colonnes = (table) => db.prepare('SELECT name FROM pragma_table_info(?)').all(table).map((c) => c.name);
   for (const m of migrationsLivrees().filter((x) => x.numero >= NUMERO).reverse()) {
     const ajouts = ajoutsDeLaMigration(m);
-    // les objets d'abord, les colonnes ensuite : SQLite refuse de retirer une colonne qu'un index (0131 : page_ancre_mot_cle), une vue ou un déclencheur cite encore
+    // les objets d'abord, les colonnes ensuite : SQLite refuse de retirer une colonne qu'un index (0131 : page_ancre_mot_cle), une vue ou un déclencheur cite encore.
+    // Un objet que la migration retire elle-même avant de le recréer (0132 : v_personnage_visible, autour de la table reconstruite) existait avant elle : il reste.
     for (const [type, motif] of [['trigger', 'TRIGGER'], ['view', 'VIEW'], ['index', 'INDEX']]) {
+      const recrees = new Set(ajouts.trouve(`DROP\\s+${motif}\\s+(?:IF\\s+EXISTS\\s+)?${NOM_SQL}`).map(([objet]) => objet));
       for (const [objet] of ajouts.trouve(`CREATE\\s+(?:UNIQUE\\s+)?${motif}\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${NOM_SQL}`).reverse()) {
-        if (existe(type, objet)) db.exec(`DROP ${motif} "${objet}"`);
+        if (!recrees.has(objet) && existe(type, objet)) db.exec(`DROP ${motif} "${objet}"`);
       }
     }
     for (const [table, colonne] of [...ajouts.colonnes].reverse()) {

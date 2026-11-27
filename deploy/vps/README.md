@@ -11,7 +11,7 @@ Docker 29.1, Caddy 2.6.2 ; `instances.sh` est aussi exécuté par les tests, ave
 Le site est posé par les [installateurs](../installateur/README.md) (un par fusion, publiés en *release* GitHub par
 `.github/workflows/livraison.yml`). Caddy fait le HTTPS et aiguille vers l'instance selon l'adresse.
 
-**Accès pour le PoC (décision du propriétaire)** : pas de mot de passe, adresse non référencée (en-tête `X-Robots-Tag`, `robots.txt`), comme les
+**Accès pour le PoC (décision du propriétaire)** : production sans mot de passe ni connexion obligatoire (R307), adresse non référencée (en-tête `X-Robots-Tag`, `robots.txt`), comme les
 Google Docs actuels. Les instances restent protégées en interne par un mot de passe que **Caddy présente à la place des visiteurs** : ils ne le
 voient pas, mais les ports 8080 et 8081 ne servent à rien en direct. À la connexion Discord, on retire ce mécanisme (voir l'en-tête du `Caddyfile`).
 
@@ -133,20 +133,20 @@ travail sans rien pousser : sur GitHub, le lot est rejoué sur `dev` et passe to
 son application sur `dev` et le jeton (écriture par un `git push --dry-run`, lecture des PR). Seuls les droits *Pull requests* et *Workflows* en
 écriture du jeton ne peuvent pas se vérifier sans effet de bord (le résumé du run le rappelle).
 
-**Mot de passe du site de dev** (décision du propriétaire, R275 : « un mot de passe pour modifier et pour lancer une mise à jour ; la lecture reste ouverte »).
-Sans réglage, le site de dev se comporte comme avant. Pour en poser un, une commande depuis le serveur, à saisir au clavier (deux fois, sans écho) :
+**Le site de dev est fermé, on s'y connecte par Discord** (décision R310 du 2026-11-27, qui retire le mot de passe de R275). Deux commandes depuis le serveur, à saisir au clavier ; rien à redémarrer (le service relit les fichiers de `secrets/`) :
 
 ```
-sudo sh /srv/maverick-center-test/acces/acces.sh
+sudo sh /srv/maverick-center-test/discord/discord.sh          # la connexion Discord du site de dev (identifiant et secret de l'application, adresse de retour)
+sudo sh /srv/maverick-center/discord/discord.sh               # celle de la production
+sudo sh /srv/maverick-center-test/discord/discord.sh --role <id du rôle Discord> mj|createur   # qui est MJ, qui est Créateur
+sudo sh /srv/maverick-center-test/acces/acces.sh --cle        # la clé de lecture des sessions de Claude (affichée une seule fois)
 ```
 
-Elle pose le mot de passe (10 caractères au moins) dans `secrets/acces.json` (le service le relit tout seul : rien à redémarrer) et, la première fois, affiche
-**une seule fois** la **clé de lecture** : à donner aux sessions de Claude (en-tête `X-Maverick-Cle` ou `X-Maverick-Key`) pour lire le journal d'édition, la page Debug et l'API
-`/api/v1/`, jamais pour écrire. Relancer la même commande change le mot de passe (la clé est gardée, les sessions ouvertes sont fermées). Options :
-`--cle` (une clé de lecture neuve), `--portee tout` (option c : le même mot de passe pour tout le site, voir le Caddyfile), `--etat`, et
-`--retirer` (le site de dev redevient ouvert, comme avant). Elle refuse la production et n'a pas besoin de l'ancien mot de passe : on ne s'enferme jamais dehors.
-Le workflow GitHub n'y gagne ni ne perd rien : il ne télécharge que le lot figé (`/api/mise-a-jour/lots/<uuid>/`), qui reste ouvert ; aucune clé d'écriture
-n'est donnée à GitHub. Détail : [`docs/serveur.md`](../../docs/serveur.md), « Accès au site de dev ».
+`discord.sh` demande l'identifiant de l'application et son secret (**sans écho**, jamais en argument) et propose l'adresse de retour d'après le domaine (`https://dev.<domaine>/api/connexion/discord/retour/` pour le site de dev,
+`https://<domaine>/api/connexion/discord/retour/` pour la production) : **la même adresse, à l'identique, se déclare dans le portail développeur Discord** (« OAuth2 », « Redirects »). Sans réglage Discord, le site de dev est fermé à tous (les clés exceptées).
+`acces.sh` ne pose plus que les clés : `--cle` (lecture), `--cle-de-depot` / `--sans-cle-de-depot` (R291), `--etat`, `--retirer`. Elles refusent la production (`acces.sh`), jamais les deux instances (`discord.sh`).
+**Le `Caddyfile` ferme les pages du site de dev** (`forward_auth` vers `/api/acces/verifier/`) : il n'est pas livré par l'installateur, il se repose par `instances.sh` (ou `sudo install -m 644 Caddyfile /etc/caddy/Caddyfile`, `caddy validate`, `systemctl reload caddy`).
+Le workflow GitHub n'y gagne ni ne perd rien : il ne télécharge que le lot figé (`/api/mise-a-jour/lots/<uuid>/`), qui reste ouvert ; aucune clé d'écriture n'est donnée à GitHub. Détail : [`docs/serveur.md`](../../docs/serveur.md), « Accès au site de dev » et « Connexion par Discord ».
 
 ## 8. Maintenance pendant une mise à jour
 

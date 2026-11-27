@@ -1,6 +1,6 @@
 // « Préparer l'ancrage » (décision R309, docs/chantier-ancrage-mots-cles.md, §5 ; POST et GET /api/edition/lots/ancrage/, en tâche de fond : `lancerLAncrage`) : dépose les lots
 // que calcule le plan (lib/mots-cles-ancrage.mjs), un par un, sur le modèle de « tout recalculer » (edition-lots.mjs#recalculerTout).
-//   Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (`par`, R291, R306) : chaque lot passe l'essai à blanc et s'applique ; le plan est recalculé
+//   Avec la clé de dépôt, ou une session Créateur une fois cette clé posée (`par`, R291, R306) : chaque lot passe l'essai à blanc et s'applique ; le plan est recalculé
 //   après chacun (une catégorie n'a pas d'id avant sa création) ; le premier refus arrête la suite, avec son motif.
 //   Sans elle : un seul lot, en proposition ; la suite vient au prochain lancement, une fois la proposition appliquée.
 // Une ligne annulée reste écartée (R291 : annuler est une décision du propriétaire), jusqu'au geste « Reprendre les lignes annulées » (`reprendre`).
@@ -87,7 +87,7 @@ export const MOTIF_DU_GEL = 'les écritures sont gelées : relancez une fois le 
  * L'action « Préparer l'ancrage ». `comptes` : ce que le plan avait à faire à ce lancement ; `a_trancher` et `ecartees` : l'état du dernier plan calculé.
  * `gelee` (donnée par la route) se relit avant chaque lot : posé en cours de route, le gel arrête la suite ; le lot déjà parti va au bout, il est atomique.
  * @param {() => import('node:sqlite').DatabaseSync | null} base
- * @param {{ par?: 'cle_de_depot' | 'mot_de_passe' | null, reprendre?: boolean, enArrierePlan?: boolean, dossier?: string | null, controle?: object, gelee?: (() => boolean) | null }} [options]
+ * @param {{ par?: 'cle_de_depot' | 'createur' | null, reprendre?: boolean, enArrierePlan?: boolean, dossier?: string | null, controle?: object, gelee?: (() => boolean) | null }} [options]
  * @returns {Promise<{ lots: object[], arret: { titre: string, motif: string } | null, suite: boolean, a_trancher: object[], ecartees: string[], comptes: object }>}
  */
 export async function preparerLAncrage(base, { par = null, reprendre = false, enArrierePlan = true, dossier = null, gelee = null, ...options } = {}) {

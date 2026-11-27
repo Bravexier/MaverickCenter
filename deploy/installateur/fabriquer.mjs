@@ -34,9 +34,9 @@ const FICHIERS_LIVRES = {
 };
 /**
  * Les scripts que l'hôte exécute, livrés chacun dans son dossier de l'instance : sauvegarde/ (sauvegardes automatiques, deploy/installateur/sauvegarde/,
- * que les minuteurs exécutent) et acces/ (le mot de passe du site de dev, deploy/installateur/acces/, que le propriétaire lance).
+ * que les minuteurs exécutent) acces/ (les clés du site de dev, deploy/installateur/acces/) et discord/ (la connexion par Discord, deploy/installateur/discord/), que le propriétaire lance.
  */
-export const DOSSIERS_DE_SCRIPTS = Object.freeze(['sauvegarde', 'acces']);
+export const DOSSIERS_DE_SCRIPTS = Object.freeze(['sauvegarde', 'acces', 'discord']);
 for (const dossier of DOSSIERS_DE_SCRIPTS) {
   for (const nom of readdirSync(join(ICI, dossier)).filter((f) => f.endsWith('.sh') || f === 'mots.txt').sort()) FICHIERS_LIVRES[`${dossier}/${nom}`] = join(ICI, dossier, nom);
 }

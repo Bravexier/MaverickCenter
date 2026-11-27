@@ -20,6 +20,8 @@ import { trouverRacine } from '../src/lib/donnees.mjs';
 import { COLONNES_RETIREES, TABLES_RETIREES, gainsDeLaProgression } from '../src/lib/fiche-format.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { sqlDUnCompte } from './aide-compte-d-essai.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 const racine = dossierTemporaire('vivante');
 // les règles dans leur état d'import (test/aide-base-d-import.mjs) : les lignes de retrait attendues citent les noms et les dés de l'import (R153,
@@ -64,7 +66,7 @@ function remplir(chemin) {
   const fiche = { visibilite: 'tous', race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
     mode_classe: 'mono', xp: 250, alignement_loyal: 1, alignement_chaotique: 0, alignement_bon: 2, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 12, bourse_rf: 3,
     ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT };
-  inserer('utilisateur', { id: 'u1', discord_id: '123456789', nom_affichage: 'Alice', cree_le: INSTANT });
+  inserer('utilisateur', compteDEssai('u1', 'Alice', INSTANT));
   inserer('utilisateur_role', { utilisateur_id: 'u1', role: 'mj' });
   inserer('personnage', { ...fiche, id: 'p1', nature: 'pretire', nom: 'Aldric', surnom: 'le Brave', metier_id: UN_METIER });
   inserer('personnage', { ...fiche, id: 'p2', nature: 'joueur', proprietaire_id: 'u1', visibilite: 'privee', nom: 'Brune' });
@@ -1278,7 +1280,7 @@ test('archives : seulement quand la base avait des lignes, les dernières gardé
   assert.equal(archives.at(-1), 'vivante-2026-10-12T00-00-06-000Z-inconnue.db');
   assert.equal(archives[0], 'vivante-2026-10-12T00-00-02-000Z-inconnue.db', 'les plus anciennes sont supprimées');
 
-  assert.throws(() => preparerBaseVivante({ regles: regles(`INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('x', 'X', '${INSTANT}')`), dossier }),
+  assert.throws(() => preparerBaseVivante({ regles: regles(sqlDUnCompte('x', 'X', INSTANT)), dossier }),
     /base des règles inattendue : table utilisateur non vide/);
   assert.throws(() => preparerBaseVivante({ regles: join(racine, 'absente.db'), dossier }), /base des règles introuvable/);
   assert.equal(lignesVivantes(join(dossier, FICHIER_BASE)).personnage.length, 2);

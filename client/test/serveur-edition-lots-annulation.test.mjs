@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { COOKIE, ENTETE_CLE, creerAcces, reglageApres } from '../serveur/acces.mjs';
+import { poserLAcces as poserLAccesCommun } from './aide-acces-d-essai.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { deposer as deposerLot, traduire } from '../serveur/edition-lots.mjs';
@@ -56,7 +56,7 @@ const modifierUnMetier = (m, texte) => ({ table: 'metier', cle: { id: m.id }, op
 const unLot = (operations, plus = {}) => ({ format: FORMAT_DU_LOT, titre: `Lot d’annulation ${(n += 1)}`, nature: 'code', operations, ...plus });
 const adresse = (id, suite = '') => `/api/edition/lots/${id}/${suite}`;
 const deposer = async (m, lot) => ok(await m.appel('POST', '/api/edition/lots/', lot), 201);
-/** Dépose puis applique d'un clic (sans mot de passe posé : tout est ouvert). */
+/** Dépose puis applique d'un clic (sans porte : tout est ouvert). */
 async function appliquer(m, lot, corps = {}) {
   const proposition = await deposer(m, lot);
   return ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), corps));
@@ -294,24 +294,20 @@ test('une colonne que le service recalcule vers une troisième valeur pendant la
   assert.deepEqual([ecart.ecrite, ecart.avant, ecart.trouvee], [clePosee, motCle.cle, apres]);
 });
 
-test('classes d’accès : l’aperçu se lit avec la clé, annuler demande le mot de passe (R275) ; hors du site de dev, 403 avant tout', async () => {
-  const fichier = fichierTemporaire('acces.json', 'edition-lots-annulation');
-  const { reglage, cle } = reglageApres({ motDePasse: 'un mot de passe d’essai', portee: null });
-  writeFileSync(fichier, JSON.stringify(reglage));
-  const acces = creerAcces({ fichier, journal: () => {} });
-  const m = nouvelle({ acces });
-  const session = acces.connecter('un mot de passe d’essai', {});
-  const avecCle = { [ENTETE_CLE]: cle };
-  const avecMotDePasse = { cookie: `${COOKIE}=${session.jeton}` };
+test('classes d’accès : l’aperçu se lit avec la clé, annuler demande une session Créateur (R275) ; hors du site de dev, 403 avant tout', async () => {
+  const acces = poserLAccesCommun({ prefixe: 'edition-lots-annulation' });
+  const m = nouvelle({ acces: acces.acces });
+  const avecCle = acces.avecCle;
+  const avecCreateur = acces.createur;
   const [a] = metiers(m.db, 1);
   const proposition = ok(await m.appel('POST', '/api/edition/lots/', unLot([modifierUnMetier(a, texteDuTest('accès'))]), avecCle), 201);
-  ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}, avecMotDePasse));
+  ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}, avecCreateur));
 
   refus(await m.appel('GET', adresse(proposition.id, 'annulation/')), 401);
   assert.equal(ok(await m.appel('GET', adresse(proposition.id, 'annulation/'), undefined, avecCle)).verdict, 'applicable');
-  assert.equal(refus(await m.appel('POST', adresse(proposition.id, 'annuler/'), {}, avecCle), 401).acces, 'mot_de_passe', 'la clé ne décide pas');
+  assert.equal(refus(await m.appel('POST', adresse(proposition.id, 'annuler/'), {}, avecCle), 403).acces, 'cle', 'la clé ne décide pas');
   assert.equal(description(m, a.id), texteDuTest('accès'));
-  assert.equal(ok(await m.appel('POST', adresse(proposition.id, 'annuler/'), {}, avecMotDePasse)).etat, 'annule');
+  assert.equal(ok(await m.appel('POST', adresse(proposition.id, 'annuler/'), {}, avecCreateur)).etat, 'annule');
   assert.equal(description(m, a.id), a.description);
 
   const prod = { ...m.service, edition: false };

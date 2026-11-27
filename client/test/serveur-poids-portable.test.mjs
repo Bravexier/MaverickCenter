@@ -17,6 +17,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { COLONNES_LUES, lecteurDuPoidsPortable, poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 const dossier = dossierTemporaire('poids-portable');
 // les poids que les dons écrivent dans leurs textes (Nain, Lamia, Cuirassé…) : épinglés sur leur état d'import (test/aide-base-d-import.mjs), le
@@ -157,7 +158,7 @@ test('R165 (7) : la reconstruction retire l’armure trop lourde de chaque fiche
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: lieu });
   const ecrire = new DatabaseSync(chemin);
   ecrire.exec('PRAGMA foreign_keys = ON');
-  inserer(ecrire, 'utilisateur', { id: 'u-poids', discord_id: null, nom_affichage: 'Joueur', cree_le: INSTANT });
+  inserer(ecrire, 'utilisateur', compteDEssai('u-poids', 'Joueur', INSTANT));
   poser(ecrire, 'mage-legere', { ...HUMAIN, classes: [[MAGE]], armure_id: LEGERE, armure_amelioration_id: un("SELECT id FROM amelioration_equipement WHERE cible = 'armure' AND niveau = 2").id, notes: 'Ma note' });
   poser(ecrire, 'mage-vetement', { ...HUMAIN, classes: [[MAGE]], armure_id: VETEMENT, notes: 'Rien' });
   poser(ecrire, 'cuirasse-lourde', { ...HUMAIN, classes: [[CUIRASSE]], armure_id: LOURDE });

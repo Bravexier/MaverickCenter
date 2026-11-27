@@ -1,28 +1,23 @@
 #!/bin/sh
-# Le geste : pose, change ou retire l'accès protégé du site de dev (R275, question 2). Une commande lancée depuis le serveur, saisie au clavier sans écho :
+# Le geste : pose, change ou retire les CLÉS du site de dev (R275, R291 ; le mot de passe est retiré par R310 : le site de dev est fermé, on s'y connecte par
+# Discord avec discord.sh). Une commande lancée depuis le serveur :
 #
-#   sudo sh /srv/maverick-center-test/acces/acces.sh [option]
+#   sudo sh /srv/maverick-center-test/acces/acces.sh <option>
 #
-# Sans option : demande un mot de passe (deux fois, sans écho) et le pose. Le site de dev le demande alors pour modifier une page, enregistrer un
-# prétiré, lancer une mise à jour ou sa simulation, lever la maintenance ; la lecture des pages reste libre. La première fois, la commande fabrique aussi
-# une clé de lecture, affichée UNE SEULE FOIS à l'écran : c'est ce que reçoivent les sessions de Claude (en-tête X-Maverick-Key ou X-Maverick-Cle) pour lire le journal
-# d'édition, la page Debug et l'API /api/v1/. Elle n'écrit jamais dans le contenu (au plus, tant que la clé de dépôt n'est pas posée, elle dépose une proposition qui attend
-# votre clic). Changer le mot de passe ferme toutes les sessions ouvertes et garde les clés.
-#   --cle                  refait la clé de lecture et l'affiche une seule fois ; l'ancienne ne marche plus
+# Les clés ne sont pas des connexions de personnes : ce sont celles des sessions de Claude, de la CI et des workflows (docs/serveur.md, « Accès au site de dev »).
+#   --cle                  fabrique la CLÉ DE LECTURE et l'affiche UNE SEULE FOIS à l'écran ; l'ancienne ne marche plus. C'est ce que reçoivent les sessions de Claude (en-tête
+#                          X-Maverick-Key ou X-Maverick-Cle) pour lire le journal d'édition, la page Debug et l'API /api/v1/. Elle n'écrit jamais dans le contenu (au plus, tant que
+#                          la clé de dépôt n'est pas posée, elle dépose une proposition qui attend le clic d'un Créateur)
 #   --cle-de-depot         pose (ou refait) la CLÉ DE DÉPÔT et l'affiche une seule fois (R291). Tant qu'elle n'est pas posée, la clé de lecture dépose une proposition
-#                          qui attend votre clic. Une fois posée, la clé de dépôt (ou le mot de passe) dépose un lot que le site APPLIQUE AUSSITÔT, et la clé de
+#                          qui attend le clic d'un Créateur. Une fois posée, la clé de dépôt (ou une session Créateur) dépose un lot que le site APPLIQUE AUSSITÔT, et la clé de
 #                          lecture ne dépose plus. À donner aux sessions de Claude, jamais à la CI ni à GitHub (qui n'ont que la clé de lecture)
 #   --sans-cle-de-depot    retire la clé de dépôt : retour à l'état sûr (la clé de lecture dépose de nouveau une proposition qui attend le clic)
-#   --portee ecriture|tout « ecriture » (par défaut) : le mot de passe protège les écritures ; « tout » : un seul mot de passe pour tout le site (le
-#                          service demande alors la connexion aussi pour ses lectures ; les pages ne se ferment que si Caddy interroge
-#                          /api/acces/verifier/ : docs/serveur.md, « Accès au site de dev »). Les sessions ouvertes sont fermées
-#   --etat                 dit si l'accès est protégé, la portée, et si une clé de lecture existe (aucun secret n'est montré)
-#   --retirer              retire la protection : le site de dev redevient ouvert à tous, comme avant (rien d'autre n'est touché)
-# Rien à redémarrer : le service relit le réglage dès qu'il change. Le réglage est le fichier secrets/acces.json de l'instance (root 600 : l'empreinte
-# du mot de passe et celle de la clé, jamais leurs valeurs). Le mot de passe est haché par le service lui-même, dans son conteneur (docker exec, entrée
-# standard : jamais un argument de commande, jamais un fichier), donc rien n'est exigé de l'hôte. Pas de mot de passe perdu qui enferme dehors : cette
-# commande en pose un autre ou retire la protection, sans connaître l'ancien.
-# Refuse de tourner sur la production : seul le site de dev (MAVERICK_EDITION=1 dans le .env de l'instance) a un accès protégé.
+#   --etat                 dit si une clé de lecture et une clé de dépôt existent (aucun secret n'est montré)
+#   --retirer              retire les deux clés (le site de dev reste fermé : seules les sessions Discord de niveau MJ ou Créateur y entrent)
+# Rien à redémarrer : le service relit le fichier dès qu'il change. Le fichier est secrets/acces.json de l'instance (root 600 : l'empreinte des clés, jamais
+# leurs valeurs). Un fichier d'avant R310, qui porte encore l'empreinte d'un mot de passe, reste lisible : ces champs sont ignorés, et la première commande qui
+# réécrit le fichier les retire.
+# Refuse de tourner sur la production : seul le site de dev (MAVERICK_EDITION=1 dans le .env de l'instance) a une porte.
 # Réglages (tests seulement) : MAVERICK_ACCES_DOSSIER (l'instance), MAVERICK_ESSAI=1 (ni root ni terminal exigés).
 if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
 set -euo pipefail
@@ -33,10 +28,9 @@ INSTANCE=${MAVERICK_ACCES_DOSSIER:-$(cd "$ICI/.." && pwd)}
 ESSAI=${MAVERICK_ESSAI:-0}
 SECRETS=$INSTANCE/secrets
 FICHIER=$SECRETS/acces.json
-USAGE="Usage : sudo sh $0 [--cle | --cle-de-depot | --sans-cle-de-depot | --portee ecriture|tout | --etat | --retirer]"
+USAGE="Usage : sudo sh $0 --cle | --cle-de-depot | --sans-cle-de-depot | --etat | --retirer"
 
-ACTION=mot_de_passe
-PORTEE=''
+ACTION=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --cle) ACTION=cle; shift ;;
@@ -44,12 +38,11 @@ while [ $# -gt 0 ]; do
     --sans-cle-de-depot) ACTION=sans_cle_de_depot; shift ;;
     --etat) ACTION=etat; shift ;;
     --retirer) ACTION=retirer; shift ;;
-    --portee) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=portee; PORTEE=$2; shift 2 ;;
     -h|--aide) echo "$USAGE"; exit 0 ;;
     *) echo "$USAGE" >&2; exit 2 ;;
   esac
 done
-case "$PORTEE" in ''|ecriture|tout) ;; *) echo "--portee : « ecriture » ou « tout »" >&2; exit 2 ;; esac
+[ -n "$ACTION" ] || { echo "$USAGE" >&2; exit 2; }
 
 die() { echo "ERREUR : $*" >&2; exit 1; }
 [ "$ESSAI" = 1 ] || [ "$(id -u)" -eq 0 ] || die "à lancer en root : sudo sh $0"
@@ -60,42 +53,41 @@ env_valeur() { # nom : valeur du .env de l'instance (vide si absente)
   { sed -n "s/^$1=//p" "$INSTANCE/.env" | tail -n 1 | tr -d '\r"' | tr -d "'"; } || true
 }
 [ -f "$INSTANCE/.env" ] || die "$INSTANCE/.env est introuvable : ce n'est pas le dossier d'une instance posée par l'installateur"
-[ "$(env_valeur MAVERICK_EDITION)" = 1 ] || die "cette instance n'est pas le site de dev (MAVERICK_EDITION=1 absent de $INSTANCE/.env) : la production n'a jamais d'accès protégé, rien n'a été modifié"
+[ "$(env_valeur MAVERICK_EDITION)" = 1 ] || die "cette instance n'est pas le site de dev (MAVERICK_EDITION=1 absent de $INSTANCE/.env) : la production n'a jamais de porte, rien n'a été modifié"
 NOM=$(env_valeur MAVERICK_CONTENEUR)
 CONTENEUR=${NOM:-maverick-center-test}-serveur
 
 # --- état et retrait : sans le conteneur --------------------------------------------------------------------------------------------------------
 if [ "$ACTION" = etat ]; then
-  if [ ! -f "$FICHIER" ]; then echo "Accès : non protégé (aucun réglage). Le site de dev est ouvert à tous, comme avant."; exit 0; fi
-  portee=$(sed -n 's/.*"portee":"\([a-z]*\)".*/\1/p' "$FICHIER" | head -n 1)
+  if [ ! -f "$FICHIER" ]; then echo "Clés : aucune. Le site de dev est fermé : seules les sessions Discord de niveau MJ ou Créateur y entrent."; exit 0; fi
   cle=non
   grep -q '"cle_de_lecture":{' "$FICHIER" && cle=oui
   depot=non
   grep -q '"cle_de_depot":{' "$FICHIER" && depot=oui
-  echo "Accès : protégé. Portée : ${portee:-inconnue} (ecriture : le mot de passe protège les écritures ; tout : le service demande la connexion aussi pour ses lectures). Clé de lecture : $cle. Clé de dépôt : $depot (oui : un lot déposé avec elle, ou avec le mot de passe, est appliqué aussitôt ; non : un dépôt attend votre clic)."
+  echo "Clés : clé de lecture : $cle. Clé de dépôt : $depot (oui : un lot déposé avec elle, ou avec une session Créateur, est appliqué aussitôt ; non : un dépôt attend le clic d'un Créateur). Le site de dev est fermé dans tous les cas (session Discord de niveau MJ ou Créateur, ou une de ces clés)."
   exit 0
 fi
 if [ "$ACTION" = retirer ]; then
   if [ -f "$FICHIER" ]; then
     rm -f "$FICHIER"
-    echo "Accès retiré : le site de dev est de nouveau ouvert à tous, comme avant. Le service le prend en compte tout de suite (rien à redémarrer)."
+    echo "Clés retirées. Le site de dev reste fermé : seules les sessions Discord de niveau MJ ou Créateur y entrent. Le service le prend en compte tout de suite (rien à redémarrer)."
   else
-    echo "Aucun réglage d'accès : le site de dev est déjà ouvert à tous."
+    echo "Aucune clé posée : rien à retirer."
   fi
   exit 0
 fi
 
-# --- le conteneur du service : il hache le mot de passe -----------------------------------------------------------------------------------------
+# --- le conteneur du service : il fabrique les clés ---------------------------------------------------------------------------------------------
 command -v docker >/dev/null 2>&1 || die "docker est introuvable sur ce serveur"
 [ "$(docker inspect -f '{{.State.Running}}' "$CONTENEUR" 2>/dev/null || true)" = true ] ||
   die "le conteneur $CONTENEUR ne tourne pas (cd $INSTANCE && docker compose up -d), puis relancez cette commande"
 docker exec "$CONTENEUR" test -f /site/_serveur/serveur/acces.mjs ||
   die "le service de ce site n'a pas encore le code de l'accès : installez la dernière livraison du site de dev (mise-a-jour.sh), puis relancez"
-appeler() { # arguments de la commande : le mot de passe arrive sur l'entrée standard
+appeler() { # arguments de la commande
   docker exec -i "$CONTENEUR" node --disable-warning=ExperimentalWarning -e "import('/site/_serveur/serveur/acces.mjs').then((m) => m.lancerLaCommande(process.argv.slice(1)))" -- "$@"
 }
-exige_un_terminal() { # la clé de lecture ne s'affiche que sur un terminal (jamais dans un fichier de journal ni un tube)
-  if [ "$ESSAI" != 1 ] && [ ! -t 1 ]; then die "la clé de lecture ne s'affiche que sur un terminal : lancez la commande dans une session ssh ordinaire"; fi
+exige_un_terminal() { # une clé ne s'affiche que sur un terminal (jamais dans un fichier de journal ni un tube)
+  if [ "$ESSAI" != 1 ] && [ ! -t 1 ]; then die "la clé ne s'affiche que sur un terminal : lancez la commande dans une session ssh ordinaire"; fi
 }
 
 ecrire_le_reglage() { # le contenu du fichier : posé atomiquement, root seul
@@ -120,10 +112,10 @@ afficher_la_cle_de_depot() { # clé
   echo "=============================================================================================="
   echo "  CLÉ DE DÉPÔT DU SITE DE DEV (affichée une seule fois) : donnez-la aux sessions de Claude qui déposent des lots"
   echo "  (en-tête X-Maverick-Key ou X-Maverick-Cle, le même formulaire que la clé de lecture). Elle permet de LIRE comme la clé de lecture"
-  echo "  ET de déposer un lot de changements que le site APPLIQUE AUSSITÔT (rien n'attend plus votre clic : vous annulez ensuite le lot,"
+  echo "  ET de déposer un lot de changements que le site APPLIQUE AUSSITÔT (rien n'attend plus le clic d'un Créateur : vous annulez ensuite le lot,"
   echo "  ou une seule de ses lignes, depuis la page Mise à jour). La clé de lecture ne dépose plus. Ne la donnez ni à la CI ni à GitHub."
   echo "  Le serveur n'en garde que l'empreinte : sudo sh $0 --cle-de-depot en fait une autre (l'ancienne cesse de marcher),"
-  echo "  sudo sh $0 --sans-cle-de-depot revient au dépôt qui attend votre clic."
+  echo "  sudo sh $0 --sans-cle-de-depot revient au dépôt qui attend le clic d'un Créateur."
   echo
   echo "      $1"
   echo "=============================================================================================="
@@ -136,27 +128,11 @@ lire_la_sortie() { # sortie_de_la_commande → REGLAGE, CLE et CLE_DE_DEPOT (var
 }
 
 case "$ACTION" in
-  mot_de_passe)
-    exige_un_terminal
-    [ -t 0 ] || [ "$ESSAI" = 1 ] || die "la saisie du mot de passe demande un terminal : lancez la commande dans une session ssh ordinaire"
-    IFS= read -r -s -p "Mot de passe du site de dev (n'est pas affiché, 10 caractères au moins) : " mot || mot=''
-    echo
-    IFS= read -r -s -p "Encore une fois : " mot2 || mot2=''
-    echo
-    [ "$mot" = "$mot2" ] || die "les deux saisies diffèrent : rien n'a été modifié"
-    [ "${#mot}" -ge 10 ] || die "mot de passe trop court (10 caractères au moins) : rien n'a été modifié"
-    sortie=$(printf '%s\n' "$mot" | appeler definir) || die "le service a refusé ce mot de passe : rien n'a été modifié"
-    mot=''; mot2=''
-    lire_la_sortie "$sortie"
-    ecrire_le_reglage "$REGLAGE"
-    echo "Mot de passe posé. Le site de dev le demande pour modifier, enregistrer un prétiré, lancer une mise à jour ou sa simulation ; la lecture reste libre."
-    echo "Les sessions ouvertes sont fermées. Rien à redémarrer."
-    if [ -n "$CLE" ]; then afficher_la_cle "$CLE"; else echo "La clé de lecture est inchangée (--cle pour en refaire une)."; fi
-    ;;
   cle)
     exige_un_terminal
     sortie=$(appeler cle </dev/null) || die "le service a refusé : rien n'a été modifié"
     lire_la_sortie "$sortie"
+    [ -n "$CLE" ] || die "le service n'a pas rendu de clé (sortie inattendue) : rien n'a été modifié"
     ecrire_le_reglage "$REGLAGE"
     afficher_la_cle "$CLE"
     ;;
@@ -172,15 +148,6 @@ case "$ACTION" in
     sortie=$(appeler sans-cle-de-depot </dev/null) || die "le service a refusé : rien n'a été modifié"
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
-    echo "Clé de dépôt retirée : la clé de lecture dépose de nouveau une proposition qui attend votre clic. Rien à redémarrer."
-    ;;
-  portee)
-    sortie=$(appeler portee "$PORTEE" </dev/null) || die "le service a refusé : rien n'a été modifié"
-    lire_la_sortie "$sortie"
-    ecrire_le_reglage "$REGLAGE"
-    echo "Portée : $PORTEE. Les sessions ouvertes sont fermées : le mot de passe se redemande une fois."
-    if [ "$PORTEE" = tout ]; then
-      echo "Avec « tout », le service demande la connexion aussi pour ses lectures. Les pages elles-mêmes ne se ferment que si Caddy interroge /api/acces/verifier/ (docs/serveur.md, « Accès au site de dev »)."
-    fi
+    echo "Clé de dépôt retirée : la clé de lecture dépose de nouveau une proposition qui attend le clic d'un Créateur. Rien à redémarrer."
     ;;
 esac

@@ -45,7 +45,7 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | **premier jet en place** (2026-10-13) : `/chronologie/`, une page par événement daté du Codex et des races, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas ([`chronologie.md`](chronologie.md)) |
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
-| E7 | Connexion par Discord seulement : touriste ou joueur, puis rôles | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
+| E7 | Connexion par Discord seulement : Observateur, Joueur, MJ, Créateur (R310) | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
 | E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrées « bientôt » « Groupes d’aventures » (Espace joueur) et « Groupes de jeu » (Espace MJ) du menu |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
@@ -73,7 +73,7 @@ propriétaire.
 | V0.3 | Galerie humaine / IA (E1), page du Bestiaire des invocations (E2), annonce des versions sur Discord par webhook (E10) |
 | V0.4 | Refonte visuelle de l'équipement et de son intégration à la fiche (E3), générateur d'accessoires magiques (E4) |
 | V0.5 | Codex, selon l'arrivée des sources : chronologie (E5), carte et lieux (E6), monstres du « Bestiaire 2.0 » (E2) |
-| V0.6 | Connexion par Discord : touriste sans connexion, joueur pour les membres du serveur (E7), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
+| V0.6 | Connexion par Discord : Observateur sans connexion, Joueur pour les membres du serveur, MJ et Créateur d'après les rôles (E7, R310), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
 | V1.0 | La connexion par Discord est éprouvée et testée : ouverture à tout le Discord |
 | V1.1 | Boîte à idées, tickets et rapports de bugs (E11) |
 | V1.2 | Groupes one-shot (OS), hors campagne (HC) et campagne, planning des parties (E9) |
@@ -174,20 +174,22 @@ flowchart LR
 - **Choix technique au prototype** : une bibliothèque de carte embarquée (Leaflet en coordonnées simples, sans fond de carte en ligne) ou un SVG maison ;
   elle doit passer dans la version portable (rien d'externe).
 
-### E7 — Connexion par Discord seulement : touriste ou joueur, puis rôles (jalon C : V0.6, éprouvée avant la 1.0)
+### E7 — Connexion par Discord seulement : Observateur, Joueur, MJ, Créateur (jalon C : V0.6, éprouvée avant la 1.0)
 
-La connexion est décidée plus bas (« Authentification : Discord ») ; cette liste y ajoute :
+La connexion est décidée plus bas (« Authentification : Discord ») ; la décision **R310** (2026-11-27) l'a réalisée sur le site de dev et la production (menu, profil, page de connexion : `serveur.md`, « Connexion par Discord ») et
+**retire le mot de passe partagé du site de dev**. Cette liste y ajoute :
 
-- **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
-- **Deux statuts d'abord** (réponse du propriétaire, 2026-10-11) : **touriste** — pas connecté, ou connecté sans être membre du serveur Discord —, en
-  lecture seule « en surface » (à terme, les rubriques Règles et Personnage du menu seulement : réponse du propriétaire du 2026-10-29, avant Découvrir et Règles le 2026-10-18) ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
-  `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions, et qui quitte le serveur redevient touriste.
-- **Rôles MJ, éditeur, administrateur** : plus tard (réponse du propriétaire), d'après des rôles Discord à choisir ; une correspondance de configuration
-  (identifiant de rôle Discord → `mj`, `editeur`, `admin`) en tirera `utilisateur_role`.
-- **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, le site reste ouvert en touriste, en lecture seule ; c'est le mode dégradé.
-  Le compte local que prévoyait la table `utilisateur` (`discord_id` NULL) n'a plus d'usage et se retire à la réalisation.
-- **Ce que les rôles ouvriront** : l'édition des règles et le bouton « Effectuer la mise à jour » (sans protection aujourd'hui, décision du propriétaire)
-  passent aux rôles `editeur` et `admin` ; l'auteur de chaque modification est inscrit à l'historique ; la relecture `brouillon / validé` devient possible.
+- **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site de dev est retiré (R310 (1)).
+- **Quatre niveaux** (R310 (2), qui applique et précise la réponse du 2026-10-11 : « touriste » devient **Observateur**), recalculés à chaque connexion : **Observateur** (non connecté, ou connecté sans être membre du serveur Discord,
+  adhésion en attente, exclusion temporaire en cours) ; **Joueur** (membre du serveur) ; **MJ** (lecture du site de dev ; campagnes et scénarios à venir, E9) ; **Créateur** (modifie les règles : édition et mise à jour du site de dev).
+  À chaque connexion, le service lit l'appartenance au serveur (portée OAuth `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions. À terme, l'Observateur ne verra que les rubriques Règles et Personnage du menu
+  (réponse du 2026-10-29), sur la production.
+- **MJ et Créateur d'après les rôles Discord** : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; les rôles
+  restent à choisir par le propriétaire. Le lien avec `utilisateur_role` (visibilité des fiches, `v_personnage_visible`) reste à faire avec E8.
+- **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, la production reste ouverte (R307) et le site de dev reste fermé (les clés de lecture et de dépôt restent, R275, R291) ; le compte local que prévoyait la
+  table `utilisateur` (`discord_id` NULL) est retiré (migration 0132).
+- **Ce que les niveaux ouvrent** : sur le site de dev, plus rien sans MJ au moins ; l'édition des règles et le bouton « Effectuer la mise à jour » demandent le niveau Créateur. L'auteur de chaque modification dans l'historique
+  (`modification_lot.auteur_id`) reste à inscrire ; la relecture `brouillon / validé` devient possible.
 
 ### E8 — Fiches de personnage assignées à un compte (jalon C : V0.6)
 
@@ -253,7 +255,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 1. **« HC »** = « hors campagne » : plus court qu'une campagne, plus long qu'un one-shot, comme un chapitre indépendant ou un OAV (E9).
 2. **Pas de connexion de secours** : si Discord est en panne, on est déjà en difficulté ; le mode dégradé est l'accès sans connexion, en lecture seule (E7).
 3. **Statuts** : touriste si l'on n'est pas connecté ou pas membre du serveur Discord (lecture seule en surface), joueur si l'on en est membre ; les
-   autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7).
+   autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7). *Précisé par R310 : le touriste devient l'Observateur, et les quatre niveaux sont Observateur, Joueur, MJ, Créateur.*
 4. **Équipement** : une refonte visuelle et de l'intégration à la fiche, où il y a aujourd'hui des ratés ; les règles ne changent pas (E3).
 5. **Sources** (salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E5, E6). Le « CODEX Maverick » et le
    « Bestiaire 2.0 » sont arrivés le 2026-10-11 (copies du propriétaire : [`codex.md`](codex.md), [`bestiaire.md`](bestiaire.md)).
@@ -262,7 +264,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 
 1. **Serveur de dev** : il reste, et tout y reste ouvert (le menu « DB » de la page Debug lit toute sa base, fiches et comptes compris ; seule la base
    du serveur de production est fermée) : « Le serveur dev restera. Il servira toujours pour modifier les règles par ceux qui en auront l'accès. »
-   Qui y a accès se réglera avec la connexion Discord (E7).
+   Qui y a accès se règle avec la connexion Discord (E7, R310) : une session de niveau MJ lit, de niveau Créateur écrit ; plus rien n'y est visible sans connexion.
 2. **Fiches sur le serveur de dev** : une fiche créée ou supprimée sur le site de dev ne part pas en production (un lot de mise à jour ne porte
    jamais la section 13) ; « on a juste une copie de la prod vers dev après la MEP » — ce que le serveur de test ne fait pas encore (question 7).
 
@@ -395,20 +397,20 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 - **Ce qu'on garde** : l'identifiant Discord de l'utilisateur (immuable) et son nom d'affichage ; aucun mot de passe, aucun jeton Discord conservé au-delà de la connexion
   (le jeton ne sert qu'à lire l'identité et, au besoin, les rôles sur le serveur). Les modifications de contenu s'attribuent à cet identifiant (historique).
-- **Statuts et rôles** : **touriste** (pas connecté, ou pas membre du serveur : lecture seule en surface), **joueur** (membre du serveur), puis MJ (le « groupe
-  MJ » à qui un joueur peut ouvrir ses fiches), éditeur, administrateur, d'après des rôles Discord choisis plus tard ; un utilisateur peut cumuler ces rôles
+- **Statuts et rôles** (R310 : quatre niveaux, voir E7) : **Observateur** (ex-touriste : pas connecté, ou pas membre du serveur : lecture seule en surface), **Joueur** (membre du serveur), **MJ** (le « groupe
+  MJ » à qui un joueur peut ouvrir ses fiches), **Créateur** (modifie les règles), d'après des rôles Discord choisis plus tard ; un utilisateur peut cumuler ces rôles
   (table `utilisateur_role`) ; la correspondance rôle Discord → rôle du site est une configuration, pas du code. Quelqu'un qui quitte le serveur redevient
-  touriste. **Pas de connexion de secours** (décision du propriétaire, 2026-10-11) : Discord en panne, le site reste lisible en touriste (« Prochaines évolutions », E7).
+  Observateur. **Pas de connexion de secours** (décision du propriétaire, 2026-10-11) : Discord en panne, la production reste lisible en Observateur (« Prochaines évolutions », E7).
 - **Ce que cela suppose** : un petit service (le site statique seul ne peut pas faire d'OAuth) qui gère la connexion et les sessions (cookie signé, HttpOnly, protection
   CSRF pour les modifications) ; le serveur web protège aussi les pages statiques réservées aux joueurs en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
-  retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
+  retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure dans le réglage de l'instance (`adresse_de_retour` de `secrets/discord.json`, `discord.sh`) et se change dans le portail développeur Discord
   quand l'hébergement migre.
 - **Quand** : dans la dernière version 0.x (V0.6 visée), qui reste en service le temps d'en corriger les bugs ; la **version 1.0** vient quand la connexion
   est éprouvée et testée, et l'ouvre à tout le Discord (décision du propriétaire, précisée le 2026-10-11 ; « Prochaines évolutions », E7). Les serveurs normal
-  et de test existent dès la 0.2.0 (voir `flux-git.md`). Le mot de passe partagé d'aujourd'hui reste d'ici là.
+  et de test existent dès la 0.2.0 (voir `flux-git.md`). Le mot de passe partagé du site de dev est retiré depuis R310 (2026-11-27) ; la production, elle, n'a jamais eu de restriction (R307).
   La table des utilisateurs et les colonnes « modifié par » de l'historique se prévoient dès la conception de la base.
-- **À faire par le propriétaire le moment venu** : créer l'application dans le portail développeur Discord et fournir son identifiant et son secret comme secrets de
-  l'environnement (jamais dans le dépôt). Aucun jeton personnel Discord n'est utilisé.
+- **À faire par le propriétaire** : créer l'application dans le portail développeur Discord, déclarer l'adresse de retour de chaque instance, et fournir son identifiant et son secret par `discord.sh` (`secrets/discord.json` de l'instance, jamais dans le dépôt ;
+  `serveur.md`, « Connexion par Discord »). Aucun jeton personnel Discord n'est utilisé.
 
 ## Fiches de personnages : joueurs, prétirés, groupes et visibilité (demande du propriétaire)
 

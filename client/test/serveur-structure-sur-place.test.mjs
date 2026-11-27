@@ -189,7 +189,8 @@ test('une base 128 remplie : les migrations livrées (la 0129) appliquées sur p
   const db = ouvrir(chemin);
   try {
     assert.ok(comparerLesSchemas(db, attendu).includes('table migration_recue : absent de la base migrée'), 'la base d’essai est bien celle d’avant la 0129');
-    assert.ok(db.prepare('SELECT count(*) AS n FROM personnage').get().n >= 2, 'des fiches');
+    // le prétiré ; pas de fiche de joueur, faute de compte avant la migration 0132 (scripts/base-remplie-lib.mjs, R310)
+    assert.ok(db.prepare('SELECT count(*) AS n FROM personnage').get().n >= 1, 'des fiches');
     assert.ok(db.prepare('SELECT count(*) AS n FROM modification_lot').get().n >= 1, 'un lot du journal');
     assert.ok(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n >= 1, 'une ligne de l’historique');
     const fiches = db.prepare('SELECT id FROM personnage ORDER BY id').all().map((p) => p.id);
