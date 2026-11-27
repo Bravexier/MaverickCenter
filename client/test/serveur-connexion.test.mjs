@@ -73,12 +73,16 @@ test('R310 (5) : la première connexion écrit la ligne (identifiant du site tir
 
 /**
  * Un service HTTP réel (site de dev ou production) avec sa connexion Discord simulée ; `appel` ne suit jamais les redirections.
- * @param {{ edition?: boolean, simule?: object, roles?: Record<string, string>, bot?: boolean, horloge?: () => number }} [o] `bot` : le jeton du bot est posé (R314) ; `horloge` : l'heure de la connexion (ms)
+ * @param {{ edition?: boolean, simule?: object, roles?: Record<string, string>, bot?: boolean, horloge?: () => number, commune?: boolean }} [o] `bot` : le jeton du bot est posé (R314) ;
+ *   `horloge` : l'heure de la connexion (ms) ; `commune` : la connexion commune (R315 : domaine exemple.test, le même secret de session pour toutes les instances d'essai)
  */
-async function service({ edition = true, simule = {}, roles, bot = false, horloge = null } = {}) {
+async function service({ edition = true, simule = {}, roles, bot = false, horloge = null, commune = false } = {}) {
   const { dossier, regles } = reglesVides();
   const d = discordSimule({ client: { id: '999000111222333444', secret: 'secret-d-essai-de-l-application' }, ...simule });
-  const a = poserLAcces({ prefixe: 'connexion', fetch: d.fetch, edition, roles, ...(bot ? { jetonDuBot: JETON_DU_BOT_D_ESSAI } : {}) });
+  const a = poserLAcces({
+    prefixe: 'connexion', fetch: d.fetch, edition, roles, ...(bot ? { jetonDuBot: JETON_DU_BOT_D_ESSAI } : {}),
+    ...(commune ? { domaineCommun: 'exemple.test', secretDeSession: 'c0'.repeat(32) } : {}),
+  });
   const lignes = [];
   const s = await demarrerService({
     regles, dossier: join(dossier, 'service-db'), port: 0, intervalle: 0, edition, metriques: false, journal: (l) => lignes.push(l),
@@ -665,5 +669,50 @@ test('R314 : sans jeton de bot, rien ne change — aucun appel, aucun cookie ré
     assert.equal(m.d.appelsDuBot().length, 0);
   } finally {
     await m.fin();
+  }
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// R315 : une connexion commune au site de dev et à la production
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+test('R315 : de bout en bout — connecté en production, le site de dev le reconnaît sans nouvelle connexion (compte créé, niveau de SES rôles, porte ouverte, cookie du domaine), puis la production de même ; la déconnexion retire aussi le cookie commun', async () => {
+  const membre = { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] };
+  const prod = await service({ edition: false, bot: true, commune: true, simule: { membre }, roles: { [ROLE_MJ]: 'joueur' } });
+  const dev = await service({ edition: true, bot: true, commune: true, simule: { membre } });
+  try {
+    const { fin: retourDeDiscord } = await seConnecter(prod);
+    const [commun, retire] = sessionsPosees(retourDeDiscord);
+    assert.match(commun, /^maverick_session=v1\.[^;]+; Path=\/; Domain=exemple\.test; HttpOnly; SameSite=Lax; Max-Age=604800$/, 'le cookie vaut pour les deux sites');
+    assert.match(retire, /^maverick_session=; Max-Age=0;[^]*Path=\/; HttpOnly/, 'l’ancien cookie propre à l’hôte est retiré');
+    assert.doesNotMatch(retire, /Domain=/);
+    const deLaProd = { cookie: valeur(commun) };
+    assert.equal((await (await prod.appel('GET', '/api/moi/', { entetes: deLaProd })).json()).utilisateur.niveau, 'joueur');
+    // le site de dev : la requête convertit la session (le bot relit le membre) ; le compte est créé avec le niveau des rôles du site de dev, la porte l'applique aussitôt
+    const surDev = await dev.appel('GET', '/api/moi/', { entetes: deLaProd });
+    const moi = await surDev.json();
+    assert.deepEqual([moi.connecte, moi.utilisateur.niveau, dev.d.appelsDuBot().length], [true, 'mj', 1]);
+    assert.deepEqual(dev.comptes().map((c) => [c.niveau, c.discord_id]), [['mj', IDENTIFIANT_D_ESSAI]]);
+    const [deDev] = sessionsPosees(surDev);
+    assert.match(deDev, /; Domain=exemple\.test;/);
+    const sessionDeDev = { cookie: valeur(deDev) };
+    assert.equal((await dev.appel('GET', '/api/v1/', { entetes: sessionDeDev })).status, 200, 'MJ sur le site de dev : la porte s’ouvre');
+    assert.equal(dev.d.appelsDuBot().length, 1, 'convertie, la session vient d’être vérifiée');
+    // retour en production : convertie de nouveau, avec SES rôles ; le compte de la production est retrouvé par l'identifiant Discord (pas de doublon)
+    const deRetour = await (await prod.appel('GET', '/api/moi/', { entetes: sessionDeDev })).json();
+    assert.deepEqual([deRetour.connecte, deRetour.utilisateur.niveau, prod.comptes().length], [true, 'joueur', 1]);
+    // la déconnexion retire les deux cookies : celui de l'hôte et celui du domaine (R315 (3) : déconnecté des deux sites)
+    const sortie = await dev.appel('POST', '/api/deconnexion/', { entetes: sessionDeDev, corps: {} });
+    assert.equal(sortie.status, 200);
+    const retires = sessionsPosees(sortie);
+    assert.equal(retires.length, 2);
+    assert.ok(retires.every((c) => c.startsWith('maverick_session=; Max-Age=0')));
+    assert.deepEqual(retires.map((c) => /Domain=exemple\.test/.test(c)), [false, true]);
+    // rien de secret au journal du service
+    const journal = [...dev.lignes, ...prod.lignes].join('\n');
+    for (const secret of [JETON_DU_BOT_D_ESSAI, IDENTIFIANT_D_ESSAI, 'c0'.repeat(32)]) assert.ok(!journal.includes(secret), `« ${secret.slice(0, 10)}… » au journal`);
+  } finally {
+    await prod.fin();
+    await dev.fin();
   }
 });

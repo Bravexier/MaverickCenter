@@ -272,3 +272,53 @@ test('R314 : --bot pose le jeton du bot saisi sur l’entrée (jamais à l’éc
   assert.match(i.lancer(['--etat']).out, /Bot de revérification : non posé/);
   assert.notEqual(i.lancer(['--sans-bot']).code, 0, 'rien à retirer');
 });
+
+test('R315 : --commune <dossier de l’autre site> pose la connexion commune (domaine de Caddy, secret de session de l’autre site jamais montré ni en argument), à lancer sur les deux sites, le bot exigé ; --etat la montre ; --nouvelle-session avertit ; --sans-commune la retire ; refus sans rien modifier', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
+  const JETON = 'jeton-du-bot-d-essai-pour-discord-sh-0123456789';
+  const dev = instance(t, { domaine: 'exemple.test' });
+  const prod = instance(t, { edition: false, domaine: 'exemple.test' });
+  // l'autre site sans réglage : refus
+  dev.lancer([], { input: saisie() });
+  const avant = dev.reglage();
+  assert.equal(dev.lancer(['--commune', prod.dossier]).code, 1);
+  prod.lancer([], { input: saisie() });
+  // sans bot, un dossier introuvable, ce site-ci, sans domaine : refus, rien ne change
+  assert.match(dev.lancer(['--commune', prod.dossier]).out, /demande le bot/);
+  for (const i of [dev, prod]) assert.equal(i.lancer(['--bot'], { input: `${JETON}\n` }).code, 0);
+  const avecBot = dev.reglage();
+  for (const [args, env] of [[['--commune', `${prod.dossier}-absent`], {}], [['--commune', dev.dossier], {}], [['--commune', prod.dossier], { MAVERICK_DISCORD_CADDY: `${dev.racine}/absent.env` }], [['--commune'], {}]]) {
+    const r = dev.lancer(args, { env });
+    assert.notEqual(r.code, 0, `${args.join(' ')} : ${r.out}`);
+    assert.deepEqual(dev.reglage(), avecBot, args.join(' '));
+  }
+  assert.equal(avecBot.secret_de_session, avant.secret_de_session);
+  // la pose sur le site de dev : le secret de la production est repris, jamais montré ni en argument
+  const secret = prod.reglage().secret_de_session;
+  assert.notEqual(secret, avecBot.secret_de_session);
+  const r = dev.lancer(['--commune', prod.dossier]);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([dev.reglage().domaine_commun, dev.reglage().secret_de_session], ['exemple.test', secret]);
+  assert.deepEqual([dev.reglage().client_secret, dev.reglage().jeton_du_bot, dev.reglage().roles], [avecBot.client_secret, avecBot.jeton_du_bot, avecBot.roles], 'le reste du réglage est gardé');
+  assert.equal(mode(dev.fichier), 0o600);
+  assert.ok(!r.out.includes(secret) && !dev.appels().includes(secret), 'le secret ne s’affiche jamais et ne passe jamais en argument');
+  assert.ok(r.out.includes(`discord.sh --commune ${dev.dossier}`), 'la commande à lancer sur l’autre site');
+  // puis sur la production : son secret ne change pas
+  assert.equal(prod.lancer(['--commune', dev.dossier]).code, 0);
+  assert.deepEqual([prod.reglage().domaine_commun, prod.reglage().secret_de_session], ['exemple.test', secret]);
+  assert.equal(validerReglage(prod.reglage()).domaine_commun, 'exemple.test', 'le service le lit tel quel');
+  // l'état la montre, sans aucun secret
+  const etat = dev.lancer(['--etat']);
+  assert.match(etat.out, /Connexion commune : posée sur exemple\.test/);
+  assert.ok(!etat.out.includes(secret) && !etat.out.includes(JETON));
+  // le bot ne se retire pas sous une connexion commune
+  assert.equal(dev.lancer(['--sans-bot']).code, 1);
+  assert.equal(dev.reglage().jeton_du_bot, JETON);
+  // --nouvelle-session sur un site rompt le partage : la commande le dit
+  assert.match(prod.lancer(['--nouvelle-session']).out, /ATTENTION : la connexion commune est posée/);
+  // --sans-commune la retire
+  const retire = dev.lancer(['--sans-commune']);
+  assert.equal(retire.code, 0, retire.out);
+  assert.equal(dev.reglage().domaine_commun, undefined);
+  assert.match(dev.lancer(['--etat']).out, /Connexion commune : non posée/);
+  assert.notEqual(dev.lancer(['--sans-commune']).code, 0, 'rien à retirer');
+});

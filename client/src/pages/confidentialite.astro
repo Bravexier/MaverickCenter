@@ -7,10 +7,10 @@ import { url } from '../lib/wiki';
 // (layouts/Base.astro). Le texte dit ce que fait le code, et rien d'autre : fiches (serveur/api.mjs, serveur/fiches.mjs), « Exporter »
 // (scripts/fiche.mjs#envoyerAGoogle : jeton en mémoire, jamais envoyé au service), « Importer (en ligne) » (serveur/classeur.mjs), métriques
 // (serveur/metriques.mjs, docs/serveur.md « Métriques et volume »), journaux des conteneurs (docker-compose.yml : 5 fichiers de 10 Mo), sessionStorage
-// (chronologie, bestiaire), connexion par Discord (R310, R312, R313, R314 : serveur/discord.mjs, serveur/utilisateurs.mjs, table `utilisateur` ; cookies `maverick_session`
+// (chronologie, bestiaire), connexion par Discord (R310, R312, R313, R314, R315 : serveur/discord.mjs, serveur/utilisateurs.mjs, table `utilisateur` ; cookies `maverick_session`
 // DUREE_SESSION_DEV_S / DUREE_SESSION_PROD_S et `maverick_etat` DUREE_DE_L_ETAT_S ; images chargées par le navigateur depuis cdn.discordapp.com), sauvegardes de
 // db/ (deploy/installateur/sauvegarde/), Tipeee (serveur/tipeee.mjs). Ce que le code ne dit pas
-// (responsable, hébergeur, base légale, durée des journaux) n'y est pas : le propriétaire le complète. La conservation d'un compte suit R312 (1) et R313 (2) ; la relecture des rôles en session, R314. Hors de tout menu.
+// (responsable, hébergeur, base légale, durée des journaux) n'y est pas : le propriétaire le complète. La conservation d'un compte suit R312 (1) et R313 (2) ; la relecture des rôles en session, R314 ; la connexion commune aux deux sites (cookie `Domain`, compte créé à la première visite de l'autre site), R315. Hors de tout menu.
 // « Ce qui est prévu » (retour du propriétaire sur la PR 445) : les fiches de joueur, d'après docs/feuille-de-route.md (« Fiches de personnages : joueurs,
 // prétirés, groupes et visibilité », E8), R279 et R307 ; la connexion par Discord, elle, existe (R310) : elle a sa section.
 // Tenue à jour : un lot qui change ce que le site collecte, garde ou transmet (comptes, fiches, cookies, stockage du navigateur, journaux, métriques, service tiers) met à jour
@@ -80,6 +80,7 @@ const miseAJourLisible = new Date(`${MISE_A_JOUR}T00:00:00Z`).toLocaleDateString
       <li>Le site ne garde jamais votre adresse e-mail, la liste de vos serveurs, vos connexions à d’autres services, ni le jeton remis par Discord : il ne sert que le temps de la connexion, puis il est révoqué auprès de Discord.</li>
       <li>Votre avatar et votre bannière ne sont pas copiés : votre navigateur les charge directement depuis <code>cdn.discordapp.com</code>, un serveur de Discord, qui reçoit alors l’adresse réseau de votre navigateur.</li>
       <li>Le bouton « Se déconnecter » de votre profil retire le cookie de votre navigateur. Les informations ci-dessus restent dans la base du serveur.</li>
+      <li>Le site public et le site de développement peuvent partager la connexion (un réglage de l’équipe technique). Une seule connexion vaut alors pour les deux : passer de l’un à l’autre ne demande pas de vous reconnecter. À votre première visite de l’autre site, celui-ci relit votre appartenance et vos rôles par son robot Discord et y enregistre votre compte, avec les mêmes informations ; chaque site calcule votre niveau d’après ses propres rôles. Une session passée par le site de développement dure alors au plus 12 heures, sur les deux sites. Vous déconnecter de l’un vous déconnecte aussi de l’autre.</li>
       <li>Votre compte n’a pas de date d’expiration. Il est effacé quand vous quittez le serveur Discord du jeu : le site le constate à votre connexion suivante, ou pendant votre session lors de la relecture de vos rôles (voir plus haut), et il ne garde alors rien de vous. Une session ouverte dure au plus 12 heures sur le site de développement, 7 jours sur le site public. Une adhésion en attente, une exclusion temporaire ou l’absence de rôle ne l’effacent pas.</li>
       <li>Sur le site de développement, une connexion de niveau MJ au moins est nécessaire pour voir les pages ; seul le niveau Créateur peut modifier le contenu.</li>
       <li>Sur le site de développement, les comptes sont visibles dans la page de suivi technique (Debug), qui montre le contenu des tables de la base : toute session de niveau MJ au moins et toute personne détentrice de la clé de lecture de l’équipe peuvent les lire. Le site public n’a pas cette page.</li>
@@ -89,7 +90,7 @@ const miseAJourLisible = new Date(`${MISE_A_JOUR}T00:00:00Z`).toLocaleDateString
     <ul>
       <li>Le site ne dépose aucun cookie tant que vous ne vous connectez pas.</li>
       <li>Il utilise le stockage de session du navigateur, effacé à la fermeture de l’onglet, pour deux commodités : retrouver la position de la frise chronologique, et revenir au tableau du bestiaire depuis la page d’un monstre. Ces données restent dans votre navigateur.</li>
-      <li>La connexion par Discord dépose deux cookies, réservés au service du site (le contenu des pages ne les lit pas) : <code>maverick_etat</code>, pendant la connexion seulement (10 minutes), pour vérifier que le retour de Discord répond bien à votre demande ; puis <code>maverick_session</code>, qui vous garde connecté (12 heures sur le site de développement, 7 jours sur le site public) jusqu’à votre déconnexion ou son expiration.</li>
+      <li>La connexion par Discord dépose deux cookies, réservés au service du site (le contenu des pages ne les lit pas) : <code>maverick_etat</code>, pendant la connexion seulement (10 minutes), pour vérifier que le retour de Discord répond bien à votre demande ; puis <code>maverick_session</code>, qui vous garde connecté (12 heures sur le site de développement, 7 jours sur le site public) jusqu’à votre déconnexion ou son expiration. Si les deux sites partagent la connexion, ce cookie vaut pour les deux.</li>
       <li>La fenêtre de connexion de Google, lors d’un export, relève des règles de Google.</li>
     </ul>
 

@@ -18,24 +18,30 @@ export const ROLE_JOUEUR = '555000000000000003';
 export const ROLE_MJ = '555000000000000001';
 export const ROLE_CREATEUR = '555000000000000002';
 
-/** Le réglage Discord d'essai (la forme du fichier secrets/discord.json). */
-export function reglageDiscordDEssai({ roles = { [ROLE_JOUEUR]: 'joueur', [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' }, serveur = SERVEUR_D_ESSAI, jetonDuBot = null } = {}) {
+/**
+ * Le réglage Discord d'essai (la forme du fichier secrets/discord.json). `domaineCommun` et `secretDeSession` : la connexion commune (R315 ; le domaine des adresses
+ * d'essai est `exemple.test`).
+ */
+export function reglageDiscordDEssai({ roles = { [ROLE_JOUEUR]: 'joueur', [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' }, serveur = SERVEUR_D_ESSAI, jetonDuBot = null, domaineCommun = null,
+  secretDeSession = null } = {}) {
   let reglage = reglageDiscord({ definir: { clientId: CLIENT_D_ESSAI, clientSecret: SECRET_D_ESSAI, adresseDeRetour: ADRESSE_DE_RETOUR_D_ESSAI, serveur }, ...(jetonDuBot ? { jetonDuBot } : {}) });
   for (const [id, niveau] of Object.entries(roles)) reglage = reglageDiscord({ ancien: reglage, role: { id, niveau } });
+  if (domaineCommun || secretDeSession) reglage = reglageDiscord({ ancien: reglage, ...(domaineCommun ? { domaineCommun } : {}), ...(secretDeSession ? { secretDeSession } : {}) });
   return reglage;
 }
 
-/** L'en-tête cookie d'une session de ce niveau, signée avec le réglage donné. */
-export const cookieDeSession = (reglage, niveau, { u = `utilisateur-${niveau}`, exp = Math.floor(Date.now() / 1000) + 3600, v } = {}) => `${COOKIE_SESSION}=${creerJetonDeSession(reglage.secret_de_session, { u, n: niveau, exp, v })}`;
+/** L'en-tête cookie d'une session de ce niveau, signée avec le réglage donné (`d`, `i` : la connexion commune, R315). */
+export const cookieDeSession = (reglage, niveau, { u = `utilisateur-${niveau}`, exp = Math.floor(Date.now() / 1000) + 3600, v, d, i } = {}) => `${COOKIE_SESSION}=${creerJetonDeSession(reglage.secret_de_session, { u, n: niveau, exp, v, d, i })}`;
 
 /**
  * Les fichiers d'une instance d'essai, sa connexion et sa porte.
- * @param {{ prefixe?: string, depot?: boolean, roles?: Record<string, string>, horloge?: () => number, fetch?: typeof fetch, edition?: boolean, sansReglageDiscord?: boolean, jetonDuBot?: string }} [o] `jetonDuBot` : le bot de la revérification (R314)
+ * @param {{ prefixe?: string, depot?: boolean, roles?: Record<string, string>, horloge?: () => number, fetch?: typeof fetch, edition?: boolean, sansReglageDiscord?: boolean, jetonDuBot?: string,
+ *   domaineCommun?: string, secretDeSession?: string }} [o] `jetonDuBot` : le bot de la revérification (R314) ; `domaineCommun`, `secretDeSession` : la connexion commune (R315)
  */
-export function poserLAcces({ prefixe = 'acces', depot = false, roles, horloge, fetch, edition = true, sansReglageDiscord = false, jetonDuBot } = {}) {
+export function poserLAcces({ prefixe = 'acces', depot = false, roles, horloge, fetch, edition = true, sansReglageDiscord = false, jetonDuBot, domaineCommun, secretDeSession } = {}) {
   const fichierDiscord = fichierTemporaire('discord.json', prefixe);
   const fichierDesCles = fichierTemporaire('acces.json', prefixe);
-  const reglage = reglageDiscordDEssai({ roles, jetonDuBot });
+  const reglage = reglageDiscordDEssai({ roles, jetonDuBot, domaineCommun, secretDeSession });
   if (!sansReglageDiscord) writeFileSync(fichierDiscord, JSON.stringify(reglage));
   const premier = reglageApres({ refaireLaCle: true });
   let cles = premier.reglage;

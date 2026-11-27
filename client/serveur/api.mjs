@@ -285,7 +285,7 @@ export function traiter(requete, service) {
   if (ressource === 'acces') return traiterAcces(requete, service, acces, brut, reste, permis);
   if (ressource === 'connexion') return traiterConnexion(requete, service, brut, reste, permis, params);
   if (ressource === 'moi' && brut === undefined) return traiterMoi(requete, service, permis);
-  if (ressource === 'deconnexion' && brut === undefined) return traiterDeconnexion(requete, permis);
+  if (ressource === 'deconnexion' && brut === undefined) return traiterDeconnexion(requete, permis, service);
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture);
@@ -866,13 +866,18 @@ function traiterMoi(requete, service, permis) {
   return json(200, { connexion_disponible: Boolean(connexion?.disponible()), connecte: Boolean(utilisateur), utilisateur, ...(session && session.u === null ? { non_membre: true } : {}) });
 }
 
-/** POST /api/deconnexion/ : retire le cookie de session (sans révocation côté serveur : le jeton expire seul). Mêmes refus que les écritures : JSON, requête d'une page du site. */
-function traiterDeconnexion(requete, permis) {
+/**
+ * POST /api/deconnexion/ : retire le cookie de session (sans révocation côté serveur : le jeton expire seul) ; avec la connexion commune, aussi celui du domaine commun,
+ * ce qui déconnecte des deux sites (R315 (3)). Mêmes refus que les écritures : JSON, requête d'une page du site.
+ */
+function traiterDeconnexion(requete, permis, service) {
   const refus = permis('POST');
   if (refus) return refus;
   const { refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
-  return json(200, { connecte: false }, { 'Set-Cookie': [cookieDeSessionRetire({ securise: connexionSecurisee(requete.entetes ?? {}) })] });
+  const entetes = requete.entetes ?? {};
+  const cookies = service.connexion?.cookiesDeDeconnexion?.(entetes) ?? [cookieDeSessionRetire({ securise: connexionSecurisee(entetes) })];
+  return json(200, { connecte: false }, { 'Set-Cookie': cookies });
 }
 
 const sansMaintenance = { active: false };

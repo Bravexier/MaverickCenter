@@ -22,7 +22,13 @@
 #                          par son administrateur (https://discord.com/oauth2/authorize?client_id=<identifiant de l'application>&scope=bot&permissions=0). Sans bot posé, le niveau
 #                          est fixé à la connexion et les sessions gardent leur niveau jusqu'à leur fin
 #   --sans-bot             retire le jeton du bot : plus de revérification (le réglage de la connexion reste)
-#   --etat                 dit ce qui est réglé (identifiant de l'application, serveur, adresse de retour, rôles, bot posé ou non) ; aucun secret n'est montré
+#   --commune <dossier>    pose la CONNEXION COMMUNE (R315) : un seul cookie de session vaut pour le site de dev et la production (le domaine MAVERICK_DOMAINE de Caddy), et
+#                          passer de l'un à l'autre n'oblige pas à se reconnecter. <dossier> : l'instance de l'AUTRE site (/srv/maverick-center ou /srv/maverick-center-test),
+#                          dont le secret de session est repris (lu dans son réglage, jamais montré ni passé en argument). À lancer sur les deux sites (sur le second, le secret
+#                          ne change plus). Le bot doit être posé sur chacun (--bot) : chaque site recalcule le niveau avec ses propres rôles. Les sessions ouvertes du site dont
+#                          le secret change tombent. Revers acceptés : un secret volé sur un site ouvre aussi l'autre ; se déconnecter de l'un déconnecte aussi de l'autre
+#   --sans-commune         retire la connexion commune de ce site (ses sessions redeviennent propres à son hôte ; --nouvelle-session pour ne plus partager le secret)
+#   --etat                 dit ce qui est réglé (identifiant de l'application, serveur, adresse de retour, rôles, bot posé ou non, connexion commune) ; aucun secret n'est montré
 #   --retirer              retire le réglage : la connexion devient indisponible (le site de dev est alors fermé à tous, hors clés)
 # Le secret est lu par la commande puis passé au service, dans son conteneur, par l'entrée standard (docker exec -i, jamais en argument) : le service ne fait que fabriquer le réglage, c'est l'hôte
 # qui écrit le fichier (root 600). Rien n'est exigé de l'hôte que bash et docker.
@@ -39,7 +45,7 @@ SECRETS=$INSTANCE/secrets
 FICHIER=$SECRETS/discord.json
 CADDY_ENV=${MAVERICK_DISCORD_CADDY:-/etc/caddy/maverick.env}
 CHEMIN_DE_RETOUR=/api/connexion/discord/retour/
-USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id>… joueur|mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --bot | --sans-bot | --etat | --retirer"
+USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id>… joueur|mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --bot | --sans-bot | --commune <dossier de l'autre site> | --sans-commune | --etat | --retirer"
 
 ACTION=definir
 ADRESSE=''
@@ -47,6 +53,7 @@ ROLE_IDS=''
 ROLE_ID=''
 ROLE_NIVEAU=''
 SERVEUR=''
+AUTRE=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --adresse) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ADRESSE=$2; shift 2 ;;
@@ -60,6 +67,8 @@ while [ $# -gt 0 ]; do
     --nouvelle-session) ACTION=nouvelle_session; shift ;;
     --bot) ACTION=bot; shift ;;
     --sans-bot) ACTION=sans_bot; shift ;;
+    --commune) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=commune; AUTRE=$2; shift 2 ;;
+    --sans-commune) ACTION=sans_commune; shift ;;
     --etat) ACTION=etat; shift ;;
     --retirer) ACTION=retirer; shift ;;
     -h|--aide) echo "$USAGE"; exit 0 ;;
@@ -99,7 +108,8 @@ if [ "$ACTION" = etat ]; then
     printf '%s : %s (%s)' "$2" "${ids:-aucun}" "$n"
   }
   if grep -q '"jeton_du_bot"' "$FICHIER"; then bot='posé (jeton non montré) : le niveau des personnes connectées est revérifié toutes les 5 minutes (R314)'; else bot='non posé : le niveau est fixé à la connexion (--bot pour le revérifier pendant la session)'; fi
-  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles par niveau — $(par_niveau joueur Joueur) ; $(par_niveau mj MJ) ; $(par_niveau createur Créateur). Un membre sans aucun de ces rôles est Observateur (R311). Bot de revérification : $bot."
+  if grep -q '"domaine_commun"' "$FICHIER"; then commune="posée sur $(champ domaine_commun) : une seule connexion vaut pour les deux sites, chacun avec ses rôles (R315)"; else commune='non posée : la session est propre à ce site (--commune <dossier de l’autre site> pour la partager, R315)'; fi
+  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles par niveau — $(par_niveau joueur Joueur) ; $(par_niveau mj MJ) ; $(par_niveau createur Créateur). Un membre sans aucun de ces rôles est Observateur (R311). Bot de revérification : $bot. Connexion commune : $commune."
   exit 0
 fi
 if [ "$ACTION" = retirer ]; then
@@ -198,6 +208,12 @@ case "$ACTION" in
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
     echo "Toutes les sessions de $INSTANCE_DIT sont fermées : chacun doit se reconnecter."
+    if grep -q '"domaine_commun"' "$FICHIER"; then
+      echo "ATTENTION : la connexion commune est posée (R315) et l'autre site garde l'ancien secret : le cookie commun ne se lit plus d'un site à l'autre. Refaites-la sur l'autre site :"
+      echo
+      echo "      sudo sh <dossier de l'autre site>/discord/discord.sh --commune $INSTANCE"
+      echo
+    fi
     ;;
   bot)
     [ -t 0 ] || [ "$ESSAI" = 1 ] || die "la saisie du jeton demande un terminal : lancez la commande dans une session ssh ordinaire"
@@ -219,5 +235,32 @@ case "$ACTION" in
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
     echo "Jeton du bot retiré de $INSTANCE_DIT : le niveau n'est plus revérifié pendant la session (il reste fixé à la connexion). Pensez à réinitialiser le jeton dans le portail Discord s'il a pu fuir."
+    ;;
+  commune)
+    domaine=$(env_valeur "$CADDY_ENV" MAVERICK_DOMAINE)
+    [ -n "$domaine" ] || die "le domaine du site est introuvable (MAVERICK_DOMAINE dans $CADDY_ENV) : rien n'a été modifié"
+    autre_dossier=$(cd "$AUTRE" 2>/dev/null && pwd) || die "--commune : le dossier $AUTRE est introuvable : rien n'a été modifié"
+    [ "$autre_dossier" != "$INSTANCE" ] || die "--commune : donnez le dossier de l'AUTRE site (celui-ci est $INSTANCE) : rien n'a été modifié"
+    autre_fichier=$autre_dossier/secrets/discord.json
+    [ -f "$autre_fichier" ] || die "l'autre site ($autre_dossier) n'a pas de réglage Discord : posez-le d'abord (sudo sh $autre_dossier/discord/discord.sh), puis relancez : rien n'a été modifié"
+    # seul le secret de session de l'autre site est lu ; il passe au service par l'entrée standard, jamais en argument ni à l'écran
+    secret_commun=$(sed -n 's/.*"secret_de_session":"\([0-9a-f]\{64\}\)".*/\1/p' "$autre_fichier" | head -n 1)
+    [ -n "$secret_commun" ] || die "le réglage de l'autre site ($autre_fichier) est illisible : reposez-le (sudo sh $autre_dossier/discord/discord.sh) : rien n'a été modifié"
+    sortie=$(printf '%s\n' "$secret_commun" | appeler commune "$domaine") || die "le service a refusé : rien n'a été modifié"
+    secret_commun=''
+    lire_la_sortie "$sortie"
+    ecrire_le_reglage "$REGLAGE"
+    echo "Connexion commune posée sur $INSTANCE_DIT (R315) : le cookie de session vaut pour $domaine et dev.$domaine, avec le secret de session de l'autre site. Rien à redémarrer."
+    echo "Si ce n'est pas encore fait, la même commande sur l'autre site, avec le dossier de celui-ci :"
+    echo
+    echo "      sudo sh $autre_dossier/discord/discord.sh --commune $INSTANCE"
+    echo
+    echo "Chaque site garde ses propres rôles. Se déconnecter de l'un déconnecte aussi de l'autre."
+    ;;
+  sans_commune)
+    sortie=$(appeler sans-commune </dev/null) || die "le service a refusé : rien n'a été modifié"
+    lire_la_sortie "$sortie"
+    ecrire_le_reglage "$REGLAGE"
+    echo "Connexion commune retirée de $INSTANCE_DIT : ses sessions redeviennent propres à son hôte. Le secret de session reste celui de l'autre site : --nouvelle-session pour ne plus le partager (toutes les sessions de ce site tombent)."
     ;;
 esac
