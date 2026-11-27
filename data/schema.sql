@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 133;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 134;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4510,7 +4510,7 @@ CREATE INDEX recette_test_carac_1_fk ON recette (test_carac_1_id) WHERE test_car
 -- Personne qui s'est connectée au site, toujours par Discord (décision R310, migration 0132 ; plus de compte local : docs/feuille-de-route.md, E7).
 -- On ne garde que ce que dit R310 (5) : l'identifiant Discord (immuable), le nom affiché, l'avatar et la bannière, la date d'arrivée sur le serveur et le
 -- niveau ; jamais l'e-mail, ni les serveurs, ni les connexions, ni les rôles Discord bruts, ni de mot de passe ou de jeton. Le service réécrit la ligne à
--- chaque connexion. Les rôles du site (visibilité des fiches) sont dans utilisateur_role ; leur lien avec le niveau relève d'E8.
+-- chaque connexion. Le niveau dit aussi qui voit quelle fiche (décision R318, migration 0134 : v_personnage_visible).
 CREATE TABLE utilisateur (
   id                     TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable du site, jamais réutilisé
   discord_id             TEXT    NOT NULL UNIQUE CHECK (length(discord_id) > 0 AND discord_id NOT GLOB '*[^0-9]*'),   -- « snowflake » Discord (`id`), chiffres seuls
@@ -4525,8 +4525,8 @@ CREATE TABLE utilisateur (
   derniere_connexion_le  TEXT    NOT NULL CHECK (derniere_connexion_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')   -- date du niveau affiché
 ) STRICT;
 
--- Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) :
--- 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+-- Rôles d'un utilisateur, cumulables : 'mj', 'editeur' (modifie les règles), 'admin'. Rien ne l'écrit ni ne la lit plus : depuis la décision R318
+-- (migration 0134), la visibilité des fiches suit utilisateur.niveau (v_personnage_visible), plus ces rôles. La table reste, vide.
 CREATE TABLE utilisateur_role (
   utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
   role            TEXT    NOT NULL CHECK (role IN ('mj', 'editeur', 'admin')),
@@ -4536,16 +4536,18 @@ CREATE TABLE utilisateur_role (
 CREATE INDEX utilisateur_role_role ON utilisateur_role (role);   -- « tous les MJ », « tous les administrateurs »
 
 -- Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques.
--- Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce
+-- Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des comptes Créateur, sauf ce
 -- qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
 CREATE TABLE personnage (
   id                    TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable, jamais réutilisé (un personnage renommé le garde)
   nature                TEXT    NOT NULL CHECK (nature IN ('joueur', 'pretire')),
   proprietaire_id       TEXT    REFERENCES utilisateur(id),   -- joueur qui l'a créée ; NULL exactement pour un prétiré
   visibilite            TEXT    NOT NULL CHECK (visibilite IN ('privee', 'mj', 'tous')),
-                                                    -- qui la voit EN PLUS du propriétaire, des administrateurs, des membres des groupes où elle est inscrite
-                                                    -- et des utilisateurs désignés (personnage_partage) : 'privee' personne d'autre, 'mj' tous les MJ,
-                                                    -- 'tous' tout utilisateur connecté (toujours le cas d'un prétiré) ; calcul : v_personnage_visible
+                                                    -- menu « Visible par » (R318) : qui la voit EN PLUS du propriétaire, des comptes de niveau 'createur',
+                                                    -- des membres des groupes où elle est inscrite et des utilisateurs désignés (personnage_partage) :
+                                                    -- 'privee' personne d'autre (« Privé »), 'mj' les niveaux 'mj' et 'createur' (« MJ »), 'tous' les
+                                                    -- niveaux 'joueur', 'mj' et 'createur' (« Tous », jamais l'Observateur) ; toujours 'tous' pour un
+                                                    -- prétiré, que le service ouvre en plus à tout visiteur (R307) ; calcul : v_personnage_visible
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),   -- « NOM » (F1)
   surnom                TEXT,                         -- « Surnom » (P1)
   lieu_origine          TEXT,                         -- « Lieu origine » (F3)
@@ -5131,20 +5133,22 @@ CREATE VIEW v_personnage_maitrise_arme AS
   FROM sommes s CROSS JOIN bornes b;
 
 -- Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne.
--- Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle
--- 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+-- Motifs, d'après utilisateur.niveau (décision R318, migration 0134) : 'proprietaire' ; 'admin' (niveau 'createur' : toutes les fiches) ; 'tous'
+-- (visibilité 'tous' : niveaux 'joueur', 'mj' et 'createur', jamais l'Observateur) ; 'mj' (visibilité 'mj' : niveaux 'mj' et 'createur') ; 'groupe'
+-- (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire). La vue ne connaît que les comptes :
+-- le prétiré, ouvert à tout visiteur connecté ou non (R307), l'est par le service (`nature = 'pretire'`, serveur/fiches.mjs), pas par elle.
 CREATE VIEW v_personnage_visible AS
   SELECT p.id AS personnage_id, p.proprietaire_id AS utilisateur_id, 'proprietaire' AS motif, NULL AS groupe_id
   FROM personnage p WHERE p.proprietaire_id IS NOT NULL
   UNION ALL
-  SELECT p.id, r.utilisateur_id, 'admin', NULL
-  FROM personnage p CROSS JOIN utilisateur_role r WHERE r.role = 'admin'
+  SELECT p.id, u.id, 'admin', NULL
+  FROM personnage p CROSS JOIN utilisateur u WHERE u.niveau = 'createur'
   UNION ALL
   SELECT p.id, u.id, 'tous', NULL
-  FROM personnage p CROSS JOIN utilisateur u WHERE p.visibilite = 'tous'
+  FROM personnage p CROSS JOIN utilisateur u WHERE p.visibilite = 'tous' AND u.niveau IN ('joueur', 'mj', 'createur')
   UNION ALL
-  SELECT p.id, r.utilisateur_id, 'mj', NULL
-  FROM personnage p CROSS JOIN utilisateur_role r WHERE p.visibilite = 'mj' AND r.role = 'mj'
+  SELECT p.id, u.id, 'mj', NULL
+  FROM personnage p CROSS JOIN utilisateur u WHERE p.visibilite = 'mj' AND u.niveau IN ('mj', 'createur')
   UNION ALL
   SELECT i.personnage_id, m.utilisateur_id, 'groupe', i.groupe_id
   FROM groupe_membre i JOIN groupe_membre m ON m.groupe_id = i.groupe_id

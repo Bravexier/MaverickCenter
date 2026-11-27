@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 133 : 224 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 134 : 224 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3529,7 +3529,7 @@ Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusie
 
 ### `utilisateur`
 
-Personne qui s'est connectée au site, toujours par Discord (décision R310, migration 0132 ; plus de compte local : docs/feuille-de-route.md, E7). On ne garde que ce que dit R310 (5) : l'identifiant Discord (immuable), le nom affiché, l'avatar et la bannière, la date d'arrivée sur le serveur et le niveau ; jamais l'e-mail, ni les serveurs, ni les connexions, ni les rôles Discord bruts, ni de mot de passe ou de jeton. Le service réécrit la ligne à chaque connexion. Les rôles du site (visibilité des fiches) sont dans utilisateur_role ; leur lien avec le niveau relève d'E8.
+Personne qui s'est connectée au site, toujours par Discord (décision R310, migration 0132 ; plus de compte local : docs/feuille-de-route.md, E7). On ne garde que ce que dit R310 (5) : l'identifiant Discord (immuable), le nom affiché, l'avatar et la bannière, la date d'arrivée sur le serveur et le niveau ; jamais l'e-mail, ni les serveurs, ni les connexions, ni les rôles Discord bruts, ni de mot de passe ou de jeton. Le service réécrit la ligne à chaque connexion. Le niveau dit aussi qui voit quelle fiche (décision R318, migration 0134 : v_personnage_visible).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3545,7 +3545,7 @@ Personne qui s'est connectée au site, toujours par Discord (décision R310, mig
 
 ### `utilisateur_role`
 
-Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) : 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+Rôles d'un utilisateur, cumulables : 'mj', 'editeur' (modifie les règles), 'admin'. Rien ne l'écrit ni ne la lit plus : depuis la décision R318 (migration 0134), la visibilité des fiches suit utilisateur.niveau (v_personnage_visible), plus ces rôles. La table reste, vide.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3554,7 +3554,7 @@ Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du
 
 ### `personnage`
 
-Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques. Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
+Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques. Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des comptes Créateur, sauf ce qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3940,7 +3940,7 @@ Points de maîtrise d'arme d'une fiche, par famille (décisions R148, R149, R151
 
 *vue*
 
-Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. Motifs, d'après utilisateur.niveau (décision R318, migration 0134) : 'proprietaire' ; 'admin' (niveau 'createur' : toutes les fiches) ; 'tous' (visibilité 'tous' : niveaux 'joueur', 'mj' et 'createur', jamais l'Observateur) ; 'mj' (visibilité 'mj' : niveaux 'mj' et 'createur') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire). La vue ne connaît que les comptes : le prétiré, ouvert à tout visiteur connecté ou non (R307), l'est par le service (`nature = 'pretire'`, serveur/fiches.mjs), pas par elle.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
