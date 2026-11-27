@@ -168,7 +168,7 @@ Validés avec la conception le 2026-11-27.
 10. **Les mots-clés qui mènent à une section de la page suivent aussi** (§3, point 5).
 11. **Une retouche d'accent ou de majuscule ne déplace jamais une page** (§3) : seul un titre dont l'écriture normalisée change est un renommage.
 12. **Une annulation dont l'adresse d'avant est reprise est refusée**, avec le nom de la page qui la tient (§6).
-13. **Annuler la ligne d'un renommage emporte ses lignes d'adresse** (§6) : la page, ses anciennes adresses et l'adresse des mots-clés qui ont suivi reviennent ensemble. Choix pris pendant la construction (2026-11-27), à confirmer par le propriétaire : seules, ces lignes laissaient un état que les contrôles refusent, et le renommage d'une page à mot-clé ne s'annulait plus depuis la page Mise à jour.
+13. **Annuler la ligne d'un renommage emporte ses lignes d'adresse** (§6) : la page, ses anciennes adresses et l'adresse des mots-clés qui ont suivi reviennent ensemble. Choix pris pendant la construction, confirmé par le propriétaire le 2026-11-27 (« Oui, confirmé ») : seules, ces lignes laissaient un état que les contrôles refusent, et le renommage d'une page à mot-clé ne s'annulait plus depuis la page Mise à jour.
 
 ## Laissé au constructeur
 
