@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Travail uniquement dans `C:\Git\MaverickCenter\.claude\worktrees\mots-cles-adresses-54a506`, branche `feature/mots-cles-adresses`. Ne jamais toucher à `C:\Git\MaverickCenter`. Commandes npm depuis `client/`.
-- Migration **0133**, `user_version` 133, structure seule : aucune ligne écrite, aucun texte de règle. Écrite d'abord 0132 et R310, renumérotée avant le rebase : dev a pris 0132 et R310 à R313 (connexion Discord).
+- Migration **0133**, `user_version` 133, structure seule : aucune ligne écrite, aucun texte de règle. Écrite d'abord 0132 et R310, renumérotée avant le rebase : dev a pris 0132 et R310 à R313 (connexion Discord), puis R314 (rôles Discord revérifiés pendant la session) et R315 (connexion commune au site de dev et à la production).
 - L'identifiant d'une page ne change jamais. `slug_adresse` et `page_ancienne_adresse` ne s'écrivent que par `serveur/edition-adresses.mjs` (et par l'annulation et le rejeu, qui relisent le journal).
 - **Deux lectures, jamais mêlées.** Le service passe toujours le segment lu en base (`null` compris) et n'appelle jamais `installerLesAdresses`. Le build et la chaîne d'édition du navigateur installent l'état une fois et appellent `cheminDePage(id)` sans second argument. `undefined` : état installé ; `null` : pas de segment renommé.
 - Formes : `page.slug_adresse` a la forme de `page.slug` ; `page_ancienne_adresse.adresse` est relative à la racine, **sans barre initiale** (`capacites/anansi-anti-corps/`, `metiers/#metier-forgeron`), comme les clés de `data-renvois` ; `mot_cle.url` garde sa barre initiale.

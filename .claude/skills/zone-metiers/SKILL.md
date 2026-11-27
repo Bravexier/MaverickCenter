@@ -7,7 +7,7 @@ user-invocable: false
 # Métiers
 
 ## Fichiers
-- Lecture : `client/src/lib/metiers.mjs` (`chargerMetiers`, `contexteDesMetiers`, `cheminDePage`, `PAGE_DES_REGLES`).
+- Lecture : `client/src/lib/metiers.mjs` (`chargerMetiers`, `contexteDesMetiers`, `cheminDePage(id, slug)` (`slug` : le segment lu en base par le service, `null` compris ; absent, l'état installé du build), `PAGE_DES_REGLES`).
 - Découpage des champs : `lib/metier-champs.mjs` (`decouperBonus`, `ATTRIBUT_DE_CIBLE`).
 - Filtres et tri dans l'adresse : `lib/metiers-tri.mjs`.
 - Tableau : `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` (inséré en `?raw`).
@@ -22,7 +22,7 @@ user-invocable: false
 
 ## Invariants
 - Pas de page par métier (demande du propriétaire). `/metiers/` est un tableau tiré de la table `metier` (`chargerMetiers`), la description sous la ligne. Colonnes : Nom, Bonus, Artisanat, Caractéristiques, Équipement supplémentaire.
-- Les pages `metiers/<slug>` restent (recherche, mots-clés, liens), mais `[slug].astro` ne les construit pas. Tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`), qui renvoie un métier à `/metiers/#metier-<slug>`. Ne jamais écrire `${id}/` à la main.
+- Les pages `metiers/<slug>` restent (recherche, mots-clés, liens), mais `[slug].astro` ne les construit pas. Tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`), qui renvoie un métier à `/metiers/#metier-<segment>` (`<segment>` : `slug_adresse` s'il est posé, sinon le slug de l'id, R316) ; la ligne du tableau porte aussi ses anciennes ancres (`anciennesAncres`, tirées de `page_ancienne_adresse`), et `/metiers/#metier-<ancien>` y mène. Ne jamais écrire `${id}/` à la main.
 - Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page.
 - Les cellules du tableau sont les rendus de `lib/edition-rendu.mjs` : un seul HTML avec le mode modification.
 - Un nom de compétence dans « Bonus » la lie (`decouperBonus`). Ne rien lier d'autre par vraisemblance.

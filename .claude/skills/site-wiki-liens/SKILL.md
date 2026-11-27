@@ -16,7 +16,7 @@ user-invocable: false
 - `client/src/content.config.ts` : la collection `wiki` et son `generateId`.
 - `client/astro.config.mjs` : processeur Markdown et index des liens du plugin.
 - `client/src/pages/[type]/` : une page à `/<type>/<slug>/` ; `client/src/pages/pages.astro` : l'index alphabétique.
-- `client/src/pages/404.astro` : renvois des anciennes adresses (`data-renvois` : le guide ; `data-eclatees` : les pages éclatées).
+- `client/src/pages/404.astro` : renvois des anciennes adresses (`data-renvois` : le guide, et une ligne par `page_ancienne_adresse` (R316 ; hors adresse à ancre, page non chargée ou cible identique) vers l'adresse d'aujourd'hui de la page, requête et ancre gardées ; `data-eclatees` : les pages éclatées).
 
 ## À lire
 
@@ -35,11 +35,11 @@ user-invocable: false
 
 ## Adresses (demande du propriétaire)
 
-- Plus de préfixe `/wiki/`. Une page est à `/<type>/<slug>/` (`src/pages/[type]/`). Un métier n'a pas de page : sa ligne de `/metiers/` (skill `zone-metiers`, `cheminDePage`).
+- Plus de préfixe `/wiki/`. Une page est à `/<type>/<segment>/` (`src/pages/[type]/`) : `<segment>` est `page.slug_adresse` s'il est posé (page renommée, R316), sinon le slug de l'identifiant ; `cheminDePage` le lit (`lib/adresses-renommees.mjs` ou le segment passé par le service). Un métier n'a pas de page : sa ligne de `/metiers/` (skill `zone-metiers`, `cheminDePage`).
 - L'index alphabétique (« Index du wiki », « Pages à créer ») est à `/pages/`. Le dossier `src/content/wiki/`, la collection `wiki` et `lib/wiki.ts` gardent leur nom.
 - Le pied d'une page (`components/PiedDePage.astro`) : mots-clés seulement, plus de rétroliens sur aucune page (demande du propriétaire, 2026-11-05 : « Supprime ces colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; plus de sources (seulement sur `/archives/`, réponse du propriétaire du 2026-10-22).
 - Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404 (`legacyWikiRedirect`, `lib/nav.mjs`, testé dans `test/nav.test.mjs`).
-- Une page `guide/…` est à l'adresse que lui donne `lib/livres.mjs` (skill `zone-guide`), jamais sous `/guide/` : `/regles/<slug>/` pour une page des onglets des Règles, **sans le plan** (`adresseDuGuide`), car la chaîne de l'édition du navigateur, qui ne reçoit pas le plan de la base, la calcule aussi. Ses anciennes adresses (`/guide/…`, `/regles/avancees/…`, `/decouvrir/<étape>/`) sont renvoyées par la page 404 d'après des listes figées (`PAGES_ECLATEES_DU_GUIDE`, `ADRESSES_DU_PLAN_PRECEDENT`, `PAGES_ABSORBEES`) : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan). `lib/wiki.ts` installe le plan de la base dès son chargement (`installerLePlan`).
+- Une page `guide/…` est à l'adresse que lui donne `lib/livres.mjs` (skill `zone-guide`), jamais sous `/guide/` : `/regles/<slug>/` pour une page des onglets des Règles, **sans le plan** (`adresseDuGuide`), car la chaîne de l'édition du navigateur, qui ne reçoit pas le plan de la base, la calcule aussi. Ses anciennes adresses (`/guide/…`, `/regles/avancees/…`, `/decouvrir/<étape>/`) sont renvoyées par la page 404 d'après des listes figées (`PAGES_ECLATEES_DU_GUIDE`, `ADRESSES_DU_PLAN_PRECEDENT`, `PAGES_ABSORBEES`) et, pour une page renommée, d'après `page_ancienne_adresse` (R316) : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan). `lib/wiki.ts` installe le plan de la base dès son chargement (`installerLePlan`).
 - Une page éclatée en plusieurs (l'ancienne `/ressources/equipement/`, `/ressources/pieces-elementaires/`) mène à la page de son ancre ou de sa requête : `data-eclatees` (`RENVOIS_DES_PAGES_ECLATEES`), `adresseDeRenvoi`. Un lien Markdown écrit vers elle est redirigé au rendu (`lib/guide-rendu.ts`, adresse écrite gardée en `data-lien-ecrit`). Les `[[liens]]` du wiki vers `ressources/pieces-elementaires` mènent tous à `ressources/armes/#pieces-elementaires` (« Garder Armes pour tous » ; `lib/metiers.mjs#adresseDePage`) ; les anciennes ancres de section de `/ressources/pieces-elementaires/#…`, elles, vont à la page de leur section (armure et vêtement à Armures, le reste à Armes). Règles : skill `zone-equipement`.
 
 ## Maillage automatique

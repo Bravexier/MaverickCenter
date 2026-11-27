@@ -6,8 +6,8 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 222 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
-  0 familles d'import ; 1 pages, liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
+- `data/schema.sql` : la structure. 224 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+  0 familles d'import ; 1 pages (dont `page.slug_adresse` et `page_ancienne_adresse`, R316), liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
   13 fiches de personnages et groupes de jeu ; 14 journal de l'édition et brouillon de la note de version ; 15 notes de version et historique des
@@ -41,7 +41,7 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 - Les commentaires de `data/schema.sql` (recopiés par `db:doc`) ne citent que du code qui existe : fichier cité, `fichier.mjs#Nom`, `#Nom.prop` d'un module de `lib/` (`db-schema.test.mjs`). Un renommage dans le code corrige le commentaire dans le même lot, sans migration (`maverick.py#comparer_schemas` ignore les commentaires), sauf dans le corps d'une `CREATE VIEW` ou `CREATE TRIGGER` : SQLite le garde dans `sqlite_master.sql`, que les tests de migration rejouée (`aide-migration-rejouee.mjs#rejouerLaMigration`) comparent à `data/schema.sql` ; il reste identique à celui de la dernière migration qui crée l'objet, et le changer demande une migration qui le recrée.
 - Classement des tables : toute table nouvelle se range dans `client/src/lib/tables-de-la-base.mjs`, dans l'une des trois classes : contenu (`TABLES_DE_REGLES` pour les sections 0 à 10 ; notes de version et historique), propre au site (fiches, journal) ou calculée. Sinon `test/tables-de-la-base.test.mjs` échoue ; l'extrait du site de dev (skill `zone-service-extrait`) s'appuie dessus.
 - Noms d'affichage : une table ou une colonne nouvelle d'une table que l'édition écrit a son nom français dans `client/src/lib/libelles-de-la-base.mjs` (skill `zone-edition`), sinon `test/libelles-de-la-base.test.mjs` échoue ; une clé normalisée `X_cle` et la provenance n'en demandent pas.
-- Identifiants figés : un id ne dérive plus du nom depuis la migration 0006 ; un nom corrigé ou renommé garde son id, une page renommée garde son adresse (skill `base-orthographe`).
+- Identifiants figés : un id ne dérive plus du nom depuis la migration 0006 ; un nom corrigé ou renommé garde son id ; l'adresse d'une page renommée suit son titre (`page.slug_adresse`, R316) et l'ancienne mène à la page (`page_ancienne_adresse`) (skill `base-orthographe`).
 - Les lignes typées ne se réimportent pas depuis les classeurs : une mise à jour passe par le rapprochement (skill `sources-rapprochement`).
 - Colonne `remarque` : chaque table d'entités en a une, texte libre, vide par défaut, qui reprend les notes de cellule des classeurs (réunies, séparées par une ligne vide). `note_cellule` n'est qu'une trace : le site lit la remarque. `db:check` vérifie qu'aucune note n'est absente de la remarque de sa ligne.
 - Provenance (`famille`, `origine`, `source_ref`) : retirée à la 1.0 (`CLAUDE.md`) ; n'y rien investir.
