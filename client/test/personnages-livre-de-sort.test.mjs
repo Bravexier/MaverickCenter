@@ -11,6 +11,7 @@ import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { rejouerLaMigration, vuesCourantes } from './aide-migration-rejouee.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 // Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
 const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
@@ -44,7 +45,7 @@ db.exec(`DROP VIEW v_personnage_controle;
   DROP TABLE personnage_livre_sort;
   ALTER TABLE personnage_sort ADD COLUMN nm_livre INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1) AND nm_livre <= niveau_maitrise);
   CREATE VIEW v_personnage_controle AS SELECT NULL AS personnage_id, NULL AS regle, NULL AS detail;`);
-inserer('utilisateur', { id: 'joueuse', discord_id: null, nom_affichage: 'joueuse', cree_le: INSTANT });
+inserer('utilisateur', compteDEssai('joueuse', 'joueuse', INSTANT));
 fiche('deux-livres', [[0, 2, 0], [1, 2, 1], [2, 1, 1], [3, 0, 0]]);   // livres aux rangs 2 et 3 de la liste
 fiche('un-livre', [[3, 3, 0], [2, 3, 1]]);
 fiche('sans-livre', [[0, 1, 0]]);

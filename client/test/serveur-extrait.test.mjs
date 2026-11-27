@@ -21,6 +21,7 @@ import { CLASSES_DE_TABLES, TABLES_PROPRES_AU_SITE, classeDeLaTable } from '../s
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SENTINELLES, marquesDesFiches, poserDesFiches } from './aide-fiches-sentinelles.mjs';
 import { SEUL_LINUX } from './aide-plateforme.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 const REGLES = cheminBase({ sansExemples: false });
 const sha = (octets) => createHash('sha256').update(octets).digest('hex');
@@ -236,7 +237,7 @@ test('clé de changement : bouge avec un lot d’édition, un état de modificat
   const f = enregistrerFiche(db, ficheVide('Une fiche d’essai'));
   assert.equal(cle(), depart);
   enregistrerFiche(db, { ...f.personnage, nom: 'Une fiche modifiée', xp: 500 }, { id: f.personnage.id });
-  db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('c', 'C', '2026-10-10T00:00:00Z')").run();
+  poserUnCompte(db, 'c', 'C', '2026-10-10T00:00:00Z');
   assert.equal(cle(), depart, 'un compte non plus');
   // un lot d'édition
   const { lot } = creerUnMetier(db, 'Essai de la clé');

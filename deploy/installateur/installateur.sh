@@ -25,7 +25,8 @@
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
 #   .htpasswd            mots de passe (jamais touché)
 #   sauvegarde/          les scripts des sauvegardes automatiques (copie, envoi chiffré, essai de restauration, installer.sh) : remplacés à chaque installation
-#   acces/               acces.sh, la commande du mot de passe du site de dev (remplacée à chaque installation ; le réglage est dans secrets/, jamais touché)
+#   acces/               acces.sh, la commande des clés du site de dev (remplacée à chaque installation ; le réglage est dans secrets/, jamais touché)
+#   discord/             discord.sh, la commande de la connexion par Discord (R310 : même chose, secrets/discord.json)
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
 #   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source, restauration (remplacé à chaque installation)
 #   repetition-prod.sh   (test seulement) la répétition, sur une copie, de la dernière mise à jour de la production par l'ancien circuit (remplacé à chaque installation)
@@ -401,11 +402,12 @@ for f in bascule.sh repetition-prod.sh repetition-bascule-2.sh gel.sh activer.sh
 done
 # sauvegarde/ : les scripts des sauvegardes automatiques (deploy/vps/README.md, « Sauvegardes »), que des minuteurs systemd exécutent en root depuis le
 # dossier du serveur de test. Les copies, l'état et les clés ne sont PAS ici (/srv/maverick-sauvegardes, /etc/maverick-sauvegardes).
-# acces/ : la commande du mot de passe du site de dev (acces.sh ; docs/serveur.md, « Accès au site de dev »), que le propriétaire lance. Le réglage qu'elle
-# écrit est secrets/acces.json, jamais ici : une installation ne touche pas à secrets/.
+# acces/ : la commande des clés du site de dev (acces.sh ; docs/serveur.md, « Accès au site de dev »), que le propriétaire lance. Le réglage qu'elle
+# écrit est secrets/acces.json, jamais ici : une installation ne touche pas à secrets/. discord/ : la commande de la connexion par Discord (discord.sh,
+# R310 ; docs/serveur.md, « Connexion par Discord »), même règle : son réglage est secrets/discord.json.
 # Chaque fichier est remplacé par renommage (un script peut être en train de tourner), ceux qui ne sont plus livrés sont retirés : un dossier ne garde
 # jamais deux versions.
-for dossier in sauvegarde acces; do
+for dossier in sauvegarde acces discord; do
   [ -d "$TRAVAIL/$dossier" ] || continue
   mkdir -p "$DOSSIER/$dossier"
   for f in "$TRAVAIL/$dossier"/*; do

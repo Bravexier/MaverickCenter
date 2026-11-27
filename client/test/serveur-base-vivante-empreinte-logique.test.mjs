@@ -16,6 +16,7 @@ import { enregistrer } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SENTINELLES, poserDesFiches } from './aide-fiches-sentinelles.mjs';
+import { sqlDUnCompte } from './aide-compte-d-essai.mjs';
 
 const REGLES = cheminBase({ sansExemples: false });
 let dossierDuCas;
@@ -264,7 +265,7 @@ function valeur(f, sql) {
 
 test('un fichier des règles qui porte un compte ou une fiche, avec la même empreinte logique, est une erreur : la base n’est pas gardée en silence', () => {
   for (const sql of [
-    "INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('x', 'X', '2026-10-10T00:00:00Z')",
+    sqlDUnCompte('x', 'X', '2026-10-10T00:00:00Z'),
     "INSERT INTO groupe (id, nom, nature, cree_le) VALUES ('g', 'G', 'campagne', '2026-10-10T00:00:00Z')",
   ]) {
     const { dossier, chemin, regles: livraison } = base();

@@ -14,6 +14,7 @@ import { cheminDImport, texteDImport } from './aide-base-d-import.mjs';
 import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { horsDeLa0120 } from './aide-races-0120.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 const racine = trouverRacine();
 const copie = fichierTemporaire('maverick.db', 'personnages');
@@ -60,10 +61,10 @@ function inserer(table, ligne) {
 // Lignes de la base construite, avant les fiches de ce test (data/rows les garde vides).
 const LIGNES_AU_DEPART = Object.fromEntries(TABLES.map((t) => [t, db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n]));
 
-// Utilisateurs : quatre joueurs, une MJ (rôle 'mj') et un administrateur ; « eve » est un compte local de secours (sans Discord).
+// Utilisateurs : quatre joueurs, une MJ (rôle 'mj') et un administrateur, tous des comptes Discord (plus de compte local : migration 0132, R310).
 const UTILISATEURS = { alice: [], bob: [], dan: [], eve: [], claire: ['mj'], root: ['admin'] };
-for (const [i, [id, roles]] of Object.entries(UTILISATEURS).entries()) {
-  inserer('utilisateur', { id, discord_id: id === 'eve' ? null : `10000000000000000${i}`, nom_affichage: id, cree_le: INSTANT });
+for (const [id, roles] of Object.entries(UTILISATEURS)) {
+  inserer('utilisateur', compteDEssai(id, id, INSTANT));
   for (const role of roles) inserer('utilisateur_role', { utilisateur_id: id, role });
 }
 const voit = (utilisateur, personnage) => db.prepare('SELECT motif FROM v_personnage_visible WHERE utilisateur_id = ? AND personnage_id = ? ORDER BY motif').all(utilisateur, personnage).map((r) => r.motif);

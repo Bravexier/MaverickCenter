@@ -43,7 +43,7 @@ user-invocable: false
 - Une colonne tirée des tables (corps et résumé des pages typées, `donnees` des fiches de dons) est dérivée (`colonneDerivee`) : le rejeu la refait (`recalculerLesPages`), jamais recopiée du journal.
 - Rien des fiches de personnages ne va au journal : `TABLES_INTERDITES` contient la section 13 (skill `zone-fiches-base`).
 - `Edition.astro` n'est pas dans la version portable.
-- `POST /api/edition/` (un lot) demande le mot de passe d'accès (R275), la lecture du journal la clé ou le mot de passe ; l'extrait : skill `zone-service-extrait`. Le 401 est géré par `scripts/acces.mjs`.
+- `POST /api/edition/` (un lot) demande une session Créateur (R310), la lecture du journal une session MJ ou la clé de lecture ; l'extrait : skill `zone-service-extrait`. Le 401 est géré par `scripts/acces.mjs`.
 - Toute écriture de contenu hors journal passe par le journal ou fait bouger la clé de changement de l'extrait (`serveur/extrait.mjs#cleDeChangement` : skill `zone-service-extrait`).
 - Un HTML redessiné par l'éditeur pose les couleurs comme la page construite : les classes de la palette (`lib/palette-css.mjs`, importable hors version portable ; skill `ui-couleurs`), jamais une couleur en style (matériau ajouté : `couleur-materiau-par-defaut` ; cible, caractéristique, compétence d'arme : celle de leur caractéristique ; `sort-type`, `don-type` : `couleur-genre-<id>`, `couleur-don-<id>`). Une race ou classe créée porte la classe de sa nature ou catégorie (`classeDeRace`, `classeDUneClasse`) et émet sa famille (`cssDesFamilles`) ; la frise refaite : skill `zone-chronologie`.
 

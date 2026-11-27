@@ -53,9 +53,9 @@ test('les lectures ne sont jamais gelées ; toute écriture de l’API l’est, 
   assert.equal(ecritureGelee('POST', '/api/personnages'), true);
   assert.equal(ecritureGelee('POST', '/api/personnages/?x=1'), true);
   assert.equal(ecritureGelee('post', '/api/personnages/'), true);
-  // les exemptions : lectures en POST, session, balise, levée de la maintenance
+  // les exemptions : lectures en POST, déconnexion (retrait du cookie), balise, levée de la maintenance
   const exemptees = [
-    ['POST', '/api/acces/'], ['DELETE', '/api/acces/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'], ['POST', '/api/maintenance/lever/'],
+    ['POST', '/api/deconnexion/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'], ['POST', '/api/maintenance/lever/'],
     ...['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].map((a) => ['POST', `/api/edition/${a}/`]),
   ];
   for (const [m, c] of exemptees) assert.equal(ecritureGelee(m, c), false, `${m} ${c}`);
@@ -69,8 +69,8 @@ test('chaque écriture listée dans l’en-tête d’api.mjs est gelée, sauf le
   assert.ok(ecritures.length >= 20, `${ecritures.length} écritures lues`);
   const passent = ecritures.filter(([m, c]) => !ecritureGelee(m, c)).map(([m, c]) => `${m} ${c}`);
   assert.deepEqual(passent.sort(), [
-    'DELETE /api/acces/', 'POST /api/acces/', 'POST /api/classeur/', 'POST /api/edition/bestiaire/', 'POST /api/edition/classe/', 'POST /api/edition/evenement/',
-    'POST /api/edition/lignes/', 'POST /api/edition/portrait/', 'POST /api/edition/race/', 'POST /api/maintenance/lever/', 'POST /api/metriques/page/',
+    'POST /api/classeur/', 'POST /api/edition/bestiaire/', 'POST /api/edition/classe/', 'POST /api/edition/evenement/',
+    'POST /api/edition/lignes/', 'POST /api/edition/portrait/', 'POST /api/edition/race/', 'POST /api/deconnexion/', 'POST /api/maintenance/lever/', 'POST /api/metriques/page/',
   ].sort(), 'seules les exemptions justifiées passent le gel');
 });
 
@@ -262,8 +262,8 @@ test('service réel : sans fichier rien ne change ; avec lui les écritures sont
     for (const c of ['/api/personnages/', '/api/personnages/pretire-gel/', '/api/v1/', '/api/edition/lots/', '/api/mise-a-jour/', '/api/maintenance/']) {
       assert.equal((await appeler(s, 'GET', c)).status, 200, c);
     }
-    // une route exemptée n'est pas arrêtée par le gel (ici : pas de mot de passe posé, 409 de la connexion elle-même)
-    assert.equal((await appeler(s, 'POST', '/api/acces/', { mot_de_passe: 'x' })).status, 409);
+    // une route exemptée n'est pas arrêtée par le gel (ici : la déconnexion, qui ne fait que retirer le cookie)
+    assert.equal((await appeler(s, 'POST', '/api/deconnexion/', {})).status, 200);
     assert.ok(lignes.some((l) => /^gel : écritures gelées jusqu’à/.test(l)), 'la pose est notée au journal');
     assert.equal(lignes.filter((l) => /^gel : écritures gelées/.test(l)).length, 1, 'une seule fois');
     // le geste de root : retirer le fichier rouvre sans redémarrage

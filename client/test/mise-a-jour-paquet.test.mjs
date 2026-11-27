@@ -21,6 +21,7 @@ import { ENTETE_SQLITE, fabriquerPaquet, FORMAT_PAQUET, MODES_DU_PAQUET } from '
 import { baseDeDepart, copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { versionLibre } from './aide-mise-a-jour.mjs';
+import { sqlDUnCompte } from './aide-compte-d-essai.mjs';
 
 const racine = dossierTemporaire('mise-a-jour-paquet');
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -109,7 +110,7 @@ test('recontrôles : lignes propres au site, HTML brut ajouté, table changée s
   const { rows, lire } = copieDesLignes();
   const avant = lire();
   // une fiche (garde-fou 9)
-  refuse(2, () => appliquerPaquet(paquetChange(PAQUET_COPIE, (p) => p.exec("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('zqx', 'Zqx', '2026-11-15T00:00:00Z')")),
+  refuse(2, () => appliquerPaquet(paquetChange(PAQUET_COPIE, (p) => p.exec(sqlDUnCompte('zqx', 'Zqx', '2026-11-15T00:00:00Z'))),
     { lot: COPIE, mode: 'copie', rows }));
   // du HTML brut ajouté au corps d'une page (tracé ou non : refusé d'abord)
   const page = db.prepare("SELECT id FROM page WHERE corps_md IS NOT NULL ORDER BY id LIMIT 1").get().id;

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 131 : 223 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 132 : 223 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3519,14 +3519,19 @@ Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusie
 
 ### `utilisateur`
 
-Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord. Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
+Personne qui s'est connectée au site, toujours par Discord (décision R310, migration 0132 ; plus de compte local : docs/feuille-de-route.md, E7). On ne garde que ce que dit R310 (5) : l'identifiant Discord (immuable), le nom affiché, l'avatar et la bannière, la date d'arrivée sur le serveur et le niveau ; jamais l'e-mail, ni les serveurs, ni les connexions, ni les rôles Discord bruts, ni de mot de passe ou de jeton. Le service réécrit la ligne à chaque connexion. Les rôles du site (visibilité des fiches) sont dans utilisateur_role ; leur lien avec le niveau relève d'E8.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | identifiant stable du site, jamais réutilisé |
-| `discord_id` | TEXT | non | unique | « snowflake » Discord ; NULL = compte local de secours |
-| `nom_affichage` | TEXT | oui |  |  |
-| `cree_le` | TEXT | oui |  |  |
+| `discord_id` | TEXT | oui | unique | « snowflake » Discord (`id`), chiffres seuls |
+| `nom_affichage` | TEXT | oui |  | surnom sur le serveur, sinon `global_name`, sinon `username` (R310 (5)) |
+| `cree_le` | TEXT | oui |  | première connexion |
+| `niveau` | TEXT | oui |  | R310 (2), recalculé à chaque connexion |
+| `avatar_url` | TEXT | oui |  | image complète : celle du serveur, sinon du compte, sinon l'avatar par défaut ; chargée par le navigateur |
+| `banniere_url` | TEXT | non |  | de même ; NULL = pas de bannière |
+| `serveur_rejoint_le` | TEXT | non |  | `joined_at` du membre, tronqué à la seconde ; NULL hors du serveur |
+| `derniere_connexion_le` | TEXT | oui |  | date du niveau affiché |
 
 ### `utilisateur_role`
 

@@ -7,6 +7,7 @@ import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
 import Acces from '../components/Acces.astro';
+import Compte from '../components/Compte.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 import { cssDeLaPalette } from '../lib/palette-css.mjs';
 import { classeDeLaPageDuSite, cssDesMotsClesDuSite } from '../lib/couleur-de-la-page.mjs';
@@ -71,7 +72,7 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />
-    {/* l'accès au site de dev (R275 : mot de passe demandé une fois, sur un refus du service ; src/scripts/acces.mjs) : ni dans la version portable (pas de service) */}
+    {/* l'accès au site de dev (R310 : sur un refus de la porte, propose la connexion ou dit que le niveau ne suffit pas ; src/scripts/acces.mjs) : ni dans la version portable (pas de service) */}
     {!portable && <Acces />}
     {
       /* Maintenance pendant une mise à jour (demande du propriétaire ; serveur/maintenance.mjs, docs/serveur.md) : chaque page demande au service si
@@ -149,6 +150,8 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
             }
           </nav>
         </div>
+        {/* le compte (R310 (7)) : avatar et nom, ou « Connexion via Discord » ; ni dans la version portable (pas de service) ni sur la page de maintenance */}
+        {!portable && !maintenance && <Compte />}
       </div>
     </header>
     <main class={couleurDeLaPage ? `page-coloree ${couleurDeLaPage}` : undefined}>

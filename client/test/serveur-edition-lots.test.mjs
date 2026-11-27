@@ -1,5 +1,5 @@
 // Le service des lots de changements (lot 6 du chantier de la base de dev, R274, R275 ; docs/serveur.md, « Lots de changements » ; serveur/edition-lots.mjs) :
-//   - une session DÉPOSE une proposition avec la clé de lecture : rien n'est écrit dans le contenu ; le propriétaire l'applique ou la refuse (mot de passe) ;
+//   - une session DÉPOSE une proposition avec la clé de lecture : rien n'est écrit dans le contenu ; un Créateur l'applique ou la refuse (session Discord) ;
 //   - l'essai à blanc se fait sur une COPIE de la base (la base vivante est inchangée, la copie supprimée), avec les contrôles du contenu de `db:check` ;
 //   - l'application écrit d'un bloc par le service d'édition, un lot du journal de la nature du lot, ses modifications « en attente » comme une saisie ;
 //   - une valeur changée entre-temps n'est pas écrite (le site prime) : listée, avec la valeur trouvée ;
@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { COOKIE, ENTETE_CLE, creerAcces, reglageApres } from '../serveur/acces.mjs';
+import { poserLAcces as poserLAccesCommun } from './aide-acces-d-essai.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { raisonDuGel } from '../serveur/edition.mjs';
@@ -57,15 +57,11 @@ const comptes = (db) => ({
   propositions: db.prepare('SELECT count(*) AS n FROM lot_de_changements').get().n,
 });
 
-test('déposer avec la clé de lecture : une proposition est enregistrée et essayée, rien n’est écrit dans le contenu ; appliquer demande le mot de passe (R275)', async () => {
-  const fichier = fichierTemporaire('acces.json', 'edition-lots');
-  const { reglage, cle } = reglageApres({ motDePasse: 'un mot de passe d’essai', portee: null });
-  writeFileSync(fichier, JSON.stringify(reglage));
-  const acces = creerAcces({ fichier, journal: () => {} });
-  const m = nouvelle({ acces });
-  const session = acces.connecter('un mot de passe d’essai', {});
-  const avecCle = { [ENTETE_CLE]: cle };
-  const avecMotDePasse = { cookie: `${COOKIE}=${session.jeton}` };
+test('déposer avec la clé de lecture : une proposition est enregistrée et essayée, rien n’est écrit dans le contenu ; appliquer demande une session Créateur (R275)', async () => {
+  const a = poserLAccesCommun({ prefixe: 'edition-lots' });
+  const m = nouvelle({ acces: a.acces });
+  const avecCle = a.avecCle;
+  const avecCreateur = a.createur;
   const [metier] = metiers(m.db, 1);
   const avant = comptes(m.db);
   const texte = texteDuTest('clé');
@@ -83,12 +79,12 @@ test('déposer avec la clé de lecture : une proposition est enregistrée et ess
   ok(await m.appel('GET', '/api/edition/lots/', undefined, avecCle));
   assert.equal(ok(await m.appel('GET', adresse(lot.id), undefined, avecCle)).id, lot.id);
   ok(await m.appel('POST', adresse(lot.id, 'essai/'), {}, avecCle));
-  assert.equal(refus(await m.appel('POST', adresse(lot.id, 'appliquer/'), {}, avecCle), 401).acces, 'mot_de_passe');
-  assert.equal(refus(await m.appel('POST', adresse(lot.id, 'refuser/'), {}, avecCle), 401).acces, 'mot_de_passe');
+  assert.equal(refus(await m.appel('POST', adresse(lot.id, 'appliquer/'), {}, avecCle), 403).acces, 'cle');
+  assert.equal(refus(await m.appel('POST', adresse(lot.id, 'refuser/'), {}, avecCle), 403).acces, 'cle');
   assert.equal(m.un('SELECT description FROM metier WHERE id = ?', metier.id).description, metier.description);
 
-  // le clic du propriétaire (mot de passe) écrit
-  const applique = ok(await m.appel('POST', adresse(lot.id, 'appliquer/'), {}, avecMotDePasse));
+  // le clic d’un Créateur écrit
+  const applique = ok(await m.appel('POST', adresse(lot.id, 'appliquer/'), {}, avecCreateur));
   assert.equal(applique.etat, 'applique');
   assert.equal(m.un('SELECT description FROM metier WHERE id = ?', metier.id).description, texte);
 });

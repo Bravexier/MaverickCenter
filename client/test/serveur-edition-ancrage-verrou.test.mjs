@@ -259,7 +259,7 @@ test('le mot de passe n’ouvre pas ce refus (verrous_ouverts sans effet)', asyn
   for (const apres of [{ libelle: nom('renommé') }, { url: '/races/' }, { cle: 'zephyrion-autre-cle' }]) {
     const p = await proposer(m, [modifier(m, m.ancre, apres)]);
     assert.throws(() => appliquer(m.db, p.id, { verrous_ouverts: TOUS_LES_VERROUS }), (e) => e instanceof ErreurEdition && e.statut === 409);
-    await assert.rejects(deposerDirect(m, [modifier(m, m.ancre, apres)], { verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe'), (e) => e instanceof ErreurEdition && e.statut === 409);
+    await assert.rejects(deposerDirect(m, [modifier(m, m.ancre, apres)], { verrous_ouverts: TOUS_LES_VERROUS }, 'createur'), (e) => e instanceof ErreurEdition && e.statut === 409);
   }
   assert.deepEqual(motCle(m, m.ancre), avant);
   m.db.close();
@@ -592,7 +592,7 @@ const renommer = (m, id) => modifier(m, id, { libelle: nom('écrit par le lot'),
 /** Le lot est refusé à la clé de dépôt comme au mot de passe, sans numéro de décision, et rien n'est écrit. */
 async function refuseSansNumero(m, operations, id) {
   const avant = motCle(m, id);
-  for (const [plus, par] of [[{}, 'cle_de_depot'], [{ verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe']]) {
+  for (const [plus, par] of [[{}, 'cle_de_depot'], [{ verrous_ouverts: TOUS_LES_VERROUS }, 'createur']]) {
     const e = await deposerDirect(m, operations, plus, par).then(() => assert.fail('refus attendu'), (x) => x);
     assert.ok(e instanceof ErreurEdition, String(e));
     assert.equal(e.statut, 409, e.message);
@@ -636,7 +636,7 @@ test('T8-detachement : un lot ne retire pas `monnaie_id`, mot de passe compris',
 test('T8-detachement : un lot ne supprime pas la monnaie d’un mot-clé (`ON DELETE SET NULL` le détacherait), mot de passe compris', async () => {
   const m = mondeAuxAncres();
   const { id, monnaie_id: monnaie } = m.monnaie;
-  const e = await deposerDirect(m, [retirerLaLigne(m, 'monnaie', monnaie), renommer(m, id)], { verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe').then(() => assert.fail('refus attendu'), (x) => x);
+  const e = await deposerDirect(m, [retirerLaLigne(m, 'monnaie', monnaie), renommer(m, id)], { verrous_ouverts: TOUS_LES_VERROUS }, 'createur').then(() => assert.fail('refus attendu'), (x) => x);
   assert.ok(e instanceof ErreurEdition, String(e));
   assert.equal(e.statut, 409, e.message);
   assert.deepEqual(decisionsCitees(e.message), [], e.message);
@@ -693,7 +693,7 @@ test('T8-detachement : annuler un ancien lot qui avait retiré `monnaie_id` la r
   const m = mondeAuxAncres();
   const { id, monnaie_id: monnaie } = m.monnaie;
   m.db.prepare('UPDATE mot_cle SET monnaie_id = NULL WHERE id = ?').run(id);
-  const fait = await deposerDirect(m, [modifier(m, id, { monnaie_id: monnaie })], { verrous_ouverts: TOUS_LES_VERROUS }, 'mot_de_passe');
+  const fait = await deposerDirect(m, [modifier(m, id, { monnaie_id: monnaie })], { verrous_ouverts: TOUS_LES_VERROUS }, 'createur');
   assert.equal(motCle(m, id).monnaie_id, monnaie);
   const { lot_id: lot } = lire(m.db, fait.id);
   m.db.prepare("UPDATE modification SET avant = apres, apres = avant WHERE lot_id = ? AND table_nom = 'mot_cle'").run(lot);

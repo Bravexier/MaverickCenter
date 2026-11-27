@@ -2,6 +2,7 @@
 // production : lot 5 du chantier de la base de dev) : ces noms ne doivent apparaître dans AUCUN octet d'un fichier qui sort du service.
 import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 export const SENTINELLES = Object.freeze({
   pretire: 'ZqxPretireSentinelle',
@@ -21,7 +22,7 @@ export function poserDesFiches(db) {
   const race = db.prepare('SELECT id FROM race ORDER BY id LIMIT 1').get().id;
   const metier = db.prepare('SELECT id FROM metier ORDER BY id LIMIT 1').get().id;
   const instant = '2026-10-10T00:00:00Z';
-  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(SENTINELLES.idCompte, SENTINELLES.compte, instant);
+  poserUnCompte(db, SENTINELLES.idCompte, SENTINELLES.compte, instant);
   db.prepare("INSERT INTO groupe (id, nom, nature, cree_le) VALUES (?, ?, 'campagne', ?)").run(SENTINELLES.idGroupe, SENTINELLES.groupe, instant);
   const pretire = enregistrerFiche(db, { ...ficheVide(SENTINELLES.pretire), race_id: race, metier_id: metier }).personnage.id;
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,

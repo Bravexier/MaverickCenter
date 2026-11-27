@@ -15,6 +15,7 @@ import { verifierLeContenu } from '../serveur/fichier-de-contenu.mjs';
 import { TABLES_DE_CONTENU, TABLES_PROPRES_AU_SITE } from '../src/lib/tables-de-la-base.mjs';
 import { copieDEssai, empreinteDuFichier, listeDuDossier } from './aide-contenu-fourni.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 const SCHEMA = join(CLIENT, '..', 'data', 'schema.sql');
@@ -55,7 +56,7 @@ test('un extrait du site est accepté : sa structure est celle du schéma, ses t
 
 test('une ligne dans une table de compte ou de fiche refuse le fichier : le message nomme la table, jamais la valeur', (t) => {
   const fichier = copie(t, (db) => {
-    db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run('zqx-compte', SENTINELLE, '2026-10-10T00:00:00Z');
+    poserUnCompte(db, 'zqx-compte', SENTINELLE, '2026-10-10T00:00:00Z');
   });
   const r = verifier(fichier);
   assert.equal(r.valide, false);
@@ -209,7 +210,7 @@ test('le script refuse un fichier qui porte des données de compte : code 1, mes
   const dossier = dossierTemporaire('fabrication-script', { t });
   const tmp = dossierTemporaire('fabrication-script-tmp', { t });
   const fichier = copieDEssai(dossier, (db) => {
-    db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run('zqx-compte', SENTINELLE, '2026-10-10T00:00:00Z');
+    poserUnCompte(db, 'zqx-compte', SENTINELLE, '2026-10-10T00:00:00Z');
   });
   const avant = empreinteDuFichier(fichier);
   const mesure = join(dossier, 'mesure.json');

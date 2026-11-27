@@ -1,7 +1,7 @@
 // L'ancrage des mots-clés par un lot de changements (décision R309, docs/chantier-ancrage-mots-cles.md, §5 à §7) : créer le mot-clé d'un élément (page, sort,
 // type de sort) avec son type et son ancre, poser une ancre, aligner un mot-clé sur son élément, recalculer les clés une fois en fin de lot. Le nom et
 // l'adresse d'un mot-clé ancré viennent de son élément : aucune valeur reçue ne les remplace.
-// Aucun refus d'ici ne cite un numéro de décision : un refus qui en cite un devient un verrou que le mot de passe ouvre (edition-lots.mjs#ecrireLesOperations).
+// Aucun refus d'ici ne cite un numéro de décision : un refus qui en cite un devient un verrou que une session Créateur ouvre (edition-lots.mjs#ecrireLesOperations).
 // Ces opérations n'existent que dans un lot (edition.mjs#OPERATIONS_DU_LOT) : le rejeu relit leurs lignes du journal (`ctx.w`) sans repasser par ces refus (R219 (6)).
 // Sans import de serveur/edition.mjs : ses outils sont donnés par outilsDeLAncrage (patron de edition-mots-cles.mjs#outilsDesMotsCles).
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
@@ -18,7 +18,7 @@ const NOMS = Object.freeze({ page: 'Page', sort: 'Sort', type_sort: 'Type de sor
 /** La mention d'une décision dans un refus de la règle des clés (« (décision R232 (9)) »). */
 const MENTION_D_UNE_DECISION = / ?\(décisions? R[0-9]+(?: \([0-9]+\))?(?:, R[0-9]+(?: \([0-9]+\))?)*\)/g;
 
-/** Ce qu'aucun lot ne fait à un mot-clé ancré, mot de passe compris : écrire son nom, son adresse ou sa clé, le supprimer, le fondre dans un autre. */
+/** Ce qu'aucun lot ne fait à un mot-clé ancré, session Créateur comprise : écrire son nom, son adresse ou sa clé, le supprimer, le fondre dans un autre. */
 const FERME_AUX_LOTS = new Set(['libelle', 'url', 'cle', 'suppression', 'fusion']);
 const CITE_UN_NUMERO = /\bR[0-9]+\b/;
 
@@ -33,7 +33,7 @@ export const refusDesSynonymesTransmis = (source) => `${motCleDansUnRefus(source
 
 /**
  * Le verrou s'applique-t-il à cette écriture ? Une route du site et tout lot, oui ; l'annulation d'un lot et le rejeu (`gel` faux : R219 (6)), non. Sur un lot, `gel` faux
- * ne le lève pas : c'est ce qu'ouvre le mot de passe, et il n'ouvre pas ce verrou.
+ * ne le lève pas : c'est ce qu’ouvre une session Créateur, et elle n’ouvre pas ce verrou.
  */
 export const sousLeVerrou = (ctx) => !ctx.annulation && (ctx.voie === 'lot' || ctx.gel !== false);
 
@@ -58,7 +58,7 @@ const LIENS_DE_LA_VOIE_GENERIQUE = Object.freeze({ magie: 'mot_cle_id', type_deg
 const NOM_DE_L_ELEMENT = Object.freeze({ magie: 'Cette magie', type_degats: 'Ce type de dégâts', type_sort: 'Ce type de sort' });
 
 /**
- * Le refus d'un lot qui détacherait un mot-clé de son élément pour pouvoir écrire son nom ensuite, ou null (Ruling T8-detachement). Fermé sous le verrou, mot de passe compris, sans
+ * Le refus d'un lot qui détacherait un mot-clé de son élément pour pouvoir écrire son nom ensuite, ou null (Ruling T8-detachement). Fermé sous le verrou, session Créateur comprise, sans
  * numéro de décision : retirer ou remplacer une valeur non nulle du lien, supprimer la ligne qui le porte, supprimer une monnaie citée par un mot-clé (`ON DELETE SET NULL` viderait
  * son `monnaie_id`). Poser un lien sur une valeur nulle et créer une ligne ancrée restent permis. `valeurs` : les colonnes écrites ; null : la ligne `avant` est supprimée.
  */

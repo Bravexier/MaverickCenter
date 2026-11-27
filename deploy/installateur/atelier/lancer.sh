@@ -162,7 +162,7 @@ ecrire_le_rapport() { # issue [motif]
 # ---------------------------------------------------------------- la sonde des temps de réponse (pendant chaque fabrication)
 # Des requêtes en lecture seule, sur 127.0.0.1, aux ports des deux instances (prod et site de dev), pour mesurer ce que la fabrication fait à la production : une référence
 # d'environ 30 s avant, puis pendant, puis une phase après. Deux cibles publiques, valables sur les deux instances : une page statique (« / », nginx) et une route de lecture de l'API
-# (« /api/personnages/ », la liste des prétirés, qui ne fait que lire la base). Au plus une requête par seconde et par instance, 5 s de délai. Garde-fou 20 : root ne garde que le code HTTP
+# (« /api/personnages/ », la liste des prétirés, qui ne fait que lire la base ; sur le site de dev, fermé par la connexion Discord (R310), « /api/etat/ », l'état du service, resté ouvert). Au plus une requête par seconde et par instance, 5 s de délai. Garde-fou 20 : root ne garde que le code HTTP
 # et le temps (`-o /dev/null`, `-w`) ; il n'interprète ni ne stocke jamais le corps d'une réponse. Trois mauvaises réponses de suite de la production arrêtent la sonde, sans insister.
 # Le port se lit dans le .env de chaque instance (écrit par l'installateur) : refusé s'il est dans un dossier monté en écriture dans un conteneur (le service pourrait l'avoir changé) ;
 # la sonde note alors « sonde impossible » pour cette instance.
@@ -227,8 +227,8 @@ sonde_mesurer() { # phase étiquette
   port=$(cat "$SONDE_DIR/port.$2")
   tour_de_sonde=$(cat "$SONDE_DIR/tour.$2" 2>/dev/null || echo 0)
   echo $((tour_de_sonde + 1)) > "$SONDE_DIR/tour.$2"
-  chemin=$(printf '%s\n' $SONDE_CIBLES | sed -n "$((tour_de_sonde % 2 + 1))p")
-  if [ "$2" = prod ]; then acces=$SONDE_ACCES_PROD; else acces=$SONDE_ACCES_DEV; fi
+  if [ "$2" = prod ]; then cibles=$SONDE_CIBLES; acces=$SONDE_ACCES_PROD; else cibles=$SONDE_CIBLES_DEV; acces=$SONDE_ACCES_DEV; fi
+  chemin=$(printf '%s\n' $cibles | sed -n "$((tour_de_sonde % 2 + 1))p")
   config=''
   [ -z "$acces" ] || config="header = \"Authorization: Basic $acces\""
   reponse=$(printf '%s\n' "$config" | curl -s -A "$SONDE_AGENT" -o /dev/null -w '%{http_code} %{time_total}' --max-time "$SONDE_DELAI_S" --connect-timeout 2 -K - "http://127.0.0.1:$port$chemin" 2>/dev/null || true)
@@ -265,7 +265,7 @@ sonde_json() {
   arret='null'
   if [ -f "$SONDE_DIR/arret-de" ]; then arret="{ \"instance\": $(json_texte "$(cat "$SONDE_DIR/arret-de")"), \"motif\": \"reponses_mauvaises\" }"; fi
   if [ "$SONDE_MOTIF" = sonde_impossible ]; then disponible=false; motif_general='"sonde_impossible"'; else disponible=true; motif_general=null; fi
-  printf '{ "format": "maverick-sonde/1", "disponible": %s, "motif": %s, "cibles": ["/", "/api/personnages/"], "delai_s": %s, "arretee": %s, "instances": {' "$disponible" "$motif_general" "$SONDE_DELAI_S" "$arret"
+  printf '{ "format": "maverick-sonde/1", "disponible": %s, "motif": %s, "cibles": ["/", "/api/personnages/"], "cibles_dev": ["/", "/api/etat/"], "delai_s": %s, "arretee": %s, "instances": {' "$disponible" "$motif_general" "$SONDE_DELAI_S" "$arret"
   virgule=''
   for etiquette in prod dev; do
     printf '%s "%s": ' "$virgule" "$etiquette"; virgule=','

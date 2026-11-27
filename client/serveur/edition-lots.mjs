@@ -1,6 +1,6 @@
 // Les lots de changements (lot 6 du chantier « la base du site de dev devient la source de vérité », R274, R275 ; docs/serveur.md, « Lots de changements » ;
 // format : src/lib/lot-de-changements.mjs). Une session de Claude DÉPOSE une proposition avec la clé de lecture (rien n'est écrit dans le contenu : elle est
-// essayée à blanc sur une COPIE de la base) ; le propriétaire l'APPLIQUE ou la REFUSE d'un clic (mot de passe), avec l'aperçu avant et après (R275, question 4 a).
+// essayée à blanc sur une COPIE de la base) ; le propriétaire l'APPLIQUE ou la REFUSE d'un clic (session Créateur), avec l'aperçu avant et après (R275, question 4 a).
 //
 //   déposer      contrôle du format (controlerLeLot : le refus dit l'opération à corriger), enregistre l'état « propose », lance l'essai à blanc ;
 //   essayer      une copie de la base (VACUUM INTO, dans un fil à part : le service ne s'arrête pas), le lot appliqué par LE MÊME code que l'application, puis les
@@ -9,7 +9,7 @@
 //                au clic (une valeur changée entre-temps n'est pas écrite : le site prime, elle est listée avec la valeur trouvée), les numéros sont donnés, les
 //                contrôles du contenu rejoués, puis `lot_de_changements` passe à « applique » ;
 //   refuser      l'état « refuse » : la proposition reste, rien n'est écrit ;
-//   deposerEtAppliquer  R291 (qui remplace R275 (4)) : une fois la clé de dépôt posée (serveur/acces.mjs), le dépôt par cette clé ou le mot de passe est essayé à
+//   deposerEtAppliquer  R291 (qui remplace R275 (4)) : une fois la clé de dépôt posée (serveur/acces.mjs), le dépôt par cette clé ou une session Créateur est essayé à
 //                blanc puis APPLIQUÉ aussitôt, par le même code que le clic ; refusé aux contrôles, le lot est enregistré « refuse » avec ses motifs et rien n'entre ;
 //   annuler      un lot appliqué : `avant` est remis là où la valeur vaut encore ce que le lot a écrit (le site prime), d'un bloc, par le même code que l'application ; son
 //                aperçu se calcule sur une copie ; une seule LIGNE du lot (une ligne de table de son effet net) s'annule de même (R291), si aucune autre ligne du lot
@@ -111,7 +111,7 @@ function presenter(ligne, { resume = false } = {}) {
     verdict: essai?.verdict ?? null,
   };
   const bilan = jsonOuNull(ligne.bilan);
-  // R291 : comment le lot est entré (dépôt appliqué aussitôt par la clé de dépôt ou le mot de passe, ou clic du propriétaire) et combien de ses lignes sont annulées
+  // R291 : comment le lot est entré (dépôt appliqué aussitôt par la clé de dépôt ou une session Créateur, ou clic du propriétaire) et combien de ses lignes sont annulées
   base.application = bilan?.application ?? null;
   base.refus = essai?.refus_du_depot ?? null; // un dépôt appliqué aussitôt que l'essai ou l'application a refusé : ses motifs (jamais dans `bilan`, vide pour un lot refusé)
   base.lignes_annulees = Object.keys(bilan?.lignes_annulees ?? {}).length;
@@ -1501,7 +1501,7 @@ export async function recalculerTout(base, { enArrierePlan: dansUnFil = true, do
   if (calcul.ecarts.length > OPERATIONS_MAX) {
     throw new ErreurEdition(409, `Le recalcul écarte ${calcul.ecarts.length} pages, plus que ce qu’un lot porte (${OPERATIONS_MAX}) : refaites-le après en avoir appliqué une partie.`, { recalcul });
   }
-  // `par` (R291) : la clé de dépôt ou le mot de passe, la clé de dépôt posée : le lot de nature « code » s'applique aussitôt, comme tout dépôt
+  // `par` (R291) : la clé de dépôt ou une session Créateur, la clé de dépôt posée : le lot de nature « code » s'applique aussitôt, comme tout dépôt
   try {
     const lot = await (par ? deposerEtAppliquer(base, lotDuRecalcul(calcul), { par, enArrierePlan: dansUnFil, dossier: copie.dossier, ...options })
       : deposer(base, lotDuRecalcul(calcul), { enArrierePlan: dansUnFil, dossier: copie.dossier, ...options }));
@@ -1553,16 +1553,16 @@ export function motifsDeLEssai(essai) {
 }
 
 /**
- * Dépose un lot et l'APPLIQUE aussitôt (R291, qui remplace R275 (4) : « Direct »). Réservé à la clé de dépôt et au mot de passe, une fois la clé de dépôt posée
+ * Dépose un lot et l'APPLIQUE aussitôt (R291, qui remplace R275 (4) : « Direct »). Réservé à la clé de dépôt et à une session Créateur, une fois la clé de dépôt posée
  * (serveur/acces.mjs#depot) ; c'est le même chemin qu'un clic : `deposer` (contrôle du format : 400 motivé, rien n'est enregistré), essai à blanc sur une copie, puis
  * `appliquer` dans une seule transaction, les contrôles du contenu rejoués. Si l'essai ou l'application refuse, RIEN n'entre : le lot est enregistré « refuse » avec ses
  * motifs (`essai.refus_du_depot`, lus dans `refus` : la base veut un bilan vide pour un lot refusé) et l'erreur 409 les dit, avec le lot. Limite : un arrêt du service ou une erreur inattendue entre le dépôt et la décision laisse le lot « propose » (le propriétaire le décide alors par le clic).
- * Verrous : réservés au mot de passe. `corps.verrous_ouverts` (liste de « R… », la règle du clic : `verrousDuClic`) ouvre ce que le gel lève (R218, R219, R232 (2)),
+ * Verrous : réservés à une session Créateur. `corps.verrous_ouverts` (liste de « R… », la règle du clic : `verrousDuClic`) ouvre ce que le gel lève (R218, R219, R232 (2)),
  * enregistré dans le lot (`verrous_ouverts`) ; avec la clé de dépôt il est refusé (403, rien n'enregistré) et un lot que l'essai rend « verrous » est enregistré
  * « refuse » avec les R… à ouvrir ; un refus de règle (R105, R181…) reste refusé.
  * @param {() => import('node:sqlite').DatabaseSync | null} base
  * @param {unknown} corps le lot, avec en plus `verrous_ouverts` facultatif (retiré avant le contrôle du format : il n'est pas dans le lot déposé)
- * @param {{ par: 'cle_de_depot' | 'mot_de_passe', instant?: string, id?: string, controle?: object, enArrierePlan?: boolean, dossier?: string }} options
+ * @param {{ par: 'cle_de_depot' | 'createur', instant?: string, id?: string, controle?: object, enArrierePlan?: boolean, dossier?: string }} options
  * @returns {Promise<object>} le lot appliqué (état « applique », `bilan.application`)
  */
 export async function deposerEtAppliquer(base, corps, { par = 'cle_de_depot', ...options } = {}) {
@@ -1572,7 +1572,7 @@ export async function deposerEtAppliquer(base, corps, { par = 'cle_de_depot', ..
     const { verrous_ouverts: demandes, ...reste } = corps;
     // ouvrir un verrou de décision est le geste du propriétaire : la clé de dépôt ne le fait pas (rien n'est enregistré)
     if (par === 'cle_de_depot') {
-      throw new ErreurEdition(403, 'Dépôt refusé, rien n’est écrit : ouvrir un verrou de décision (R218, R219, R232 (2)) demande le mot de passe, pas la clé de dépôt (verrous_ouverts).', { acces: 'mot_de_passe' });
+      throw new ErreurEdition(403, 'Dépôt refusé, rien n’est écrit : ouvrir un verrou de décision (R218, R219, R232 (2)) demande une session Créateur, pas la clé de dépôt (verrous_ouverts).', { acces: 'niveau' });
     }
     verrousDemandes = [...verrousDuClic(demandes)];
     lot = reste;
@@ -1592,7 +1592,7 @@ export async function deposerEtAppliquer(base, corps, { par = 'cle_de_depot', ..
   if (!essai || essai.verdict === 'en_echec' || essai.verdict === 'a_corriger' || essai.verdict === 'rien_a_ecrire') return refuserLeDepot(motifsDeLEssai(essai), { verdict: essai?.verdict ?? null });
   const manquants = (essai.verrous_a_ouvrir ?? []).filter((d) => !verrousDemandes.includes(d));
   if (manquants.length) {
-    const qui = par === 'cle_de_depot' ? 'le mot de passe du propriétaire est nécessaire pour l’ouvrir (la clé de dépôt ne le fait pas)' : 'le dépôt doit l’ouvrir (verrous_ouverts)';
+    const qui = par === 'cle_de_depot' ? 'une session Créateur est nécessaire pour l’ouvrir (la clé de dépôt ne le fait pas)' : 'le dépôt doit l’ouvrir (verrous_ouverts)';
     return refuserLeDepot([`ce lot touche ce que ${manquants.join(', ')} verrouille${manquants.length > 1 ? 'nt' : ''} : ${qui} ; sans cela, rien n’est écrit`], { verdict: essai.verdict, verrous: manquants });
   }
   try {
@@ -1649,13 +1649,13 @@ function verrousDuClic(valeur) {
 }
 
 /**
- * Applique la proposition d'un clic du propriétaire (mot de passe) : d'un seul bloc, par le service d'édition. Refusée (409, rien n'est écrit) si l'essai
+ * Applique la proposition d'un clic du propriétaire (session Créateur) : d'un seul bloc, par le service d'édition. Refusée (409, rien n'est écrit) si l'essai
  * a des opérations refusées, si les contrôles du contenu échouent, si un verrou de décision n'est pas ouvert dans `corps.verrous_ouverts`, ou si rien ne
  * reste à écrire. Une valeur changée depuis l'essai n'est pas écrite : elle est listée dans le bilan avec la valeur trouvée (le site prime).
  * @param {import('node:sqlite').DatabaseSync} db la base vivante
  * @param {string} id
  * @param {{ verrous_ouverts?: string[] }} [corps]
- * @param {{ par?: string, directe?: boolean }} [origine] ce qui a ouvert le droit d'appliquer (`cle_de_depot`, `mot_de_passe`) et si le lot s'applique à son dépôt (R291) :
+ * @param {{ par?: string, directe?: boolean }} [origine] ce qui a ouvert le droit d'appliquer (`cle_de_depot`, `createur`) et si le lot s'applique à son dépôt (R291) :
  *   gardé dans `bilan.application`, pour savoir comment le lot est entré
  */
 export function appliquer(db, id, corps = {}, origine = {}) {
@@ -1694,7 +1694,7 @@ export function appliquer(db, id, corps = {}, origine = {}) {
   return presenter(ligneOuErreur(db, id));
 }
 
-/** Refuse la proposition (mot de passe) : l'état « refuse », rien d'écrit dans le contenu. Elle reste lisible. */
+/** Refuse la proposition (session Créateur) : l'état « refuse », rien d'écrit dans le contenu. Elle reste lisible. */
 export function refuser(db, id) {
   exigerLesTables(db);
   const ligne = ligneOuErreur(db, id);
@@ -1722,7 +1722,7 @@ export function previsualiserLAnnulation(base, id, { enArrierePlan: dansUnFil = 
 }
 
 /**
- * Annule le lot appliqué `id` d'un clic du propriétaire (mot de passe) : refait la comparaison et, d'un seul bloc, sous le même verrou que l'édition, remet
+ * Annule le lot appliqué `id` d'un clic du propriétaire (session Créateur) : refait la comparaison et, d'un seul bloc, sous le même verrou que l'édition, remet
  * `avant` là où la valeur vaut encore ce que le lot a écrit (le site prime : une valeur changée depuis est gardée, listée avec la valeur trouvée). Une ligne
  * créée par le lot n'est supprimée que si elle vaut encore, en entier, ce que le lot a inséré ; une ligne retirée n'est réinsérée que si elle est encore
  * absente. Écrit par le service d'édition dès qu'il connaît la colonne, rejoue les contrôles du contenu, note un lot du journal « Annulation de … » de la
@@ -1756,7 +1756,7 @@ export function annuler(db, id, corps = {}) {
 }
 
 /**
- * Annule UNE ligne du lot appliqué `id` (R291 : « annuler cette modification », mot de passe) : le même code que le lot entier (`annulerLeLot`, filtré sur cette
+ * Annule UNE ligne du lot appliqué `id` (R291 : « annuler cette modification », session Créateur) : le même code que le lot entier (`annulerLeLot`, filtré sur cette
  * ligne), sous le même `BEGIN IMMEDIATE`, les contrôles du contenu rejoués. Une valeur n'est remise que si elle vaut encore ce que le lot a écrit ; une ligne insérée
  * n'est supprimée qu'intacte ; une ligne retirée n'est réinsérée que si elle est absente ; un numéro n'est jamais rendu. Une ligne que tient une autre ligne du lot
  * encore en place est refusée avec son motif. Un lot du journal « Annulation d’une ligne de … » de la même nature et du même numéro de décision ; l'état de la

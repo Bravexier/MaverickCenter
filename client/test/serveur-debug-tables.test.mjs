@@ -32,6 +32,7 @@ import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
@@ -128,7 +129,7 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   // une fiche avec portrait (écrite par le service, dans la copie de la base qu'est la base vivante d'essai) et un compte
   const fiche = ok(appel('POST', '/api/personnages/', { corps: { nom: `Fiche du test debug-tables ${process.pid}`, portrait: IMAGES.png } }), 201).personnage.id;
   const compte = `compte-debug-tables-${process.pid}`;
-  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte du test', '2026-10-15T12:00:00Z');
+  poserUnCompte(db, compte, 'Compte du test', '2026-10-15T12:00:00Z');
   try {
     for (const nom of SECTION_13) {
       const r = appel('GET', `/api/debug/tables/${nom}/`, { recherche: `?limite=${LIMITE_MAX}` });
@@ -600,7 +601,7 @@ test('contenu d’une table : ETag = 16 caractères hex d’un sha256 du JSON du
   assert.equal(r.entetes['Cache-Control'], 'no-cache');
   // le corps ne porte rien qui change sans la table (ni heure, ni version de la base) : le même ETag plus tard, après une écriture ailleurs
   const compte = `compte-etag-${process.pid}`;
-  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte ETag', '2026-10-15T12:00:00Z');
+  poserUnCompte(db, compte, 'Compte ETag', '2026-10-15T12:00:00Z');
   try {
     assert.equal(lire().entetes.ETag, etag, 'une autre table écrite');
   } finally {
@@ -645,7 +646,7 @@ test('contenu d’une table : ETag = 16 caractères hex d’un sha256 du JSON du
   }
   // une ligne ajoutée, même hors de la page : le total change, donc la page aussi (« Charger plus » le suit)
   const vide = appel('GET', '/api/debug/tables/utilisateur/');
-  db.prepare('INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES (?, ?, ?)').run(compte, 'Compte ETag', '2026-10-15T12:00:00Z');
+  poserUnCompte(db, compte, 'Compte ETag', '2026-10-15T12:00:00Z');
   try {
     const plein = appel('GET', '/api/debug/tables/utilisateur/', { entetes: { 'if-none-match': vide.entetes.ETag } });
     assert.deepEqual([plein.statut, plein.corps.total], [200, vide.corps.total + 1]);

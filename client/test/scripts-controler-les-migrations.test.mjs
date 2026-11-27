@@ -412,7 +412,7 @@ test('base remplie : les migrations livrées depuis la 0129 (qui crée migration
 });
 
 test('base remplie : une migration qui rompt une clé étrangère est refusée, et la base n’a pas bougé', (t) => {
-  const r = essai(t, reellesAvec("DELETE FROM race WHERE id = (SELECT race_id FROM personnage WHERE id = 'essai-structure-joueur');"));
+  const r = essai(t, reellesAvec("DELETE FROM race WHERE id = (SELECT race_id FROM personnage WHERE id = 'essai-structure-pretire');"));
   assert.equal(r.verdict, 'refuse');
   assert.equal(r.refus.etape, 'cles_etrangeres');
   assert.ok(r.refus.details.some((d) => d.startsWith('personnage → race')), 'la table fautive est dite');
@@ -455,14 +455,21 @@ test('base remplie : rien à appliquer sur une base à jour', (t) => {
 });
 
 test('la base remplie porte de quoi perdre : des lignes dans chaque table que le contrôle protège', () => {
-  const db = new DatabaseSync(baseRemplie({ anterieure: true }).chemin, { readOnly: true });
+  // le compte (et la fiche de joueur, inscrite au groupe) n'est posé qu'à partir de la version de la migration 0132 (connexion Discord, R310) : la
+  // base d'avant (version NUMERO - 1) n'en a pas, la base courante si
+  const anterieure = new DatabaseSync(baseRemplie({ anterieure: true }).chemin, { readOnly: true });
+  const courante = new DatabaseSync(baseRemplie().chemin, { readOnly: true });
   try {
-    for (const table of ['personnage', 'groupe_membre', 'utilisateur', 'modification_lot', 'modification', 'historique_modification', 'lot_de_changements', 'numero_donne']) {
+    const compte = ['groupe_membre', 'utilisateur'];
+    for (const table of ['personnage', ...compte, 'modification_lot', 'modification', 'historique_modification', 'lot_de_changements', 'numero_donne']) {
       assert.ok(TABLES_A_NE_PAS_PERDRE.includes(table), `${table} est protégée`);
+      const db = compte.includes(table) ? courante : anterieure;
       assert.ok(db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n >= 1, `${table} est remplie`);
     }
+    for (const table of compte) assert.equal(anterieure.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, `${table} : aucun compte avant 0132`);
   } finally {
-    db.close();
+    anterieure.close();
+    courante.close();
   }
 });
 

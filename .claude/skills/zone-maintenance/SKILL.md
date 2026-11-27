@@ -24,7 +24,7 @@ La page « Mise à jour » et le workflow qui lancent la maintenance : skill `zo
 - La minuterie du site de dev suit le run et republie l'annonce : personne n'est sur ses pages, qui renvoient vers `/maintenance/`.
 - Le script de chaque page (`Base.astro`, demande `/api/maintenance/`) est en ligne (aucun module partagé), absent de la version portable et de `/maintenance/`. `lib/maintenance-retour.mjs` ne ramène qu'à une page de ce site.
 - Les feuilles de `/maintenance/` n'écrivent aucune couleur (`test/palette-css.test.mjs`).
-- « Lever la maintenance » (`POST /api/maintenance/lever/`) demande le mot de passe (R275) ; `GET /api/maintenance/` reste ouvert. Le 401 d'accès est géré par `scripts/acces.mjs` : rien à faire dans le script de page.
+- « Lever la maintenance » (`POST /api/maintenance/lever/`) demande une session Créateur (R310) ; `GET /api/maintenance/` reste ouvert. Le 401 d'accès est géré par `scripts/acces.mjs` : rien à faire dans le script de page.
 
 ## Tests
 - `serveur-maintenance` ; `test/site-html.test.mjs` exécute le script de maintenance de chaque page dans un faux navigateur et vérifie que `/maintenance/` n'a ni `style=` ni feuille de palette.

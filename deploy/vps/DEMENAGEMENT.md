@@ -29,7 +29,7 @@ procédure n'efface une base : un script qui hésite refuse, il ne répare pas.
 | --- | --- | --- |
 | `db/` des deux instances (copie cohérente, sans `essai-de-structure/`), dont `db/source` | `site/`, `docker-compose.yml`, `nginx.conf`, `sauvegarde/`, `acces/`, `bascule.sh` (les installateurs) | Mot de passe SSH : aucun (clé) |
 | `.env`, `.github-token`, `mise-a-jour.env`, `mise-a-jour.log`, `installateur-courant/` de chaque instance | `.htpasswd` des instances et `/etc/caddy/maverick.env` : `instances.sh` refait la paire (ils ne servent qu'entre Caddy et nginx, personne ne les connaît) | Le DNS ; les clés SSH |
-| `secrets/` du site de dev (`acces.json` : mot de passe, clé de lecture, clé de dépôt ; `github-actions-token`) | Unités systemd (volume, sauvegardes), `Caddyfile`, `robots.txt` | Le crontab de root (2 lignes) |
+| `secrets/` du site de dev (`acces.json` : clé de lecture, clé de dépôt ; `discord.json` : application Discord, rôles, secret des sessions ; `github-actions-token`) et de la production (`discord.json`) | Unités systemd (volume, sauvegardes), `Caddyfile`, `robots.txt` | Le crontab de root (2 lignes) |
 | `metriques/` (sans `volume-hote.json`) | Docker, Caddy, restic (paquets) | |
 | `/etc/maverick-sauvegardes/` (accès au stockage, **phrase de chiffrement**, réglages) | | |
 | les certificats et la clé de compte de Caddy (`/var/lib/caddy/.local/share/caddy`, sans `locks/`) | | |
@@ -457,7 +457,7 @@ sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --essai
 
 Attendu : le stockage « joignable, clé acceptée, écriture possible » ; les trois minuteurs posés (`systemctl list-timers 'maverick-sauvegarde-*'`) ; un essai de restauration réussi, sans qu'on te demande de phrase ni d'accès (ils sont venus avec `/etc/maverick-sauvegardes/`). **Si une question est posée : arrête-toi, colle l'écran.** Tu peux aussi laisser le minuteur du soir faire la première sauvegarde et regarder la page Debug le lendemain.
 
-Contrôles de fonctionnement : ouvrir les deux sites, se connecter au site de dev avec son mot de passe, enregistrer une fiche de test sur le site de dev (puis la supprimer), regarder la page Debug (alertes, dernière sauvegarde). Pour les sessions de Claude : la clé de lecture n'a pas changé (elle est dans `secrets/acces.json`, transféré), et le domaine non plus.
+Contrôles de fonctionnement : ouvrir les deux sites, se connecter au site de dev par Discord (niveau Créateur), enregistrer une fiche de test sur le site de dev (puis la supprimer), regarder la page Debug (alertes, dernière sauvegarde). Pour les sessions de Claude : la clé de lecture n'a pas changé (elle est dans `secrets/acces.json`, transféré), et le domaine non plus.
 
 **Retour arrière (étape 11) :** `sudo touch /srv/maverick-center*/GELER`, retirer les deux lignes du crontab, `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --retirer` ; puis, si besoin, revenir comme à l'étape 10 (DNS), après avoir rapatrié les écritures (« Retour arrière complet »).
 

@@ -1,20 +1,22 @@
-// Classement des routes du service pour l'accès au site de dev (client/serveur/acces-routes.mjs, api.mjs ; docs/serveur.md, « Accès au site de dev » ; R275,
-// question 2, option b) : chaque route d'api.mjs est classée (ouverte, lecture avec clé, écriture avec mot de passe) — une route nouvelle non classée fait
-// échouer ce test —, la lecture reste libre pour les pages, aucune route ouverte ne montre une fiche de joueur, un compte ou un groupe, et sans réglage
-// tout se comporte comme avant. Le service HTTP réel pose le cookie de session et ne note rien de secret.
+// Classement des routes du service pour l'accès au site de dev (client/serveur/acces-routes.mjs, api.mjs ; docs/serveur.md, « Accès au site de dev » ; R275, R291, R310) :
+// chaque route d'api.mjs est classée (ouverte, lecture, proposition, écriture) — une route nouvelle non classée fait échouer ce test —, le site de dev est FERMÉ (seules la
+// connexion, l'état du service, la maintenance et le lot figé sont ouverts), aucune route ouverte ne montre une fiche de joueur, un compte ou un groupe, et sans porte (tests,
+// production) tout se comporte comme avant. Le service HTTP réel garde les clés et les sessions.
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { ENTETE_CLE, COOKIE, creerAcces, reglageApres } from '../serveur/acces.mjs';
-import { CLASSES, PORTEES, ROUTES_CLASSEES, classer, cheminSansFin } from '../serveur/acces-routes.mjs';
+import { ENTETE_CLE, creerAcces } from '../serveur/acces.mjs';
+import { CLASSES, ROUTES_CLASSEES, classer, cheminSansFin } from '../serveur/acces-routes.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { COOKIE_SESSION, creerJetonDeSession, reglageApres as reglageDiscord } from '../serveur/discord.mjs';
 import { demarrerService } from '../serveur/service.mjs';
+import { poserLAcces, reglageDiscordDEssai, cookieDeSession } from './aide-acces-d-essai.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
-const MOT = 'un mot de passe d’essai';
 const JSON_ = { 'content-type': 'application/json' };
 const UUID = '00000000-0000-4000-8000-000000000000';
 const SOURCE_API = readFileSync(new URL('../serveur/api.mjs', import.meta.url), 'utf8');
@@ -28,7 +30,7 @@ function routesDeLEntete() {
   return [...lues, ...v1.map((c) => ['GET', c]), ...['POST', 'PATCH', 'PUT', 'DELETE'].flatMap((m) => v1.slice(1).map((c) => [m, c]))];
 }
 
-test('chaque route de l’en-tête d’api.mjs est classée ; une route nouvelle non classée fait échouer ce test (fermée par défaut : mot de passe)', () => {
+test('chaque route de l’en-tête d’api.mjs est classée ; une route nouvelle non classée fait échouer ce test (fermée par défaut : session Créateur)', () => {
   const routes = routesDeLEntete();
   assert.ok(routes.length >= 50, `${routes.length} routes lues`);
   for (const [m, c] of routes) {
@@ -36,8 +38,11 @@ test('chaque route de l’en-tête d’api.mjs est classée ; une route nouvelle
     assert.ok(r.connue, `${m} ${c} : non classée (serveur/acces-routes.mjs)`);
     assert.ok(CLASSES.includes(r.classe), `${m} ${c}`);
   }
+  // les routes de la connexion par Discord (R310) sont dans l'en-tête, donc classées
+  for (const c of ['/api/connexion/discord/', '/api/connexion/discord/retour/', '/api/moi/', '/api/deconnexion/']) assert.ok(routes.some(([, x]) => x === c), `${c} absente de l’en-tête d’api.mjs`);
   // ce que la table ne nomme pas est fermé, jamais ouvert
-  for (const [m, c] of [['GET', '/api/nouvelle-route/'], ['POST', '/api/etat/'], ['GET', '/api/edition/inconnue/'], ['GET', '/api/debug/tables/a/b/'], ['PUT', '/api/etat/'], ['HEAD', '/api/etat/']]) {
+  for (const [m, c] of [['GET', '/api/nouvelle-route/'], ['POST', '/api/etat/'], ['GET', '/api/edition/inconnue/'], ['GET', '/api/debug/tables/a/b/'], ['PUT', '/api/etat/'], ['HEAD', '/api/etat/'],
+    ['POST', '/api/acces/'], ['DELETE', '/api/acces/'], ['GET', '/api/connexion/'], ['POST', '/api/moi/'], ['GET', '/api/deconnexion/'], ['GET', '/api/connexion/discord/autre/']]) {
     const r = classer(m, c);
     assert.deepEqual([r.classe, r.connue], ['ecriture', false], `${m} ${c}`);
   }
@@ -60,19 +65,20 @@ test('chaque ressource et chaque action que traiter aiguille est dans la table (
   }
 });
 
-test('le classement : lecture libre pour les pages, lecture avec clé pour le journal, la page Debug (fiches, comptes et groupes compris) et /api/v1/, toute écriture avec le mot de passe (R275)', () => {
+test('le classement : seul le nécessaire est ouvert, la lecture (session MJ ou clé) pour le reste des pages, du journal, de Debug (fiches, comptes et groupes compris) et de /api/v1/, toute écriture à un Créateur (R275, R310)', () => {
   const attendu = {
     ouverte: [
-      ['GET', '/api/etat/'], ['GET', '/api/maintenance/'], ['GET', '/api/tipeee/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'],
+      ['GET', '/api/etat/'], ['GET', '/api/maintenance/'], ['GET', `/api/mise-a-jour/lots/${UUID}/`],
+      ['GET', '/api/acces/'], ['GET', '/api/acces/verifier/'], ['GET', '/api/moi/'], ['GET', '/api/connexion/discord/'], ['GET', '/api/connexion/discord/retour/'], ['POST', '/api/deconnexion/'],
+    ],
+    lecture: [
+      ['GET', '/api/tipeee/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'],
       ['GET', '/api/personnages/'], ['GET', '/api/personnages/essai/'], ['GET', '/api/personnages/essai/portrait/'],
       ['GET', '/api/edition/en-attente/'], ['GET', '/api/edition/listes/'], ['GET', '/api/edition/pages/'], ['GET', '/api/edition/mots-cles/'],
       ['GET', '/api/edition/chronologie/'], ['GET', '/api/edition/plan/'],
       ['POST', '/api/edition/lignes/'], ['POST', '/api/edition/race/'], ['POST', '/api/edition/classe/'], ['POST', '/api/edition/bestiaire/'],
       ['POST', '/api/edition/portrait/'], ['POST', '/api/edition/evenement/'],
       ['GET', '/api/mise-a-jour/'], ['GET', '/api/mise-a-jour/lancement/'],
-      ['GET', `/api/mise-a-jour/lots/${UUID}/`], ['GET', '/api/acces/'], ['POST', '/api/acces/'], ['DELETE', '/api/acces/'], ['GET', '/api/acces/verifier/'],
-    ],
-    lecture: [
       ['GET', '/api/edition/journal/'], ['GET', '/api/edition/extrait/'], ['GET', '/api/edition/extrait/meta/'], ['GET', '/api/mise-a-jour/conflits/'],
       ['GET', '/api/debug/journal/'], ['GET', '/api/debug/metriques/'], ['GET', '/api/debug/metriques/requetes/'], ['GET', '/api/debug/metriques/export/'],
       ['GET', '/api/debug/systeme/'], ['GET', '/api/debug/base/'], ['GET', '/api/debug/structure/'], ['GET', '/api/debug/atelier/'], ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables/personnage/'],
@@ -81,12 +87,13 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
       ['GET', '/api/edition/lots/'], ['GET', `/api/edition/lots/${UUID}/`], ['GET', '/api/edition/lots/ancrage/'],
       ['GET', `/api/edition/lots/${UUID}/annulation/`], // l'aperçu de l'annulation d'un lot : calculé sur une copie, rien n'est écrit
     ],
-    // lots de changements : une session dépose, refait l'essai et dépose « tout recalculer » avec la clé de lecture (elle n'écrit que `lot_de_changements`, jamais le contenu)
+    // lots de changements : la clé de lecture dépose, refait l'essai et dépose « tout recalculer » (elle n'écrit que `lot_de_changements`, jamais le contenu)
     proposition: [['POST', '/api/edition/lots/'], ['POST', `/api/edition/lots/${UUID}/essai/`], ['POST', '/api/edition/lots/recalcul/'], ['POST', '/api/edition/lots/ancrage/']],
     ecriture: [
       ['POST', '/api/edition/'], ['POST', '/api/maintenance/lever/'],
-      ['POST', '/api/edition/atelier/'], // « le bouton » de l'atelier : l'extrait refait tout de suite (le mot de passe seul)
+      ['POST', '/api/edition/atelier/'], // « le bouton » de l'atelier : l'extrait refait tout de suite (un Créateur seul)
       ['POST', `/api/edition/lots/${UUID}/appliquer/`], ['POST', `/api/edition/lots/${UUID}/refuser/`], ['POST', `/api/edition/lots/${UUID}/annuler/`],
+      ['GET', `/api/edition/lots/${UUID}/lignes/1/annulation/`], ['POST', `/api/edition/lots/${UUID}/lignes/1/annuler/`],
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
       ['POST', '/api/mise-a-jour/conflits/'], ['POST', '/api/mise-a-jour/copier/'], // « Copier vers le dépôt » (lot 8, base source)
       ['POST', '/api/personnages/'], ['PUT', '/api/personnages/essai/'], ['DELETE', '/api/personnages/essai/'],
@@ -103,39 +110,35 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
   assert.equal(cheminSansFin('/api/etat/?a=/b/'), '/api/etat');
 });
 
-test('toute méthode d’écriture d’une route connue est « ecriture », sauf la liste des POST qui ne font que lire (les pages en ont besoin sans connexion)', () => {
+test('toute méthode d’écriture d’une route connue est « ecriture », sauf les propositions, les POST qui ne font que lire (les pages en ont besoin, avec la lecture) et la déconnexion', () => {
   const PROPOSITIONS = new Set(['/api/edition/lots', `/api/edition/lots/${UUID}/essai`, '/api/edition/lots/recalcul', '/api/edition/lots/ancrage']); // elles n'écrivent que la proposition et son essai
-  const POST_QUI_LISENT = new Set(['/api/classeur', '/api/metriques/page', '/api/acces',
+  const POST_QUI_LISENT = new Set(['/api/classeur', '/api/metriques/page',
     '/api/edition/lignes', '/api/edition/race', '/api/edition/classe', '/api/edition/bestiaire', '/api/edition/portrait', '/api/edition/evenement']);
   for (const [m, c] of routesDeLEntete().filter(([m]) => m !== 'GET')) {
-    const attendu = POST_QUI_LISENT.has(cheminSansFin(c)) || (m === 'DELETE' && cheminSansFin(c) === '/api/acces') ? 'ouverte' : PROPOSITIONS.has(cheminSansFin(c)) ? 'proposition' : 'ecriture';
+    const chemin = cheminSansFin(c);
+    const attendu = chemin === '/api/deconnexion' ? 'ouverte' : POST_QUI_LISENT.has(chemin) ? 'lecture' : PROPOSITIONS.has(chemin) ? 'proposition' : 'ecriture';
     assert.equal(classer(m, c).classe, attendu, `${m} ${c}`);
   }
 });
 
-test('aucune route ouverte ne passe par la lecture d’une table : Debug, /api/v1/, journal, lots en conflit demandent la clé ou le mot de passe', () => {
+test('R310 (3) : le site de dev est fermé — seules sont ouvertes la connexion, le profil, l’état du service (les contrôles de santé de l’installation le lisent), la relève de la maintenance et le lot figé que GitHub télécharge', () => {
+  const ouvertes = routesDeLEntete().filter(([m, c]) => classer(m, c).classe === 'ouverte').map(([m, c]) => `${m} ${c}`).sort();
+  assert.deepEqual(ouvertes, [
+    'GET /api/acces/', 'GET /api/acces/verifier/', 'GET /api/connexion/discord/', 'GET /api/connexion/discord/retour/', 'GET /api/etat/', 'GET /api/maintenance/',
+    `GET /api/mise-a-jour/lots/${UUID}/`, 'GET /api/moi/', 'POST /api/deconnexion/',
+  ].sort());
+  // chaque route ouverte de la table est de cette liste (rien d'autre n'est ouvert, même hors de l'en-tête)
+  assert.equal(ROUTES_CLASSEES.filter((r) => r.classe === 'ouverte').length, 9);
+  // une adresse qui n'est pas celle d'un lot figé n'est pas ouverte
+  for (const c of ['/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/pas-un-lot/', `/api/mise-a-jour/lots/${UUID}/x/`]) assert.notEqual(classer('GET', c).classe, 'ouverte', c);
+});
+
+test('aucune route ouverte ne passe par la lecture d’une table : Debug, /api/v1/, journal, lots en conflit demandent une session MJ ou la clé', () => {
   for (const r of ROUTES_CLASSEES.filter((x) => x.classe === 'ouverte')) {
-    for (const interdit of ['/api/debug/', '/api/v1', '/api/edition/journal', '/api/edition/extrait', '/api/mise-a-jour/conflits']) {
+    for (const interdit of ['/api/debug/', '/api/v1', '/api/edition/journal', '/api/edition/extrait', '/api/mise-a-jour/conflits', '/api/personnages']) {
       assert.ok(!r.motif.test(interdit) && !r.motif.test(`${interdit}/x`), `${r.motif} ouvre ${interdit}`);
     }
   }
-});
-
-test('portée « tout » (option c) : la même table, toute route ouverte non indispensable passe en lecture ; restent ouvertes la connexion et le lot figé que GitHub télécharge', () => {
-  assert.deepEqual([...PORTEES], ['ecriture', 'tout']);
-  const ouvertes = ROUTES_CLASSEES.filter((r) => r.classe === 'ouverte');
-  assert.ok(ouvertes.some((r) => !r.essentielle) && ouvertes.some((r) => r.essentielle));
-  assert.equal(classer('GET', '/api/etat/', 'tout').classe, 'lecture');
-  assert.equal(classer('GET', '/api/personnages/', 'tout').classe, 'lecture');
-  assert.equal(classer('POST', '/api/edition/lignes/', 'tout').classe, 'lecture');
-  assert.equal(classer('POST', '/api/classeur/', 'tout').classe, 'lecture');
-  assert.equal(classer('GET', `/api/mise-a-jour/lots/${UUID}/`, 'tout').classe, 'ouverte');
-  for (const c of ['/api/acces/', '/api/acces/verifier/']) assert.equal(classer('GET', c, 'tout').classe, 'ouverte');
-  assert.equal(classer('POST', '/api/acces/', 'tout').classe, 'ouverte');
-  assert.equal(classer('POST', '/api/edition/', 'tout').classe, 'ecriture');
-  assert.equal(classer('GET', '/api/v1/', 'tout').classe, 'lecture');
-  // une route que la table ne connaît pas reste fermée
-  assert.equal(classer('GET', '/api/inconnue/', 'tout').classe, 'ecriture');
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -143,13 +146,10 @@ test('portée « tout » (option c) : la même table, toute route ouverte non in
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 const racine = dossierTemporaire('acces-routes');
-function monde(portee = null, extra = {}) {
-  const fichier = fichierTemporaire('acces.json', 'acces-routes');
-  const { reglage, cle } = reglageApres({ motDePasse: MOT, portee });
-  writeFileSync(fichier, JSON.stringify(reglage));
+function monde({ depot = false, ...extra } = {}) {
+  const a = poserLAcces({ prefixe: 'acces-routes', depot });
   const journal = [];
-  const acces = creerAcces({ fichier, journal: (m) => journal.push(m) });
-  const service = { edition: true, base: () => null, etat: () => ({ service: 'essai' }), journal: (m) => journal.push(m), dossier: racine, acces, ...extra };
+  const service = { edition: true, base: () => null, etat: () => ({ service: 'essai' }), journal: (m) => journal.push(m), dossier: racine, acces: a.acces, connexion: a.connexion, ...extra };
   const appel = (methode, chemin, { entetes = {}, corps } = {}) => {
     try {
       return traiter({ methode, chemin, entetes: { ...JSON_, ...entetes }, corps: corps === undefined ? '{}' : JSON.stringify(corps) }, service);
@@ -157,119 +157,115 @@ function monde(portee = null, extra = {}) {
       return { statut: 'exception', erreur: e };
     }
   };
-  const session = acces.connecter(MOT, {});
-  return { acces, service, appel, cle, journal, cookie: { cookie: `${COOKIE}=${session.jeton}` }, avecCle: { [ENTETE_CLE]: cle } };
+  return { ...a, service, appel, journal };
 }
+/** La porte a-t-elle refusé cette réponse ? (le 401 ou le 403 de serveur/acces.mjs, qui portent `acces` ; un 403 d'une route elle-même n'en porte pas) */
+const refuse = (r) => [401, 403].includes(r.statut) && ['connexion', 'niveau', 'cle', 'cle_de_depot'].includes(r.corps?.acces);
 
-test('la porte : pour chaque route de l’en-tête, sans rien / avec la clé / avec le mot de passe, 401 exactement quand la classe le demande', async () => {
+test('la porte : pour chaque route de l’en-tête, sans rien / clé de lecture / Observateur / Joueur / MJ / Créateur, un refus exactement quand la classe le demande, avec le bon code', async () => {
   const m = monde();
-  const routes = routesDeLEntete().filter(([, c]) => !c.startsWith('/api/acces/')); // la connexion se juge plus bas
-  for (const [methode, chemin] of routes) {
+  for (const [methode, chemin] of routesDeLEntete().filter(([, c]) => c !== '/api/acces/verifier/')) { // sa réponse dit l'accès (401 ou 403 d'une route ouverte) : jugée plus bas
     const { classe } = classer(methode, chemin);
-    const qui = { rien: {}, cle: m.avecCle, mot_de_passe: m.cookie };
-    // la clé de lecture passe pour `lecture` et `proposition` (déposer un lot : R275) ; l'écriture demande le mot de passe seul
-    const attendu = { rien: classe !== 'ouverte', cle: classe === 'ecriture', mot_de_passe: false };
+    const qui = { rien: {}, cle: m.avecCle, observateur: m.session('observateur'), joueur: m.session('joueur'), mj: m.mj, createur: m.createur };
+    const passe = {
+      rien: classe === 'ouverte', cle: classe !== 'ecriture', observateur: classe === 'ouverte', joueur: classe === 'ouverte', mj: classe === 'ouverte' || classe === 'lecture', createur: true,
+    };
     for (const [nom, entetes] of Object.entries(qui)) {
       const r = m.appel(methode, chemin, { entetes });
-      assert.equal(r.statut === 401, attendu[nom], `${methode} ${chemin} avec « ${nom} » : ${r.statut}`);
-      if (r.statut === 401) assert.deepEqual(r.corps.acces, classe === 'lecture' || classe === 'proposition' ? 'cle' : 'mot_de_passe', `${methode} ${chemin}`);
+      assert.notEqual(r.statut, 'exception', `${methode} ${chemin} (${nom}) : ${r.erreur?.stack}`);
+      assert.equal(refuse(r), !passe[nom], `${methode} ${chemin} avec « ${nom} » (${classe}) : ${r.statut} ${JSON.stringify(r.corps)}`);
+      if (!refuse(r)) continue;
+      const code = r.corps.acces;
+      if (nom === 'rien') assert.deepEqual([r.statut, code], [401, 'connexion'], `${methode} ${chemin}`);
+      else if (nom === 'cle') assert.deepEqual([r.statut, code], [403, 'cle'], `${methode} ${chemin}`);
+      else assert.deepEqual([r.statut, code, r.corps.niveau], [403, 'niveau', nom], `${methode} ${chemin}`);
     }
   }
-  // une route inconnue : 401 « mot de passe » (jamais un 404 qui montrerait ce qui existe)
-  assert.equal(m.appel('GET', '/api/nouvelle-route/').statut, 401);
-  assert.equal(m.appel('GET', '/api/nouvelle-route/', { entetes: m.avecCle }).statut, 401);
-  assert.equal(m.appel('GET', '/api/nouvelle-route/', { entetes: m.cookie }).statut, 404);
+  // une route inconnue : 401 « connexion » (jamais un 404 qui montrerait ce qui existe), 403 pour une clé ou un MJ, 404 seulement pour un Créateur
+  assert.deepEqual(m.appel('GET', '/api/nouvelle-route/').statut, 401);
+  assert.equal(m.appel('GET', '/api/nouvelle-route/', { entetes: m.avecCle }).statut, 403);
+  assert.equal(m.appel('GET', '/api/nouvelle-route/', { entetes: m.mj }).statut, 403);
+  assert.equal(m.appel('GET', '/api/nouvelle-route/', { entetes: m.createur }).statut, 404);
 });
 
-test('sans réglage, tout reste ouvert comme avant ; en production (pas d’édition) un réglage éventuel n’est jamais lu ; Simulation et mise à jour restent atteignables', async () => {
+test('R291 : la clé de dépôt posée, la porte la demande pour déposer (401 sans rien, 403 avec la clé de lecture ou une session MJ) ; une session Créateur dépose', async () => {
+  const m = monde({ depot: true });
+  for (const chemin of ['/api/edition/lots/', `/api/edition/lots/${UUID}/essai/`, '/api/edition/lots/recalcul/', '/api/edition/lots/ancrage/']) {
+    assert.deepEqual([m.appel('POST', chemin).statut, m.appel('POST', chemin).corps.acces], [401, 'cle_de_depot'], chemin);
+    assert.deepEqual([m.appel('POST', chemin, { entetes: m.avecCle }).statut, m.appel('POST', chemin, { entetes: m.avecCle }).corps.acces], [403, 'cle_de_depot'], chemin);
+    assert.deepEqual([m.appel('POST', chemin, { entetes: m.mj }).statut, m.appel('POST', chemin, { entetes: m.mj }).corps.acces], [403, 'niveau'], chemin);
+    assert.equal(refuse(m.appel('POST', chemin, { entetes: m.avecDepot() })), false, chemin);
+    assert.equal(refuse(m.appel('POST', chemin, { entetes: m.createur })), false, chemin);
+  }
+  // la clé de dépôt n'ouvre pas le reste des écritures
+  assert.deepEqual([m.appel('POST', '/api/edition/', { entetes: m.avecDepot() }).statut, m.appel('POST', '/api/edition/', { entetes: m.avecDepot() }).corps.acces], [403, 'cle']);
+});
+
+test('sans porte, tout reste ouvert comme avant ; en production (pas d’édition) la porte n’existe pas, même avec des clés et une connexion posées ; la connexion et le profil y répondent', async () => {
   const sans = { edition: true, base: () => null, etat: () => ({ service: 'essai' }), dossier: racine };
-  const libre = (service, methode, chemin) => traiter({ methode, chemin, entetes: JSON_, corps: '{}' }, service);
-  for (const [m, c] of routesDeLEntete()) assert.notEqual(libre(sans, m, c).statut, 401, `${m} ${c} sans acces`);
-  // un contrôle d'accès dont le fichier n'existe pas : même chose
+  const libre = (service, methode, chemin, entetes = JSON_) => traiter({ methode, chemin, entetes, corps: '{}' }, service);
+  for (const [m, c] of routesDeLEntete()) assert.ok(!refuse(libre(sans, m, c)), `${m} ${c} sans porte`);
+  // un fichier de clés absent n'ouvre rien quand la porte est posée (elle ferme par défaut)
   const vide = { ...sans, acces: creerAcces({ fichier: join(racine, 'absent.json') }) };
-  for (const [m, c] of routesDeLEntete()) assert.notEqual(libre(vide, m, c).statut, 401, `${m} ${c} sans fichier`);
+  assert.equal(libre(vide, 'GET', '/api/v1/').statut, 401);
+  assert.equal(libre(vide, 'GET', '/api/etat/').statut, 200);
   // production : la porte n'existe pas (les 403 d'avant sont inchangés)
   const m = monde();
   const prod = { ...m.service, edition: false };
   assert.equal(libre(prod, 'POST', '/api/edition/').statut, 403);
   assert.equal(libre(prod, 'GET', '/api/v1/').statut, 403);
-  assert.deepEqual(libre(prod, 'GET', '/api/acces/').corps, { protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null });
-  assert.equal(libre(prod, 'POST', '/api/acces/').statut, 409);
+  assert.equal(libre(prod, 'GET', '/api/personnages/').statut, 503, 'pas de base d’essai : la route est atteinte, aucune porte ne la ferme');
+  assert.deepEqual(libre(prod, 'GET', '/api/acces/').corps, { protege: false, connecte: false, niveau: null, droit: 'ecriture', expire_le: null });
+  assert.equal(libre(prod, 'GET', '/api/moi/').statut, 200);
+  assert.equal(libre(prod, 'GET', '/api/connexion/discord/').statut, 302);
+  // la session de la production est lue par la connexion (aucune porte ne s'en sert)
+  const connecte = libre(prod, 'GET', '/api/acces/', { ...JSON_, ...m.mj });
+  assert.deepEqual([connecte.corps.protege, connecte.corps.connecte, connecte.corps.niveau], [false, true, 'mj']);
+  // POST et DELETE /api/acces/ n'existent plus (le mot de passe est retiré)
+  for (const methode of ['POST', 'DELETE']) assert.equal(libre(prod, methode, '/api/acces/').statut, 405);
 });
 
-test('le lot figé reste ouvert avec le réglage (GitHub n’a pas de clé), sous les deux portées ; l’adresse sans lot ou d’un autre lot est refusée comme avant', async () => {
-  for (const portee of [null, 'tout']) {
-    const m = monde(portee);
-    const r = m.appel('GET', `/api/mise-a-jour/lots/${UUID}/`);
-    assert.equal(r.statut, 410, `portée ${portee} : pas de lot servi, mais la porte est passée`);
-    // ni une adresse qui n'est pas celle d'un lot, ni la liste des lots (qui n'existe pas) ne sont ouvertes : fermées, 404 seulement pour qui a le mot de passe
-    for (const c of ['/api/mise-a-jour/lots/pas-un-lot/', '/api/mise-a-jour/lots/']) {
-      assert.equal(m.appel('GET', c).statut, 401, c);
-      assert.equal(m.appel('GET', c, { entetes: m.cookie }).statut, 404, c);
-    }
+test('le lot figé reste ouvert sans clé ni session (GitHub n’en a pas) ; une adresse qui n’est pas celle d’un lot est fermée comme le reste', async () => {
+  const m = monde();
+  const r = m.appel('GET', `/api/mise-a-jour/lots/${UUID}/`);
+  assert.equal(r.statut, 410, 'pas de lot servi, mais la porte est passée');
+  // ni une adresse qui n'est pas celle d'un lot, ni la liste des lots (qui n'existe pas) ne sont ouvertes : fermées, 404 seulement pour un Créateur
+  for (const c of ['/api/mise-a-jour/lots/pas-un-lot/', '/api/mise-a-jour/lots/']) {
+    assert.equal(m.appel('GET', c).statut, 401, c);
+    assert.equal(m.appel('GET', c, { entetes: m.createur }).statut, 404, c);
   }
 });
 
-test('GET /api/acces/ : où en est le visiteur ; POST ouvre la session (cookie), DELETE la ferme ; 401, 415, 403, 429 comme les écritures', async () => {
-  const m = monde();
+test('GET /api/acces/ : où en est le visiteur (session, niveau, droit) ; verifier : 204 avec la clé ou une session MJ au moins, 401 sans rien, 403 avec un niveau trop bas (le forward_auth de Caddy)', async () => {
+  const m = monde({ depot: true });
   const etat = (entetes) => m.appel('GET', '/api/acces/', { entetes }).corps;
-  assert.deepEqual(etat({}), { protege: true, portee: 'ecriture', connecte: false, droit: 'aucun', expire_le: null });
-  assert.deepEqual(etat(m.avecCle), { protege: true, portee: 'ecriture', connecte: false, droit: 'lecture', expire_le: null });
-  const connecte = etat(m.cookie);
-  assert.deepEqual([connecte.connecte, connecte.droit], [true, 'ecriture']);
-  assert.match(connecte.expire_le, /^\d{4}-\d\d-\d\dT/);
+  assert.deepEqual(etat({}), { protege: true, connecte: false, niveau: null, droit: 'aucun', expire_le: null });
+  assert.deepEqual(etat(m.avecCle), { protege: true, connecte: false, niveau: null, droit: 'lecture', expire_le: null });
+  assert.equal(etat(m.avecDepot()).droit, 'depot');
+  const c = etat(m.createur);
+  assert.deepEqual([c.connecte, c.niveau, c.droit], [true, 'createur', 'ecriture']);
+  assert.match(c.expire_le, /^\d{4}-\d\d-\d\dT/);
+  assert.deepEqual([etat(m.mj).niveau, etat(m.mj).droit], ['mj', 'lecture']);
+  assert.deepEqual([etat(m.session('joueur')).niveau, etat(m.session('joueur')).droit, etat(m.session('joueur')).connecte], ['joueur', 'aucun', true]);
+  assert.equal(m.appel('GET', '/api/acces/autre/', { entetes: m.createur }).statut, 404);
+  for (const methode of ['POST', 'PUT', 'DELETE']) assert.equal(m.appel(methode, '/api/acces/', { entetes: m.createur }).statut, 405, methode);
 
-  // la connexion
-  const faux = m.appel('POST', '/api/acces/', { corps: { mot_de_passe: 'pas le bon' } });
-  assert.equal(faux.statut, 401);
-  assert.deepEqual(faux.corps, { erreur: 'Mot de passe incorrect.', acces: 'mot_de_passe' });
-  assert.ok(!JSON.stringify(faux).includes('pas le bon'));
-  assert.equal(m.appel('POST', '/api/acces/', { corps: {} }).statut, 400);
-  assert.equal(m.appel('POST', '/api/acces/', { corps: { mot_de_passe: 42 } }).statut, 400);
-  assert.equal(m.appel('POST', '/api/acces/', { entetes: { 'content-type': 'text/plain' }, corps: { mot_de_passe: MOT } }).statut, 415);
-  assert.equal(m.appel('POST', '/api/acces/', { entetes: { 'sec-fetch-site': 'cross-site' }, corps: { mot_de_passe: MOT } }).statut, 403, 'un autre site ne se connecte pas à la place du visiteur');
-  const ok = m.appel('POST', '/api/acces/', { entetes: { 'x-forwarded-host': 'dev.exemple.invalid', 'x-forwarded-proto': 'http' }, corps: { mot_de_passe: MOT } });
-  assert.equal(ok.statut, 200);
-  assert.deepEqual([ok.corps.connecte, ok.corps.droit, ok.corps.portee], [true, 'ecriture', 'ecriture']);
-  const [cookie] = [].concat(ok.entetes['Set-Cookie']);
-  assert.match(cookie, new RegExp(`^${COOKIE}=v1\\.\\d+\\.[0-9a-f]{64}; Path=/api/; HttpOnly; SameSite=Strict; Secure$`));
-  // ce cookie ouvre une écriture
-  const jeton = /=([^;]+)/.exec(cookie)[1];
-  assert.notEqual(m.appel('POST', '/api/edition/', { entetes: { cookie: `${COOKIE}=${jeton}` } }).statut, 401);
-
-  // se déconnecter : les deux chemins sont retirés
-  const sortie = m.appel('DELETE', '/api/acces/', { entetes: m.cookie });
-  assert.equal(sortie.statut, 200);
-  assert.equal(sortie.entetes['Set-Cookie'].length, 2);
-  assert.ok(sortie.entetes['Set-Cookie'].every((c) => c.includes('Max-Age=0')));
-  assert.equal(m.appel('DELETE', '/api/acces/', { entetes: { 'sec-fetch-site': 'cross-site' } }).statut, 403);
-  assert.equal(m.appel('PUT', '/api/acces/', { entetes: m.cookie }).statut, 405);
-  assert.equal(m.appel('GET', '/api/acces/autre/', { entetes: m.cookie }).statut, 404);
-});
-
-test('la limite des essais répond 429 avec le temps à attendre ; un mot de passe de plus de 200 caractères est refusé sans être haché', async () => {
-  const m = monde();
-  for (let i = 0; i < 5; i += 1) assert.equal(m.appel('POST', '/api/acces/', { corps: { mot_de_passe: 'faux faux faux' } }).statut, 401);
-  const r = m.appel('POST', '/api/acces/', { corps: { mot_de_passe: MOT } });
-  assert.equal(r.statut, 429);
-  assert.ok(r.corps.attente_s > 0);
-  assert.equal(r.entetes['Retry-After'], String(r.corps.attente_s));
-  assert.equal(r.corps.acces, 'mot_de_passe');
-  assert.equal(m.appel('POST', '/api/acces/', { corps: { mot_de_passe: 'x'.repeat(201) } }).statut, 400);
-});
-
-test('GET /api/acces/verifier/ : 204 avec la clé ou le mot de passe, 401 sans rien (le forward_auth de Caddy, portée « tout »)', async () => {
-  const m = monde('tout');
-  assert.equal(m.appel('GET', '/api/acces/verifier/').statut, 401);
-  assert.equal(m.appel('GET', '/api/acces/verifier/', { entetes: m.avecCle }).statut, 204);
-  assert.equal(m.appel('GET', '/api/acces/verifier/', { entetes: m.cookie }).statut, 204);
-  assert.equal(m.appel('GET', '/api/acces/verifier/', { entetes: { [ENTETE_CLE]: 'mvk_faux' } }).statut, 401);
-  assert.equal(m.appel('POST', '/api/acces/verifier/', { entetes: m.cookie }).statut, 405);
-  // portée « tout » : une route d'ordinaire ouverte demande la clé ; le cookie est posé sur toutes les pages
-  assert.equal(m.appel('GET', '/api/etat/').statut, 401);
-  assert.equal(m.appel('GET', '/api/etat/', { entetes: m.avecCle }).statut, 200);
-  const ok = m.appel('POST', '/api/acces/', { corps: { mot_de_passe: MOT } });
-  assert.match([].concat(ok.entetes['Set-Cookie'])[0], /Path=\/; HttpOnly; SameSite=Lax/);
+  const verifier = (entetes) => m.appel('GET', '/api/acces/verifier/', { entetes });
+  assert.deepEqual([verifier({}).statut, verifier({}).corps.acces], [401, 'connexion']);
+  for (const [nom, entetes] of [['la clé de lecture', m.avecCle], ['la clé de dépôt', m.avecDepot()], ['un MJ', m.mj], ['un Créateur', m.createur]]) assert.equal(verifier(entetes).statut, 204, nom);
+  for (const niveau of ['joueur', 'observateur']) {
+    const r = verifier(m.session(niveau));
+    assert.deepEqual([r.statut, r.corps.acces, r.corps.niveau], [403, 'niveau', niveau]);
+  }
+  assert.equal(verifier({ [ENTETE_CLE]: 'mvk_faux' }).statut, 401);
+  assert.equal(verifier({ cookie: `${COOKIE_SESSION}=v1.faux.faux` }).statut, 401);
+  const expiree = m.session('createur', { exp: Math.floor(Date.now() / 1000) - 1 });
+  assert.equal(verifier(expiree).statut, 401, 'une session expirée vaut aucune session');
+  assert.equal(m.appel('POST', '/api/acces/verifier/', { entetes: m.createur }).statut, 405);
+  // le niveau est celui du cookie, signé : un cookie d'un autre secret ou falsifié ne donne rien
+  const autre = reglageDiscord({ ancien: m.reglage, nouvelleSession: true });
+  assert.equal(verifier({ cookie: cookieDeSession(autre, 'createur') }).statut, 401);
+  assert.equal(verifier({ cookie: `${COOKIE_SESSION}=${creerJetonDeSession('0'.repeat(64), { u: 'x', n: 'createur', exp: 2_000_000_000 })}` }).statut, 401);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -291,7 +287,7 @@ function baseAvecUnJoueur() {
   const fiche = (id, nature, proprio, visibilite, nom) => db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique,
     alignement_bon, alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, ?, ?, ?, ?, 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, ?, ?)`)
     .run(id, nature, proprio, visibilite, nom, t, t);
-  db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('u-secret', 'Compte secret', ?)").run(t);
+  poserUnCompte(db, 'u-secret', 'Compte secret', t);
   fiche('pretire-essai', 'pretire', null, 'tous', 'Prétiré d’essai');
   fiche('joueur-secret', 'joueur', 'u-secret', 'privee', 'Fiche secrète d’une joueuse');
   db.prepare("INSERT INTO famille (id, libelle, ordre) VALUES ('classes', 'classes', 1) ON CONFLICT DO NOTHING").run();
@@ -303,125 +299,137 @@ function baseAvecUnJoueur() {
   return { db, dossier, regles };
 }
 
-test('une fiche de joueur, un compte ou un groupe ne sortent d’aucune route ouverte : prétirés seulement, fiches adaptées et libellés de fiches réservés à la lecture', async () => {
+test('une fiche de joueur, un compte ou un groupe ne sortent d’aucune route ouverte : l’état masque les fiches adaptées sans la lecture ; les tables de Debug demandent une session MJ ou la clé', async () => {
   const { db } = baseAvecUnJoueur();
   const secrets = ['joueur-secret', 'Fiche secrète d’une joueuse', 'Compte secret', 'u-secret'];
-  const m = monde(null, {
+  const m = monde({
     base: () => db,
     etat: () => ({ service: 'essai', base: { disponible: true, retraits: { le: '2026-01-01', fiches: [{ fiche: 'Fiche secrète d’une joueuse', retraits: [] }] }, pretires: 1 } }),
   });
   const sansRien = (methode, chemin, corps) => m.appel(methode, chemin, { corps });
   const texte = (r) => JSON.stringify(r.corps ?? '') + String(r.brut ?? '');
 
-  const liste = sansRien('GET', '/api/personnages/');
-  assert.equal(liste.statut, 200);
-  assert.deepEqual(liste.corps.personnages.map((p) => p.id), ['pretire-essai'], 'le prétiré seulement');
-  assert.equal(sansRien('GET', '/api/personnages/pretire-essai/').statut, 200);
-  assert.equal(sansRien('GET', '/api/personnages/joueur-secret/').statut, 404);
-  assert.equal(sansRien('GET', '/api/personnages/joueur-secret/portrait/').statut, 404);
-
   // chaque route ouverte, sans rien : aucun secret dans la réponse
-  const ouvertes = [['GET', '/api/etat/'], ['GET', '/api/personnages/'], ['GET', '/api/personnages/joueur-secret/'], ['GET', '/api/edition/en-attente/'], ['GET', '/api/edition/listes/'],
-    ['GET', '/api/edition/pages/'], ['GET', '/api/edition/mots-cles/'], ['GET', '/api/edition/chronologie/'], ['GET', '/api/edition/plan/'],
-    ['POST', '/api/edition/classe/', { classe: 'classe-essai' }], ['POST', '/api/edition/lignes/', { lignes: [{ table: 'classe', cle: { id: 'classe-essai' } }] }]];
-  for (const [methode, chemin, corps] of ouvertes) {
-    const r = sansRien(methode, chemin, corps);
+  for (const [methode, chemin] of [['GET', '/api/etat/'], ['GET', '/api/maintenance/'], ['GET', '/api/acces/'], ['GET', '/api/moi/'], ['GET', '/api/mise-a-jour/lots/pas-un-lot/']]) {
+    const r = sansRien(methode, chemin);
     assert.notEqual(r.statut, 'exception', `${methode} ${chemin} : ${r.erreur?.message}`);
-    assert.notEqual(r.statut, 401, `${methode} ${chemin} est ouverte`);
     for (const s of secrets) assert.ok(!texte(r).includes(s), `${methode} ${chemin} montre « ${s} »`);
   }
-  assert.equal(sansRien('GET', '/api/etat/').corps.base.retraits, null);
-  assert.deepEqual(sansRien('POST', '/api/edition/classe/', { classe: 'classe-essai' }).corps.fiches, {}, 'les libellés de fiches ne sortent pas sans la lecture');
+  assert.equal(sansRien('GET', '/api/etat/').corps.base.retraits, null, 'les fiches adaptées ne sortent pas sans la lecture');
+  // tout le reste est fermé sans rien : prétirés, fiches, ce que les pages lisent, Debug
+  for (const [methode, chemin] of [['GET', '/api/personnages/'], ['GET', '/api/personnages/joueur-secret/'], ['GET', '/api/personnages/joueur-secret/portrait/'], ['GET', '/api/edition/listes/'],
+    ['POST', '/api/edition/classe/'], ['POST', '/api/edition/lignes/']]) assert.equal(sansRien(methode, chemin, {}).statut, 401, `${methode} ${chemin}`);
+  // un Joueur ou un Observateur connecté n'a pas plus : 403, et l'état reste masqué
+  for (const niveau of ['joueur', 'observateur']) {
+    assert.equal(m.appel('GET', '/api/personnages/', { entetes: m.session(niveau) }).statut, 403, niveau);
+    assert.equal(m.appel('GET', '/api/debug/tables/utilisateur/', { entetes: m.session(niveau) }).statut, 403, niveau);
+    assert.equal(m.appel('GET', '/api/etat/', { entetes: m.session(niveau) }).corps.base.retraits, null, niveau);
+  }
 
-  // la page Debug (fiches, comptes, groupes) : fermée sans la clé, ouverte avec
+  // la page Debug (fiches, comptes, groupes) : fermée sans la clé ni session MJ, ouverte avec
   for (const table of ['personnage', 'utilisateur', 'groupe']) {
     assert.equal(sansRien('GET', `/api/debug/tables/${table}/`).statut, 401, table);
-    const avec = m.appel('GET', `/api/debug/tables/${table}/`, { entetes: m.avecCle });
-    assert.equal(avec.statut, 200, table);
+    for (const entetes of [m.avecCle, m.mj, m.createur]) assert.equal(m.appel('GET', `/api/debug/tables/${table}/`, { entetes }).statut, 200, table);
   }
-  assert.ok(texte(m.appel('GET', '/api/debug/tables/personnage/', { entetes: m.avecCle })).includes('Fiche secrète d’une joueuse'));
+  assert.ok(texte(m.appel('GET', '/api/debug/tables/personnage/', { entetes: m.mj })).includes('Fiche secrète d’une joueuse'));
+  // le compte d'essai y est lu avec ses colonnes de R310, jamais une colonne de jeton ou d'e-mail
+  const comptes = m.appel('GET', '/api/debug/tables/utilisateur/', { entetes: m.mj }).corps;
+  assert.ok(comptes.colonnes.some((c) => (c.nom ?? c) === 'niveau'));
+  assert.ok(!JSON.stringify(comptes.colonnes).match(/jeton|token|email|mot_de_passe/i));
 
-  // avec la clé de lecture : l'état entier et les libellés, pour la confirmation d'une suppression
-  assert.equal(m.appel('GET', '/api/etat/', { entetes: m.avecCle }).corps.base.retraits.fiches.length, 1);
-  const classe = m.appel('POST', '/api/edition/classe/', { entetes: m.avecCle, corps: { classe: 'classe-essai' } }).corps;
-  assert.ok(Object.values(classe.fiches).flat().length >= 1, JSON.stringify(classe.fiches));
-  // la liste des fiches de joueur ne passe pas non plus par le journal : un prétiré écrit demande le mot de passe
+  // avec la lecture : l'état entier et les libellés, pour la confirmation d'une suppression
+  for (const entetes of [m.avecCle, m.mj]) {
+    assert.equal(m.appel('GET', '/api/etat/', { entetes }).corps.base.retraits.fiches.length, 1);
+    const classe = m.appel('POST', '/api/edition/classe/', { entetes, corps: { classe: 'classe-essai' } }).corps;
+    assert.ok(Object.values(classe.fiches).flat().length >= 1, JSON.stringify(classe.fiches));
+  }
+  // les prétirés ne s'écrivent qu'avec une session Créateur : ni la clé de lecture ni un MJ
   assert.equal(sansRien('POST', '/api/personnages/', { nom: 'Pirate' }).statut, 401);
-  assert.equal(m.appel('PUT', '/api/personnages/pretire-essai/', { entetes: m.avecCle, corps: {} }).statut, 401);
-  assert.equal(m.appel('DELETE', '/api/personnages/pretire-essai/', { entetes: m.avecCle, corps: {} }).statut, 401);
+  for (const entetes of [m.avecCle, m.mj]) {
+    assert.equal(m.appel('POST', '/api/personnages/', { entetes, corps: { nom: 'Pirate' } }).statut, 403);
+    assert.equal(m.appel('PUT', '/api/personnages/pretire-essai/', { entetes, corps: {} }).statut, 403);
+    assert.equal(m.appel('DELETE', '/api/personnages/pretire-essai/', { entetes, corps: {} }).statut, 403);
+  }
+  // les prétirés se lisent avec la lecture : la liste ne contient que le prétiré
+  const liste = m.appel('GET', '/api/personnages/', { entetes: m.mj });
+  assert.deepEqual(liste.corps.personnages.map((p) => p.id), ['pretire-essai'], 'le prétiré seulement');
+  assert.equal(m.appel('GET', '/api/personnages/joueur-secret/', { entetes: m.mj }).statut, 404);
 });
 
-test('base indisponible : le 503 d’une route ouverte ne porte pas la liste des fiches adaptées sans la lecture (état masqué partout), avec la clé il la porte', () => {
-  const m = monde(null, { etat: () => ({ service: 'essai', base: { disponible: false, retraits: { fiches: [{ fiche: 'Fiche secrète d’une joueuse', retraits: [] }] } } }) });
-  const ouvertes = [['GET', '/api/personnages/'], ['GET', '/api/personnages/x%2F..%2F..%2Fdebug/'], ['GET', '/api/edition/listes/'], ['GET', '/api/edition/en-attente/'],
-    ['GET', '/api/mise-a-jour/'], ['GET', '/api/mise-a-jour/lancement/'], ['POST', '/api/edition/classe/'], ['GET', '/api/etat/']];
-  for (const [methode, chemin] of ouvertes) {
-    const sans = m.appel(methode, chemin);
-    assert.notEqual(sans.statut, 401, `${methode} ${chemin} est ouverte`);
-    assert.ok(!JSON.stringify(sans.corps ?? '').includes('Fiche secrète'), `${methode} ${chemin} : ${JSON.stringify(sans.corps)}`);
-    if (sans.statut === 503) assert.equal(sans.corps.etat.base.retraits, null, `${methode} ${chemin}`);
+test('base indisponible : le 503 d’une route ne porte pas la liste des fiches adaptées sans la lecture (état masqué partout), avec la clé il la porte', () => {
+  const m = monde({ etat: () => ({ service: 'essai', base: { disponible: false, retraits: { fiches: [{ fiche: 'Fiche secrète d’une joueuse', retraits: [] }] } } }) });
+  const sans = m.appel('GET', '/api/etat/');
+  assert.equal(sans.statut, 200);
+  assert.ok(!JSON.stringify(sans.corps).includes('Fiche secrète'));
+  assert.equal(sans.corps.base.retraits, null);
+  for (const entetes of [m.avecCle, m.mj]) {
+    const avec = m.appel('GET', '/api/personnages/', { entetes });
+    assert.equal(avec.statut, 503);
+    assert.equal(avec.corps.etat.base.retraits.fiches.length, 1);
   }
-  const avec = m.appel('GET', '/api/personnages/', { entetes: m.avecCle });
-  assert.equal(avec.statut, 503);
-  assert.equal(avec.corps.etat.base.retraits.fiches.length, 1);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Le service HTTP réel
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-test('service réel : sans réglage rien ne change ; le fichier posé protège sans redémarrage ; le cookie fait le tour ; rien de secret au journal', async () => {
+test('service réel : fermé même sans fichier ; les clés et les sessions se lisent sans redémarrage ; le niveau du cookie fait la porte ; rien de secret au journal', async () => {
   const { dossier, regles } = baseAvecUnJoueur();
-  const fichier = fichierTemporaire('acces.json', 'acces-service');
+  const fichierDesCles = fichierTemporaire('acces.json', 'acces-service');
+  const fichierDiscord = fichierTemporaire('discord.json', 'acces-service');
   const lignes = [];
-  const s = await demarrerService({ regles, dossier: join(dossier, 'service-db'), port: 0, intervalle: 0, edition: true, acces: fichier, metriques: false, journal: (l) => lignes.push(l) });
+  const s = await demarrerService({ regles, dossier: join(dossier, 'service-db'), port: 0, intervalle: 0, edition: true, acces: fichierDesCles, connexion: fichierDiscord, metriques: false, journal: (l) => lignes.push(l) });
   try {
     const appel = (methode, chemin, { entetes = {}, corps } = {}) => fetch(`${s.url}${chemin}`, {
       method: methode, headers: { ...(corps === undefined ? {} : JSON_), ...entetes }, ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
     });
-    // sans réglage : comme avant
-    assert.equal((await appel('GET', '/api/v1/')).status, 200);
-    assert.equal((await appel('POST', '/api/edition/', { corps: {} })).status, 400, 'le lot vide est refusé par l’édition, pas par la porte');
-    assert.deepEqual(await (await appel('GET', '/api/acces/')).json(), { protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null });
-
-    // le fichier posé : protégé tout de suite
-    const { reglage, cle } = reglageApres({ motDePasse: MOT });
-    writeFileSync(fichier, JSON.stringify(reglage));
-    const ferme = await appel('POST', '/api/edition/', { corps: {} });
+    // aucun fichier : le site de dev est FERMÉ (R310), et la connexion est indisponible
+    const ferme = await appel('GET', '/api/v1/');
     assert.equal(ferme.status, 401);
-    assert.deepEqual(await ferme.json(), { erreur: 'Accès refusé : le mot de passe est nécessaire.', acces: 'mot_de_passe' });
-    const lecture = await appel('GET', '/api/v1/');
-    assert.equal(lecture.status, 401);
-    assert.equal((await lecture.json()).acces, 'cle');
-    assert.equal((await appel('GET', '/api/etat/')).status, 200, 'la lecture des pages reste libre');
+    assert.deepEqual(await ferme.json(), { erreur: 'Accès refusé : connectez-vous (le site de dev demande une connexion Discord de niveau MJ au moins).', acces: 'connexion' });
+    assert.equal((await appel('POST', '/api/edition/', { corps: {} })).status, 401);
+    assert.equal((await appel('GET', '/api/personnages/')).status, 401);
+    assert.equal((await appel('GET', '/api/etat/')).status, 200, 'l’état reste lisible (les contrôles de santé de l’installation)');
+    assert.deepEqual(await (await appel('GET', '/api/moi/')).json(), { connexion_disponible: false, connecte: false, utilisateur: null });
+    const debut = await fetch(`${s.url}/api/connexion/discord/`, { redirect: 'manual' });
+    assert.equal(debut.status, 302);
+    assert.equal(debut.headers.get('location'), '/connexion/?erreur=indisponible', 'connexion non réglée : la page de connexion le dit');
+    assert.deepEqual(await (await appel('GET', '/api/acces/')).json(), { protege: true, connecte: false, niveau: null, droit: 'aucun', expire_le: null });
+
+    // les clés : posées, elles ouvrent sans redémarrage
+    const { reglageApres } = await import('../serveur/acces.mjs');
+    const { reglage, cle } = reglageApres({ refaireLaCle: true });
+    writeFileSync(fichierDesCles, JSON.stringify(reglage));
     assert.equal((await appel('GET', '/api/v1/', { entetes: { [ENTETE_CLE]: cle } })).status, 200);
-    assert.equal((await appel('POST', '/api/edition/', { entetes: { [ENTETE_CLE]: cle }, corps: {} })).status, 401);
+    assert.equal((await appel('POST', '/api/edition/', { entetes: { [ENTETE_CLE]: cle }, corps: {} })).status, 403, 'la clé ne décide pas');
     // le second nom X-Maverick-Key (formulaire sûr des sessions), quelle que soit sa casse sur le réseau : lecture oui, écriture non
     assert.equal((await appel('GET', '/api/v1/', { entetes: { 'X-Maverick-Key': cle } })).status, 200);
-    assert.equal((await appel('POST', '/api/edition/', { entetes: { 'X-Maverick-Key': cle }, corps: {} })).status, 401);
+    assert.equal((await appel('POST', '/api/edition/', { entetes: { 'X-Maverick-Key': cle }, corps: {} })).status, 403);
     assert.equal((await appel('GET', '/api/v1/', { entetes: { 'X-Api-Key': cle } })).status, 401, 'un autre nom d’en-tête n’ouvre rien');
     // Authorization n'arrive jamais au service (Caddy puis nginx l'écrasent) : il ne sert à rien d'y mettre la clé
     assert.equal((await appel('GET', '/api/v1/', { entetes: { authorization: `Bearer ${cle}` } })).status, 401);
 
-    // la connexion : cookie HttpOnly, rejoué par le navigateur
-    const connexion = await appel('POST', '/api/acces/', { corps: { mot_de_passe: MOT } });
-    assert.equal(connexion.status, 200);
-    const posé = connexion.headers.getSetCookie();
-    assert.equal(posé.length, 1);
-    assert.match(posé[0], /; Path=\/api\/; HttpOnly; SameSite=Strict/);
-    const cookie = posé[0].split(';')[0];
-    assert.equal((await appel('POST', '/api/edition/', { entetes: { cookie }, corps: {} })).status, 400, 'la porte est passée');
-    assert.equal((await appel('GET', '/api/v1/', { entetes: { cookie } })).status, 200);
+    // la connexion posée : les sessions comptent aussitôt, selon leur niveau
+    const reglageD = reglageDiscordDEssai();
+    writeFileSync(fichierDiscord, JSON.stringify(reglageD));
+    assert.equal((await (await appel('GET', '/api/moi/')).json()).connexion_disponible, true);
+    const cookie = (niveau) => ({ cookie: cookieDeSession(reglageD, niveau) });
+    assert.equal((await appel('GET', '/api/v1/', { entetes: cookie('mj') })).status, 200);
+    assert.equal((await appel('POST', '/api/edition/', { entetes: cookie('mj'), corps: {} })).status, 403);
+    assert.equal((await appel('GET', '/api/v1/', { entetes: cookie('joueur') })).status, 403);
+    assert.equal((await appel('POST', '/api/edition/', { entetes: cookie('createur'), corps: {} })).status, 400, 'la porte est passée : le lot vide est refusé par l’édition');
+    assert.equal((await appel('GET', '/api/v1/', { entetes: cookie('createur') })).status, 200);
 
-    // le mot de passe change : la session ouverte tombe sans redémarrage
-    writeFileSync(fichier, JSON.stringify(reglageApres({ ancien: reglage, motDePasse: 'un nouveau mot de passe' }).reglage));
-    assert.equal((await appel('POST', '/api/edition/', { entetes: { cookie }, corps: {} })).status, 401);
+    // --nouvelle-session : toutes les sessions tombent sans redémarrage, les clés restent
+    writeFileSync(fichierDiscord, JSON.stringify(reglageDiscord({ ancien: reglageD, nouvelleSession: true })));
+    assert.equal((await appel('POST', '/api/edition/', { entetes: cookie('createur'), corps: {} })).status, 401);
+    assert.equal((await appel('GET', '/api/v1/', { entetes: { [ENTETE_CLE]: cle } })).status, 200);
 
     // rien de secret nulle part au journal, ni dans l'état
     const tout = lignes.join('\n');
-    assert.match(tout, /accès : session ouverte/);
-    for (const secret of [MOT, cle, cookie.split('=')[1], reglage.secret_de_session, reglage.mot_de_passe.empreinte, 'un nouveau mot de passe']) assert.ok(!tout.includes(secret), `« ${secret.slice(0, 10)}… » au journal`);
-    assert.ok(!JSON.stringify(s).includes(MOT));
+    assert.match(tout, /connexion : réglage Discord relu/);
+    for (const secret of [cle, reglageD.secret_de_session, reglageD.client_secret, cookie('createur').cookie.split('=')[1]]) assert.ok(!tout.includes(secret), `« ${secret.slice(0, 10)}… » au journal`);
+    assert.ok(!JSON.stringify(s).includes(reglageD.client_secret));
   } finally {
     await s.arreter();
   }

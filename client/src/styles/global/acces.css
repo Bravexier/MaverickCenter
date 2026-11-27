@@ -1,28 +1,25 @@
-/* L'accès au site de dev (src/scripts/acces.mjs ; R275) : la fenêtre du mot de passe, posée sur n'importe quelle page par un refus du service, et la mention
-   « Connecté · Se déconnecter » du pied de page. Jetons du thème seulement (skill ui-couleurs-theme). */
-.acces-dialogue {
-  width: min(26rem, calc(100vw - 2rem));
+/* L'accès au site de dev (src/scripts/acces.mjs ; R310) : l'avis posé sur n'importe quelle page par un refus de la porte (« Se connecter via Discord », ou « Votre niveau
+   ne suffit pas »). Jetons du thème seulement (skill ui-couleurs-theme). */
+.acces-avis {
+  position: fixed;
+  inset: auto 1rem 1rem 1rem;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  width: fit-content;
+  max-width: min(36rem, calc(100vw - 2rem));
+  margin-inline: auto;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 0;
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 18px 50px color-mix(in srgb, #000 35%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, #000 30%, transparent);
 }
-.acces-dialogue::backdrop { background: color-mix(in srgb, #000 45%, transparent); }
-.acces-dialogue form { display: grid; gap: 0.75rem; padding: 1.1rem 1.3rem 1.2rem; }
-.acces-dialogue h2 { margin: 0; font-size: 1.2rem; }
-.acces-dialogue label { display: grid; gap: 0.25rem; font-weight: 600; }
-.acces-dialogue input { font: inherit; font-weight: 400; padding: 0.35rem 0.5rem; }
-.acces-aide { margin: 0; font-size: var(--fs-md); color: var(--muted); }
-.acces-erreur { margin: 0; color: var(--danger); font-weight: 600; }
-.acces-erreur[hidden] { display: none; }
-.acces-boutons { display: flex; justify-content: flex-end; gap: 0.6rem; }
-.acces-boutons button { font: inherit; padding: 0.35rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
-.acces-boutons button:disabled { opacity: 0.6; cursor: default; }
-.acces-boutons button[type='submit'] { color: var(--texte-sur-good); background: var(--good); border-color: var(--good); font-weight: 700; }
-/* la mention du pied de page : discrète, un lien d'apparence */
-.acces-etat { font: inherit; padding: 0; border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }
-.acces-etat:hover, .acces-etat:focus-visible { color: var(--text); }
-.acces-etat:disabled { opacity: 0.6; cursor: default; }
-@media print { .acces-etat, .acces-dialogue { display: none !important; } }
+.acces-avis__texte { margin: 0; flex: 1 1 14rem; }
+.acces-avis__lien { color: var(--accent); font-weight: 700; }
+.acces-avis__lien[hidden] { display: none; }
+.acces-avis__fermer { font: inherit; padding: 0.3rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+@media print { .acces-avis { display: none !important; } }

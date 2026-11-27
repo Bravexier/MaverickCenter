@@ -49,6 +49,30 @@ test('Caddyfile : normal sur 8080, test sur 8081 (les ports des installateurs), 
   assert.doesNotMatch(c, /0\.0\.0\.0|^:808[01]\s*\{/m, 'jamais d\'accès direct aux ports des instances');
 });
 
+test('Caddyfile : le site de dev est fermé par la connexion Discord (forward_auth, pages ouvertes, /api/ au service) ; la production n’a aucune porte (R307, R310)', () => {
+  const c = lire('Caddyfile');
+  const dev = c.match(/^dev\.\{\$MAVERICK_DOMAINE[^\n]*\{\n([\s\S]*?)\n\}/m)[1];
+  const normal = c.match(/^\{\$MAVERICK_DOMAINE[^\n]*\{\n([\s\S]*?)\n\}/m)[1];
+  // les pages : interrogent le service avant d'être servies ; 401 vers la connexion (avec la page), 403 vers la connexion (niveau)
+  assert.match(dev, /forward_auth 127\.0\.0\.1:8081 \{[\s\S]*?uri \/api\/acces\/verifier\/[\s\S]*?\n\t\t\}/);
+  assert.match(dev, /@sans_session status 401\n\t+handle_response @sans_session \{\n\t+redir \* \/connexion\/\?retour=\{http\.request\.orig_uri\.path\} 302/);
+  assert.match(dev, /@niveau_trop_bas status 403\n\t+handle_response @niveau_trop_bas \{\n\t+redir \* \/connexion\/\?erreur=niveau 302/);
+  // le service reçoit toujours le mot de passe interne de nginx (le forward_auth comme le reste)
+  const appels = dev.match(/(?:reverse_proxy|forward_auth) 127\.0\.0\.1:8081 \{/g).length;
+  assert.equal(appels, 4, 'l’API, les pages ouvertes, la porte, puis les pages après la porte');
+  assert.equal(dev.match(/header_up Authorization "Basic \{\$MAVERICK_ACCES_TEST\}"/g).length, appels);
+  // /api/ va droit au service (il juge lui-même, en JSON) ; les pages ouvertes sont celles de la connexion et ce qu'elles chargent, rien d'autre
+  assert.match(dev, /@api path \/api\/\*\n\thandle @api \{/);
+  const ouvert = dev.match(/@ouvert path ([^\n]+)/)[1].split(' ').sort();
+  assert.deepEqual(ouvert, ['/_astro/*', '/apple-touch-icon.png', '/confidentialite', '/confidentialite/*', '/connexion', '/connexion/*', '/favicon.png', '/logo.webp'].sort());
+  // l'ordre : /api/ et les pages ouvertes avant la porte (la porte est le dernier « handle », celui qui rattrape tout)
+  assert.ok(dev.indexOf('handle @api') < dev.indexOf('handle @ouvert') && dev.indexOf('handle @ouvert') < dev.indexOf('forward_auth 127'));
+  assert.ok(dev.lastIndexOf('handle {') > dev.indexOf('handle @ouvert'));
+  // la production : aucune porte
+  assert.doesNotMatch(normal, /forward_auth|handle_response|\/connexion|verifier/);
+  assert.match(normal, /reverse_proxy 127\.0\.0\.1:8080/);
+});
+
 test('durcir.sh : seuls 22, 80 et 443 sont ouverts, SSH par clé, jamais de coupure sans clé installée', () => {
   const d = lire('durcir.sh');
   const ouverts = [...d.matchAll(/^ufw (?:allow|limit) (\S+)/gm)].map((m) => m[1]).sort();

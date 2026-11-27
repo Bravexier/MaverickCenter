@@ -3589,7 +3589,7 @@ function supprimer(ctx, op) {
   if (!op.cle || typeof op.cle !== 'object') throw refus(`${entite.libelle} : clé attendue`);
   // le forçage n'est qu'une option de la suppression d'un mot-clé (décision R223 : serveur/edition-chronologie.mjs#MOT_CLE.supprimer), comme dans /api/v1/
   if (op.forcer !== undefined && entite.table !== 'mot_cle') throw refus(`${entite.libelle} : « forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).`);
-  // avant le gel, qui cite un numéro et que le mot de passe ouvre : supprimer la monnaie d'un mot-clé le détacherait (Ruling T8-detachement)
+  // avant le gel, qui cite un numéro et qu’une session Créateur ouvre : supprimer la monnaie d'un mot-clé le détacherait (Ruling T8-detachement)
   const detachee = entite.table === 'monnaie' ? refusDuDetachement(ctx, 'monnaie', lireLigne(ctx.db, 'monnaie', op.cle)) : null;
   if (detachee) throw new ErreurEdition(409, detachee);
   // une table figée (TABLES_FIGEES : les monnaies) : 409 après le 404, comme une modification (raisonDuGel)
@@ -3652,7 +3652,7 @@ const OPERATIONS_DU_LOT = {
   ecrire_modifier(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
-    // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, le mot de passe ne l'ouvre pas, contrairement à celui d'une colonne tenue
+    // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, une session Créateur ne l’ouvre pas, contrairement à celui d'une colonne tenue
     const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null)
       ?? refusDuDetachement(ctx, op.table, avant, op.valeurs);
     if (ferme) throw new ErreurEdition(409, ferme);

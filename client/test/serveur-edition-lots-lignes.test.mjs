@@ -6,14 +6,14 @@
 //     qu'intacte, un numéro n'est jamais rendu ; l'aperçu se calcule sur une copie ;
 //   - une ligne qu'une autre ligne du lot tient (clé étrangère, page refaite d'après ses sources) ne s'annule pas seule : le motif est dit, rien n'est écrit ;
 //   - l'état de chaque ligne est gardé dans le lot ; quand plus rien n'est en place, le lot passe « annule » ; le lot entier reste annulable ;
-//   - aperçu et clic demandent le mot de passe.
+//   - aperçu et clic demandent une session Créateur.
 // Aucune valeur de règle figée : les lignes se prennent par ordre d'id, les textes écrits sont ceux du test.
 //   node --test test/serveur-edition-lots-lignes.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { COOKIE, ENTETE_CLE, creerAcces, reglageApres } from '../serveur/acces.mjs';
+import { poserLAcces as poserLAccesCommun } from './aide-acces-d-essai.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { deposer as deposerLot } from '../serveur/edition-lots.mjs';
@@ -296,17 +296,12 @@ test('annuler une ligne qui n’existe pas, d’un lot non appliqué, ou à un n
   assert.equal(description(m, a.id), texteDuTest('a'));
 });
 
-test('R291 : l’aperçu et le clic d’une ligne demandent le mot de passe (ni la clé de lecture ni la clé de dépôt) ; la liste et la lecture restent à la clé', async () => {
-  const fichier = fichierTemporaire('acces.json', 'edition-lots-lignes');
-  const premier = reglageApres({ motDePasse: 'un mot de passe d’essai' });
-  const { reglage, cleDeDepot } = reglageApres({ ancien: premier.reglage, refaireLaCleDeDepot: true });
-  writeFileSync(fichier, JSON.stringify(reglage));
-  const acces = creerAcces({ fichier, journal: () => {} });
-  const session = acces.connecter('un mot de passe d’essai', {});
-  const m = nouvelle({ acces });
-  const avecCle = { [ENTETE_CLE]: premier.cle };
-  const avecDepot = { [ENTETE_CLE]: cleDeDepot };
-  const avecMotDePasse = { cookie: `${COOKIE}=${session.jeton}` };
+test('R291 : l’aperçu et le clic d’une ligne demandent une session Créateur (ni la clé de lecture ni la clé de dépôt) ; la liste et la lecture restent à la clé', async () => {
+  const acces = poserLAccesCommun({ prefixe: 'edition-lots-lignes', depot: true });
+  const m = nouvelle({ acces: acces.acces });
+  const avecCle = acces.avecCle;
+  const avecDepot = acces.avecDepot();
+  const avecCreateur = acces.createur;
   const [a] = metiers(m.db, 1);
 
   const applique = ok(await m.appel('POST', '/api/edition/lots/', unLot([modifierUnMetier(a, texteDuTest('a'))]), avecDepot), 201);
@@ -314,14 +309,14 @@ test('R291 : l’aperçu et le clic d’une ligne demandent le mot de passe (ni 
   // la lecture des lignes passe avec les clés
   assert.ok(ok(await m.appel('GET', adresse(applique.id), undefined, avecCle)).lignes.length >= 1);
   assert.ok(ok(await m.appel('GET', adresse(applique.id), undefined, avecDepot)).lignes.length >= 1);
-  const la = ligneDuMetier(ok(await m.appel('GET', adresse(applique.id), undefined, avecMotDePasse)).lignes, a);
-  for (const entetes of [{}, avecCle, avecDepot]) {
-    assert.equal(refus(await m.appel('GET', adresseDeLaLigne(applique.id, la.n, 'annulation'), undefined, entetes), 401).acces, 'mot_de_passe');
-    assert.equal(refus(await m.appel('POST', adresseDeLaLigne(applique.id, la.n, 'annuler'), {}, entetes), 401).acces, 'mot_de_passe');
+  const la = ligneDuMetier(ok(await m.appel('GET', adresse(applique.id), undefined, avecCreateur)).lignes, a);
+  for (const [entetes, statut, code] of [[{}, 401, 'connexion'], [avecCle, 403, 'cle'], [avecDepot, 403, 'cle'], [acces.mj, 403, 'niveau']]) {
+    assert.deepEqual([refus(await m.appel('GET', adresseDeLaLigne(applique.id, la.n, 'annulation'), undefined, entetes), statut).acces], [code]);
+    assert.deepEqual([refus(await m.appel('POST', adresseDeLaLigne(applique.id, la.n, 'annuler'), {}, entetes), statut).acces], [code]);
   }
-  assert.equal(description(m, a.id), texteDuTest('a'), 'rien n’est annulé sans le mot de passe');
-  assert.equal(ok(await m.appel('GET', adresseDeLaLigne(applique.id, la.n, 'annulation'), undefined, avecMotDePasse)).verdict, 'applicable');
-  ok(await m.appel('POST', adresseDeLaLigne(applique.id, la.n, 'annuler'), {}, avecMotDePasse));
+  assert.equal(description(m, a.id), texteDuTest('a'), 'rien n’est annulé sans une session Créateur');
+  assert.equal(ok(await m.appel('GET', adresseDeLaLigne(applique.id, la.n, 'annulation'), undefined, avecCreateur)).verdict, 'applicable');
+  ok(await m.appel('POST', adresseDeLaLigne(applique.id, la.n, 'annuler'), {}, avecCreateur));
   assert.equal(description(m, a.id), a.description);
 });
 

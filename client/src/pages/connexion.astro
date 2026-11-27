@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/wiki';
+import { modeDuSite } from '../lib/mode-site.mjs';
+import packageInfo from '../../package.json';
+
+// La connexion (R310 : connexion par Discord). Page de destination des erreurs de la connexion (`?erreur=refus|indisponible|discord|etat`, service) et de la
+// porte du site de dev (`?erreur=niveau` : session de niveau trop bas ; sans erreur : pas de session, `?retour=<la page demandée>`). Sur le site de dev, Caddy la
+// sert SANS session (deploy/vps/Caddyfile, bloc `dev.` : /connexion/, /_astro/, favicon, icône et logo) : elle ne dépend d'aucune autre ressource fermée (pas
+// d'appel au service que `GET /api/moi/` et le lien de connexion, ouverts). Le texte est écrit à la construction ; src/scripts/compte.mjs choisit le message
+// de `?erreur=`, garde `retour` (chemin du site seulement) dans le bouton et propose de se déconnecter quand on est connecté. Hors de tout menu ; absente de la
+// version portable (pas de service).
+const site = modeDuSite(process.env, packageInfo.version);
+const introduction = site.test
+  ? 'Le site de développement demande une connexion Discord de niveau MJ au moins.'
+  : 'La connexion se fait avec votre compte Discord et le serveur Discord du jeu.';
+---
+
+<Base title="Connexion" description="Se connecter au site Maverick Center avec Discord.">
+  <section class="connexion" data-connexion-page>
+    <h1>Connexion</h1>
+    <p class="connexion__erreur" role="alert" data-connexion-erreur hidden></p>
+    <p data-connexion-introduction>{introduction}</p>
+    <p>
+      Votre niveau d’accès (Observateur, Joueur, MJ ou Créateur) se déduit de votre appartenance au serveur Discord du jeu et de vos rôles. Le site ne
+      voit ni votre e-mail, ni vos autres serveurs, ni vos connexions.
+    </p>
+    <p><a class="bouton-connexion" data-lien-connexion href={url('api/connexion/discord/')}>Connexion via Discord</a></p>
+    <p data-connexion-indisponible hidden>La connexion par Discord n’est pas disponible sur ce serveur pour le moment.</p>
+    <div data-connexion-connecte hidden>
+      <p>Vous êtes connecté en tant que <strong data-connexion-nom></strong> (niveau <span data-connexion-niveau></span>).</p>
+      <p><button type="button" data-deconnexion>Se déconnecter</button></p>
+    </div>
+    {/* /confidentialite/ reste ouverte sans session sur le site de dev (deploy/vps/Caddyfile, @ouvert) */}
+    <p><a href={url('confidentialite/')}>Ce que le site garde de votre connexion</a></p>
+  </section>
+</Base>

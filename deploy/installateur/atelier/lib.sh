@@ -44,6 +44,8 @@ SONDE_APRES_S=${MAVERICK_ATELIER_SONDE_APRES:-30}
 SONDE_MAUVAISES_DE_SUITE=3
 SONDE_LENTEUR_MS=2000
 SONDE_CIBLES='/ /api/personnages/'
+# le site de dev est fermé par la connexion Discord (R310) : la liste des prétirés y répond 401/403 à la sonde (qui n'a pas de session), ce qui compterait comme une erreur ; son état reste ouvert (masqué sans lecture)
+SONDE_CIBLES_DEV='/ /api/etat/'
 # Plafond de taille de ce que root copie depuis le conteneur (octets) et depuis le service (l'extrait).
 PLAFOND_RESULTAT=262144
 # le journal du conteneur (docker logs) gardé dans le rapport : la fin, 200 Ko au plus

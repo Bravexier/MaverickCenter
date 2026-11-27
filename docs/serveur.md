@@ -5,15 +5,13 @@ ce qu'on y **écrit** : les fiches de personnages prétirés et, sur le site de 
 joueur viendront s'y ajouter ([`feuille-de-route.md`](feuille-de-route.md)) ; rien n'y est propre à l'hôte qui le fait tourner.
 
 ```
-navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/            pages, scripts, base des règles (donnees/maverick.db)
+navigateur ──▶ nginx (mot de passe interne, que Caddy présente) ──┬──▶ site/            pages, scripts, base des règles (donnees/maverick.db)
                                               └──▶ /api/ ──▶ conteneur « serveur » (Node 22) ──▶ db/vivante.db  (base vivante)
 ```
 
-**Pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
-le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
-Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
-propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »). Sur le site de dev,
-un second mot de passe, posé par le propriétaire, protège les écritures et la mise à jour ; la lecture des pages reste libre (« Accès au site de dev »).
+**Les comptes viennent de Discord** (R310, « Connexion par Discord ») ; sur la production, sans restriction nouvelle (R307), quiconque atteint le site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
+le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; ses droits viendront avec E8. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
+propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »). Le site de dev, lui, est fermé : une connexion Discord de niveau MJ au moins (lecture) ou Créateur (écritures et mise à jour), ou une clé (« Accès au site de dev »).
 
 ## Le code
 
@@ -21,8 +19,9 @@ un second mot de passe, posé par le propriétaire, protège les écritures et l
 | --- | --- |
 | `client/serveur/index.mjs` | Point d'entrée livré (variables d'environnement ci-dessous) |
 | `client/serveur/service.mjs` | Serveur HTTP (`node:http`), surveillance des fichiers, arrêt propre |
-| `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/` et `GET /api/tipeee/` rendent une promesse, que `service.mjs` attend |
-| `client/serveur/acces.mjs`, `acces-routes.mjs` | L'accès au site de dev : le réglage (`secrets/acces.json`), les sessions, les essais ratés, la commande de l'hôte ; le classement de chaque route (ouverte, lecture, écriture) que la porte de `traiter` consulte (« Accès au site de dev », plus bas) |
+| `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/`, `GET /api/tipeee/` et `GET /api/connexion/discord/retour/` rendent une promesse, que `service.mjs` attend |
+| `client/serveur/acces.mjs`, `acces-routes.mjs` | La porte du site de dev : les clés de lecture et de dépôt (`secrets/acces.json`), le niveau de la session, la commande de l'hôte des clés ; le classement de chaque route (ouverte, lecture, proposition, écriture) que la porte de `traiter` consulte (« Accès au site de dev », plus bas) |
+| `client/serveur/discord.mjs`, `utilisateurs.mjs` | La connexion par Discord (R310) : le réglage de l'instance (`secrets/discord.json`), le flux OAuth, la session signée, la commande de l'hôte ; la ligne de `utilisateur` écrite à chaque connexion (« Connexion par Discord », plus bas) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
 | `client/serveur/structure-sur-place.mjs` | Un changement de structure appliqué à la base en place (migrations livrées, essai sur une copie, migrations reçues par une base refaite) : « Changement de structure appliqué sur place », ci-dessous ; pas encore branché sur la vraie base |
@@ -436,7 +435,7 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   refusés ; seules les contraintes de la base refusent (un rang de point sous 1, une famille inconnue).
   On peut **supprimer** un prétiré (demande du propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
-  (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe. `POST /api/classeur/`
+  (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté. `POST /api/classeur/`
   suit la même garde.
 
 ## Édition des règles (site de dev)
@@ -857,8 +856,8 @@ qu'une ligne a portés) lit toutes les natures. Tests : `historique-site`, `aide
 | `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
 | `GET`, `POST /api/edition/lots/`, `GET /api/edition/lots/<id>/`, `POST …/<id>/{essai,appliquer,refuser,annuler}/`, `GET …/<id>/annulation/`, `POST /api/edition/lots/recalcul/` | Les lots de changements : déposer une proposition, la lire, refaire son essai à blanc, l'appliquer, la refuser ou l'annuler d'un clic, aperçu de l'annulation, « tout recalculer » (ci-dessous, « Lots de changements (service) ») |
 
-**Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
-`modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
+**Les comptes sont ceux de Discord** (R310) : sur le site de dev, une session de niveau Créateur modifie les règles ; le journal n'a pas d'auteur
+(`modification_lot.auteur_id` reste vide : l'y poser ferait citer, par les copies de `data/rows` et les paquets, des comptes qu'ils n'exportent pas). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
 
 ### Lots de changements (format)
 
@@ -902,17 +901,17 @@ Décision du propriétaire (R275, question 4 a) : « Chaque lot attend votre cli
 le propriétaire (R291, qui remplace R275 (4) : « Direct ») :
 
 - **Tant que la clé de dépôt n'est pas posée** (l'état sûr, aussi sans aucun réglage d'accès) : une session **dépose** une proposition avec la **clé de lecture** ; rien n'est
-  écrit dans le contenu ; le propriétaire l'**applique** ou la **refuse** (mot de passe). C'est le comportement de R275 (4a), inchangé.
+  écrit dans le contenu ; un Créateur l'**applique** ou la **refuse** (session Créateur). C'est le comportement de R275 (4a), inchangé.
 - **Une fois la clé de dépôt posée** (`acces.sh --cle-de-depot`, « Accès au site de dev ») : la clé de lecture, que détient aussi la CI, **ne dépose plus** (`403`). La clé de
-  **dépôt** ou le mot de passe déposent, et le lot est **appliqué aussitôt**, sans clic ; le propriétaire **annule** ensuite le lot, ou une seule de ses lignes (« Annuler une seule
-  ligne », ci-dessous). Les propositions déjà déposées restent « propose » et se décident par leurs routes `appliquer` / `refuser` (mot de passe).
+  **dépôt** ou une session Créateur déposent, et le lot est **appliqué aussitôt**, sans clic ; un Créateur **annule** ensuite le lot, ou une seule de ses lignes (« Annuler une seule
+  ligne », ci-dessous). Les propositions déjà déposées restent « propose » et se décident par leurs routes `appliquer` / `refuser` (session Créateur).
 
-Sans mot de passe posé, le site se comporte comme avant.
+Sans porte posée (les tests, un service lancé sans fichier de clés dans un test), le dépôt reste une proposition.
 
 | Route | Classe d'accès | Rôle |
 | --- | --- | --- |
 | `GET /api/edition/lots/` | lecture | Les lots, le plus récent d'abord (résumé : état, verdict de l'essai, `application`, `lignes_annulees`, `refus` ; lot appliqué : `lignes_nettes`, le nombre de ses lignes, sans lire son détail (absent si son journal est illisible), et, référence lisible, `ecart_production`) |
-| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré, essayé à blanc ; `201` avec l'essai (« propose »). **Clé de dépôt posée** : appliqué aussitôt (`201`, « applique »), ou refusé aux contrôles (`409`, « refuse », `motifs`) ; `verrous_ouverts?: ["R…"]` dans le corps (mot de passe seulement) |
+| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré, essayé à blanc ; `201` avec l'essai (« propose »). **Clé de dépôt posée** : appliqué aussitôt (`201`, « applique »), ou refusé aux contrôles (`409`, « refuse », `motifs`) ; `verrous_ouverts?: ["R…"]` dans le corps (session Créateur seulement) |
 | `GET /api/edition/lots/<id>/` | lecture | Le contenu déposé, l'essai (aperçu avant et après), le bilan ; un lot appliqué ou annulé porte `lignes` (« Annuler une seule ligne » ; référence lisible : `ecart_production` sur chacune) |
 | `POST /api/edition/lots/<id>/essai/` | proposition | Refait l'essai (n'écrit que `essai` et `essaye_le`) |
 | `POST /api/edition/lots/<id>/appliquer/` | écriture | `{ verrous_ouverts?: ["R…"] }` : l'application d'un bloc (le clic du propriétaire) |
@@ -926,18 +925,18 @@ Sans mot de passe posé, le site se comporte comme avant.
 | `POST /api/edition/lots/recalcul/` | proposition | « Tout recalculer » : dépose les écarts des colonnes dérivées comme un lot de nature `code` (`201 { lot, recalcul }` ; `200` sans lot quand rien ne diffère) ; avec la clé de dépôt posée, le lot est appliqué aussitôt comme tout dépôt |
 
 La classe **proposition** (`serveur/acces-routes.mjs`) est la porte des **dépôts** : déposer, refaire un essai, « tout recalculer ». Tant que la clé de dépôt n'est pas posée, elle a la
-porte de la lecture (la clé OU le mot de passe) et elle n'écrit que `lot_de_changements` ; une fois posée, elle demande **la clé de dépôt OU le mot de passe** : sans rien `401`
-(`acces: "cle_de_depot"`), avec la clé de lecture `403` (« la clé de dépôt est nécessaire »). Appliquer, refuser, annuler (le lot ou une ligne), qui décident, demandent le mot de passe,
+porte de la lecture (la clé OU une session MJ au moins) et elle n'écrit que `lot_de_changements` ; une fois posée, elle demande **la clé de dépôt OU une session Créateur** : sans rien `401`
+(`acces: "cle_de_depot"`), avec la clé de lecture `403` (« la clé de dépôt est nécessaire »). Appliquer, refuser, annuler (le lot ou une ligne), qui décident, demandent une session Créateur,
 que la clé de dépôt soit posée ou non : la clé de dépôt n'est pas une clé d'écriture. En production : `403` avant tout.
 
 **Dépôt appliqué aussitôt** (R291 ; `edition-lots.mjs#deposerEtAppliquer`, `acces.mjs#depot`). Le service décide au dépôt : le réglage pose une clé de dépôt **et** la requête porte cette clé ou
-le mot de passe → direct ; sinon (clé pas posée, aucun réglage d'accès, tests) → proposition, comme avant (« sans réglage, tout est permis » reste vrai pour le clic, mais le mode
-direct est un choix du réglage). Le chemin est celui du clic : `deposer` (format : `400` motivé, rien n'est enregistré), essai à blanc sur une copie, puis `appliquer` dans une
+une session Créateur → direct ; sinon (clé pas posée, aucune porte, tests) → proposition, comme avant (sans porte, tout est permis pour le clic, mais le mode
+direct est un choix du réglage des clés). Le chemin est celui du clic : `deposer` (format : `400` motivé, rien n'est enregistré), essai à blanc sur une copie, puis `appliquer` dans une
 transaction, contrôles du contenu rejoués, numéros donnés, lot du journal de la nature et de la décision du lot (ses modifications « en attente » : rien ne part en production sans
-« Effectuer la mise à jour »). `bilan.application = { directe: true, par: 'cle_de_depot' | 'mot_de_passe' }` dit comment le lot est entré (un lot appliqué par le clic du propriétaire n'a pas de `application`). Si l'essai ou l'application refuse (opération refusée, problème du contenu né du lot, verrou pas ouvert, rien à écrire), **rien n'entre** : le lot est
-enregistré « **refuse** » (un arrêt du service ou une erreur inattendue entre le dépôt et la décision le laisse « propose » : le clic du propriétaire le décide) avec ses motifs dans `essai.refus_du_depot` (la base veut un `bilan` vide pour un lot refusé ; `refus` dans la lecture), et la réponse est un `409`
-`{ erreur, lot, motifs }`. Ouvrir un verrou de décision est **réservé au mot de passe** : `verrous_ouverts` du corps (liste de « R… », `verrousDuClic`, retirée du lot déposé) ouvre ce que le gel lève (R218, R219, R232 (2)) et
-est enregistrée dans le lot (`verrous_ouverts`, `bilan.verrous_ouverts`) quand le dépôt vient du mot de passe ; avec la clé de dépôt, un corps qui le porte est refusé (`403`, rien n'est enregistré), et un lot dont
+« Effectuer la mise à jour »). `bilan.application = { directe: true, par: 'cle_de_depot' | 'createur' }` dit comment le lot est entré (un lot appliqué par le clic d'un Créateur n'a pas de `application`). Si l'essai ou l'application refuse (opération refusée, problème du contenu né du lot, verrou pas ouvert, rien à écrire), **rien n'entre** : le lot est
+enregistré « **refuse** » (un arrêt du service ou une erreur inattendue entre le dépôt et la décision le laisse « propose » : le clic d'un Créateur le décide) avec ses motifs dans `essai.refus_du_depot` (la base veut un `bilan` vide pour un lot refusé ; `refus` dans la lecture), et la réponse est un `409`
+`{ erreur, lot, motifs }`. Ouvrir un verrou de décision est **réservé à une session Créateur** : `verrous_ouverts` du corps (liste de « R… », `verrousDuClic`, retirée du lot déposé) ouvre ce que le gel lève (R218, R219, R232 (2)) et
+est enregistrée dans le lot (`verrous_ouverts`, `bilan.verrous_ouverts`) quand le dépôt vient d'une session Créateur ; avec la clé de dépôt, un corps qui le porte est refusé (`403`, rien n'est enregistré), et un lot dont
 l'essai rend `verrous` n'est pas appliqué : il est enregistré « refuse », les R… à ouvrir dans `refus.verrous` et les motifs. Un refus de règle (R105, R181…) reste refusé. « Tout recalculer » (`recalculerTout`, `par`) s'aligne : appliqué aussitôt quand le droit le permet.
 
 **Annuler une seule ligne** (R291 : « annuler cette modification » sur chaque ligne du patchnote ; `lignesDuLotApplique`, `annulerUneLigne`, `dependancesDesLignes`). Une **ligne** est une ligne de
@@ -948,7 +947,7 @@ annulee?, colonnes_modifiees?, annulable_seule, motif, depend_de }` ; `etat` : `
 changé une valeur que le lot avait écrite : le site prime), `comme_avant` (déjà revenue à sa valeur d'avant). `annulable_seule` est faux, avec un `motif` en français : lot pas appliqué, ligne déjà
 annulée ou comme avant, tout modifié depuis, ou **une autre ligne du lot encore en place la tient** (`depend_de`) : une insertion que cite une autre ligne (clé étrangère, ex. un mot-clé et son synonyme),
 une suppression dont le parent a été retiré aussi, une page refaite par le site d'après les autres lignes du lot. Ce qui n'est pas lié par une clé étrangère (un renvoi dans un texte) est laissé aux
-contrôles du contenu, qui refusent avec leur motif ; rien n'est annulé en silence. L'aperçu (`GET …/lignes/<n>/annulation/`, sur une copie, mot de passe) et le clic (`POST …/lignes/<n>/annuler/`)
+contrôles du contenu, qui refusent avec leur motif ; rien n'est annulé en silence. L'aperçu (`GET …/lignes/<n>/annulation/`, sur une copie, session Créateur) et le clic (`POST …/lignes/<n>/annuler/`)
 réutilisent `annulerLeLot` filtré sur la ligne : mêmes règles que le lot entier (une valeur n'est remise que si elle vaut encore ce que le lot a écrit, une insertion n'est supprimée qu'intacte, une
 suppression n'est réinsérée que si la ligne est absente, un numéro n'est jamais rendu), même `BEGIN IMMEDIATE`, contrôles rejoués, verrous par `verrous_ouverts`. Le lot du journal est « Annulation d’une ligne
 de « … » : <ligne> » de la même nature et décision ; `bilan.lignes_annulees[n] = { annule_le, lot_id, colonnes, gardees }` garde l'état ; quand plus aucune ligne n'est en place, le lot passe « annule ».
@@ -999,7 +998,7 @@ connaît la colonne (`traduire`, comme l'application) : ce qu'il recalcule seul 
 note (`deja`). Une colonne dérivée d'une page typée, que le service refuse d'écrire, passe par le journal. La comparaison est **refaite à chaque ligne** sur l'état du moment ; l'aperçu
 (`GET …/annulation/`, classe lecture) est calculé par **le même code** sur une copie `VACUUM INTO` dans un fil à part (un à la fois, avec les essais), rien n'est enregistré ; il rend
 `verdict` (`applicable`, `verrous`, `refusee`, `rien_a_remettre`), `comptes`, `verrous_a_ouvrir`, les opérations avec leur aperçu avant et après (`ecarts` des valeurs gardées) et les
-problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, mot de passe) : une transaction sous le verrou de l'édition, dans la requête (un lot d'ancrage R309 : de 3 à 7 s sur
+problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, session Créateur) : une transaction sous le verrou de l'édition, dans la requête (un lot d'ancrage R309 : de 3 à 7 s sur
 le poste de développement, mesure du 2026-11-26 sur une copie ancrée, sous les 60 s de nginx, ses mots-clés retirés lisant leurs mentions une seule fois : `lecteurDesMentions` ; une réponse coupée ne change rien à la transaction, l'état se
 relit par `GET /api/edition/lots/`), contrôles du contenu rejoués (le calcul « avant » se fait au clic, environ une seconde), un lot du journal `Annulation de « … »` de **la même nature et du même numéro de décision** que le lot annulé (titre neutralisé comme à l'application), puis
 `lot_de_changements` passe à « annule » (`annule_le`, `annulation_lot_id`, `bilan.annulation` : le bilan d'application est gardé). Les verrous de décision se rouvrent au clic
@@ -1010,7 +1009,7 @@ renommage de mot-clé laisse la clé que le renommage avait posée en clé quitt
 **Tout recalculer** (`recalculerTout`, classe `proposition`). Après un changement de code, le corps, le résumé et les `donnees` des pages que le code dérive des tables et que
 `recalculerLesPages` refait sans qu'on lui dise ce qui a changé — races, classes, fiches de dons, métiers (`TYPES_DE_PAGES_RECALCULEES`) — sont refaits **sur une copie** et comparés à
 ce qui est stocké ; les écarts sont **déposés comme un lot de nature `code`** (une opération `modifier` par page : la valeur stockée en `avant`, la valeur recalculée en `apres`), essayé à
-blanc et traité comme tout dépôt (R291) : appliqué aussitôt avec la clé de dépôt ou le mot de passe quand la clé de dépôt est posée, sinon proposé au clic. Aucun écart : `200`, aucun lot. Les pages de magie, refaites morceau par morceau (`TABLES_DES_PAGES_PAR_MORCEAUX`), y sont aussi : chaque ligne de leurs tables est rejouée telle quelle (avant = après) et leurs morceaux, repérés par leur
+blanc et traité comme tout dépôt (R291) : appliqué aussitôt avec la clé de dépôt ou une session Créateur quand la clé de dépôt est posée, sinon proposé au clic. Aucun écart : `200`, aucun lot. Les pages de magie, refaites morceau par morceau (`TABLES_DES_PAGES_PAR_MORCEAUX`), y sont aussi : chaque ligne de leurs tables est rejouée telle quelle (avant = après) et leurs morceaux, repérés par leur
 place, suivent leurs tables. Les pages des armes, des armures et des boucliers, des composants dont le site ne crée pas de ligne hors de leur tableau (Équipement inventaire, ingrédients d'alchimie) et des potions sont
 refaites **en entier** (`refaireLesCorpsEntiers`, `corpsDesArmesEntier`, `corpsDesArmuresEntier`, `corpsDeLaPageDesComposantsEntier`, `corpsDesPotionsEntier`) : chaque tableau est repéré par sa section et
 chaque ligne par son rang, jamais par son ancien texte, si bien qu'une ligne que le corps n'écrit plus comme le code d'aujourd'hui la rend est refaite (un recalcul sert à cela) ; la prose, les matières en
@@ -1019,9 +1018,9 @@ sans ligne dans ces pages, et une création reprend le rang d'un élément suppr
 forme de l'importeur (section ou tableau introuvable, nombre de lignes qui n'est plus celui de la base) reste telle quelle et se dit dans `pages_illisibles`. Les clés des mots-clés et les colonnes
 calculées des armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
-**Préparer l'ancrage** (décision R309, `serveur/edition-ancrage-lots.mjs#preparerLAncrage`, classe `proposition`, sur le modèle de « tout recalculer » ; conception : `docs/chantier-ancrage-mots-cles.md`, §5). Elle lit la **base vivante**, calcule ce qui manque (`lib/mots-cles-ancrage.mjs#planDeLAncrage`) et dépose des lots de nature `decision`, décision `R309`, auteur « préparer l'ancrage », format `maverick-lot/1`. **Avec la clé de dépôt**, ou le mot de passe une fois cette clé posée (R291, R306), chaque lot s'applique aussitôt, après le même essai à blanc et les mêmes contrôles que tout lot ; le plan est **recalculé après chaque lot** (une catégorie n'a pas d'id avant sa création) et le **premier refus arrête la suite**, avec son motif (`arret`) : un lot refusé n'écrit rien. Sans clé de dépôt posée, un seul lot reste en proposition ; la suite vient au lancement suivant, une fois la proposition appliquée ou refusée. **Quatre lots**, enchaînés par un seul lancement, chacun dans le plafond de 2 000 opérations : les catégories, le type unique, les noms et les pages déjà désignées ; les sorts et les types de sort ; les pages hors capacités ; les capacités. L'action est **rejouable** (elle ne prend que ce qui manque), **ne devine rien** (`a_trancher` : un élément laissé de côté avec sa raison), et **une ligne annulée reste écartée** : annuler est une décision du propriétaire (R291), l'action lit les lignes annulées de ses propres lots (`ecartees`, `lignesAnnuleesDeLAncrage`) et seul « Reprendre les lignes annulées » (`reprendre: true`) les redépose. Le gel des écritures (`serveur/gel.mjs`) est relu avant chaque lot : posé en cours de route, il arrête la suite. L'enchaînement dure plusieurs minutes et nginx coupe une requête à 60 s : il tourne en tâche de fond (`lancerLAncrage`), son état se lit par `GET`. `comptes` dit ce que le plan avait à faire à ce lancement. Rien ne part en production sans « Effectuer la mise à jour ». Pour tout défaire : `POST /api/edition/lots/<id>/annuler/`, au mot de passe, du lot 4 au lot 1 ; il n'y a pas de bouton « Annuler tout » (R297 (1) l'a tranché pour un changement dont le détail est illisible : une restauration le défait ; la conception de l'ancrage en tire le même choix, sans décision à elle).
+**Préparer l'ancrage** (décision R309, `serveur/edition-ancrage-lots.mjs#preparerLAncrage`, classe `proposition`, sur le modèle de « tout recalculer » ; conception : `docs/chantier-ancrage-mots-cles.md`, §5). Elle lit la **base vivante**, calcule ce qui manque (`lib/mots-cles-ancrage.mjs#planDeLAncrage`) et dépose des lots de nature `decision`, décision `R309`, auteur « préparer l'ancrage », format `maverick-lot/1`. **Avec la clé de dépôt**, ou une session Créateur une fois cette clé posée (R291, R306), chaque lot s'applique aussitôt, après le même essai à blanc et les mêmes contrôles que tout lot ; le plan est **recalculé après chaque lot** (une catégorie n'a pas d'id avant sa création) et le **premier refus arrête la suite**, avec son motif (`arret`) : un lot refusé n'écrit rien. Sans clé de dépôt posée, un seul lot reste en proposition ; la suite vient au lancement suivant, une fois la proposition appliquée ou refusée. **Quatre lots**, enchaînés par un seul lancement, chacun dans le plafond de 2 000 opérations : les catégories, le type unique, les noms et les pages déjà désignées ; les sorts et les types de sort ; les pages hors capacités ; les capacités. L'action est **rejouable** (elle ne prend que ce qui manque), **ne devine rien** (`a_trancher` : un élément laissé de côté avec sa raison), et **une ligne annulée reste écartée** : annuler est une décision du propriétaire (R291), l'action lit les lignes annulées de ses propres lots (`ecartees`, `lignesAnnuleesDeLAncrage`) et seul « Reprendre les lignes annulées » (`reprendre: true`) les redépose. Le gel des écritures (`serveur/gel.mjs`) est relu avant chaque lot : posé en cours de route, il arrête la suite. L'enchaînement dure plusieurs minutes et nginx coupe une requête à 60 s : il tourne en tâche de fond (`lancerLAncrage`), son état se lit par `GET`. `comptes` dit ce que le plan avait à faire à ce lancement. Rien ne part en production sans « Effectuer la mise à jour ». Pour tout défaire : `POST /api/edition/lots/<id>/annuler/`, par une session Créateur, du lot 4 au lot 1 ; il n'y a pas de bouton « Annuler tout » (R297 (1) l'a tranché pour un changement dont le détail est illisible : une restauration le défait ; la conception de l'ancrage en tire le même choix, sans décision à elle).
 
-**Le verrou d'un mot-clé ancré** (décision R309 ; `serveur/edition-ancrage.mjs#refusDuVerrou`, `lib/mots-cles-ancrage.mjs#estAncre`). Un mot-clé est **ancré** quand une page, un sort, un type de sort, une magie, un type de dégâts ou une monnaie le désigne. Sur une **route du site** (le Glossaire), tout geste sur lui est refusé en `409` : nom, adresse, type, définition, couleur, icône, synonymes, catégories, fusion, suppression. Un **lot** corrige encore son type, sa couleur, son icône, ses synonymes et sa définition (décision R309 (17), clé de dépôt, ligne annulable), mais **jamais son nom, son adresse ni sa clé, ni sa suppression seule, ni sa fusion dans un autre**, mot de passe compris (`FERME_AUX_LOTS`), ni le détachement de son élément (`refusDuDetachement` : retirer ou remplacer le lien `mot_cle_id`, supprimer la ligne qui le porte, supprimer une monnaie citée par un mot-clé). **Le refus ne cite aucun numéro de décision** : un refus qui en cite un est un verrou de décision que le mot de passe ouvre (`verrous_ouverts`, ci-dessus), ce qu'on ne veut pas ici ; il ne se lève pas non plus par `gel: false` sur un lot (`sousLeVerrou`). Le nom, l'adresse et la clé d'un mot-clé ancré ne sont écrits que par le module d'ancrage, quand l'élément change (créer, renommer, supprimer une page ou un sort : le mot-clé suit, et la clé est recalculée une seule fois en fin de lot). **Au rejeu du journal et à l'annulation d'un lot, le verrou ne joue pas** (R219 (6), `ctx.annulation`). Un seul type par mot-clé : une seconde catégorie est refusée (409, `champ: "categories"`) ; dans un lot, c'est l'état de fin qui se juge. **Fusion** : un mot-clé ancré ne se fond pas dans un autre ; un mot-clé sans élément peut se fondre dans un ancré, qui ne reçoit que sa clé (comme une cible verrouillée), et si la source a des synonymes la fusion est refusée (`champ: "synonymes"`). **Suppression d'un élément** : le mot-clé propre de la page ne bloque plus sa suppression (`refuserSiUnMotCleYMene`), mais une page que désigne un mot-clé verrouillé ne se supprime toujours pas (R221), et un mot-clé cité par une balise ou une étiquette fait refuser la suppression de l'élément (409, un seul message qui liste les textes à retoucher) ; sinon il part dans le même lot s'il n'est tenu par aucun autre élément (R289).
+**Le verrou d'un mot-clé ancré** (décision R309 ; `serveur/edition-ancrage.mjs#refusDuVerrou`, `lib/mots-cles-ancrage.mjs#estAncre`). Un mot-clé est **ancré** quand une page, un sort, un type de sort, une magie, un type de dégâts ou une monnaie le désigne. Sur une **route du site** (le Glossaire), tout geste sur lui est refusé en `409` : nom, adresse, type, définition, couleur, icône, synonymes, catégories, fusion, suppression. Un **lot** corrige encore son type, sa couleur, son icône, ses synonymes et sa définition (décision R309 (17), clé de dépôt, ligne annulable), mais **jamais son nom, son adresse ni sa clé, ni sa suppression seule, ni sa fusion dans un autre**, session Créateur comprise (`FERME_AUX_LOTS`), ni le détachement de son élément (`refusDuDetachement` : retirer ou remplacer le lien `mot_cle_id`, supprimer la ligne qui le porte, supprimer une monnaie citée par un mot-clé). **Le refus ne cite aucun numéro de décision** : un refus qui en cite un est un verrou de décision qu'une session Créateur ouvre (`verrous_ouverts`, ci-dessus), ce qu'on ne veut pas ici ; il ne se lève pas non plus par `gel: false` sur un lot (`sousLeVerrou`). Le nom, l'adresse et la clé d'un mot-clé ancré ne sont écrits que par le module d'ancrage, quand l'élément change (créer, renommer, supprimer une page ou un sort : le mot-clé suit, et la clé est recalculée une seule fois en fin de lot). **Au rejeu du journal et à l'annulation d'un lot, le verrou ne joue pas** (R219 (6), `ctx.annulation`). Un seul type par mot-clé : une seconde catégorie est refusée (409, `champ: "categories"`) ; dans un lot, c'est l'état de fin qui se juge. **Fusion** : un mot-clé ancré ne se fond pas dans un autre ; un mot-clé sans élément peut se fondre dans un ancré, qui ne reçoit que sa clé (comme une cible verrouillée), et si la source a des synonymes la fusion est refusée (`champ: "synonymes"`). **Suppression d'un élément** : le mot-clé propre de la page ne bloque plus sa suppression (`refuserSiUnMotCleYMene`), mais une page que désigne un mot-clé verrouillé ne se supprime toujours pas (R221), et un mot-clé cité par une balise ou une étiquette fait refuser la suppression de l'élément (409, un seul message qui liste les textes à retoucher) ; sinon il part dans le même lot s'il n'est tenu par aucun autre élément (R289).
 
 **La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs` ; R291) : la section « Modifications de l'équipe » (`[data-nv-lots]`), entre les listes de la note en préparation
 et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Elle tient dans
@@ -1034,7 +1033,7 @@ comme avant). Une ligne `en_place` et `annulable_seule` porte « Annuler cette m
 décision à ouvrir), puis « Oui, annuler cette modification » envoie `POST …/lignes/<n>/annuler/` ; une ligne qui ne s'annule pas seule montre son motif et les lignes dont elle dépend ; un `409` se dit sous
 la ligne. Il n'y a plus d'« Annuler ce lot » sur la page (la route reste). Un changement d'ancrage (décision R309 : des centaines de lignes) est replié sous son titre et son nombre de lignes (`lignes_nettes` de la liste moins `lignes_annulees` ; le nombre exact une fois le détail lu) : son détail (`GET …/lots/<id>/`) ne se lit ni au chargement ni après un clic, mais à la première ouverture du repli (« Lecture des lignes… ») ; un repli déjà ouvert est relu, une lecture en échec se dit avec « Réessayer » et ne se relance que par ce bouton. Les propositions encore en attente (déposées avant R291, ou sans clé de dépôt posée) ont leur bloc à part
 (`[data-nv-lots-attente]`, présent seulement s'il en reste) avec l'aperçu, « Appliquer », « Refuser » et « Refaire l'essai », comme avant. « Tout recalculer » (`POST …/recalcul/`) dit si le recalcul est appliqué ou proposé. R292 : `retraits_bloquants` de `GET /api/mise-a-jour/`
-donne une alerte (`[data-nv-retraits]`) avant « Effectuer la mise à jour » quand une race, une classe ou une magie citée par une fiche de la production serait retirée. Le mot de passe est demandé par
+donne une alerte (`[data-nv-retraits]`) avant « Effectuer la mise à jour » quand une race, une classe ou une magie citée par une fiche de la production serait retirée. La connexion d'un Créateur est demandée par
 `scripts/acces.mjs` (rien à faire dans la page). Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai
 service), `serveur-edition-lots-ecart-production` (l'écart avec la production), `notes-de-version-retraits`.
 
@@ -1111,7 +1110,7 @@ la fois (les demandes simultanées l'attendent), écriture atomique (`rename`, l
 | `GET /api/edition/extrait/meta/` | Le méta (`extrait.json`) : `format`, `fabrique_le`, `version_du_site`, `schema`, `empreinte`, `tables` (`{ empreinte, lignes }` par table), `calculees`, `modifications_versees`, `fichier` (`octets`, `sha256`), `duree_ms`… |
 
 **La commande** : `cd client && npm run db:extrait` (`scripts/db-extrait.mjs`) télécharge l'extrait depuis `https://dev.maverick-jdr.com` (`--url` ou `MAVERICK_EXTRAIT_URL`),
-dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (la variable `MAVERICK_EXTRAIT_CLE` seulement : une option `--cle` est refusée, la clé ne va jamais dans la ligne de commande ; sans mot de passe posé sur le site de dev, elle est inutile) part dans l'en-tête `X-Maverick-Cle` (« Accès au site de dev » : `Authorization` n'arrive jamais au service). Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
+dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (la variable `MAVERICK_EXTRAIT_CLE` seulement : une option `--cle` est refusée, la clé ne va jamais dans la ligne de commande ; sans clé posée sur le site de dev, elle est inutile) part dans l'en-tête `X-Maverick-Cle` (« Accès au site de dev » : `Authorization` n'arrive jamais au service). Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
 contre le méta (`ecartsAvecLeMeta`), pose le fichier par `rename` (rien n'est écrit si l'un ne concorde pas), ne retélécharge pas un extrait déjà à jour, et affiche **la date de
 l'extrait** : chaque analyse la cite. Les sessions de Claude lisent ce fichier en lecture seule (`node:sqlite`, comme `interroger-la-base`), jamais les fiches ni les comptes.
 
@@ -1263,8 +1262,8 @@ note chaque rapport nouveau au journal (catégorie `service`) et aux métriques 
 garde l'origine `livraison`. Toutes passent par le même chemin (verrou, refus de mémoire et de disque, plafonds). **Plafond du jour** (`--max-par-jour`, 12 par défaut) : il compte toutes les origines, livraisons comprises, par jour UTC ; au-delà, plus aucune fabrication ce jour-là et un seul
 rapport court le dit (`motif: "plafond_du_jour"`, qui n'est pas une fabrication). On garde tous les rapports du jour UTC (jamais effacés : les plafonds du jour les comptent) et les 100 plus anciens, dans le dossier à root.
 
-*La sonde* (pendant chaque fabrication, `lancer.sh`, root) : des requêtes en lecture seule sur `127.0.0.1` aux ports des deux instances (prod : le `.env` du dossier voisin `maverick-center` ou `--dossier-prod` ; site de dev : le `.env` de l'instance), vers deux cibles publiques valables sur les deux : une
-page statique (`/`, nginx) et une route de lecture de l'API (`/api/personnages/`, la liste des prétirés, qui ne fait que lire la base) ; `/api/debug/` répond 403 en production. Au plus une requête par seconde et par instance, délai de 5 s ; chaque requête porte le User-Agent `maverick-atelier-sonde/1` (`UA_SONDE`, `serveur/metriques.mjs`) : le service des deux instances (le même code en production) ne la compte dans aucune métrique de requêtes (ni comptes, ni durées, ni mémoire des requêtes, ni navigateurs), et seulement ce User-Agent exact ; un autre est mesuré comme avant. Sans cela, la sonde ajouterait 60 à 200 requêtes à `/api/personnages/` par fabrication ; une référence d'environ 30 s avant la fabrication, la fabrication,
+*La sonde* (pendant chaque fabrication, `lancer.sh`, root) : des requêtes en lecture seule sur `127.0.0.1` aux ports des deux instances (prod : le `.env` du dossier voisin `maverick-center` ou `--dossier-prod` ; site de dev : le `.env` de l'instance), vers deux cibles par instance : une
+page statique (`/`, nginx) et une route de lecture de l'API (`/api/personnages/`, la liste des prétirés, qui ne fait que lire la base ; **sur le site de dev, fermé par la connexion Discord (R310), `/api/etat/`**, l'état du service, resté ouvert : la liste des prétirés y répondrait 401 à la sonde, qui compterait une erreur et s'arrêterait ; rapport : `cibles` et `cibles_dev`) ; `/api/debug/` répond 403 en production. Au plus une requête par seconde et par instance, délai de 5 s ; chaque requête porte le User-Agent `maverick-atelier-sonde/1` (`UA_SONDE`, `serveur/metriques.mjs`) : le service des deux instances (le même code en production) ne la compte dans aucune métrique de requêtes (ni comptes, ni durées, ni mémoire des requêtes, ni navigateurs), et seulement ce User-Agent exact ; un autre est mesuré comme avant. Sans cela, la sonde ajouterait 60 à 200 requêtes à `/api/personnages/` par fabrication ; une référence d'environ 30 s avant la fabrication, la fabrication,
 puis environ 30 s après. Trois mauvaises réponses de suite de la production (erreur, code hors 2xx et 3xx, ou plus de 2 s) arrêtent la sonde aussitôt, sans insister. nginx exige le mot de passe interne : root lit `/etc/caddy/maverick.env` (à root, 600 : `MAVERICK_ACCES_NORMAL`, `MAVERICK_ACCES_TEST`) et le passe à
 `curl -K -` par l'entrée standard (jamais dans la ligne de commande) ; sans lui, la réponse 401 de nginx seul est comptée bonne et le rapport dit `authentifie: false` (ce qui mesure nginx, pas le service). **Garde-fou 20** : root ne garde que le code HTTP et le temps (`-o /dev/null`, `-w`), jamais un corps de réponse ; le `.env`
 d'une instance n'est lu que s'il est un fichier régulier non lien, à root, hors de tout dossier monté en écriture dans un conteneur (`docker ps`, `docker inspect`) — sinon « sonde impossible » pour cette instance (`env_monte`). Le port se lit `MAVERICK_PORT=<port>` ou `MAVERICK_PORT=127.0.0.1:<port>` (la forme des instances du serveur), aucun autre hôte (`port_illisible`) ; quand aucune instance ne peut être sondée, le rapport garde le motif de chacune (`env_absent`, `env_monte`, `port_illisible`, `introuvable`). Le rapport (`sonde`, `maverick-sonde/1`) donne, par instance et par phase (`reference`, `fabrication`, `apres`) : n, médiane, 95e centile,
@@ -1877,87 +1876,134 @@ réglage, le site de dev se met en maintenance d'après son seul lancement et la
 
 ## Accès au site de dev
 
-Décision du propriétaire (R275, question 2, option b) : « Un mot de passe pour modifier et pour lancer une mise à jour ; la lecture reste ouverte. »
-L'option c (« un mot de passe pour tout le site ») est le même réglage avec une autre **portée**, même mot de passe, une seule saisie. Chantier :
-[`chantier-base-de-dev.md`](chantier-base-de-dev.md), lot 4. Code : `serveur/acces.mjs` (réglage, sessions, essais), `serveur/acces-routes.mjs` (le
-classement des routes), la porte unique au début de `traiter` (`serveur/api.mjs`). Tests : `serveur-acces`, `serveur-acces-routes`, `deploy-acces`.
+Décision du propriétaire (R310, 2026-11-27, qui **retire le mot de passe** de R275 et amende R275 (2) et R279) : « Plus de mot de passe. Il y aura 4 niveaux d'accès […] Le site de dev ne sera plus visible du tout
+sans connexion et sans le niveau 3 minimum. » Le site de dev est **fermé** : une session de **niveau MJ au moins** (lecture) ou **Créateur** (tout ce que protégeait le mot de passe), obtenue par la connexion Discord
+(« Connexion par Discord », plus bas) ; **les clés de lecture et de dépôt gardent exactement leur comportement** (R275, R291 : ce ne sont pas des connexions de personnes). Code : `serveur/acces.mjs` (les clés, le niveau
+de la session, la commande des clés), `serveur/acces-routes.mjs` (le classement des routes), la porte unique au début de `traiter` (`serveur/api.mjs`). Tests : `serveur-acces`, `serveur-acces-routes`, `serveur-connexion`,
+`deploy-acces`. Chantier d'origine : [`chantier-base-de-dev.md`](chantier-base-de-dev.md), lot 4.
 
-**Sans réglage, rien ne change** : la mise à jour, la Simulation, l'édition et `/api/v1/` répondent comme avant. Le service ne lit le réglage que sur le
-site de dev (`MAVERICK_EDITION=1`) : la production n'est jamais concernée, ni l'installateur, ni la CI.
+**Quatre niveaux** (R310 (2), amendée par R311 ; recalculés à chaque connexion ; tableau complet dans « Connexion par Discord ») : Observateur (non connecté, ou connecté mais non membre du serveur Discord, adhésion en attente,
+exclusion temporaire en cours, **ou membre sans aucun rôle de la correspondance**), Joueur, MJ et Créateur (tous trois d'après les rôles Discord de la configuration de l'instance, le plus haut l'emporte). **Sur le site de dev** : rien sans MJ au moins ; le **MJ lit seulement** ; le **Créateur** écrit
+(édition, application d'un lot, « Effectuer la mise à jour »). **Sur la production** : aucune restriction nouvelle (R307) ; la connexion et le profil seulement.
 
-**Le réglage** est le fichier `secrets/acces.json` de l'instance (le dossier `secrets/`, déjà monté en lecture seule sur `/secrets` pour le jeton GitHub ;
-`MAVERICK_ACCES_FICHIER` en dit un autre, sinon `acces.json` à côté de `MAVERICK_GITHUB_JETON_FICHIER`). Aucun secret en clair : l'empreinte **scrypt** du
-mot de passe (avec son sel), l'empreinte **SHA-256** de la clé de lecture, un **secret de session**, la portée (`ecriture` ou `tout`). Le service le relit
-quand le fichier change (date, inode, taille) : rien à redémarrer. Absent : ouvert. Illisible ou invalide : le site de dev reste **fermé** (aucune connexion
-possible, ligne au journal) jusqu'à ce que la commande de l'hôte le refasse. Les comparaisons se font à temps constant.
+**Fermé par défaut.** C'est `serveur/index.mjs` (le vrai lancement) qui pose la porte sur le site de dev, **fichier de clés ou non** et connexion Discord réglée ou non : sans réglage Discord (`secrets/discord.json`), la
+connexion est indisponible et le site de dev est fermé à tous, clés exceptées. Aucune variable d'environnement ne le rouvre (`MAVERICK_ACCES_FICHIER` ne dit que l'endroit des clés). Un service créé sans porte (`acces` absent
+de `demarrerService`, c'est-à-dire un test) reste ouvert comme avant ; la production n'a jamais de porte (le réglage `acces` n'y est pas lu).
 
-**Qui peut quoi** : chaque route est classée dans `serveur/acces-routes.mjs`. Une route que la table ne nomme pas est fermée comme une écriture ; le test
-`serveur-acces-routes` compare la table aux routes d'en-tête d'`api.mjs` et au code de l'aiguillage : **une route nouvelle non classée fait échouer la
-suite**.
+**Les clés** sont le fichier `secrets/acces.json` de l'instance (le dossier `secrets/`, monté en lecture seule sur `/secrets` pour le jeton GitHub ; `MAVERICK_ACCES_FICHIER` en dit un autre, sinon `acces.json` à côté de
+`MAVERICK_GITHUB_JETON_FICHIER`) : l'empreinte **SHA-256** de la clé de lecture et celle de la clé de dépôt quand elle est posée, jamais une clé en clair. Le service le relit quand le fichier change (date, inode, taille) :
+rien à redémarrer. Absent, ou illisible : aucune clé ne marche (le site reste fermé aux sessions de niveau insuffisant, ligne au journal) jusqu'à ce que la commande de l'hôte le refasse. Un fichier d'avant R310, qui porte
+encore l'empreinte d'un mot de passe, une portée ou un secret de session, **reste lisible** : ces champs sont ignorés (jamais une fermeture), et la première commande qui réécrit le fichier les retire. Les comparaisons se
+font à temps constant.
+
+**Qui peut quoi** : chaque route est classée dans `serveur/acces-routes.mjs`. Une route que la table ne nomme pas est fermée comme une écriture ; le test `serveur-acces-routes` compare la table aux routes d'en-tête
+d'`api.mjs` et au code de l'aiguillage : **une route nouvelle non classée fait échouer la suite**.
 
 | Classe | Ce qu'il faut | Routes |
 | --- | --- | --- |
-| ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
-| lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/lots/ancrage/` (l'état de « préparer l'ancrage »), `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
-| proposition | la clé de lecture **ou** le mot de passe ; **clé de dépôt posée** (R291) : la clé de dépôt **ou** le mot de passe | `POST /api/edition/lots/`, `POST …/lots/<id>/essai/`, `POST …/lots/recalcul/` et `POST …/lots/ancrage/` : déposer un lot de changements, refaire son essai, « tout recalculer », « préparer l'ancrage ». Sans clé de dépôt : elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu. Avec : le lot est appliqué aussitôt ; la clé de lecture est refusée (`403`) |
-| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/`, `…/refuser/`, `…/annuler/` et `…/lignes/<n>/annuler/`, `GET …/lignes/<n>/annulation/` (le clic du propriétaire sur un lot de changements ou une de ses lignes), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+| ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées : les contrôles de santé de l'activation et de la bascule la lisent dans le conteneur, sans cookie), `GET /api/maintenance/` (la relève de chaque page), le lot figé `GET /api/mise-a-jour/lots/<uuid>/` (le workflow GitHub le télécharge), la connexion : `GET /api/acces/` et `…/verifier/`, `GET /api/moi/`, `GET /api/connexion/discord/` et `…/retour/`, `POST /api/deconnexion/` |
+| lecture | session **MJ** au moins, **ou** la clé de lecture (ou de dépôt) | tout le reste de la lecture : les prétirés (`GET /api/personnages/…`), `GET /api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/`, ce que les pages lisent pour montrer la base vivante (`GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/`, `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/`), `GET /api/mise-a-jour/` et `…/lancement/` et `…/conflits/`, `GET /api/edition/journal/`, `…/extrait/` et `…/extrait/meta/`, `GET /api/edition/lots/…` (liste, lecture, état de « préparer l'ancrage »), `GET …/lots/<id>/annulation/`, tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
+| proposition | la clé de lecture **ou** une session **Créateur** ; **clé de dépôt posée** (R291) : la clé de dépôt **ou** une session Créateur | `POST /api/edition/lots/`, `POST …/lots/<id>/essai/`, `POST …/lots/recalcul/` et `POST …/lots/ancrage/` : déposer un lot de changements, refaire son essai, « tout recalculer », « préparer l'ancrage ». Sans clé de dépôt : elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu. Avec : le lot est appliqué aussitôt ; la clé de lecture est refusée (`403`). Une session MJ ne dépose pas |
+| écriture | session **Créateur** | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/`, `…/refuser/`, `…/annuler/` et `…/lignes/<n>/annuler/`, `GET …/lignes/<n>/annulation/` (le clic d'un Créateur sur un lot de changements ou une de ses lignes), `POST /api/edition/atelier/`, `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
 
-La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire, tant que la clé de dépôt n'est pas posée ; une fois posée, elle ne dépose plus).
-La **clé de dépôt** (R291) est facultative : posée, elle vaut tout ce que vaut la lecture, plus le dépôt d'un lot **appliqué aussitôt** ; jamais une autre écriture (appliquer, annuler, édition,
-mise à jour : le mot de passe). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
-sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune
-clé d'écriture n'est donnée à GitHub ; **la clé de dépôt ne va jamais à la CI** (elle n'a que la clé de lecture, `MAVERICK_EXTRAIT_CLE` ; `db:extrait` refuse une clé `mvd_` quand
-`GITHUB_ACTIONS` est vrai) : c'est la parade au risque que la clé de lecture, que détient la CI, devienne une clé d'écriture. Les sessions de Claude reçoivent la clé de dépôt comme la clé de
-lecture : par le formulaire sûr (en-tête `X-Maverick-Key`).
+La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic d'un Créateur, tant que la clé de dépôt n'est pas posée ; une fois posée, elle ne dépose plus). La **clé de
+dépôt** (R291) est facultative : posée, elle vaut tout ce que vaut la lecture, plus le dépôt d'un lot **appliqué aussitôt** ; jamais une autre écriture (appliquer, annuler, édition, mise à jour : une session Créateur).
+Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev, sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte,
+contenu publié de toute façon dans la PR). Aucune clé d'écriture n'est donnée à GitHub ; **la clé de dépôt ne va jamais à la CI** (elle n'a que la clé de lecture, `MAVERICK_EXTRAIT_CLE` ; `db:extrait` refuse une clé `mvd_`
+quand `GITHUB_ACTIONS` est vrai) : c'est la parade au risque que la clé de lecture, que détient la CI, devienne une clé d'écriture. Les sessions de Claude reçoivent la clé de dépôt comme la clé de lecture : par le formulaire
+sûr (en-tête `X-Maverick-Key`).
 
-**Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de
-lecture et la clé de dépôt (distinguées par leur empreinte) voyagent donc dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte
-qu'un nom d'en-tête finissant par `key`, `token`…) ; aucun autre en-tête, jamais l'adresse (que le journal note). Caddy et nginx transmettent ces deux
-en-têtes tels quels. La session du navigateur voyage dans le cookie **`maverick_acces`**.
-Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et `User-Agent` sont lus), l'état ou la page Debug.
+**Le niveau de la porte est celui du cookie** (`maverick_session`, signé ; « Connexion par Discord ») : il est fixé à la connexion et vaut jusqu'à l'expiration de la session (12 h sur le site de dev) ; un rôle Discord
+retiré ensuite ne retire rien avant la prochaine connexion (`discord.sh --nouvelle-session` ferme toutes les sessions). Les droits se cumulent : le plus haut d'une session et d'une clé l'emporte.
 
-**Connexion** (`/api/acces/`, toujours ouverte, mêmes refus que les écritures : JSON, requête d'une page de ce site) :
-- `GET` → `{ protege, portee, connecte, droit, expire_le }` ; `droit` : `ecriture` (session du mot de passe), `depot` (clé de dépôt, R291), `lecture` (clé), `aucun`. Sans réglage :
-  `{ protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null }`.
-- `POST { mot_de_passe }` → 200 avec le même état et le cookie `maverick_acces=v1.<expiration>.<HMAC-SHA256>` : `HttpOnly`, `SameSite=Strict`, `Path=/api/`,
-  `Secure` pour un nom d'hôte (nginx réécrit `X-Forwarded-Proto` en `http` derrière Caddy : le service ne voit jamais `https`, il juge d'après l'hôte, comme `adressePublique`), **sans date** (il part avec le navigateur ; le jeton expire à 12 h). 401 mot de passe faux, **429** après 5 essais ratés d'une même
-  source (première adresse de `X-Forwarded-For`, jamais notée) ou 60 au total sur 10 minutes (`attente_s`), 400 corps invalide, 409 sans mot de passe posé.
-- `DELETE` → ferme la session : le cookie est retiré du navigateur, sous `/api/` et sous `/`, **sans révoquer le jeton** (valable jusqu'à 12 h pour qui l'aurait copié ;
-  relancer `acces.sh` renouvelle le secret de session et ferme toutes les sessions).
-- `GET /api/acces/verifier/` → 204 si la requête a au moins la lecture (cookie ou clé), 401 sinon : pour le `forward_auth` de Caddy (portée `tout`).
-- Un refus de la porte est un **401** `{ erreur, acces }` : `acces: 'cle'` (la clé de lecture ou le mot de passe) pour une route de lecture, `'mot_de_passe'`
-  pour une écriture ou une route inconnue, `'cle_de_depot'` (la clé de dépôt ou le mot de passe) pour un dépôt une fois la clé de dépôt posée ; la clé de lecture y reçoit un **403** `{ erreur, acces: 'cle_de_depot' }`
-  (« la clé de dépôt est nécessaire »).
-- Changer le mot de passe ou la portée renouvelle le secret de session : toutes les sessions ouvertes tombent, au prochain appel.
+**Refus de la porte** (jamais une valeur de secret) :
+- `401` `{ erreur, acces: 'connexion' }` : ni session ni clé ; `{ acces: 'cle_de_depot' }` pour un dépôt une fois la clé de dépôt posée.
+- `403` `{ erreur, acces: 'niveau', niveau, niveau_requis }` : une session de niveau trop bas (`niveau_requis` : `mj` pour une lecture, `createur` pour le reste).
+- `403` `{ erreur, acces: 'cle' }` : une clé valable qui ne suffit pas (la clé de lecture ou de dépôt sur une écriture) ; `403` `{ acces: 'cle_de_depot' }` : la clé de lecture ne dépose plus une fois la clé de dépôt posée.
+- Une route inconnue : fermée comme une écriture (jamais un `404` à qui n'a pas le droit).
+- Ouvrir un verrou de décision au dépôt (`verrous_ouverts`, R218, R219, R232 (2)) demande une session Créateur : avec la clé de dépôt, `403` `{ acces: 'niveau' }`, rien n'est écrit (`edition-lots.mjs#deposerEtAppliquer`).
 
-**Portée `tout`** (option c, non activée) : chaque route ouverte qui n'est pas indispensable passe en lecture ; restent ouvertes la connexion
-(`/api/acces/…`) et le lot figé. Les pages sont servies par nginx : elles ne se ferment que si Caddy interroge `/api/acces/verifier/` avant de les servir.
-La ligne est écrite, en commentaire et sans effet, dans `deploy/vps/Caddyfile` (`forward_auth` + exceptions : `/api/acces/*`, le lot figé, `/connexion/*`,
-`/_astro/*`, `robots.txt`) ; elle n'a jamais été essayée sur un serveur, et la page `/connexion/` vers laquelle renvoyer un visiteur sans session reste à
-écrire le jour où l'option c est choisie. Le cookie prend alors `Path=/` et `SameSite=Lax` (un lien venu d'ailleurs arrive connecté).
+**Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de lecture et la clé de dépôt (distinguées par leur empreinte) voyagent donc
+dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte qu'un nom d'en-tête finissant par `key`, `token`…) ; aucun autre en-tête, jamais l'adresse
+(que le journal note). Caddy et nginx transmettent ces deux en-têtes tels quels. La session du navigateur voyage dans le cookie **`maverick_session`**. Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et
+`User-Agent` sont lus), l'état ou la page Debug.
 
-**Le geste du propriétaire** : `sudo sh /srv/maverick-center-test/acces/acces.sh` (livré par l'installateur dans le dossier de l'instance, comme
-`sauvegarde/`, remplacé à chaque installation ; `secrets/` n'est jamais touché). Sans option : deux saisies du mot de passe, sans écho (10 caractères au
-moins) ; il est haché par le service lui-même (`docker exec -i … node`, entrée standard : jamais un argument de commande, jamais un fichier, rien exigé de
-l'hôte), le fichier est posé en 600 dans `secrets/` (700), et la première fois la **clé de lecture** s'affiche une seule fois à l'écran (jamais hors d'un
-terminal). Changer le mot de passe garde la clé et ferme les sessions. Options : `--cle` (une clé neuve, l'ancienne cesse de marcher), `--portee
-ecriture|tout`, `--etat` (sans secret), `--retirer` (retour à l'ouvert), et (R291) **`--cle-de-depot`** : pose (ou refait) la clé de dépôt, affichée une seule fois
-sur un terminal comme la clé de lecture (`CLE_DE_DEPOT` dans la sortie du conteneur ; `mvd_…`, jamais dans le fichier, qui n'en garde que l'empreinte), qui garde le mot de passe, la clé de lecture et les sessions ouvertes ; **`--sans-cle-de-depot`**
-la retire (retour à l'état sûr : la clé de lecture redépose une proposition qui attend le clic). `--etat` dit si la clé de dépôt est posée. Le propriétaire donne ensuite la clé de dépôt aux sessions de Claude par le formulaire
-sûr (en-tête `X-Maverick-Key`), jamais à GitHub ni à la CI. Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`) et n'a pas besoin
-de l'ancien mot de passe : un mot de passe perdu se remplace, ou la protection se retire, par la même commande. Elle ne change ni `docker-compose.yml`, ni
-`nginx.conf`, ni le Caddyfile actif.
+**Les pages du site de dev** sont servies par nginx : elles ne se ferment que par Caddy (`deploy/vps/Caddyfile`, bloc `dev.`). Caddy interroge `GET /api/acces/verifier/` avant de servir une page (`forward_auth`) : `204` (session MJ
+au moins ou clé : la page est servie), `401` sans session (Caddy renvoie vers `/connexion/?retour=<la page>`), `403` avec une session de niveau trop bas (vers `/connexion/?erreur=niveau`). Restent ouverts : `/connexion/`, `/confidentialite/` (lien du pied de page), `/_astro/`,
+le favicon, l'icône et le logo, et tout `/api/` (le service juge lui-même et répond en JSON). **Le `Caddyfile` n'est pas livré par l'installateur** : il s'installe par `deploy/vps/instances.sh` (étape « Caddy » : copie dans
+`/etc/caddy/`, `caddy validate`, `systemctl restart caddy`) ou à la main (`sudo install -m 644 deploy/vps/Caddyfile /etc/caddy/Caddyfile && sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy`,
+les variables de `/etc/caddy/maverick.env` dans l'environnement). Tant qu'il n'est pas remplacé, les **pages** du site de dev restent servies comme avant (seul `/api/` est fermé).
 
-**Dans le navigateur** (pages, tech-front) : la lecture des pages ne demande rien. Une écriture ou une page de lecture protégée qui reçoit un 401 demande le
-mot de passe **une fois** (`POST /api/acces/`) ; le cookie accompagne ensuite chaque appel de la visite. Un seul script, `src/scripts/acces.mjs`
-(posé dans l'en-tête par `components/Acces.astro` depuis `layouts/Base.astro`, absent de la version portable), enveloppe `fetch` pour les adresses
-`/api/…` : sur un 401 portant `acces`, une petite fenêtre (`<dialog>`, champ `password`, `autocomplete="current-password"`) demande le mot de passe, le
-poste, puis rejoue l'appel ; des appels refusés en même temps partagent la même fenêtre, une session expirée (12 h) redemande, 401 et 429 (`attente_s`)
-se disent dans la fenêtre. Annuler rend le 401 d'origine à la page ; une lecture refusée dans les 60 s qui suivent ne rouvre pas la fenêtre (les
-relèves de la page Debug). Jamais de demande pour `/api/acces/`, la balise des pages ni la relève de la maintenance. Un `<a download>` du service
-(journal de l'édition, exports de Debug) passe par `fetch` puis s'enregistre. Une fois connecté, « Connecté · Se déconnecter » apparaît dans le pied de
-page (`sessionStorage`, confirmé par `GET /api/acces/`). L'option c n'y change rien : même mot de passe, même cookie, même fenêtre. Test :
-`test/acces-navigateur.test.mjs`.
+**Les clés (le geste de l'hôte)** : `sudo sh /srv/maverick-center-test/acces/acces.sh <option>` (livré par l'installateur dans le dossier de l'instance, comme `sauvegarde/` et `discord/`, remplacé à chaque installation ;
+`secrets/` n'est jamais touché). Options : **`--cle`** (fabrique la clé de lecture, affichée **une seule fois** sur un terminal, jamais dans un fichier de journal ; l'ancienne cesse de marcher), **`--cle-de-depot`** (R291 : pose ou
+refait la clé de dépôt, affichée une seule fois ; `mvd_…`, jamais dans le fichier, qui n'en garde que l'empreinte ; garde la clé de lecture), **`--sans-cle-de-depot`** (la retire : retour à l'état sûr, la clé de lecture redépose une
+proposition qui attend le clic d'un Créateur), **`--etat`** (dit si les clés existent, sans secret), **`--retirer`** (retire les deux clés : le site reste fermé aux sessions de niveau insuffisant). Sans option : le mode d'emploi. Les clés
+sont fabriquées par le service lui-même (`docker exec -i … node`, `acces.mjs#lancerLaCommande`) ; le fichier est posé en 600 par l'hôte. Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`). Le propriétaire donne ensuite
+les clés aux sessions de Claude par le formulaire sûr (en-tête `X-Maverick-Key`), jamais à GitHub ni à la CI (clé de lecture seule).
+
+**Dans le navigateur** (pages, tech-front) : le script `src/scripts/acces.mjs` (posé par `components/Acces.astro` depuis `layouts/Base.astro`) enveloppe `fetch` pour les adresses `/api/…` et rend toujours la réponse
+d'origine : un `401` portant `acces: 'connexion'` affiche un avis qui **propose** de se connecter (lien vers `/connexion/?retour=<la page>`, jamais d'envoi automatique : la page peut porter un travail en cours) ; un `403`
+portant `acces: 'niveau'` dit que le niveau ne suffit pas (« Votre niveau (Joueur) ne suffit pas : cette action demande le niveau Créateur »). Pas de boucle ni de rafale : rien sur `/connexion/`, un seul avis à la fois, et
+une lecture refusée dans les 60 s qui suivent sa fermeture ne le rouvre pas (les relèves de la page Debug) ; `acces/`, `moi/`, `connexion/`, `deconnexion/`, `metriques/` et la relève de `maintenance/` n'en posent jamais ; les
+refus de clé (`cle`, `cle_de_depot`) ne regardent que les programmes. Un lien `<a download>` du service passe par `fetch` (le refus est dit, rien n'est enregistré). Plus de mot de passe, de fenêtre ni de mention « Connecté ».
+Le compte du visiteur : `components/Compte.astro` (à droite de l'en-tête, absent de la version portable et de la page de maintenance) et **un seul** script, `src/scripts/compte.mjs`, qui fait UN `GET /api/moi/` par page et
+remplit le menu (avatar et nom vers `/profil/`, ou « Connexion via Discord » ; rien si la requête échoue ou si `connexion_disponible` est faux), la page `/profil/` (avatar, bannière, nom, niveau, date d'arrivée,
+« Se déconnecter » : `POST /api/deconnexion/` puis l'accueil) et la page `/connexion/` (message de `?erreur=refus|indisponible|discord|etat|niveau`, bouton qui garde `retour`). La logique est dans `src/lib/compte.mjs`
+(`retour` filtré comme le service, images acceptées seulement depuis `cdn.discordapp.com`). `/profil/` et `/connexion/` ne sont pas dans la version portable. Tests : `acces-navigateur`, `compte`.
+
+## Connexion par Discord
+
+Décision R310 (2026-11-27) : « Je veux ajouter la connexion par Discord. » Le service parle à Discord (OAuth 2.0, code d'autorisation) avec les deux portées **`identify`** et **`guilds.members.read`** seulement (R310 (6) : ni e-mail, ni liste
+de serveurs, ni connexions), lit le profil et l'appartenance au serveur Discord du jeu, en déduit un **niveau**, écrit la ligne de `utilisateur` et **révoque le jeton aussitôt** (`POST /oauth2/token/revoke`, sans bloquer la connexion si
+la révocation échoue). **Aucun jeton Discord n'est conservé.** Code : `serveur/discord.mjs` (pur, plus le flux avec un `fetch` injecté et un délai d'attente de 8 s par appel), `serveur/utilisateurs.mjs` (la ligne de `utilisateur`),
+les routes dans `serveur/api.mjs`. Tests : `serveur-discord` (niveau, nom, images, réglage, session, flux avec un Discord simulé, commande), `serveur-connexion` (le service HTTP réel), `deploy-discord` (la commande de l'hôte).
+Disponible sur **les deux instances** ; chacune a son réglage.
+
+**Le niveau** (R310 (2), amendée par R311 : Joueur se donne aussi par rôle ; recalculé à chaque connexion, `discord.mjs#niveauDuMembre`) :
+
+| Niveau | Quand |
+| --- | --- |
+| observateur | l'appel membre répond 404 ou 403 (non membre), `pending` vrai (adhésion en attente), `communication_disabled_until` dans le futur (exclusion temporaire en cours ; une date illisible compte comme une exclusion), **ou membre sans aucun rôle de la correspondance** (R311 ; sans correspondance posée, personne n'est Joueur) |
+| joueur, mj, createur | membre portant un rôle de la correspondance « identifiant de rôle Discord → niveau » (`joueur`, `mj`, `createur`) du réglage de l'instance ; **le plus haut des niveaux de ses rôles l'emporte** ; sans effet pour un membre en attente ou exclu |
+
+**Rôles à poser (R311, correspondance donnée par le propriétaire ; les identifiants se relèvent sur le serveur Discord : clic droit sur le rôle, « Copier l'identifiant du rôle ») :** neuf rôles **Joueur** (Vétéran de la chance, Arpenteur du Destin, Ennemi(e) de l'Aléa, Explorateur du Risque, Aventurier du Hasard, Amateur(e) de Dés, Vagabond(e) de Fortune, Visiteur Intermittent, Futur Chanceux), deux rôles **MJ** (Maître du Jeu, Aspirant MJ), un rôle **Créateur** (Dieu Créateur seul « pour le moment » ; un second est demandé : il s'ajoutera au réglage). Sur chaque instance :
+`sudo sh …/discord/discord.sh --role <id1> <id2> … <id9> joueur`, puis `--role <idMJ1> <idMJ2> mj`, puis `--role <idCréateur> createur` ; `--etat` les montre par niveau. Les noms de rôles ne sont que dans cette doc, jamais dans le code ni dans le réglage.
+
+Un compte `bot` ou `system` est refusé (`403` `{ acces: 'bot' }`, rien d'écrit) : un compte bot ne peut de toute façon pas suivre ce flux. Une panne de Discord (hors 404 et 403 de l'appel membre : 5xx, délai, limite d'appels, jeton refusé)
+arrête la connexion (`/connexion/?erreur=discord`) : jamais un niveau déduit d'une panne, jamais une ligne écrite d'après elle.
+
+**Ce qui est gardé** (R310 (5), `utilisateurs.mjs#enregistrerLaConnexion` ; table `utilisateur`, migration 0132) : l'identifiant Discord (`discord_id`), le nom affiché (surnom du serveur, sinon `global_name`, sinon nom d'utilisateur), l'avatar
+et la bannière (ceux du serveur s'il y en a, sinon ceux du compte, sinon l'avatar par défaut `(id >> 22) % 6` ; adresses `https://cdn.discordapp.com/…` que le navigateur charge : jamais copiées), `joined_at` (`serveur_rejoint_le`), le
+niveau, la date de connexion. L'identifiant du site (`utilisateur.id`) est tiré au hasard à la première connexion et ne change plus ; la ligne est mise à jour à chaque connexion (`cree_le` ne bouge pas). Jamais l'e-mail, ni les serveurs, ni
+les connexions, ni les rôles bruts, ni un jeton. L'écriture ne passe ni par le service d'édition ni par son journal (comme les fiches, section 13) : `modification_lot.auteur_id` reste donc vide.
+
+**Le réglage** est le fichier `secrets/discord.json` de **chaque instance** (dev et production), à côté d'`acces.json` (`MAVERICK_DISCORD_FICHIER` en dit un autre ; relu quand il change, rien à redémarrer) : `client_id` et `client_secret` de
+l'application Discord, `serveur` (défaut `374464159254839298`, `sources/sources.json`, `discord.guildId`), `adresse_de_retour` (complète, **HTTPS**, sans identifiants, ni `?`, ni `#` : elle change avec l'hébergement, feuille de route),
+`roles` (`{ "<id de rôle>": "joueur" | "mj" | "createur" }` : **jamais dans le code**), `secret_de_session` (aléatoire, posé par la commande). Le secret de l'application est en clair dans ce fichier (le service en a besoin) : root 600, dossier 700, monté
+en lecture seule dans le conteneur, jamais au journal ni dans l'état. Absent ou invalide : la connexion est indisponible (ligne au journal), le site de dev est fermé à tous (clés exceptées), la production inchangée.
+
+**Les routes** (toutes ouvertes ; classées dans `acces-routes.mjs`) :
+- `GET /api/connexion/discord/?retour=<chemin>` : `302` vers `https://discord.com/oauth2/authorize` (`client_id`, `response_type=code`, `scope=identify guilds.members.read`, `redirect_uri`, `state` ; pas de `prompt` : l'écran d'accord de Discord s'affiche à chaque connexion, le jeton étant révoqué à chaque fois). L'**état** est aléatoire (32 octets) ; il
+  voyage aussi dans le cookie signé `maverick_etat` (`HttpOnly`, `SameSite=Lax`, `Path=/api/connexion/`, 10 min, `Secure` selon l'hôte) qui porte aussi le chemin de retour. Connexion non réglée : `302` vers `/connexion/?erreur=indisponible`.
+- `GET /api/connexion/discord/retour/` : vérifie l'état à temps constant (cookie signé, non expiré, égal à celui de Discord ; sinon `/connexion/?erreur=etat` et **aucun appel à Discord**), échange le code, lit `/users/@me` puis
+  `/users/@me/guilds/<serveur>/member`, écrit `utilisateur`, révoque les jetons, pose la session et renvoie (`302`) vers `retour`. **`retour` est un chemin relatif du site seulement** (jamais `//`, une autre origine, un antislash ou un
+  caractère de contrôle ; sinon `/profil/`). Erreurs (`302` vers `/connexion/?erreur=<code>`) : `refus` (l'utilisateur a refusé chez Discord, ou le code est périmé), `discord` (Discord a échoué : panne, délai, secret refusé), `indisponible`
+  (connexion non réglée, base absente ou **écritures gelées**, ligne non écrite), `etat` (état faux, absent ou périmé). Compte bot ou système : `403`. La chaîne de requête du retour (le code, l'état) n'est jamais au journal du service.
+- `GET /api/moi/` : `{ connexion_disponible, connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null }` ; le `niveau` est celui du cookie (celui que la porte applique) ; jamais l'identifiant Discord.
+- `POST /api/deconnexion/` : retire le cookie (mêmes refus que les écritures : corps JSON, requête d'une page du site) → `{ connecte: false }`. **Le jeton n'est pas révoqué côté serveur** : il expire seul.
+- `GET /api/acces/` : `{ protege, connecte, niveau, droit, expire_le }` (`droit` : `ecriture`, `depot`, `lecture`, `aucun`). Sans porte (production) : `{ protege: false, …, droit: 'ecriture' }`.
+
+**La session** : cookie `maverick_session` = `v1.<charge base64url { u, n, exp }>.<signature HMAC-SHA256>` (`u` : l'identifiant du site, `n` : le niveau, `exp` : l'expiration), `HttpOnly`, `SameSite=Lax`, `Path=/` (les pages du site de dev
+doivent le porter jusqu'à `forward_auth`), `Secure` selon l'hôte (comme `adressePublique` : derrière Caddy puis nginx, le service ne voit jamais « https »). **12 h sur le site de dev** (le niveau donne des droits), **7 jours en production**.
+Le secret de signature est `secret_de_session` : le changer (`discord.sh --nouvelle-session`) ferme toutes les sessions de l'instance. L'état OAuth et la session sont signés avec des étiquettes différentes : l'un ne vaut jamais pour l'autre.
+
+**Le geste de l'hôte** : `sudo sh /srv/maverick-center-test/discord/discord.sh` (site de dev) ou `sudo sh /srv/maverick-center/discord/discord.sh` (production) ; livré par l'installateur comme `acces.sh`, `secrets/` jamais touché.
+Sans option : l'identifiant de l'application, son secret (**saisi sans écho, jamais en argument**, lu sur un terminal), l'adresse de retour (proposée d'après le domaine : `MAVERICK_ADRESSE_PUBLIQUE` du `.env` de l'instance, sinon
+`MAVERICK_DOMAINE` de `/etc/caddy/maverick.env` : `https://<domaine>` pour la production, `https://dev.<domaine>` pour le site de dev, plus `/api/connexion/discord/retour/` ; Entrée l'accepte) ; la commande redit l'adresse à déclarer
+dans le portail développeur Discord (« OAuth2 », « Redirects »). Options : `--adresse <url>` (sans question), **`--role <id>… joueur|mj|createur`** (la correspondance ; plusieurs identifiants d'un coup, le niveau en dernier), **`--sans-role <id>`**, `--serveur <id>`, **`--nouvelle-session`**, `--etat`
+(sans secret, rôles par niveau), `--retirer`. Le service, dans son conteneur (`docker exec -i … node`, `discord.mjs#lancerLaCommande`), ne fait que fabriquer le réglage (le secret lui arrive par l'entrée standard, il le rend sur la sortie) ; c'est l'hôte (`discord.sh`) qui écrit le fichier, en 600.
+
+**Confidentialité** : la connexion collecte l'identifiant Discord, le nom, l'avatar, la bannière, la date d'arrivée sur le serveur et le niveau, et pose deux cookies ; la page `confidentialite.astro` le dit (tech-front, même lot).
 
 ## Hébergement
 
@@ -1972,7 +2018,7 @@ Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../d
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
   « Mise à jour » du serveur de test : `MAVERICK_PRODUCTION` (`/production`, site de la production en lecture seule), `MAVERICK_REFERENCE` (repli : copie de master, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
-  l'instance monté en lecture seule), `MAVERICK_ACCES_FICHIER` (réglage de l'accès, `/secrets/acces.json` par défaut : « Accès au site de dev », ci-dessus), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
+  l'instance monté en lecture seule), `MAVERICK_ACCES_FICHIER` (les clés du site de dev, `/secrets/acces.json` par défaut : « Accès au site de dev », ci-dessous), `MAVERICK_DISCORD_FICHIER` (la connexion par Discord, `/secrets/discord.json` par défaut : « Connexion par Discord »), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
   dossier partagé de l'annonce de maintenance, ci-dessus), `MAVERICK_DOSSIER_METRIQUES` (`/metriques`), `MAVERICK_INSTANCE` (`prod` ou `dev`),
   `MAVERICK_METRIQUES_PAGES` (`1` par défaut) et `MAVERICK_METRIQUES_BRUTES` (`0` par défaut) : « Métriques et volume », ci-dessous ;
   `MAVERICK_TIPEEE` (`0` : Tipeee jamais relu) et `MAVERICK_TIPEEE_CACHE_MIN` (360 par défaut), absents des `docker-compose.yml` (valeurs par

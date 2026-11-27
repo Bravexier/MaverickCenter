@@ -15,6 +15,7 @@ import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 // identifiants figés (jamais un nom) : le don de R188, celui de R189, la classe qui les donne
 const SEMI_COMPLET = 'capacites/archimage-semi-complet';
@@ -33,7 +34,7 @@ function inserer(table, ligne) {
   const cols = Object.keys(ligne);
   db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(ligne));
 }
-inserer('utilisateur', { id: 'r188', discord_id: '100000000000000188', nom_affichage: 'r188', cree_le: INSTANT });
+inserer('utilisateur', compteDEssai('r188', 'r188', INSTANT));
 
 const plafondDeLaMagie = un('SELECT npm FROM magie_npm_plafond WHERE magie_id = ?', POTENTIEL_ILLIMITE)?.npm;
 const plafondDuDon = un('SELECT npm FROM capacite_npm_plafond WHERE capacite_id = ?', SEMI_COMPLET)?.npm;

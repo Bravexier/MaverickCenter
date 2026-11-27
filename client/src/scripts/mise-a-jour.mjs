@@ -18,7 +18,7 @@
 // Avant les conflits, les modifications de l'équipe (R291 : « En gros c'est le patchnote mais où je peux choisir chaque ligne que je peux annuler. […] Juste un
 // bout "annuler cette modification" sur chaque ligne du patchnote. ») : une session dépose avec la clé de dépôt (GET /api/edition/lots/, serveur/edition-lots.mjs),
 // la modification est appliquée aussitôt, et la page la montre ligne par ligne ; « Annuler cette modification » ouvre une confirmation avec l'aperçu de ce qu'elle
-// remettrait, puis l'annule (mot de passe : scripts/acces.mjs le demande, rien à faire ici). Les propositions encore en attente (R275, question 4 a) gardent
+// remettrait, puis l'annule (refus de la porte : scripts/acces.mjs le dit, rien à faire ici). Les propositions encore en attente (R275, question 4 a) gardent
 // « Appliquer » et « Refuser » ; « Tout recalculer » recalcule les pages que le code d'aujourd'hui calcule autrement. Rendu : lib/lots-rendu.mjs. Rien de cela en
 // production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée). Avant « Effectuer la mise à jour », une alerte dit les races,
 // classes et magies que la mise à jour retirerait alors que des fiches de la production les citent (R292, `retraits_bloquants`).
@@ -264,7 +264,7 @@ function rendreLesLots() {
   const section = sectionDesLots();
   const r = lots.reponse;
   if (!r) {
-    // la lecture refusée ou absente (production, service sans lots, mot de passe annulé) : rien ; une autre erreur est dite
+    // la lecture refusée ou absente (production, service sans lots, connexion absente) : rien ; une autre erreur est dite
     section.innerHTML = lots.erreur ? `<p class="nv-message nv-message--erreur">${echapper(lots.erreur)}</p>` : '';
     section.hidden = !lots.erreur;
     return;

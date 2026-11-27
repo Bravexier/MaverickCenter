@@ -1,0 +1,11 @@
+---
+// Le compte du visiteur, à droite de l'en-tête (R310 (7) : connecté, avatar et nom, lien vers /profil/ ; sinon le bouton « Connexion via Discord »). La zone est
+// vide et cachée : src/scripts/compte.mjs (qui importe lib/compte.mjs, seul) y met le lien après UN `GET /api/moi/` ; sans réponse ou sans connexion réglée,
+// elle reste vide. Posé par layouts/Base.astro, jamais dans la version portable (pas de service) ni sur la page de maintenance (en-tête inerte). Le même
+// script remplit aussi les pages /profil/ et /connexion/ (jamais deux scripts de page sur le même module : skill site-version-portable).
+import { url } from '../lib/wiki';
+---
+<div class="site-compte" data-compte hidden data-api={url('api/')} data-page-profil={url('profil/')} data-page-connexion={url('connexion/')} data-accueil={url()}></div>
+<script>
+  import '../scripts/compte.mjs';
+</script>

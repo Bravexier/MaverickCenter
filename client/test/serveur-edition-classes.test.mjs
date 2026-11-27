@@ -20,6 +20,7 @@ import { resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { ficheVide, jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnCompte } from './aide-compte-d-essai.mjs';
 
 const racine = dossierTemporaire('edition-classes');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
@@ -445,7 +446,7 @@ const SUITE_DU_RETRAIT = ' n’existe plus dans les règles. Choisissez autre ch
 /** Une fiche de JOUEUR écrite comme le fera la 1.0 (le service ne la liste ni ne la lit) : son nom ne doit jamais sortir par l'édition. */
 function ficheDeJoueur(id, { classe = C1.id, specialite = null, capacites = [], creeLe = '2026-10-11T00:00:00Z' } = {}) {
   if (!ligne("SELECT 1 FROM utilisateur WHERE id = 'utilisateur-d11'")) {
-    db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
+    poserUnCompte(db, 'utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z');
   }
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
     alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', 'utilisateur-d11', 'privee', 'Secret du joueur',

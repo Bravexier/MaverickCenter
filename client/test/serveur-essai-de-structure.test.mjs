@@ -332,7 +332,7 @@ test('traiter : sans suivi (essaiDeStructure absent) → 503 ; la route est clas
   const r = traiter({ methode: 'GET', chemin: '/api/debug/structure/', recherche: '', entetes: {}, corps: '' }, service);
   assert.equal(r.statut, 503);
   assert.equal(traiter({ methode: 'GET', chemin: '/api/debug/structure/', recherche: '', entetes: {}, corps: '' }, { ...service, edition: false }).statut, 403);
-  assert.deepEqual(classer('GET', '/api/debug/structure/'), { classe: 'lecture', connue: true, essentielle: false });
+  assert.deepEqual(classer('GET', '/api/debug/structure/'), { classe: 'lecture', connue: true });
   assert.notEqual(routeNormalisee('/api/debug/structure/'), ROUTE_INCONNUE);
   assert.equal(routeNormalisee('/api/debug/structure?x=1'), routeNormalisee('/api/debug/structure/'));
   assert.ok(INTERVALLE_DES_DEMANDES_MS >= 1000 && INTERVALLE_DES_DEMANDES_MS <= 10_000, 'un passage toutes les quelques secondes : la charge reste faible');

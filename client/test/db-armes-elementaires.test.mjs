@@ -15,6 +15,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
@@ -240,7 +241,7 @@ const inserer = (table, ligne) => {
   fiches.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(ligne));
 };
 const INSTANT = '2026-10-23T12:00:00Z';
-inserer('utilisateur', { id: 'r167', discord_id: '100000000000000167', nom_affichage: 'r167', cree_le: INSTANT });
+inserer('utilisateur', compteDEssai('r167', 'r167', INSTANT));
 const personnage = (id, magies) => inserer('personnage', {
   id, nature: 'joueur', proprietaire_id: 'r167', visibilite: 'privee', nom: `Fiche ${id}`, race_id: 'races/humain',
   ethnie_id: 'races/humain#ethnie:humain-central', mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0,
