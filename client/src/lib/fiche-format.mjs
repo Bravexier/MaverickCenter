@@ -52,7 +52,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
 /** Tables qui citent une fiche sans en faire partie : le partage d'une fiche de joueur et les inscriptions dans les groupes de jeu. */
 export const HORS_FICHE = Object.freeze(['personnage_partage', 'groupe_membre']);
 
-/** Colonnes de `personnage` que fixe le service, jamais la page : identifiant, nature, propriétaire, visibilité (un prétiré : à personne, visible de tous), instants. */
+/** Colonnes de `personnage` que fixe le service, jamais la page : identifiant, nature, propriétaire, visibilité (un prétiré : à personne, visible de tous ; une fiche de joueur : son compte et son « Visible par », qui ont leurs routes et ne changent pas par un PUT, R317), instants. */
 export const COLONNES_DU_SERVICE = Object.freeze(['id', 'nature', 'proprietaire_id', 'visibilite', 'cree_le', 'modifie_le']);
 
 /** Champ du JSON qui n'est pas une colonne : la version de la fiche lue, rendue à l'enregistrement (deux modifications simultanées ne s'écrasent pas). */

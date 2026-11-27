@@ -1,6 +1,9 @@
 // Fiches de personnages dans la base vivante, au format de src/lib/fiche-format.mjs (docs/serveur.md, « Une fiche en JSON »).
-// Pas de comptes : le service ne connaît que les PRÉTIRÉS, qui ne sont à personne et que tout le monde voit
-// (v_personnage_visible) ; une fiche de joueur n'est ni listée ni lisible ici. Ce que la base contrôle (types, bornes, références aux règles) refuse
+// Deux natures (décision R317, étape E8) : le PRÉTIRÉ, qui n'est à personne et que tout visiteur voit et écrit comme avant (R307 ; la porte du site de dev
+// reste celle des écritures), et la fiche d'un JOUEUR, rangée à un compte (`proprietaire_id`) et vue de qui `v_personnage_visible` l'ouvre (d'après
+// `utilisateur.niveau` et la visibilité « Visible par » : tous, mj, privée). L'appelant est la session de la requête (`appelantDe`) ; sans session
+// (SANS_SESSION : clé de lecture, visiteur de la production), il ne voit et n'écrit que les prétirés, exactement comme avant. Une fiche de joueur qu'il
+// ne voit pas n'existe pas pour lui (404). Ce que la base contrôle (types, bornes, références aux règles) refuse
 // l'enregistrement ; les règles de v_personnage_controle sont rendues avec la fiche : elles signalent, elles n'empêchent jamais d'enregistrer (la fiche
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
@@ -109,9 +112,41 @@ function versionDe(fiche) {
   return empreinteCourte(JSON.stringify(contenu));
 }
 
-/** Le prétiré `id` au format d'échange (colonnes à la racine, listes, `version`), ou null. */
-export function lireFiche(db, id) {
-  const ligne = db.prepare(`SELECT * FROM personnage WHERE id = ? AND nature = 'pretire'`).get(id);
+/** Les visibilités d'une fiche de joueur (menu « Visible par », R317) : tous (Joueurs et +), mj (MJ et Créateur), privée (le propriétaire et les Créateurs). */
+export const VISIBILITES = Object.freeze(['tous', 'mj', 'privee']);
+
+/** Qui appelle : le compte de la session (identifiant de `utilisateur`, ou null) et le niveau de sa session (le cookie : celui que la porte applique). */
+export const SANS_SESSION = Object.freeze({ utilisateur: null, niveau: null });
+
+/** L'appelant d'une requête d'après sa session (`{ u, n }` de serveur/discord.mjs, ou null) ; une session sans compte (non-membre, `u` null) ne vaut aucune. */
+export function appelantDe(session) {
+  return session?.u ? Object.freeze({ utilisateur: String(session.u), niveau: session.n ?? null }) : SANS_SESSION;
+}
+
+/**
+ * Ce que `appelant` peut faire de la fiche `id`, ou null (fiche absente, ou fiche de joueur qu'il ne voit pas : pour lui, elle n'existe pas) :
+ * `{ nature, proprietaire_id, visibilite, a_moi, peut_ecrire }`. Un prétiré se voit de tous et s'écrit comme avant (la porte du site de dev décide) ; une
+ * fiche de joueur se voit si `v_personnage_visible` l'ouvre à son compte (R317), et s'écrit de son propriétaire ou d'une session de niveau Créateur.
+ */
+export function droitsSurLaFiche(db, id, appelant = SANS_SESSION) {
+  const f = db.prepare('SELECT nature, proprietaire_id, visibilite FROM personnage WHERE id = ?').get(id);
+  if (!f) return null;
+  if (f.nature === 'pretire') return { nature: f.nature, proprietaire_id: null, visibilite: f.visibilite, a_moi: false, peut_ecrire: true };
+  if (!appelant.utilisateur) return null;
+  if (!db.prepare('SELECT 1 FROM v_personnage_visible WHERE personnage_id = ? AND utilisateur_id = ? LIMIT 1').get(id, appelant.utilisateur)) return null;
+  const aMoi = f.proprietaire_id === appelant.utilisateur;
+  return { nature: f.nature, proprietaire_id: f.proprietaire_id, visibilite: f.visibilite, a_moi: aMoi, peut_ecrire: aMoi || appelant.niveau === 'createur' };
+}
+
+/** Le propriétaire de la fiche `id` : `{ id, nom_affichage }`, ou null (un prétiré, une fiche absente). */
+export function proprietaireDe(db, id) {
+  const p = db.prepare('SELECT u.id, u.nom_affichage FROM personnage p JOIN utilisateur u ON u.id = p.proprietaire_id WHERE p.id = ?').get(id);
+  return p ? { id: p.id, nom_affichage: p.nom_affichage } : null;
+}
+
+/** La fiche `id` (colonnes à la racine, listes, `version`), sans regarder qui la demande, ou null. */
+function lireLaFiche(db, id) {
+  const ligne = db.prepare('SELECT * FROM personnage WHERE id = ?').get(id);
   if (!ligne) return null;
   const fiche = { ...ligne, ...Object.fromEntries(Object.keys(PARTIES_DE_FICHE).map((cle) => [cle, []])) };
   for (const [cle, table] of partiesDeLaBase(db)) {
@@ -122,25 +157,86 @@ export function lireFiche(db, id) {
   return fiche;
 }
 
+/** La fiche `id` au format d'échange (colonnes à la racine, listes, `version`) si `appelant` la voit (sans appelant : un prétiré seulement), ou null. */
+export function lireFiche(db, id, appelant = SANS_SESSION) {
+  return droitsSurLaFiche(db, id, appelant) ? lireLaFiche(db, id) : null;
+}
+
+/** La fiche `id` que `appelant` peut écrire (et ses droits), sinon l'erreur : 404 si elle n'existe pas pour lui, 403 si elle se voit sans s'écrire. */
+function ficheAEcrire(db, id, appelant) {
+  const droits = droitsSurLaFiche(db, id, appelant);
+  if (!droits) throw new ErreurFiche(404, 'Fiche introuvable.');
+  if (!droits.peut_ecrire) throw new ErreurFiche(403, 'Cette fiche n’est pas à vous : seuls son propriétaire et un Créateur la modifient.');
+  return droits;
+}
+
 /**
- * Supprime le prétiré `id` (demande du propriétaire) et toutes ses lignes : les tables de la fiche sont en ON DELETE CASCADE, une inscription dans un
- * groupe passe à NULL (groupe_membre). Exige la `version` lue, comme une modification : si la fiche a changé depuis, rien n'est supprimé (409).
- * Erreurs : ErreurFiche (404, 409).
+ * Supprime la fiche `id` (demande du propriétaire) et toutes ses lignes : les tables de la fiche sont en ON DELETE CASCADE, une inscription dans un
+ * groupe passe à NULL (groupe_membre). Exige la `version` lue, comme une modification : si la fiche a changé depuis, rien n'est supprimé (409). Un
+ * prétiré s'efface de tous ; la fiche d'un joueur, de son propriétaire ou d'un Créateur (R317).
+ * Erreurs : ErreurFiche (403, 404, 409).
  */
-export function supprimerFiche(db, id, version) {
+export function supprimerFiche(db, id, version, appelant = SANS_SESSION) {
   db.exec('BEGIN IMMEDIATE');
   try {
-    const avant = lireFiche(db, id);
-    if (!avant) throw new ErreurFiche(404, 'Fiche introuvable.');
+    ficheAEcrire(db, id, appelant);
+    const avant = lireLaFiche(db, id);
     if (version !== avant[CHAMP_VERSION]) {
       throw new ErreurFiche(409, 'Cette fiche a été modifiée entre-temps : rechargez-la avant de la supprimer.', { personnage: avant });
     }
-    db.prepare("DELETE FROM personnage WHERE id = ? AND nature = 'pretire'").run(id);
+    db.prepare('DELETE FROM personnage WHERE id = ?').run(id);
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
   }
+}
+
+/**
+ * Range la fiche `id` au compte `utilisateurId` (décision R317 : « Assigne-les à mon profil ») : elle devient une fiche de joueur (nature `joueur`) de ce
+ * compte, qu'elle fût un prétiré ou la fiche d'un autre ; sa visibilité ne change pas. La session de niveau Créateur est exigée par la route, pas ici.
+ * Erreurs : ErreurFiche (400 compte inconnu, 404 fiche inconnue).
+ * @returns {{ id: string, nature: string, proprietaire: { id: string, nom_affichage: string }, visibilite: string }}
+ */
+export function transfererFiche(db, id, utilisateurId) {
+  if (typeof utilisateurId !== 'string' || !utilisateurId) throw new ErreurFiche(400, 'Un compte est attendu : { "utilisateur_id": "<identifiant du compte>" }.');
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (!db.prepare('SELECT 1 FROM personnage WHERE id = ?').get(id)) throw new ErreurFiche(404, 'Fiche introuvable.');
+    if (!db.prepare('SELECT 1 FROM utilisateur WHERE id = ?').get(utilisateurId)) throw new ErreurFiche(400, 'Ce compte n’existe pas.');
+    db.prepare("UPDATE personnage SET nature = 'joueur', proprietaire_id = ? WHERE id = ?").run(utilisateurId, id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  const { visibilite } = db.prepare('SELECT visibilite FROM personnage WHERE id = ?').get(id);
+  return { id, nature: 'joueur', proprietaire: proprietaireDe(db, id), visibilite };
+}
+
+/**
+ * Règle le menu « Visible par » de la fiche de joueur `id` (décision R317 : Tous, MJ, Privé). Pour le propriétaire de la fiche ou une session de niveau
+ * Créateur. « MJ » n'est accepté que d'une session de niveau MJ ou Créateur (« option accessible que pour les MJ ») : un Joueur qui la demande est refusé.
+ * Un prétiré n'a pas de menu (toujours visible de tous : CHECK de la base).
+ * Erreurs : ErreurFiche (400 valeur ou prétiré, 403, 404).
+ * @returns {{ id: string, visibilite: string }}
+ */
+export function reglerLaVisibilite(db, id, visibilite, appelant = SANS_SESSION) {
+  if (!VISIBILITES.includes(visibilite)) throw new ErreurFiche(400, `Visibilité inconnue : « tous », « mj » ou « privee » sont attendus ({ "visibilite": … }).`);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const droits = ficheAEcrire(db, id, appelant);
+    if (droits.nature !== 'joueur') throw new ErreurFiche(400, 'Un prétiré est toujours visible de tous : le menu « Visible par » est celui d’une fiche de joueur.');
+    if (visibilite === 'mj' && !['mj', 'createur'].includes(appelant.niveau)) {
+      throw new ErreurFiche(403, 'La visibilité « MJ » est réservée aux MJ (niveau MJ ou Créateur).');
+    }
+    db.prepare('UPDATE personnage SET visibilite = ? WHERE id = ?').run(visibilite, id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  return { id, visibilite };
 }
 
 /** Règles de v_personnage_controle enfreintes par la fiche (vide : conforme à ce que la base sait contrôler). */
@@ -191,12 +287,14 @@ function portraitDansLaListe(db, ligne) {
 }
 
 /**
- * Résumé de chaque prétiré, pour la recherche : identité, portrait (portraitDansLaListe : l'image elle-même se lit par portraitDeFiche), race, magies,
- * classes, niveau, nombre de règles enfreintes.
+ * Résumé de chaque fiche que `appelant` voit, pour la recherche : tous les prétirés, plus les fiches de joueur que `v_personnage_visible` ouvre à son
+ * compte (R317 ; sans compte, les prétirés seuls). Identité, `nature`, `proprietaire` (`{ id, nom_affichage }` ou null), `visibilite`, `a_moi` (la fiche est
+ * à l'appelant), portrait (portraitDansLaListe : l'image elle-même se lit par portraitDeFiche), race, magies, classes, niveau, nombre de règles enfreintes.
  */
-export function listerFiches(db) {
+export function listerFiches(db, appelant = SANS_SESSION) {
   const fiches = db.prepare(`
     SELECT p.id, p.nom, p.surnom, p.lieu_origine, p.xp, p.mode_classe, ${CLE_DU_PORTRAIT} AS portrait_cle, p.portrait_x, p.portrait_y, p.portrait_zoom,
+           p.nature, p.visibilite, p.proprietaire_id, pu.nom_affichage AS proprietaire_nom,
            p.race_id, r.nom AS race, p.ethnie_id, e.nom AS ethnie,
            p.magie_innee_id, mi.nom AS magie_innee, p.magie_acquise_id, ma.nom AS magie_acquise,
            p.dieu_choisi_id, d.nom AS dieu, p.metier_id, me.nom AS metier,
@@ -209,16 +307,20 @@ export function listerFiches(db) {
     LEFT JOIN dieu d ON d.id = p.dieu_choisi_id
     LEFT JOIN metier me ON me.id = p.metier_id
     LEFT JOIN v_personnage_niveau n ON n.personnage_id = p.id
-    WHERE p.nature = 'pretire'
-    ORDER BY p.nom COLLATE NOCASE, p.id`).all().map(({ portrait_cle, portrait_x, portrait_y, portrait_zoom, ...r }) => ({
-    ...r, portrait: portraitDansLaListe(db, { id: r.id, portrait_cle, portrait_x, portrait_y, portrait_zoom }), classes: [], anomalies: 0,
+    LEFT JOIN utilisateur pu ON pu.id = p.proprietaire_id
+    WHERE p.nature = 'pretire' OR p.id IN (SELECT personnage_id FROM v_personnage_visible WHERE utilisateur_id = ?)
+    ORDER BY p.nom COLLATE NOCASE, p.id`).all(appelant.utilisateur).map(({ portrait_cle, portrait_x, portrait_y, portrait_zoom, proprietaire_id, proprietaire_nom, ...r }) => ({
+    ...r,
+    proprietaire: proprietaire_id === null ? null : { id: proprietaire_id, nom_affichage: proprietaire_nom },
+    a_moi: proprietaire_id !== null && proprietaire_id === appelant.utilisateur,
+    portrait: portraitDansLaListe(db, { id: r.id, portrait_cle, portrait_x, portrait_y, portrait_zoom }), classes: [], anomalies: 0,
   }));
   const parId = new Map(fiches.map((f) => [f.id, f]));
-  for (const id of IMAGES.keys()) if (!parId.has(id)) IMAGES.delete(id); // fiches supprimées : leur entrée part
+  // fiches supprimées : leur entrée part (pas celle d'une fiche que cet appelant ne voit pas : un autre la demandera)
+  for (const id of IMAGES.keys()) if (!parId.has(id) && !db.prepare('SELECT 1 FROM personnage WHERE id = ?').get(id)) IMAGES.delete(id);
   for (const c of db.prepare(`
     SELECT pc.personnage_id, pc.rang, pc.classe_id, c.nom AS classe, pc.specialite_id, s.nom AS specialite
-    FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id AND p.nature = 'pretire'
-    JOIN classe c ON c.id = pc.classe_id LEFT JOIN specialite s ON s.id = pc.specialite_id
+    FROM personnage_classe pc JOIN classe c ON c.id = pc.classe_id LEFT JOIN specialite s ON s.id = pc.specialite_id
     ORDER BY pc.personnage_id, pc.rang`).all()) {
     const { personnage_id: id, ...classe } = c;
     parId.get(id)?.classes.push({ ...classe });
@@ -234,8 +336,8 @@ export function listerFiches(db) {
  * les fiches) : son empreinte et son type (imageDuPortrait), et `octets()`, qui ne la décode que si on la sert (pas pour un 304) ; null sans fiche,
  * sans portrait ou si l'image ne se décode pas.
  */
-export function portraitDeFiche(db, id) {
-  const ligne = db.prepare(`SELECT ${CLE_DU_PORTRAIT} AS cle FROM personnage p WHERE p.id = ? AND p.nature = 'pretire'`).get(id);
+export function portraitDeFiche(db, id, appelant = SANS_SESSION) {
+  const ligne = droitsSurLaFiche(db, id, appelant) ? db.prepare(`SELECT ${CLE_DU_PORTRAIT} AS cle FROM personnage p WHERE p.id = ?`).get(id) : null;
   const image = imageDuPortrait(db, id, ligne?.cle);
   if (!image) return null;
   return {
@@ -346,9 +448,11 @@ function verifierForme(db, entree, problemes) {
 }
 
 /**
- * Crée (sans `id`) ou modifie (avec `id`) un prétiré à partir du JSON `entree`. Une colonne absente du JSON garde sa valeur (création : celle
+ * Crée (sans `id`) un prétiré, ou modifie (avec `id`) la fiche `id` — un prétiré, ou la fiche d'un joueur que `appelant` écrit (son propriétaire ou un
+ * Créateur, R317 ; sans lui, un prétiré seulement) — à partir du JSON `entree`. La nature, le propriétaire et la visibilité ne changent jamais ici : ils ont
+ * leurs routes (transfererFiche, reglerLaVisibilite). Une colonne absente du JSON garde sa valeur (création : celle
  * d'une fiche vide) ; une liste présente remplace toute la liste, une liste absente ne change pas. Modifier exige la `version` lue : si la fiche a
- * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 404, 409).
+ * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 403, 404, 409).
  * La clé d'une table que les règles ont retirée est convertie d'abord (sansPartiesRetirees de src/lib/fiche-format.mjs) : une page restée ouverte
  * qui envoie encore `progression` enregistre ses gains de niveau en deux totaux (décision R73), sans « champ inconnu ». Une `progression` non vide
  * envoyée AVEC les deux totaux (progressionAvecGains : page d'avant 0045 qui a repris les totaux d'une réponse) ne se concilie pas avec eux : refus
@@ -372,7 +476,7 @@ function verifierForme(db, entree, problemes) {
  * et notées, datées (serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle). `poidsPortable` ((db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
  * null : pas d'étape du poids.
  */
-export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined } = {}) {
+export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined, appelant = SANS_SESSION } = {}) {
   const problemes = [];
   if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
     || maitrisesAvecChoix(recue) || livresAvecLivresDesSorts(recue)) {
@@ -412,7 +516,8 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
   let ouverte = true;
   try {
     db.exec('PRAGMA defer_foreign_keys = ON'); // références contrôlées à la fin, avec le détail (clesRompues)
-    const avant = creation ? null : lireFiche(db, id);
+    if (!creation) ficheAEcrire(db, id, appelant);
+    const avant = creation ? null : lireLaFiche(db, id);
     if (!creation) {
       if (!avant) throw new ErreurFiche(404, 'Fiche introuvable.');
       if (entree[CHAMP_VERSION] !== avant[CHAMP_VERSION]) {
@@ -493,7 +598,7 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
       throw new ErreurFiche(400, 'La fiche n’a pas été enregistrée.', { problemes: [expliquer(e.message)] });
     }
     ouverte = false;
-    return { personnage: lireFiche(db, id), controles, niveau: niveauDe(db, id) };
+    return { personnage: lireLaFiche(db, id), controles, niveau: niveauDe(db, id) };
   } finally {
     if (ouverte) annuler(db);
   }

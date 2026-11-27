@@ -5,12 +5,19 @@
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
 //   POST /api/maintenance/lever/    { lot } → lève la maintenance des deux serveurs (site de dev seulement : il tient le lancement)
-//   GET  /api/personnages/          résumé de chaque prétiré (recherche ; du portrait, son empreinte et son cadrage seulement)
-//   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau }
-//   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau }
-//   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau } ; 409 si elle a changé entre-temps
-//   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
-//   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag)
+//   GET  /api/personnages/          résumé de chaque prétiré et des fiches de joueur que la session voit (R317 ; nature, proprietaire, visibilite, a_moi ; du portrait,
+//                                   son empreinte et son cadrage seulement) : sans session (clé de lecture comprise), les prétirés seuls
+//   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire }
+//   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire } ; 404 pour une fiche de joueur que la session ne voit pas
+//   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire } ; 409 si elle a changé entre-temps ;
+//                                   fiche de joueur : son propriétaire ou une session Créateur, sinon 403 (404 si elle n'est pas vue) ; ni nature, ni propriétaire, ni visibilité
+//   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps ; mêmes droits qu'un PUT
+//   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag) ; 404 si la fiche n'est pas vue
+//   PUT  /api/personnages/<id>/proprietaire/   { utilisateur_id } → { id, nature: 'joueur', proprietaire: { id, nom_affichage }, visibilite } : range la fiche au compte (R317) ;
+//                                   session Créateur seulement (403 sinon) ; 400 si le compte n'existe pas, 404 si la fiche n'existe pas ; la visibilité ne change pas
+//   PUT  /api/personnages/<id>/visibilite/   { visibilite: 'tous' | 'mj' | 'privee' } → { id, visibilite } : le menu « Visible par » d'une fiche de joueur (R317) ; son propriétaire ou
+//                                   une session Créateur (403 sinon, 404 si elle n'est pas vue) ; 'mj' seulement d'une session de niveau MJ ou Créateur ; 400 pour un prétiré
+//   GET  /api/utilisateurs/         { utilisateurs: [{ id, nom_affichage, niveau }] } : les comptes, pour le menu de transfert ; session Créateur seulement (403 sinon, clé comprise)
 //   POST /api/classeur/             { url } → les octets .xlsx d'une feuille Google Sheets partagée par lien (« Importer (en ligne) » de /fiche/ ;
 //                                   serveur/classeur.mjs, la seule route qui sort sur Internet vers une adresse que donne le visiteur ; l'autre sortie
 //                                   de la production est GET /api/tipeee/, à adresse fixe ; le site de dev joint aussi l'API GitHub, routes
@@ -164,7 +171,9 @@ import {
 import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { lireLActivation } from './paquets-de-la-production.mjs';
 import { creerLesInterrupteursDeGithub, estUnDossier, etatDeLaBascule2 } from './bascule-2-etat.mjs';
-import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
+import {
+  ErreurFiche, appelantDe, controlesDe, droitsSurLaFiche, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, proprietaireDe, reglerLaVisibilite, supprimerFiche, transfererFiche,
+} from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
 import { traiterApiV1 } from './ressources.mjs';
@@ -177,7 +186,7 @@ import { ErreurExtrait } from './extrait.mjs';
 import { etatDeLaProduction, retraitsBloquantsPourLaProduction } from './attestation.mjs';
 import { connexionSecurisee, refus as refusDeLAcces } from './acces.mjs';
 import { cookieDeSessionRetire } from './discord.mjs';
-import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil } from './utilisateurs.mjs';
+import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil, listerLesComptes } from './utilisateurs.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -298,8 +307,15 @@ export function traiter(requete, service) {
   if (ressource === 'metriques') return traiterMetriques(requete, service, brut, reste, permis);
   if (ressource === 'classeur') return traiterClasseur(requete, service, brut, reste, permis);
   if (ressource === 'tipeee') return traiterTipeee(service, brut, reste, permis);
+  if (ressource === 'utilisateurs' && brut === undefined) return traiterComptes(requete, service, permis);
   if (ressource !== 'personnages') return erreur(404, 'Adresse inconnue.');
-  if (reste.length) return reste.length === 1 && reste[0] === 'portrait' && brut !== undefined ? traiterPortrait(requete, service, brut, permis) : erreur(404, 'Adresse inconnue.');
+  if (reste.length) {
+    if (reste.length !== 1 || brut === undefined) return erreur(404, 'Adresse inconnue.');
+    if (reste[0] === 'portrait') return traiterPortrait(requete, service, brut, permis);
+    if (reste[0] === 'proprietaire') return traiterProprietaire(requete, service, brut, permis);
+    if (reste[0] === 'visibilite') return traiterVisibilite(requete, service, brut, permis);
+    return erreur(404, 'Adresse inconnue.');
+  }
 
   let id = null;
   if (brut !== undefined) {
@@ -312,35 +328,113 @@ export function traiter(requete, service) {
   const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
 
+  // R317 : qui appelle (la session du cookie ; sans session, y compris avec la clé de lecture, les prétirés seulement)
+  const appelant = appelantDeLaRequete(service, entetes);
+  // la fiche et ce que l'appelant en fait (le propriétaire, « à moi », « je peux l'écrire »), pour les pages
+  const avecLesDroits = (corps, ficheId) => {
+    const droits = droitsSurLaFiche(db, ficheId, appelant);
+    return { ...corps, proprietaire: proprietaireDe(db, ficheId), a_moi: Boolean(droits?.a_moi), peut_ecrire: Boolean(droits?.peut_ecrire) };
+  };
+
   if (methode === 'GET') {
-    if (id === null) return json(200, { personnages: listerFiches(db) });
-    const personnage = lireFiche(db, id);
+    if (id === null) return json(200, { personnages: listerFiches(db, appelant) });
+    const personnage = lireFiche(db, id, appelant);
     if (!personnage) return erreur(404, 'Fiche introuvable.');
-    return json(200, { personnage, controles: controlesDe(db, id), niveau: niveauDe(db, id) });
+    return json(200, avecLesDroits({ personnage, controles: controlesDe(db, id), niveau: niveauDe(db, id) }, id));
   }
 
   const { valeur, refus: interdit } = lireEcriture(requete);
   if (interdit) return interdit;
   return repondre(ErreurFiche, () => {
     const t0 = performance.now();
+    // le journal dit la nature (R317), jamais le nom d'un joueur ; « fiches : » le range avec les fiches (journal-du-service.mjs)
+    const nom = (action, ficheId) => (droitsSurLaFiche(db, ficheId, appelant)?.nature === 'joueur' ? `fiches : ${action} de la fiche de joueur ${ficheId}` : `${action} du prétiré ${ficheId}`);
     if (methode === 'DELETE') {
-      supprimerFiche(db, id, valeur?.[CHAMP_VERSION]);
-      service.journal?.(`suppression du prétiré ${id}`);
+      const message = nom('suppression', id);
+      supprimerFiche(db, id, valeur?.[CHAMP_VERSION], appelant);
+      service.journal?.(message);
       // métriques : l'écriture et sa durée, jamais l'identifiant de la fiche
       service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'suppression' } });
       return json(200, { supprime: id });
     }
-    const resultat = enregistrerFiche(db, valeur, { id });
-    service.journal?.(`${id === null ? 'création' : 'modification'} du prétiré ${resultat.personnage.id}`);
+    const resultat = enregistrerFiche(db, valeur, { id, appelant });
+    service.journal?.(nom(id === null ? 'création' : 'modification', resultat.personnage.id));
     service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: id === null ? 'creation' : 'modification' } });
-    if (id === null) return json(201, resultat, { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });
+    if (id === null) return json(201, avecLesDroits(resultat, resultat.personnage.id), { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });
+    return json(200, avecLesDroits(resultat, id));
+  });
+}
+
+/** Qui appelle les routes des fiches : le compte et le niveau de la session du cookie (fiches.mjs#appelantDe), jamais une clé. */
+const appelantDeLaRequete = (service, entetes) => appelantDe(service.connexion?.session(entetes) ?? null);
+
+/** Vrai si la requête porte une session de niveau Créateur (le cookie ; ni une clé, ni un autre niveau). */
+const estCreateur = (service, entetes) => (service.connexion?.session(entetes) ?? null)?.n === 'createur';
+
+/**
+ * GET /api/utilisateurs/ : { utilisateurs: [{ id, nom_affichage, niveau }] }, les comptes du site pour le menu de transfert d'une fiche (R317). Une session
+ * de niveau Créateur seulement : 403 pour tout autre appelant, une clé comprise (la porte du site de dev la classe `lecture` ; le service est plus strict).
+ */
+function traiterComptes(requete, service, permis) {
+  const refus = permis('GET');
+  if (refus) return refus;
+  if (!estCreateur(service, requete.entetes ?? {})) return erreur(403, 'Les comptes ne se listent qu’avec une session de niveau Créateur.');
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  return json(200, { utilisateurs: listerLesComptes(db) });
+}
+
+/**
+ * PUT /api/personnages/<id>/proprietaire/ { utilisateur_id } : range la fiche au compte (R317 : « Assigne-les à mon profil »). Une session de niveau Créateur
+ * seulement, sur les deux sites (403 sinon). Rend { id, nature, proprietaire, visibilite } ; 400 si le compte n'existe pas, 404 si la fiche n'existe pas.
+ */
+function traiterProprietaire(requete, service, brut, permis) {
+  const refus = permis('PUT');
+  if (refus) return refus;
+  const entetes = requete.entetes ?? {};
+  if (!estCreateur(service, entetes)) return erreur(403, 'Ranger une fiche à un compte demande une session de niveau Créateur.');
+  const id = idDeFiche(brut);
+  if (id === null) return erreur(404, 'Fiche introuvable.');
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  return repondre(ErreurFiche, () => {
+    const t0 = performance.now();
+    const resultat = transfererFiche(db, id, valeur?.utilisateur_id);
+    service.journal?.(`fiches : fiche ${id} rangée au compte ${resultat.proprietaire.id}`);
+    service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'transfert' } });
     return json(200, resultat);
   });
 }
 
 /**
- * GET /api/personnages/<id>/portrait/ : l'image du portrait d'un prétiré, telle quelle (la liste des personnages n'en reçoit que l'empreinte). Le
- * navigateur la garde et la redemande avec son empreinte (ETag, If-None-Match) : 304 tant qu'elle n'a pas changé. 404 sans fiche ou sans portrait.
+ * PUT /api/personnages/<id>/visibilite/ { visibilite: 'tous' | 'mj' | 'privee' } : le menu « Visible par » d'une fiche de joueur (R317). Son propriétaire ou une
+ * session de niveau Créateur ; « mj » seulement d'une session de niveau MJ ou Créateur. Rend { id, visibilite } ; 400 valeur inconnue ou prétiré, 403, 404.
+ */
+function traiterVisibilite(requete, service, brut, permis) {
+  const refus = permis('PUT');
+  if (refus) return refus;
+  const id = idDeFiche(brut);
+  if (id === null) return erreur(404, 'Fiche introuvable.');
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  const appelant = appelantDeLaRequete(service, requete.entetes ?? {});
+  return repondre(ErreurFiche, () => {
+    const t0 = performance.now();
+    const resultat = reglerLaVisibilite(db, id, valeur?.visibilite, appelant);
+    service.journal?.(`fiches : visibilité de la fiche ${id} : ${resultat.visibilite}`);
+    service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'visibilite' } });
+    return json(200, resultat);
+  });
+}
+
+/**
+ * GET /api/personnages/<id>/portrait/ : l'image du portrait d'une fiche, telle quelle (la liste des personnages n'en reçoit que l'empreinte). Le
+ * navigateur la garde et la redemande avec son empreinte (ETag, If-None-Match) : 304 tant qu'elle n'a pas changé. 404 sans fiche, sans portrait, ou pour une
+ * fiche de joueur que la session ne voit pas (R317).
  */
 function traiterPortrait(requete, service, brut, permis) {
   const refus = permis('GET');
@@ -349,7 +443,7 @@ function traiterPortrait(requete, service, brut, permis) {
   if (id === null) return erreur(404, 'Fiche introuvable.');
   const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
-  const portrait = portraitDeFiche(db, id);
+  const portrait = portraitDeFiche(db, id, appelantDeLaRequete(service, requete.entetes ?? {}));
   if (!portrait) return erreur(404, 'Pas de portrait pour cette fiche.');
   return reponseVersionnee(requete.entetes, portrait.empreinte, (cache) => {
     const octets = portrait.octets();
