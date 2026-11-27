@@ -1,0 +1,71 @@
+---
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
+import { htmlDeLaDefinition } from '../../lib/mots-cles-balises.mjs';
+import { chargerNotion } from '../../lib/notion-db.mjs';
+import { TYPES } from '../../lib/types.mjs';
+import { url } from '../../lib/wiki';
+import type { WikiEntry } from '../../lib/wiki';
+
+// Le bloc `<!-- guide:notion -->` d'une page de notion (R309 (7), docs/chantier-pages-de-notion.md §2) : ce que la base sait du mot-clé que la page ancre,
+// calculé au build (lib/notion-db.mjs). Aucune phrase n'est écrite ici, seulement des intitulés d'interface ; chaque partie manque quand elle est vide,
+// sans phrase de remplacement. La définition est celle de la base (ses balises deviennent des liens par le middleware du site, comme au Glossaire).
+interface Props {
+  entry: WikiEntry;
+}
+const { entry } = Astro.props;
+const notion = chargerNotion(ouvrirBase(), entry.id);
+const rubrique = (type: string) => TYPES[type as keyof typeof TYPES]?.label ?? type;
+---
+
+{
+  notion && (
+    <div class="guide-notion">
+      {notion.definition && <div class="guide-notion__definition" set:html={htmlDeLaDefinition(notion.definition)} />}
+      {(notion.type || notion.synonymes.length > 0) && (
+        <dl class="guide-notion__infos">
+          {notion.type && (
+            <>
+              <dt>Type</dt>
+              <dd>{notion.type}</dd>
+            </>
+          )}
+          {notion.synonymes.length > 0 && (
+            <>
+              <dt>Autres noms</dt>
+              {/* une abréviation de monnaie (« RO ») devient son icône, comme partout sur le site (lib/monnaies.mjs, R61) */}
+              <dd set:html={htmlAvecMonnaies(notion.synonymes.join(', '))} />
+            </>
+          )}
+        </dl>
+      )}
+      {notion.sorts.length > 0 && (
+        <section class="guide-notion__partie" aria-labelledby="guide-notion-sorts">
+          <h2 class="guide-notion__titre" id="guide-notion-sorts">Sorts</h2>
+          {notion.sorts.map((g) => (
+            <>
+              <h3 class="guide-notion__sous-titre"><a href={url(g.magie.adresse)}>{g.magie.nom}</a></h3>
+              <ul class="guide-notion__liste">
+                {g.sorts.map((s) => <li><a href={url(s.adresse)}>{s.nom}</a></li>)}
+              </ul>
+            </>
+          ))}
+        </section>
+      )}
+      {notion.pages.length > 0 && (
+        <section class="guide-notion__partie" aria-labelledby="guide-notion-pages">
+          <h2 class="guide-notion__titre" id="guide-notion-pages">Pages</h2>
+          {notion.pages.map((g) => (
+            <>
+              <h3 class="guide-notion__sous-titre">{rubrique(g.rubrique)}</h3>
+              <ul class="guide-notion__liste">
+                {g.pages.map((p) => <li><a href={url(p.adresse)}>{p.titre}</a></li>)}
+              </ul>
+            </>
+          ))}
+        </section>
+      )}
+      <p class="guide-notion__recherche"><a href={url(notion.recherche)}>Voir dans la Recherche</a></p>
+    </div>
+  )
+}

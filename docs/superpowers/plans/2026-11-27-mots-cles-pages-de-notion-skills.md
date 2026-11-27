@@ -1,0 +1,64 @@
+# Demande à `tech-skills` : skills à mettre à jour pour les pages de notion (chantier 3 des mots-clés, R309 (7))
+
+Remise par la session du chantier, après `docs/chantier-pages-de-notion.md` (conception du 2026-11-27, sans validation du propriétaire : choix d'équipe, décision suivie R309 (7)). Aucun skill n'est modifié par ce chantier : chaque ligne donne la phrase à corriger (citée, telle qu'elle est dans `dev` à `b7f3ed97`) et son remplacement proposé. Les skills ne se modifient que par `tech-skills` (`tenir-un-skill`).
+
+Constat : les skills de `dev` ne disent encore rien du chantier 1 (ancrage, R309 : aucune occurrence de `R309` dans `.claude/skills/`) ni du chantier 2 (R316 : demande `2026-11-27-mots-cles-adresses-skills.md`). Les lignes ci-dessous disent donc seulement ce que le chantier 3 ajoute ; elles se lisent après celles des deux chantiers précédents (page, mot-clé ancré, verrou `refusDuVerrou`, `alignerMotCle`, `ancrage` d'une opération de lot).
+
+Faits nouveaux à dire dans les skills :
+- une **page de notion** est une ligne `page` de type `guide` rangée nulle part (ni Découvrir, ni onglet des Règles, ni Guide du MJ), sans résumé, dont le texte est la seule ligne `<!-- guide:notion -->` (`lib/guide.mjs#BLOC_DE_NOTION`, `CORPS_D_UNE_PAGE_DE_NOTION`) ; elle ancre un mot-clé (`page.mot_cle_id`) ; aucune migration ;
+- `lib/livres.mjs` : `GLOSSAIRE`, `estHorsDuPlan(id)`, `estUnePageDeNotion(entry)`, `filDAriane(id, { notion })`, `placeDansLeGuide(id, { notion })` ; `PageDuGuide.astro` pose `data-ed-notion` sur `.guide-corps` ; `lib/notion-db.mjs#chargerNotion`, `components/guide/BlocNotion.astro` ;
+- `serveur/edition-notions.mjs#outilsDesNotions` (`estUnePageDeNotion(db, id)`, `idDeNotion`, `refusDeLaNotion`, `creerLaPageDeNotion`, `creerLaNotion`), donné par `serveur/edition.mjs` (`NOTIONS`) ; aucun refus d'ici ne cite un `R<n>` ;
+- `enregistrer(db, corps, { voie: 'route' })` : `ctx.voie === 'route'` (`serveur/api.mjs`, `serveur/ressources.mjs`) ; sans voie (tests, rejeu) ou en lot, rien ne change ;
+- lot de changements : insertion d'une `page` avec `ancrage: { notion: true }` (`apres` : `id`, `titre`, `mot_cle_id`) ;
+- « Préparer l'ancrage » : cinquième lot `notions` (`comptes.notions`, clé écartée `notion:<mot_cle_id>`), note de version `comparerLesNotionsAjoutees` ;
+- côté navigateur : `lib/page-de-notion-rendu.mjs#htmlDeLaPageDeNotion` (importé par `scripts/edition/nouvelles.mjs` seulement), `[data-ed-notion]` lu par `edition/guide.mjs` et `edition/menus.mjs`, `lib/mots-cles-edition.mjs#CHAMPS_D_UNE_NOTION`.
+
+## 1. `zone-guide`
+
+- Ligne 32, « **Plan strict** : `verifierLePlan` arrête le build sur une page nommée absente, d'exemple, nommée deux fois, absorbée, retirée ou supprimée mais revenue sans place, ou sur **toute page `guide/` non d'exemple qui n'est rangée nulle part**. Une page se range par une ligne de `regles_onglet_entree`, jamais par le code. »
+  → remplacer la fin par « … ou sur une page `guide/` qui prend un nom réservé ou l'id d'un onglet. Une page non d'exemple que ni Découvrir, ni un onglet, ni le Guide du MJ ne range est une **page de notion** (chantier 3, R309 (7) : `estHorsDuPlan`, `estUnePageDeNotion`) : admise, hors menu, sans menu latéral, fil d'Ariane « Accueil › Glossaire » (`filDAriane(id, { notion })`, `GLOSSAIRE`), rangée sous « Glossaire » par `placeDansLeGuide(id, { notion })` ; `PageDuGuide.astro` pose `data-ed-notion` sur son corps. Une page d'onglet se range toujours par une ligne de `regles_onglet_entree`, jamais par le code ; aucun onglet n'est créé (R185 (7)). »
+- Ligne 56, « Une ligne `<!-- guide:<bloc> -->` (`BLOCS`) remplace le bloc par `GuideBloc.astro`. … Chaque bloc est appelé une fois, sauf `niveaux` : … »
+  → « … Chaque bloc est appelé une fois, sauf `niveaux` (sans page qui l'appelle) et `notion` (le texte de chaque page de notion, une fois par page) : … » ; ajouter une ligne après la 58 : « `notion` (`lib/notion-db.mjs#chargerNotion`, `components/guide/BlocNotion.astro`, R309 (7)) : ce que la base sait du mot-clé que la page ancre (`page.mot_cle_id`) : définition, type, autres noms, sorts liés (étiquette `sort_mot_cle` et type de sort `sort_type`, par magie), pages qui le portent en étiquette (`page_tag`), lien vers `/recherche/?mot-cle=<clé>` ; chaque partie manque quand elle est vide, aucune phrase écrite (seulement des intitulés d'interface), aucune définition recopiée. Le texte d'une page de notion est cette seule ligne : jamais de résumé ni de texte écrit par le service. »
+- Ligne 11, « `client/src/lib/livres.mjs` : sans import, sans couleur … » : ajouter à la liste de ce qu'il écrit « `GLOSSAIRE` (`/regles/glossaire/`) et la reconnaissance d'une page hors plan (`estHorsDuPlan`, `estUnePageDeNotion`) ». Ligne 13 (`lib/guide.mjs` : `BLOCS`, …) : ajouter `BLOC_DE_NOTION`, `CORPS_D_UNE_PAGE_DE_NOTION` ; ligne 14 : ajouter `BlocNotion` aux composants de `components/guide/`, `lib/notion-db.mjs` à la ligne 13.
+
+## 2. `zone-mots-cles-service`
+
+- Ligne 13, « `serveur/edition-chronologie.mjs` : le domaine `mot_cle` (création, renommage, fusion, suppression ; `verifierNonVerrouille`, `verifierSansSort`, `vocabulaireEtFeuille`). »
+  → ajouter « ; la création par une route du site (`ctx.voie === 'route'`, `creerParUneRoute`) crée la notion et sa page de notion d'un même geste (chantier 3, `serveur/edition-notions.mjs#creerLaNotion`), sans voie ou en lot elle reste nue ». Ajouter à la ligne 12 ou après la 14 : « `serveur/edition-notions.mjs` (`outilsDesNotions`, donné par `edition.mjs` : `NOTIONS`) ».
+- Nouvelle ligne après la ligne 35 (« Une page créée par le service ne reçoit que des mots-clés protégés … ») : « Par une route du site (`ctx.voie === 'route'`, `enregistrer(db, corps, { voie: 'route' })`), créer un mot-clé crée sa page de notion et l'ancre dans la même opération (`creerLaNotion` : la page `guide/<nom>`, puis le mot-clé, tout ou rien) : type « Notion » par défaut (409 `champ: 'categories'` si la catégorie n'existe pas encore), `url` refusée (409 `champ: 'url'` : l'adresse vient de la page), jamais de mot-clé nu. Refus de `refusDeLaNotion` (409, sans numéro de décision) : nom sans lettre ni chiffre, mot-clé existant qui désigne déjà une page, qui a déjà une adresse ou qui est celui d'un sort ou d'une magie, nom déjà titre, adresse ou alias d'une page. »
+- Ligne 41, « Un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne … » : ajouter une ligne après : « La page de notion d'un mot-clé se supprime par `page_des_regles` (skill `zone-edition-menus`) : refusée si un texte cite le mot-clé ou s'il est verrouillé, sinon le mot-clé part avec elle, sauf s'il désigne aussi un type de sort, de dégâts ou une monnaie (R289). »
+
+## 3. `zone-edition-lots`
+
+- Ligne 26, « Insertion d'un mot-clé (`traduireLaCreationDUnMotCle`, `edition-lots.mjs`) : … Test : `serveur-edition-lots-mot-cle`. »
+  → nouvelle ligne après : « Insertion d'une page de notion (`ancrage: { notion: true }` sur une opération `page`, `traduireLaPageDeNotion`, `edition-lots.mjs`) : le service crée la page du mot-clé existant ou créé plus haut dans le lot (`creerLaPageDeNotion` : sans résumé, le bloc `notion` pour texte, l'adresse du mot-clé alignée sur elle), puis `verifier_ligne` vérifie la ligne créée ; `apres` ne porte que `id`, `titre`, `mot_cle_id` (`lib/lot-de-changements.mjs`). Test : `serveur-edition-notions-lots`. »
+- Ligne 27, « Suppression d'une page : par le service, qui emporte ses lignes dépendantes … » : ajouter « ; pour une page de notion (hors menu), `{ op: 'supprimer', entite: 'page_des_regles' }` est admis (skill `zone-edition-menus`) ; annulée en lot, elle ne retient pas son mot-clé ».
+- Ligne 33, « Annulation (`annulerLeLot` … Une insertion n'est supprimée que si elle est intacte … » : ajouter « Annuler la ligne d'une page de notion emporte un groupe (`groupesDesPagesDeNotion`) : la page, ses `page_source`, l'ancienne adresse reprise et l'adresse que le mot-clé a prise ; le mot-clé reste (numéro, clé, type, définition, synonymes) ; la ligne `source` du jour, partagée par toutes les pages du lot, ne bloque rien ; ni les mentions ni le verrou du mot-clé ne retiennent l'annulation. »
+
+## 4. `zone-glossaire`
+
+- Ligne 25, « Gestion « en mode édition seulement », dans la ligne … Au-dessus du tableau : « + Ajouter un mot-clé » et la gestion des catégories … »
+  → « + Ajouter un mot-clé » **crée la notion et sa page** (chantier 3, `docs/chantier-pages-de-notion.md` §4) : le formulaire ne demande que le nom, le type (une case exclusive, « Notion » présélectionné quand cette catégorie existe) et une définition facultative (`CHAMPS_D_UNE_NOTION`, `lib/mots-cles-edition.mjs`) ; ni adresse, ni couleur, ni icône, ni synonymes ; relu, le mot-clé est ancré à sa page : sa ligne est en lecture seule avec « Ouvrir ».
+- Ligne 12, liste des fonctions pures de `lib/mots-cles-edition.mjs` : ajouter `CHAMPS_D_UNE_NOTION`. Ligne 33, « Le formulaire de création reçoit `liste` et `choix` de chaque champ (`champsDeCreation`) » : ajouter « ; il n'offre que les champs de `CHAMPS_D_UNE_NOTION`, et le type en cases exclusives ».
+- Nouvelle ligne dans « Choix du propriétaire » (après la 25) : « Choix d'équipe (R309 (7), non validés : `docs/chantier-pages-de-notion.md`) : le site ne crée plus de mot-clé nu ; renommer un mot-clé de notion se fait en renommant sa page ; corriger son type, sa couleur, son icône, ses synonymes ou sa définition passe par un lot de l'équipe (R309 (17)) jusqu'au chantier 4. »
+
+## 5. `zone-edition-menus`
+
+- Ligne 28, « Suppression, refus avant écriture : 404 inconnue, 400 hors des Règles, 409 protégée (`details.raisons`), 409 citée (`details.citations`). »
+  → « … 400 hors des Règles (ni une page d'onglet, ni une page de notion : `estUnePageDeNotion`, `serveur/edition-notions.mjs`), … ». Ajouter : « Une page de notion n'a pas d'entrée de menu à retirer ; son mot-clé part avec elle (sauf s'il désigne aussi un type de sort, de dégâts ou une monnaie, R289), et le refus de citation compte les textes qui citent ce mot-clé. »
+- Ligne 21 (« Aucun bouton « Supprimer » sur une page protégée (`boutonSupprimer`…) ») : ajouter « ; une page de notion (`[data-ed-notion]`) montre seulement « Supprimer la page » (`menus.mjs#outilsDUneNotion` : pas de liste « Onglet », les onglets sont fixes), toujours offert : le service tranche, le refus 409 s'affiche par `refusEnListe` ; après la suppression, on revient au Glossaire ».
+- Ligne 34, « Le résumé se pose sous le titre (`edition/guide.mjs#poserLeResume`) ; `page.resume` n'est modifiable que pour une page du guide. » : ajouter « Il est facultatif pour une page de notion (`data-ed-notion`, le service l'accepte vide ; obligatoire pour une page d'onglet) ».
+- Ligne 35, « La page d'une Règle créée est dessinée sur la 404 (`edition/nouvelles.mjs`) tant que le site n'est pas reconstruit ; le plan vivant redessine les menus. » : ajouter « Une page que le plan vivant ne range dans aucun onglet est dessinée sans menu latéral (`lib/page-de-notion-rendu.mjs#htmlDeLaPageDeNotion` : fil « Accueil › Glossaire », titre modifiable, bandeau « Page créée sur le site de dev », une ligne qui dit que le contenu est calculé à la fabrication du site) ; `menus` est actif aussi sur `[data-ed-notion]` ».
+- Tests : ajouter `pages-de-notion-site-de-dev`.
+
+## 6. `zone-mise-a-jour-lots`
+
+- Ligne 11 (« R291 : un lot déposé avec la clé de dépôt est appliqué aussitôt … la page montre les changements ligne par ligne ») : ajouter « ; « Préparer l'ancrage » dépose un cinquième lot, les pages de notion : sa ligne se dit « la page de notion du mot-clé n° … » (`lib/lots-rendu.mjs`, libellé `notion`) ; annuler une ligne retire la page de notion et l'adresse du mot-clé, qui redevient sans élément ; une ligne annulée reste écartée jusqu'à « Reprendre les lignes annulées » (clé `notion:<mot_cle_id>` côté service). »
+
+## 7. `site-version-portable` (facultatif)
+
+- Ligne 22 (liste des modules importés par un seul script) : ajouter « `lib/page-de-notion-rendu.mjs` (pur : le HTML de la page d'une notion créée sur le site de dev, `htmlDeLaPageDeNotion`) n'est importé que par `scripts/edition/nouvelles.mjs`, dans la chaîne de l'édition absente du portable ; `test/pages-de-notion-site-de-dev.test.mjs` épingle cet unique importeur. »
+
+## Sans changement
+
+`zone-recherche` (un résumé absent et un corps réduit à un marqueur ne cassent pas l'index : `lib/recherche-index.ts` retire les marqueurs, `entry.data.summary ?? ''`, test `pages-de-notion-site-de-dev`), `zone-mots-cles` (la vue `?mot-cle=` de la Recherche n'est pas touchée), `zone-edition` (aucune règle nouvelle hors celles ci-dessus), `zone-mise-a-jour` (la note de version dit la famille en une ligne : `comparerLesNotionsAjoutees`, `lib/notes-de-version.mjs` ; aucune ligne de skill ne cite `comparerLesMotsClesAncres`).

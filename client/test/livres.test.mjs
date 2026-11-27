@@ -245,7 +245,7 @@ test('les adresses du plan n’entrent en conflit ni avec un type de page, ni av
   assert.equal(ARTISANAT.chemin, 'regles/artisanat/');
 });
 
-test('le plan est contrôlé au build : une page absente, d’exemple, nommée deux fois, rangée nulle part, absorbée, retirée ou supprimée revenue arrête tout', () => {
+test('le plan est contrôlé au build : une page absente, d’exemple, nommée deux fois, absorbée, retirée ou supprimée revenue arrête tout ; une page rangée nulle part est admise (page de notion)', () => {
   assert.equal(verifierLePlan(pagesDuGuide), pagesDuGuide);
   const sans = (id) => pagesDuGuide.filter((p) => p.id !== id);
   const avec = (id, status = 'draft') => [...pagesDuGuide, { id, data: { title: id, status } }];
@@ -254,8 +254,8 @@ test('le plan est contrôlé au build : une page absente, d’exemple, nommée d
   assert.throws(() => verifierLePlan(sans('guide/l-univers')), /guide\/l-univers \(« Découvrir »\) n'existe pas/);
   const exemple = pagesDuGuide.map((p) => (p.id === 'guide/un-maitre-du-jeu' ? { ...p, data: { ...p.data, status: 'example' } } : p));
   assert.throws(() => verifierLePlan(exemple), /guide\/un-maitre-du-jeu \(Guide du MJ\) est une page d'exemple/);
-  // pas d'onglet « Autre » (R185, P7) : une page du guide que le plan ne range pas arrête le build, nommée
-  assert.throws(() => verifierLePlan(avec('guide/une-page-nouvelle')), /plan du guide : guide\/une-page-nouvelle n'est rangée nulle part .*regles_onglet_entree/);
+  // pas d'onglet « Autre » (R185 (7)) : une page du guide que le plan ne range pas est admise, c'est une page de notion (R309 (7) ; livres-pages-de-notion.test.mjs)
+  assert.doesNotThrow(() => verifierLePlan(avec('guide/une-page-nouvelle')));
   assert.doesNotThrow(() => verifierLePlan(avec('guide/une-page-d-exemple', 'example')), 'une page d’exemple non rangée : l’adresse de repli, sans entrée');
   assert.throws(() => verifierLePlan(avec('guide/situations-avancees')), /guide\/situations-avancees est absorbée par guide\/prise-en-tenaille-et-zone-d-influence/);
   assert.throws(() => verifierLePlan(avec('guide/lexique')), /guide\/lexique est retirée \(ses adresses mènent à \/regles\/glossaire\/\) et ne doit plus être dans la base/);
@@ -756,9 +756,13 @@ test('aujourd’hui (la base courante : pages, titres, intertitres et menus modi
   try {
     installerLePlan(chargerPlanDesRegles(courante));
     assert.equal(verifierLePlan(pages), pages, 'le plan de la base courante tient');
-    for (const { id } of pages) {
+    for (const page of pages) {
+      const { id } = page;
       const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
-      assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
+      // une page de notion (R309 (7)) n'est dans aucun menu : elle est rattachée au Glossaire
+      const notion = Livres.estUnePageDeNotion(page);
+      assert.equal(places, id === FIXTURE || notion ? 0 : 1, `${id} : une place et une seule`);
+      if (notion) assert.equal(Livres.placeDansLeGuide(id, { notion }).rubrique, Livres.GLOSSAIRE.titre, `${id} : page de notion, au Glossaire`);
     }
     // le menu latéral de chaque onglet : une entrée par ligne de regles_onglet_entree dont la page est là, dans l'ordre des rangs (à égalité, l'id)
     for (const onglet of ongletsDesRegles()) {

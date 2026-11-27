@@ -492,6 +492,7 @@ function phraseDeLEcartee(cle) {
   return {
     page: `la page ${quoi}`, sort: `le sort ${quoi.split('#sort:').pop()}`, type_sort: `le type de sort ${quoi}`, nom: `le mot-clé n° ${quoi}, qui garde son ancien nom`,
     type: `le mot-clé n° ${quoi}, qui garde ses catégories`, categorie: `la catégorie ${quoi} (tant qu’elle manque, les créations attendent)`,
+    notion: `la page de notion du mot-clé n° ${quoi}`,
   }[genre] ?? quoi;
 }
 

@@ -119,6 +119,7 @@ import { corpsDeLaPotionApres, ErreurCorpsPotions, estUnePotion, pageDeLaPotion,
 import { categoriesDeLaChronologie, domainesDeLaChronologie } from './edition-chronologie.mjs';
 import { domainesDesPanneaux } from './edition-panneaux.mjs';
 import { domainesDuPlan } from './edition-plan.mjs';
+import { estUnePageDeNotion, outilsDesNotions } from './edition-notions.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
@@ -635,9 +636,11 @@ export function refusDesForcages(db, motsCles) {
  * (`sources:` du `.md`) : la source « Site de dev › édition du AAAA-MM-JJ » (table source, id comme tools/db/maverick.py#decouper_source), partagée
  * par les pages créées le même jour. Son adresse (tirée de l'id) : refusée si une autre page vivante la tient (une page renommée, R316 : 409 qui la nomme) ;
  * une ancienne adresse, elle la reprend (sa ligne de page_ancienne_adresse est retirée, décision 3 de docs/chantier-adresses.md). `index` :
- * indexDesAdresses(db, { exemples: true }) que l'appelant a déjà lu pour choisir l'identifiant.
+ * indexDesAdresses(db, { exemples: true }) que l'appelant a déjà lu pour choisir l'identifiant. `motCle` (une page de notion, serveur/edition-notions.mjs) :
+ * absent, la page reçoit un mot-clé neuf (ANCRAGE.ancrerLaPage) ; l'id d'un mot-clé, elle est insérée avec lui pour ancre ; null, elle est créée sans ancre
+ * (l'appelant crée ensuite son mot-clé, qui la prend pour ancre).
  */
-function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, motsCles = [], index }) {
+function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, motsCles = [], index, motCle = undefined }) {
   const { db, w, instant } = ctx;
   if (!slug) throw refus(`« ${titre} » : le nom doit contenir au moins une lettre ou un chiffre`);
   const origine = FAMILLE_DES_PAGES_DU_SITE[type];
@@ -653,7 +656,7 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
   const texte = provenance(instant);
   w.inserer('page', {
     id, type, slug, titre, titre_cle: normalize(titre), resume, donnees: donnees === null ? null : jsonCommePython(donnees), corps_md: corps, statut: 'draft',
-    origine, source_ref: texte,
+    origine, source_ref: texte, ...(motCle ? { mot_cle_id: motCle } : {}),
   });
   motsCles.forEach((motCle, ordre) => w.inserer('page_tag', { page_id: id, ordre, tag_id: motCleDe(ctx, motCle) }));
   const source = `ref:${normalize(texte)}`;
@@ -662,7 +665,8 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
   }
   w.inserer('page_source', { page_id: id, ordre: 0, source_id: source });
   ADRESSES.libererLAdresse(ctx, adresse);
-  ANCRAGE.ancrerLaPage(ctx, { id, type, titre }); // son mot-clé (R309) ; null : le nom attend, la page est créée quand même
+  // son mot-clé (R309) ; null : le nom attend, la page est créée quand même. Une page de notion a déjà le sien, ou le reçoit ensuite
+  if (motCle === undefined) ANCRAGE.ancrerLaPage(ctx, { id, type, titre });
   return id;
 }
 
@@ -1884,6 +1888,8 @@ const CHRONOLOGIE = domainesDeLaChronologie({
   definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste,
   recalculerLesCles: (ctx) => MOTS_CLES.recalculerLesCles(ctx), resumeDesCles: (c) => MOTS_CLES.resumeDesCles(c),
   sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie, refusDesSynonymesTransmis,
+  // la notion et sa page, créées par une route (`ctx.voie`, enregistrer) : NOTIONS est défini plus bas, lu à l'appel
+  creerLaNotion: (ctx, valeurs) => NOTIONS.creerLaNotion(ctx, valeurs),
 });
 
 /** La page des armes (armes, matériaux, améliorations d'arme) et celle des armures et boucliers (serveur/edition-armes.mjs, edition-armures.mjs). */
@@ -1898,7 +1904,9 @@ const CONSOMMABLES = domainesDesConsommables({ refus, ErreurEdition, synchronise
  * Le plan des Règles (menus des onglets, pages des Règles créées et supprimées) et l'ordre de la liste des races (serveur/edition-plan.mjs) : le domaine
  * de regles_onglet_entree, la création et la suppression d'une page des Règles (ENTITES.page_des_regles, sur la table page), l'opération `ordonner`.
  */
-const PLAN = domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise: ADRESSES.adressePrise, A_COMPLETER });
+const PLAN = domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise: ADRESSES.adressePrise, estUnePageDeNotion, A_COMPLETER });
+/** Les pages de notion (serveur/edition-notions.mjs) : la page d'un mot-clé existant, la notion nouvelle, et ce qu'en lisent le plan et les lots. */
+export const NOTIONS = outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle, ANCRAGE, idPris: PLAN.idPris });
 
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
@@ -3444,8 +3452,10 @@ function valeursValidees(ctx, table, valeurs, avant, colonnesPermises) {
   for (const [colonne, brute] of Object.entries(valeurs)) {
     const champ = modele.colonnes[colonne];
     if (!champ || (colonnesPermises && !colonnesPermises.includes(colonne))) throw refus(`${modele.libelle} : la colonne « ${colonne} » ne se modifie pas ici`);
+    // le résumé, obligatoire pour une page d'un onglet, est facultatif pour une page de notion (vidé : NULL ; docs/chantier-pages-de-notion.md, §4)
+    const facultatif = table === 'page' && colonne === 'resume' && champ.requis && avant && estUnePageDeNotion(ctx.db, avant.id);
     try {
-      sortie[colonne] = valeurDuChamp(champ, brute);
+      sortie[colonne] = valeurDuChamp(facultatif ? { ...champ, requis: false } : champ, brute);
     } catch (e) {
       if (e instanceof ErreurValeur) throw refus(`${modele.libelle} : ${e.message}`);
       throw e;
@@ -3736,6 +3746,9 @@ const OPERATIONS_DU_LOT = {
     return `Mot-clé #${op.id} aligné sur son élément`;
   },
   recalculer_les_cles: (ctx) => ANCRAGE.recalculerEnFinDeLot(ctx),
+  // les pages de notion (serveur/edition-notions.mjs) : la page d'un mot-clé existant (la forme `ancrage: { notion: true }` d'un lot, edition-lots.mjs#traduire)
+  // rend l'id de la page ; la notion nouvelle (mot-clé, page et ancre ensemble) ne passe que par une route du site (edition-chronologie.mjs#creerParUneRoute)
+  creer_page_de_notion: (ctx, op) => NOTIONS.creerLaPageDeNotion(ctx, { mot_cle_id: op.mot_cle_id, id: op.id, titre: op.titre }),
 };
 
 /**
@@ -3832,15 +3845,17 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
  * @param {{ page?: string, operations: object[] }} corps
- * @param {{ instant?: string, id?: string, auteurId?: string | null, gel?: boolean }} [o] instant et identifiant du lot : par défaut ceux de nouveauLot (l'identifiant
+ * @param {{ instant?: string, id?: string, auteurId?: string | null, gel?: boolean, voie?: 'route' }} [o] instant et identifiant du lot : par défaut ceux de nouveauLot (l'identifiant
  *   s'ordonne comme l'enregistrement, ce qui fixe l'ordre de rejeu de deux lots de la même seconde) ; `gel` faux : le lot tel qu'on l'écrivait avant le
  *   verrou des mots-clés et le gel des monnaies (raisonDuGel non contrôlé : décisions R218, R219), pour les tests qui reproduisent un lot ancien du
- *   journal, que le rejeu laisse passer (R219 (6), R220 (1)) ; aucune route ne le donne
+ *   journal, que le rejeu laisse passer (R219 (6), R220 (1)) ; aucune route ne le donne. `voie` : « route » pour une route du site (serveur/api.mjs,
+ *   serveur/ressources.mjs, seules à la donner) : créer un mot-clé y crée la notion et sa page (docs/chantier-pages-de-notion.md, §4 ; edition-chronologie.mjs,
+ *   MOT_CLE.creer) ; absente (tests, rejeu), la création reste celle d'un mot-clé nu ; toute autre valeur est ignorée
  * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string, operation: number }[], lignes: { table: string, cle: object, ligne: object | null }[],
  *   fiches: { fiche: string, retraits: string[] }[] }} `fiches` : les fiches de personnage dont le lot a retiré un élément supprimé (décision R42 ; le nom
  *   d'un prétiré, « fiche de joueur n° k » sinon : serveur/fiches-retraits.mjs#noterLesRetraits), jamais dans `lignes` ni dans le résumé du lot
  */
-export function enregistrer(db, corps, { instant, id, auteurId = null, gel = true } = {}) {
+export function enregistrer(db, corps, { instant, id, auteurId = null, gel = true, voie = undefined } = {}) {
   if (instant === undefined || id === undefined) {
     const lot = nouveauLot();
     instant ??= lot.instant;
@@ -3865,7 +3880,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
     const w = ouvrirLot(db, { id, instant, pageId, auteurId });
     // retraits : les fiches de personnage dont une suppression retire un élément (R42), notées une fois par fiche en fin de lot
     // forcees, fusions : les mots-clés supprimés en forçant (décision R223) et fusionnés, marqués en tête du résumé du lot (marqueursDuLot)
-    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel, forcees: [], fusions: [] };
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel, forcees: [], fusions: [], ...(voie === 'route' ? { voie } : {}) };
     // la magie de chaque don « Variable » avant le lot : un don qui quitte ce type ou change de magie perd les choix des fiches (R181)
     const variablesAvant = magiesDesDonsVariables(db);
     const resumes = [];

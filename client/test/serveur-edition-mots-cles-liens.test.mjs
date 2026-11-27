@@ -23,6 +23,7 @@ import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition-mots-cles-liens');
 let compteur = 0;
@@ -35,6 +36,8 @@ function nouvelle() {
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
   const lot = (operations, page = 'recherche/') => appel('POST', '/api/edition/', { page, operations });
+  // hors route : un mot-clé y naît nu, avec l'adresse qu'on lui donne (par une route, elle viendrait de sa page de notion : aide-mot-cle-nu.mjs)
+  lot.horsRoute = (operations) => lotHorsRoute(db, operations, 'recherche/');
   const motCle = (id) => ({ ...db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id) });
   const nombre = () => db.prepare('SELECT count(*) AS n FROM modification').get().n;
   /** Un libellé de mot-clé que le vocabulaire n'a pas. */
@@ -49,7 +52,7 @@ const ok = (r) => {
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   return r.corps;
 };
-const creerMotCle = (lot, valeurs) => lot([{ op: 'creer', entite: 'mot_cle', valeurs }]);
+const creerMotCle = (lot, valeurs) => lot.horsRoute([{ op: 'creer', entite: 'mot_cle', valeurs }]);
 
 test('modèle : url (« adresse ») et couleur (« couleur ») dans TABLES et ENTITES, hors des textes à balises ; une ligne, une couleur écrite en minuscules', () => {
   for (const champs of [TABLES.mot_cle.colonnes, ENTITES.mot_cle.champs]) {

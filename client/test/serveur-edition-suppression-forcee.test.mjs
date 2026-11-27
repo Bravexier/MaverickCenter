@@ -28,6 +28,7 @@ import { formesNonCanoniques, lireBalises, motCleDeLaRef, vocabulaireDesMotsCles
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-suppression-forcee');
@@ -66,7 +67,8 @@ function nouvelle(db = vivante()) {
     for (let i = 2; prise(normalize(t)) || ligne('SELECT 1 FROM page WHERE titre_cle = ?', normalize(t)); i += 1) t = `${base} ${process.pid} ${i}`;
     return t;
   };
-  const creer = (valeurs) => ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { ...valeurs, libelle: libre(valeurs.libelle) } }])).crees[0].id;
+  // nu, hors route (par une route, il naîtrait avec sa page de notion et ne se supprimerait plus : aide-mot-cle-nu.mjs)
+  const creer = (valeurs) => ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { ...valeurs, libelle: libre(valeurs.libelle) } }], 'regles/glossaire/')).crees[0].id;
   /** Un mot-clé posé dans la copie, comme une migration le ferait (`verrou` : 1 pour un verrouillé). */
   const poser = (libelle, { verrou = 0, description = 'Définition d’essai (R223).', id = null } = {}) => {
     const l = libre(libelle);

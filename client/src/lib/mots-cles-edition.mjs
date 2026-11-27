@@ -324,6 +324,12 @@ export function operationsDesListes(vocabulaire, saisies, { retires = new Set() 
 export const typeParDefaut = (categories) => (categories ?? []).find((c) => normalize(c?.libelle ?? '') === 'notion')?.id ?? null;
 
 /**
+ * Les champs du formulaire « Nouveau mot-clé » (ENTITES.mot_cle.champs) : le nom, le type et la définition (docs/chantier-pages-de-notion.md, §4). Le service crée
+ * la notion et sa page d'un même geste ; l'adresse vient de la page, la couleur, l'icône et les synonymes d'un mot-clé ancré se corrigent par un lot de l'équipe.
+ */
+export const CHAMPS_D_UNE_NOTION = Object.freeze(['libelle', 'categories', 'description']);
+
+/**
  * Les cases du type d'un mot-clé sont exclusives (R309 : un seul type) : cocher `cochee` décoche les autres `cases` ; en décocher une, ou tout décocher, reste
  * libre. Un mot-clé qui a encore plusieurs catégories (avant le premier lot d'ancrage) les montre toutes cochées, sans qu'aucune case ait changé.
  */

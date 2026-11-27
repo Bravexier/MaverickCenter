@@ -378,9 +378,14 @@ mot-clé). Le libellé n'est plus unique. `synonymes` remplace l'abréviation : 
 (`libelle`) en ajoute un à la fin, `DELETE` en retire un (opération `synonymes_mot_cle` ; `409` sur un mot-clé verrouillé, R233 (6)) ; un synonyme
 qui s'écrit comme le libellé, un synonyme ou la clé d'un autre mot-clé est refusé en `409`, comme son propre libellé ou une écriture qui couperait
 une balise en `400` (`champ: "synonymes"`). La sous-ressource `categories/` pose (`POST`, `categorie_id`) ou retire (`DELETE`) une catégorie
-(opération `categories_mot_cle`, permise sur un mot-clé verrouillé, R232 (11)). La création (`POST mots-cles/`) accepte `categories` (identifiants)
-et `synonymes` (écritures). Refusés en `409` : un homonyme sans catégorie qui le distingue de chacun des autres (`champ: "categories"`), une clé
-déjà prise ou un libellé qui s'écrit comme le synonyme d'un autre mot-clé (`champ: "libelle"`). `categories-de-mots-cles/` : une catégorie se crée,
+(opération `categories_mot_cle`, permise sur un mot-clé verrouillé, R232 (11)). La création (`POST mots-cles/`, comme « + Ajouter un mot-clé » au
+Glossaire) crée la notion et sa page de notion dans le même lot (`docs/chantier-pages-de-notion.md`, §4) : la page des Règles hors menu qui porte son
+nom, sans résumé, le relie, et son adresse est celle de la page ; jamais de mot-clé nu. Elle accepte `categories` (un seul type ; sans lui, « Notion » ; si
+cette catégorie n'existe pas dans la base, la notion est créée sans type, sans refus), `description`, `synonymes`, `couleur` et `icone` ; `url` est refusée en `409`
+(`champ: "url"`). Refusés aussi en `409`, sans rien écrire : un nom qui est déjà le titre, l'adresse ou un alias d'une page, un homonyme sans catégorie
+qui le distingue de chacun des autres (`champ: "categories"`), une clé déjà prise ou un libellé qui s'écrit comme le synonyme d'un autre mot-clé
+(`champ: "libelle"`). Relié à sa page, le mot-clé ne se modifie, ne se fusionne ni ne se supprime ensuite à son adresse (`409`) : renommer sa page le
+renomme. Pas de corps d'exemple dans la description OpenAPI. `categories-de-mots-cles/` : une catégorie se crée,
 se renomme (`PATCH`, `libelle` unique, sinon `409`) et ne se supprime que vide (`409` avec `mots_cles` sinon). La ref d'une balise du glossaire peut
 être la clé, le libellé que porte un seul mot-clé, ou un synonyme, quelle que soit la casse (un libellé de plusieurs homonymes : `400`, `refs` et
 `homonymes`) ; elle s'enregistre par la clé, le texte tapé gardé tel quel (« {{ic}} » → « {{instant-cast|ic}} », R233 (10) :

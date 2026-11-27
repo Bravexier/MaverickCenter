@@ -21,6 +21,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { A_COMPLETER, ErreurEdition, FAMILLE_DES_PAGES_DU_SITE, supprimerPage } from '../serveur/edition.mjs';
 import { journalExporte, nouveauLot, ouvrirLot } from '../serveur/edition-journal.mjs';
+import { estUnePageDeNotion } from '../serveur/edition-notions.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES } from '../src/lib/edition-modele.mjs';
 import { ADRESSES_RENOMMEES_DU_GUIDE, installerLePlan, NOMS_RESERVES, PAGES_SUPPRIMEES, verifierLePlan } from '../src/lib/livres.mjs';
@@ -31,6 +32,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { retirerLeMotCleDeLaPage } from './aide-ancrage.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -177,7 +179,8 @@ test('remplir une entrée « bientôt » : dans le même lot, l’entrée retir�
 
 test('le résumé d’une page du guide se modifie ; pas celui d’une page du Codex', () => {
   const { db, lot } = nouvelle();
-  const guide = db.prepare("SELECT id, resume FROM page WHERE type = 'guide' AND statut <> 'example' ORDER BY id").get();
+  // une page rangée dans le plan : le résumé d'une page de notion (hors de tout menu, R309 (7)) reste facultatif
+  const guide = db.prepare("SELECT id, resume FROM page WHERE type = 'guide' AND statut <> 'example' ORDER BY id").all().find((p) => !estUnePageDeNotion(db, p.id));
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: guide.id }, valeurs: { resume: 'Un autre résumé.' } }]));
   assert.equal(db.prepare('SELECT resume FROM page WHERE id = ?').get(guide.id).resume, 'Un autre résumé.');
   assert.equal(lot([{ op: 'modifier', table: 'page', cle: { id: guide.id }, valeurs: { resume: '' } }]).statut, 400, 'obligatoire');
@@ -187,7 +190,7 @@ test('le résumé d’une page du guide se modifie ; pas celui d’une page du C
   assert.match(r.corps.erreur, /le résumé ne se modifie que pour une page du guide/);
 });
 
-test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée (raisons) ou citée (citations) avant écriture ; une citation d’exemple ne bloque pas', () => {
+test('supprimer une page des Règles : 404, 400 hors des onglets (Découvrir, une page d’exemple hors plan), 409 protégée (raisons) ou citée (citations) avant écriture ; une citation d’exemple ne bloque pas', () => {
   const { db, lot } = nouvelle();
   const supprimer = (id) => lot([{ op: 'supprimer', entite: 'page_des_regles', cle: { id } }]);
   const nombre = () => db.prepare('SELECT count(*) AS n FROM modification').get().n;
@@ -195,6 +198,10 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   assert.equal(supprimer('guide/inconnue').statut, 404);
   assert.equal(supprimer('guide/bienvenue').statut, 400, 'Découvrir');
   assert.equal(supprimer('races/humain').statut, 400);
+  // une page d'exemple du guide hors des onglets n'est pas une page de notion (docs/chantier-pages-de-notion.md, décision 16) : la fixture reste
+  const horsPlan = db.prepare("SELECT id FROM page WHERE type = 'guide' AND statut = 'example' AND id NOT IN (SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL) ORDER BY id").get()?.id;
+  assert.ok(horsPlan, 'une page d’exemple du guide hors des onglets');
+  assert.equal(supprimer(horsPlan).statut, 400, horsPlan);
   const ouverture = db.prepare('SELECT ouverture_page_id FROM regles_onglet ORDER BY ordre').get().ouverture_page_id;
   const protegee = supprimer(ouverture);
   assert.equal(protegee.statut, 409);
@@ -208,7 +215,8 @@ test('supprimer une page des Règles : 404, 400 hors des onglets, 409 protégée
   const titreCible = db.prepare('SELECT titre FROM page WHERE id = ?').get(cible).titre;
   const citante = ok(creer(lot, { titre: titreLibre(db, 'Page qui cite d’essai'), onglet_id: 'combats', resume: 'Cite.' })).crees[0].id;
   assert.equal(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]).statut, 400, 'aucun mot-clé ne mène à la page');
-  const motCle = ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: titreLibre(db, 'Mot-clé de la page citée'), url: `/${cheminDePage(cible)}` } }])).crees[0].id;
+  // nu, hors route : par une route, l'adresse d'un mot-clé vient de sa page de notion (aide-mot-cle-nu.mjs)
+  const motCle = ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: titreLibre(db, 'Mot-clé de la page citée'), url: `/${cheminDePage(cible)}` } }])).crees[0].id;
   ok(lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir [[${titreCible}]].` } }]));
   // la balise cite la clé du mot-clé (migration 0113, décision R232 (3))
   const cleDuMotCle = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(motCle).cle;

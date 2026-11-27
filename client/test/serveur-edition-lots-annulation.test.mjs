@@ -22,6 +22,7 @@ import { PAGE_DE_L_INVENTAIRE, PAGE_DES_INGREDIENTS } from '../src/lib/corps-com
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition-lots-annulation');
 const JSON_ = { 'content-type': 'application/json' };
@@ -275,7 +276,8 @@ test('une colonne que le service recalcule vers une troisième valeur pendant la
   const applique = ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}));
   const clePosee = m.un('SELECT cle FROM mot_cle WHERE id = ?', motCle.id).cle;
   // depuis le lot, un homonyme du nom d'origine apparaît, dans une autre catégorie : en revenant au nom d'origine, la clé se calcule avec la catégorie (ni celle du lot, ni l'ancienne)
-  ok(await m.appel('POST', '/api/edition/', { page: 'essai', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: motCle.libelle, categories: [c2] } }] }));
+  // nu, hors route (par une route, il naîtrait avec sa page de notion : aide-mot-cle-nu.mjs)
+  ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: motCle.libelle, categories: [c2] } }], 'essai'));
   ok(await m.appel('POST', '/api/edition/', { page: 'essai', operations: [{ op: 'categories_mot_cle', mot_cle: motCle.id, categories: [c1] }] }));
   const cleAvecCategorie = m.un('SELECT cle FROM mot_cle WHERE id = ?', motCle.id).cle;
 

@@ -5,7 +5,7 @@ import SupportDuMarkdown from '../SupportDuMarkdown.astro';
 import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
-import { estDuGuideDuMj, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
+import { estDuGuideDuMj, estUnePageDeNotion, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
 import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
 import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
@@ -33,7 +33,9 @@ interface Props {
   modifiable: boolean;
 }
 const { entry, entries, modifiable } = Astro.props;
-const fil = filDAriane(entry.id);
+// une page hors du plan est une page de notion (R309 (7)) : rattachée au Glossaire, sans menu latéral ; `data-ed-notion` la désigne au mode modification
+const notion = estUnePageDeNotion(entry);
+const fil = filDAriane(entry.id, { notion });
 const ici = cheminDePage(entry.id);
 // la couleur du mot-clé coloré qui mène à la page d'abord (réponse Q5 du propriétaire, migration 0098 : lib/couleur-de-la-page.mjs), sinon celle de sa partie
 const couleur = classeDeLaPageDuSite(url(ici), classeDePartie(partieDeLaPage(entry.id)), { base: import.meta.env.BASE_URL });
@@ -77,7 +79,7 @@ const css = [blocsCss, magieTooltipsCss].join('\n');
   {entry.data.aliases.length > 0 && reference && <p class="muted">Aussi appelé : {entry.data.aliases.join(', ')}</p>}
   {statusNote && <p class="banner" role="note">{statusNote}</p>}
   {/* data-ed-corps, data-ed-morceau : morceaux de texte modifiables sur le site de dev (src/scripts/edition/guide.mjs) */}
-  <div class="guide-corps" data-ed-corps={modifiable ? entry.id : undefined}>
+  <div class="guide-corps" data-ed-corps={modifiable ? entry.id : undefined} data-ed-notion={modifiable && notion ? '' : undefined}>
     {
       morceaux.map((m) =>
         'bloc' in m ? (

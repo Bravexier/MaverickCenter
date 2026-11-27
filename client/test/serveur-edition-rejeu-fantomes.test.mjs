@@ -14,8 +14,10 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('rejeu-fantomes');
@@ -170,11 +172,13 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
   ouvertes.push(base);
   const lot = serviceDe(base, 'recherche/');
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
+  // pas ancrés : un mot-clé relié à un élément (une page de notion comprise, R309 (7)) ne se fusionne plus, et les règles neuves ne retirent pas M seul
   const choisir = (sauf) => base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')}) AND m.id NOT IN (${sauf.map(() => '?').join(', ')})
     AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
     AND NOT EXISTS (SELECT 1 FROM page_tag a JOIN page_tag b ON a.page_id = b.page_id WHERE a.tag_id = m.id AND b.tag_id IN (${sauf.map(() => '?').join(', ')}))
-    ORDER BY m.id LIMIT 1`).get(...proteges, ...sauf, ...sauf).id;
-  const n = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre(base, 'mot_cle', 'cle', 'Essai fantôme N') } }]).crees[0].id;
+    ORDER BY m.id`).all(...proteges, ...sauf, ...sauf).find((x) => !estAncre(base, x.id)).id;
+  // nu, hors route (par une route, il naîtrait avec sa page de notion : aide-mot-cle-nu.mjs)
+  const n = lotHorsRoute(base, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre(base, 'mot_cle', 'cle', 'Essai fantôme N') } }], 'recherche/').corps.crees[0].id;
   const s = choisir([n]);
   const m = choisir([n, s]);
   const pagesDeS = base.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(s).map((x) => ({ ...x }));
@@ -289,9 +293,9 @@ test('lot d’avant la migration 0043, mot-clé libre (D4) : sans effet depuis 0
   // B : le site de dev fusionne un mot-clé S dans ce mot-clé : S part (la fusion le voulait), ses étiquettes ne passent pas à un mot-clé que 0056 n'a pas
   const b = siteDAvant0056();
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
-  // non verrouillé : un mot-clé verrouillé ne se fusionne pas dans un autre (décisions R218, R219)
+  // non verrouillé : un mot-clé verrouillé ne se fusionne pas dans un autre (décisions R218, R219) ; pas ancré (une page de notion comprise, R309 (7)) non plus
   const s = b.base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')}) AND m.verrou = 0 AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3
-    AND NOT EXISTS (SELECT 1 FROM page_tag t WHERE t.tag_id = m.id AND t.page_id = ?) ORDER BY m.id LIMIT 1`).get(...proteges, page).id;
+    AND NOT EXISTS (SELECT 1 FROM page_tag t WHERE t.tag_id = m.id AND t.page_id = ?) ORDER BY m.id`).all(...proteges, page).find((x) => !estAncre(b.base, x.id)).id;
   const pagesDeS = b.base.prepare('SELECT page_id FROM page_tag WHERE tag_id = ? ORDER BY page_id').all(s).map((t) => t.page_id);
   serviceDe(b.base, 'recherche/')([{ op: 'fusionner_mots_cles', mot_cle: s, dans: FANTOMES.get(v) }]);
   const b2 = rebatir(b.base, reglesChangees);
@@ -351,7 +355,7 @@ test('clé étrangère composite capacite(specialite_id, classe_id) → speciali
   assert.deepEqual(etatsParLot(r.base), ['en_attente', 'en_attente', 'conflit', 'conflit'], 'la création (L2) passe, comme sur dev');
 });
 
-test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal (D4) : sans effet depuis 0056, ni mot-clé ni étiquette ; le site de dev peut ensuite le créer, une seule fois, et ce mot-clé tient à chaque reconstruction et au rapatriement (qui rejoue avec lui les lots d’avant)', () => {
+test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal (D4) : sans effet depuis 0056, ni mot-clé ni étiquette ; le service peut ensuite le créer (hors route), une seule fois, et ce mot-clé tient à chaque reconstruction et au rapatriement (qui rejoue avec lui les lots d’avant)', () => {
   const base = vivanteOuverte();
   const page = REGLES_PAGE();
   const libelle = libre(base, 'mot_cle', 'cle', 'zz fantome pose retire');
@@ -364,13 +368,12 @@ test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal
   assert.equal(existe(r1.base, 'SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?', page, ligne.ordre), false, 'la ligne posée puis retirée n’existe pas');
   assert.deepEqual(etatsParLot(r1.base), ['integree', 'integree']);
   // après la livraison, le site de dev crée ce mot-clé (l'id entier suivant, migration 0113 ; sa clé, l'ancien id texte que le lot d'avant 0043
-  // aurait pris) et le renomme
-  const cree = serviceDe(r1.base, 'recherche/')([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, description: 'Définition d’essai.' } }]).crees[0].id;
+  // aurait pris) et le renomme ; nu, hors route (par une route, il naîtrait avec sa page de notion et ne se renommerait plus : aide-mot-cle-nu.mjs)
+  const cree = lotHorsRoute(r1.base, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, description: 'Définition d’essai.' } }], 'recherche/').corps.crees[0].id;
   assert.ok(Number.isInteger(cree));
   assert.equal(r1.base.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(cree).cle, id);
-  const doublon = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
-    corps: JSON.stringify({ page: 'recherche/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }] }) }, { base: () => r1.base, etat: () => ({}), edition: true });
-  assert.notEqual(doublon.statut, 200, 'le site ne crée pas un second mot-clé de même écriture');
+  const doublon = lotHorsRoute(r1.base, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }], 'recherche/');
+  assert.notEqual(doublon.statut, 200, 'le service ne crée pas un second mot-clé de même écriture');
   serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: cree }, valeurs: { libelle: `${libelle} renommé` }, avant: { libelle } }]);
   const r2 = rebatir(r1.base);
   assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(cree)?.libelle, `${libelle} renommé`);

@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import MenuLateral from './MenuLateral.astro';
 import PageDuGuide from './PageDuGuide.astro';
-import { menuLateralDe, verifierLePlan } from '../../lib/livres.mjs';
+import { estUnePageDeNotion, GLOSSAIRE, menuLateralDe, verifierLePlan } from '../../lib/livres.mjs';
 import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
@@ -11,7 +11,8 @@ import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 // (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés ; les sources ne s'affichent que sur /archives/), quelle que soit sa rubrique ; une
 // page d'un onglet des Règles à côté du menu latéral de son onglet (MenuLateral, sur le modèle de la chronologie : lib/livres.mjs#menuLateralDe, le plan
 // de la base, R184 ; l'entrée de l'onglet du menu du site marquée, `entree`, d'après le plan et non l'adresse). Le plan est contrôlé contre les pages
-// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, rangée nulle part, ou absorbée par une autre et toujours là).
+// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, absorbée par une autre et toujours là, ou hors du plan sous un nom
+// réservé). Une page hors du plan est une page de notion (R309 (7)) : sans menu latéral, rattachée au Glossaire (fil d'Ariane et entrée du menu du site).
 // `ouverture` : l'adresse d'un onglet (/regles/<onglet>/) ou des Règles (/regles/ : le premier onglet ; pages/regles/[...page].astro,
 // pages/regles/index.astro), qui montre la page d'ouverture de l'onglet ; pour ne pas faire deux pages du même texte aux yeux des moteurs de
 // recherche, elle désigne l'adresse propre de cette page comme canonique (<link rel="canonical">). Son titre est celui de l'onglet.
@@ -32,7 +33,7 @@ const menu = menuLateralDe(entry.id, entries);
   title={ouverture && menu ? menu.rubrique.titre : entry.data.title}
   description={entry.data.summary}
   edition={modifiable ? entry.id : undefined}
-  entree={menu ? menu.rubrique.chemin : undefined}
+  entree={menu ? menu.rubrique.chemin : estUnePageDeNotion(entry) ? GLOSSAIRE.chemin : undefined}
   couleurPropre
 >
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}

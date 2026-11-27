@@ -177,12 +177,19 @@ export function recalculerLesCles(db) {
   }
 }
 
-/** Simule l'application d'un lot du plan, en SQL : numéros suivants, création, type et ancre, modifications, puis les clés recalculées. */
+/**
+ * Simule l'application d'un lot du plan, en SQL : numéros suivants, création, type et ancre, modifications, page de notion (la page, son mot-clé pour ancre,
+ * l'adresse du mot-clé devenue la sienne), puis les clés recalculées.
+ */
 export function appliquerEnSql(db, lot) {
   const numeros = new Map();
   const suivant = (table) => db.prepare(`SELECT coalesce(max(id), 0) + 1 AS n FROM "${table}"`).get().n;
   for (const o of lot.operations) {
-    if (o.operation === 'inserer' && o.table === 'categorie_mot_cle') {
+    if (o.table === 'page' && o.ancrage?.notion === true) {
+      poserPage(db, o.apres.id, o.apres.titre);
+      ecrire(db, 'page', { id: o.apres.id }, { mot_cle_id: o.apres.mot_cle_id });
+      ecrire(db, 'mot_cle', { id: o.apres.mot_cle_id }, { url: adresseDeLaPage(o.apres.id, null) });
+    } else if (o.operation === 'inserer' && o.table === 'categorie_mot_cle') {
       numeros.set(o.cle.id.$numero, poserCategorie(db, o.apres.libelle));
     } else if (o.operation === 'inserer' && o.table === 'mot_cle') {
       const id = Math.max(suivant('mot_cle'), PREMIER_ID);

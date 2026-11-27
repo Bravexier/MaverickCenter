@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   PLAFOND_DES_LIGNES, corpsDuClic, estUnLotDAncrage, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
-  messageDuRecalcul, motDeLEtat, origineDuLot, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLAnnulation, phraseDeLEssai, verrousDuLot,
+  messageDeLAncrage, messageDuRecalcul, motDeLEtat, origineDuLot, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLAnnulation, phraseDeLEssai, verrousDuLot,
 } from '../src/lib/lots-rendu.mjs';
 import { el } from './aide-faux-dom.mjs';
 
@@ -505,4 +505,10 @@ test('R309 : un changement d’ancrage dont le détail n’est pas lu dit le nom
   assert.equal(estUnLotDAncrage({ decision: 'R309', auteur: 'préparer l’ancrage' }), true);
   for (const autre of [{ decision: 'R309' }, { decision: 'R309', auteur: 'équipe' }, { decision: 'R275', auteur: 'préparer l’ancrage' }, { decision: 'R275' }, null]) assert.equal(estUnLotDAncrage(autre), false, JSON.stringify(autre));
   assert.equal(lire(htmlDuLot(applique('equipe', [ligne(1)], { decision: 'R309', auteur: 'équipe' }))).querySelectorAll('details.nv-lot__repli').length, 0, 'le lot de l’équipe n’est pas replié');
+});
+
+test('une page de notion écartée de l’ancrage se dit sans son code, avec le numéro de son mot-clé (docs/chantier-pages-de-notion.md, §3)', () => {
+  const message = messageDeLAncrage({ lots: [], arret: null, suite: false, a_trancher: [], ecartees: ['notion:4242'], comptes: {} });
+  assert.ok(!message.includes('notion:'), message);
+  assert.ok(message.includes('4242'), message);
 });

@@ -21,9 +21,11 @@
 // `cle` : l'objet de la clé primaire (toutes ses colonnes). `avant` : les valeurs attendues des colonnes touchées (la ligne entière pour « supprimer »,
 // absent pour « inserer »). `apres` : les valeurs écrites (absent pour « supprimer »). Même forme que `avant` / `apres` d'une ligne de `modification`
 // (serveur/edition-journal.mjs) : les colonnes touchées seulement pour « modifier », la ligne entière pour « inserer ».
-// `ancrage` (décision R309, sur une opération de `mot_cle` seulement) : à l'insertion, `{ "table": "page" | "sort" | "type_sort", "id": …, "type": <id de
-// catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id, libelle, url) ; sur « modifier », `{ "aligner": true }` recopie le
-// nom et l'adresse de l'élément (`apres` : libelle, url, qui doivent valoir ceux de l'élément).
+// `ancrage` (décision R309, sur une opération de `mot_cle`, ou sur l'insertion d'une page de notion) : à l'insertion d'un mot-clé, `{ "table": "page" | "sort" |
+// "type_sort", "id": …, "type": <id de catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id, libelle, url) ; sur « modifier »
+// d'un mot-clé, `{ "aligner": true }` recopie le nom et l'adresse de l'élément (`apres` : libelle, url, qui doivent valoir ceux de l'élément). À l'insertion
+// d'une `page`, `{ "notion": true }` crée la page de notion d'un mot-clé (docs/chantier-pages-de-notion.md, §3) : `cle` { id: "guide/<nom>" }, `apres` : id, titre
+// (le nom du mot-clé), mot_cle_id (son id, ou le jeton qu'une opération précédente donne), et rien d'autre ; le service écrit le reste.
 //
 // Pur : aucune dépendance au navigateur, à Astro ni à node:… (skill site-version-portable). La structure d'une table (colonnes, clé) vient de l'appelant,
 // qui la lit dans sa base (PRAGMA table_info : serveur/edition-journal.mjs#structure) ; les valeurs actuelles aussi (comparerAvecLaBase).
@@ -65,6 +67,8 @@ const TITRE_MAX = 200;
 export const TABLES_ANCRABLES = Object.freeze(['page', 'sort', 'type_sort']);
 const COLONNES_D_UNE_CREATION_ANCREE = Object.freeze(['id', 'libelle', 'url']);
 const COLONNES_D_UN_ALIGNEMENT = Object.freeze(['libelle', 'url']);
+/** Les colonnes qu'un lot donne à une page de notion (`ancrage: { notion: true }`) : le service écrit les autres. */
+export const COLONNES_D_UNE_PAGE_DE_NOTION = Object.freeze(['id', 'titre', 'mot_cle_id']);
 
 const estUnObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const estAbsent = (v) => v === undefined || v === null;
@@ -227,12 +231,14 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
   return termine();
 }
 
-/** `ancrage` d'une opération (voir l'en-tête) : une création ancrée ou un alignement de `mot_cle`, rien d'autre. Dit chaque faute. */
+/** `ancrage` d'une opération (voir l'en-tête) : une création ancrée ou un alignement de `mot_cle`, ou une page de notion, rien d'autre. Dit chaque faute. */
 function controlerLAncrage(o, dit) {
   const a = o.ancrage;
   const horsDe = (permises) => Object.keys(estUnObjet(o.apres) ? o.apres : {}).filter((c) => !permises.includes(c));
-  if (o.table !== 'mot_cle' || !['inserer', 'modifier'].includes(o.operation)) {
-    dit('ancrage : il ne se pose que sur l\'insertion ou la modification d\'un mot-clé');
+  if (o.table === 'page') {
+    controlerLaPageDeNotion(o, dit, horsDe);
+  } else if (o.table !== 'mot_cle' || !['inserer', 'modifier'].includes(o.operation)) {
+    dit('ancrage : il ne se pose que sur l\'insertion ou la modification d\'un mot-clé, ou sur l\'insertion d\'une page de notion');
   } else if (!estUnObjet(a)) {
     dit('ancrage : un objet est attendu');
   } else if (o.operation === 'modifier') {
@@ -247,6 +253,21 @@ function controlerLAncrage(o, dit) {
     if (!Number.isInteger(a.type) || a.type < 1) dit('ancrage : « type » est l\'id d\'une catégorie (un entier)');
     const autres = horsDe(COLONNES_D_UNE_CREATION_ANCREE);
     if (autres.length) dit(`ancrage : une création ancrée n'écrit que ${liste(COLONNES_D_UNE_CREATION_ANCREE)} (reçu ${liste(autres)})`);
+  }
+}
+
+/** `ancrage` sur une `page` : seule l'insertion d'une page de notion, `{ "notion": true }`, avec son id dans le guide, son titre et son mot-clé. Dit chaque faute. */
+function controlerLaPageDeNotion(o, dit, horsDe) {
+  const a = o.ancrage;
+  if (o.operation !== 'inserer') return dit('ancrage : sur une page, seule l\'insertion d\'une page de notion est admise ({ "notion": true })');
+  if (!estUnObjet(a) || Object.keys(a).length !== 1 || a.notion !== true) dit('ancrage : sur une page, seul { "notion": true } est admis');
+  const autres = horsDe(COLONNES_D_UNE_PAGE_DE_NOTION);
+  if (autres.length) dit(`ancrage : une page de notion n'écrit que ${liste(COLONNES_D_UNE_PAGE_DE_NOTION)} (reçu ${liste(autres)}), le service écrit le reste`);
+  const apres = estUnObjet(o.apres) ? o.apres : {};
+  if (typeof o.cle?.id !== 'string' || !/^guide\/[a-z0-9]/.test(o.cle.id)) dit('ancrage : une page de notion est une page du guide (« id » : guide/<nom>)');
+  if (typeof apres.titre !== 'string' || !apres.titre.trim()) dit('ancrage : « titre » est le nom du mot-clé (un texte)');
+  if (!(Number.isInteger(apres.mot_cle_id) && apres.mot_cle_id >= 1) && !estUnJeton(apres.mot_cle_id)) {
+    dit('ancrage : « mot_cle_id » est l\'id du mot-clé de la page (un entier, ou le numéro qu\'une opération précédente donne)');
   }
 }
 

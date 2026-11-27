@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
+import { estUnePageDeNotion } from '../serveur/edition-notions.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { CATEGORIES_NOUVELLES, categorieDuType, planDeLAncrage, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -85,6 +86,10 @@ test('« Sort » et « Type de sort » renommées : le plan ne les recrée pas e
       // sur un contenu ancré : l'ancre retirée, et son ancien mot-clé sous un autre nom (sinon, même nom et même type : à trancher)
       const ancien = db.prepare(`SELECT mot_cle_id AS m FROM "${table}" WHERE id = ?`).get(id).m;
       db.prepare(`UPDATE "${table}" SET mot_cle_id = NULL WHERE id = ?`).run(id);
+      // sa page de notion (R309 (7)) porte aussi son nom : retirée de cette copie, sinon le nom est pris (à trancher)
+      for (const p of ancien === null ? [] : db.prepare('SELECT id FROM page WHERE mot_cle_id = ?').all(ancien)) {
+        if (estUnePageDeNotion(db, p.id)) db.prepare('DELETE FROM page WHERE id = ?').run(p.id);
+      }
       if (ancien !== null) db.prepare("UPDATE mot_cle SET libelle = libelle || ' quitté', cle = cle || '-quitte' WHERE id = ?").run(ancien);
     }
     renommer(db, sort);

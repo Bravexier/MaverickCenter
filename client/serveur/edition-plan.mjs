@@ -6,11 +6,11 @@
 //     liste exacte du groupe, qui reprend les rangs qu'il occupait) ; seules les lignes dont le rang change sont écrites (et notées au journal) ;
 //   - le domaine de regles_onglet_entree (opération `modifier`) : l'onglet d'une page (elle passe en fin du menu de l'autre onglet ; refusé, avant toute
 //     écriture, pour une page d'ouverture d'onglet, un lien ou une entrée « bientôt ») et sa place ;
-//   - la création d'une page des Règles (ENTITES.page_des_regles) et sa suppression (refusée si une raison la protège, lib/pages-protegees.mjs, ou si une
-//     autre page la cite, lib/citations-db.mjs) ;
+//   - la création d'une page des Règles (ENTITES.page_des_regles) et sa suppression, comme celle d'une page de notion (refusée si une raison la protège,
+//     lib/pages-protegees.mjs, ou si une autre page la cite, lib/citations-db.mjs) ;
 //   - le plan vivant pour la page (GET /api/edition/plan/ : planVivant).
 // Les onglets eux-mêmes (regles_onglet) ne changent jamais ici. Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
-// idDejaEmploye, adressePrise, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
+// idDejaEmploye, adressePrise, estUnePageDeNotion, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
 import { adresseDeLaPage, indexDesAdresses, slugsDAdresse } from '../src/lib/adresses-db.mjs';
 import { citationsBloquantes, citationsDe, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
 import { ADRESSES_RENOMMEES_DU_GUIDE, adresseDuGuide, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
@@ -46,11 +46,11 @@ export function rangsReordonnes(rangs, apres = 0) {
 
 /**
  * Les domaines et l'opération du plan pour serveur/edition.mjs : { entree (DOMAINES.regles_onglet_entree), page: { creer, supprimer } (ENTITES
- * .page_des_regles, sur la table page), ordonner (opération du lot) }.
+ * .page_des_regles, sur la table page), ordonner (opération du lot), idPris (l'identifiant d'une page des Règles est-il pris : serveur/edition-notions.mjs le lit) }.
  * @param {{ refus: Function, ErreurEdition: Function, creerPage: Function, supprimerPage: Function, idDejaEmploye: Function, adressePrise: Function,
- *   A_COMPLETER: string }} outils
+ *   estUnePageDeNotion: Function, A_COMPLETER: string }} outils
  */
-export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise, A_COMPLETER }) {
+export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise, estUnePageDeNotion, A_COMPLETER }) {
   /** Une liste d'identifiants (chaînes), sans doublon : 400 sinon. */
   function identifiants(liste, quoi) {
     if (!Array.isArray(liste) || !liste.length || !liste.every((x) => typeof x === 'string' && x)) throw refus(`${quoi} : une liste d’identifiants est attendue (« ids »).`);
@@ -175,10 +175,12 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
     },
 
     /**
-     * Une page des Règles retirée : 404 inconnue ; 400 si ce n'est pas une page d'un onglet des Règles ; 409 si une raison la protège (`details.raisons`
+     * Une page des Règles retirée : 404 inconnue ; 400 si ce n'est ni une page d'un onglet des Règles ni une page de notion (`estUnePageDeNotion` :
+     * hors des menus, pas d'exemple ; docs/chantier-pages-de-notion.md, décision 16) ; 409 si une raison la protège (`details.raisons`
      * : lib/pages-protegees.mjs) ; 409 si un mot-clé verrouillé y mène (décision R221, `details.mots_cles_verrouilles` : son lien ne change pas) ; 409
      * si d'autres pages la citent (`details.citations` : lib/citations-db.mjs, sauf les pages d'exemple). Tout est
-     * contrôlé avant la moindre écriture. Son entrée de menu est retirée, puis la page et ce qui la décrit (supprimerPage) ; son adresse donne la 404.
+     * contrôlé avant la moindre écriture. Son entrée de menu est retirée (une page de notion n'en a pas), puis la page et ce qui la décrit (supprimerPage) ;
+     * son adresse donne la 404. En annulation d'un lot (`ctx.annulation`), le mot-clé d'une page de notion reste : ni ses mentions ni son verrou ne la retiennent.
      */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
@@ -186,15 +188,20 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
       const ligne = id ? lireLigne(db, 'page', { id }) : null;
       if (!ligne) throw new ErreurEdition(404, `Page introuvable : ${cle?.id ?? '?'}`);
       const sienne = db.prepare('SELECT e.id, o.titre FROM regles_onglet_entree e JOIN regles_onglet o ON o.id = e.onglet_id WHERE e.page_id = ?').get(id);
-      if (ligne.type !== 'guide' || !sienne) {
-        throw refus(`${id} n’est pas une page des Règles (seules les pages des quatre onglets se suppriment ici).`);
+      const notion = !sienne && ligne.type === 'guide' && estUnePageDeNotion(db, id);
+      if (ligne.type !== 'guide' || (!sienne && !notion)) {
+        throw refus(`${id} n’est pas une page des Règles (seules les pages des quatre onglets et les pages de notion se suppriment ici).`);
       }
       const raisons = raisonsDeProtection(db, id);
       if (raisons.length) {
         throw new ErreurEdition(409, `« ${ligne.titre} » ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: id, raisons });
       }
-      // son propre mot-clé (R309) part avec elle, sauf s'il est verrouillé ; ses balises et étiquettes dans d'autres textes la retiennent
-      const citations = [...citationsBloquantes(citationsDe(db, id, { sansSonMotCle: true })), ...(motsClesPropres(db, 'page', [id]).get(id)?.mentions ?? [])];
+      // son propre mot-clé (R309) part avec elle, sauf s'il est verrouillé ; ses balises et étiquettes dans d'autres textes la retiennent. L'annulation d'un lot
+      // qui a créé une page de notion la retire sans son mot-clé (motCleARetirer : null) : ni ses mentions ni son verrou ne la retiennent
+      const sansSonMotCle = notion && ctx.annulation && ligne.mot_cle_id != null;
+      const citations = sansSonMotCle
+        ? citationsBloquantes(citationsDe(db, id, { sansSonMotCle: true })).filter((c) => !(c.table === 'mot_cle' && c.cle?.id === ligne.mot_cle_id))
+        : [...citationsBloquantes(citationsDe(db, id, { sansSonMotCle: true })), ...(motsClesPropres(db, 'page', [id]).get(id)?.mentions ?? [])];
       // un mot-clé verrouillé qui y mène : son lien ne se change ni ne se vide, la page reste (décision R221)
       const verrouilles = motsClesVerrouillesQuiYMenent(db, citations);
       if (verrouilles.length) throw new ErreurEdition(409, refusDuMotCleVerrouille(ligne.titre, verrouilles), { page: id, citations, mots_cles_verrouilles: verrouilles });
@@ -203,13 +210,17 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
         throw new ErreurEdition(409, `« ${ligne.titre} » est citée par ${noms.length > 1 ? `${noms.length} textes` : 'un texte'} (${noms.slice(0, 5).join(', ')}${noms.length > 5 ? '…' : ''}) : retirez d’abord ces liens.`,
           { page: id, citations });
       }
+      if (notion) {
+        supprimerPage(ctx, id);
+        return { id, resume: `Page de notion supprimée : ${ligne.titre}` };
+      }
       w.supprimer('regles_onglet_entree', { id: sienne.id });
       supprimerPage(ctx, id);
       return { id, resume: `Page des Règles supprimée : ${ligne.titre} (${sienne.titre})` };
     },
   };
 
-  return { entree, page, ordonner };
+  return { entree, page, ordonner, idPris };
 }
 
 /**

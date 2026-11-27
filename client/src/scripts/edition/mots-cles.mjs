@@ -18,8 +18,9 @@
 //     groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses Q3, Q4) et sa définition (mot_cle.description) ;
 //     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7)) a son cadenas, la raison en infobulle, ni « Supprimer » ni
 //     « Fusionner dans… » ; tous ses champs restent modifiables (demande du propriétaire : « Seule leur suppression est bloquée. »), il reste une
-//     cible de fusion et garde son menu des mentions ; au-dessus du tableau, « + Ajouter un mot-clé » (créé tout de suite, non verrouillé, R219 (5), avec
-//     sa définition, son adresse, sa couleur, ses catégories et ses synonymes : ENTITES.mot_cle) et la gestion des catégories (R232 (5) : chacune
+//     cible de fusion et garde son menu des mentions ; au-dessus du tableau, « + Ajouter un mot-clé » (la notion et sa page des Règles, créées tout de suite
+//     d'un même geste, docs/chantier-pages-de-notion.md, §4 : son nom, son type et sa définition, CHAMPS_D_UNE_NOTION ; relu, il est ancré à sa page, sa
+//     ligne en lecture seule avec « Ouvrir ») et la gestion des catégories (R232 (5) : chacune
 //     renommable, « Supprimer » pour une catégorie vide, mis en file ; « + Ajouter une catégorie », créée tout de suite) ; ce que le service refuse (400 :
 //     synonyme, adresse ou couleur mal écrite ; 409 : homonyme sans catégorie distinctive, clé ou synonyme déjà pris, suppression d'un mot-clé verrouillé, mot-clé
 //     mentionné, refus du forçage, catégorie non vide ; `champ`) l'est comme tout refus du lot ; un mot-clé **ancré** (`element`, R309 : relié à une page, un
@@ -41,9 +42,9 @@
 // brute). Les catégories des événements de la chronologie
 // se gèrent sur /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
-import { aUnElement, estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
+import { aUnElement, estVerrouille } from '../../lib/mots-cles.mjs';
 import {
-  ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
+  ceQueRemplaceLeForcage, CHAMPS_D_UNE_NOTION, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
   erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, noteDeLAncrage, operationsDesListes, operationsDuVocabulaire,
   raisonSansForcage, suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis, typeParDefaut,
 } from '../../lib/mots-cles-edition.mjs';
@@ -542,23 +543,19 @@ function ajouterLaCategorie(ed, ligne) {
 }
 
 /**
- * Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans le tableau de gestion ; il n'est pas verrouillé (décision R219 (5)),
- * rien ne le mentionne encore ; ses catégories et ses synonymes sont ceux du formulaire (`valeurs`).
+ * Un mot-clé créé, avec sa page de notion (docs/chantier-pages-de-notion.md, §4), tel que la base vivante relue le rend : en mode modification, sa ligne de
+ * gestion à sa place dans le tableau, celle d'un mot-clé ancré (`element` : en lecture seule, « Ouvrir » mène à sa page) ; il ne se modifie plus au Glossaire.
+ * Rend la ligne, ou null (hors du mode modification, ou absent du vocabulaire relu).
  */
-function ajouter(ed, ligne, valeurs = {}) {
-  const m = {
-    ...ligneDesSaisies(ligne), pages: 0, verrou: 0, monnaie_id: null, mentions: [],
-    categories: [...(valeurs.categories ?? [])].map(Number).sort((a, b) => a - b), synonymes: [...(valeurs.synonymes ?? [])], anciennes_cles: [],
-  };
-  vocabulaire = [...(vocabulaire ?? []).filter((x) => x.id !== m.id), m].sort(parLibelle);
-  ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { ...ligne });
+function montrerLeMotCleCree(ed, id) {
+  const m = motCle(id);
   const t = tableau();
-  if (!ed.enEdition || !t?.hasAttribute('data-gestion')) return null;
+  if (!m || !ed.enEdition || !t?.hasAttribute('data-gestion')) return null;
+  ligneDe(id)?.remove();
   const corps = ligneDeGestion(ed, m);
   corps.classList.add('ed-nouveau');
   const suivant = vocabulaire[vocabulaire.indexOf(m) + 1];
-  t.insertBefore(corps, suivant ? ligneDe(suivant.id) : null);
-  ed.monterChamps(corps);
+  t.insertBefore(corps, (suivant && ligneDe(suivant.id)) || null);
   annoncerLeTableau(true, m.id);
   return corps;
 }
@@ -578,8 +575,11 @@ function saisiesDesListes() {
   return saisies;
 }
 
-/** Les champs du formulaire de création d'un mot-clé (ENTITES.mot_cle) : son type en cases exclusives, ses synonymes un par ligne. */
-const champsDeCreation = () => Object.entries(ENTITES.mot_cle.champs).map(([nom, c]) => {
+/**
+ * Les champs du formulaire « Nouveau mot-clé » : ceux d'une notion (CHAMPS_D_UNE_NOTION : son nom, son type en cases exclusives, sa définition facultative ;
+ * docs/chantier-pages-de-notion.md, §4), décrits par ENTITES.mot_cle. Ni adresse (elle vient de sa page), ni couleur, icône ou synonymes.
+ */
+const champsDeCreation = () => CHAMPS_D_UNE_NOTION.map((nom) => [nom, ENTITES.mot_cle.champs[nom]]).map(([nom, c]) => {
   if (c.type === 'ids') {
     // un seul type (R309), exclusif ; « Notion » est présélectionné quand cette catégorie existe (elle n'existe qu'après le premier lot d'ancrage)
     const notion = typeParDefaut(categories);
@@ -588,9 +588,7 @@ const champsDeCreation = () => Object.entries(ENTITES.mot_cle.champs).map(([nom,
       vide: 'Aucun type pour l’instant : « + Ajouter une catégorie », au-dessus du tableau.',
     };
   }
-  if (c.type === 'ecritures') return { nom, libelle: `${c.libelle} (un par ligne)`, type: 'texte' };
-  // `liste` : celle des icônes (ed.listes.icones, GET /api/edition/listes/ ; décision R235), que le formulaire lit pour un choix
-  return { nom, libelle: c.libelle, type: c.type, requis: c.requis, ...(c.liste ? { liste: c.liste } : {}), ...(c.choix ? { choix: c.choix } : {}) };
+  return { nom, libelle: c.libelle, type: c.type, requis: c.requis };
 });
 
 export const motsCles = {
@@ -608,18 +606,23 @@ export const motsCles = {
     nouveau.addEventListener('click', () =>
       ed.formulaire({
         titre: ENTITES.mot_cle.nouveau,
-        aide: 'Le mot-clé est créé tout de suite dans la base du site de dev, sans page qui le porte ; un texte le cite ensuite par sa balise (« {{clé}} »). '
-          + 'Un homonyme d’un mot-clé existant demande une catégorie qui l’en distingue.',
+        aide: 'Le mot-clé est créé tout de suite dans la base du site de dev, avec sa page des Règles (hors menu), qui porte son nom ; un texte le cite ensuite '
+          + 'par sa balise (« {{clé}} »). Il ne se modifie plus au Glossaire : on renomme sa page. Un homonyme d’un mot-clé existant demande un type qui l’en distingue.',
         champs: champsDeCreation(),
         valider: async (brutes) => {
-          const valeurs = { ...brutes, synonymes: synonymesSaisis(brutes.synonymes) };
+          // la notion et sa page d'un même geste (docs/chantier-pages-de-notion.md, §4) : seuls son nom, son type et sa définition partent
+          const valeurs = Object.fromEntries(CHAMPS_D_UNE_NOTION.filter((c) => brutes[c] !== undefined).map((c) => [c, brutes[c]]));
           const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'creer', entite: 'mot_cle', valeurs }] });
           const ligne = r.lignes.find((l) => l.table === 'mot_cle' && l.ligne)?.ligne;
           if (!ligne) return;
-          ajouter(ed, ligne, valeurs)?.scrollIntoView({ block: 'center' });
-          definirLeVocabulaire(vocabulaire);
-          relire(ed); // la feuille des couleurs du service (un mot-clé créé avec sa couleur), la clé de ses homonymes
-          ed.annoncer(`Mot-clé créé : ${ligne.libelle} (balise « {{${ligne.cle ?? ligne.id}}} »).`);
+          const page = r.lignes.find((l) => l.table === 'page' && l.ligne)?.ligne;
+          // relu : sa ligne est celle d'un mot-clé relié à sa page (lecture seule, « Ouvrir »), la feuille des couleurs et la clé de ses homonymes suivent
+          const relu = await relire(ed);
+          if (relu) montrerLeMotCleCree(ed, ligne.id)?.scrollIntoView({ block: 'center' });
+          const cree = `Mot-clé créé avec sa page${page?.titre ? ` « ${page.titre} »` : ''} : ${ligne.libelle} (balise « {{${ligne.cle ?? ligne.id}}} »). `;
+          // la relecture manquée a son propre message : il ne s'efface pas sans dire ce qui est créé ni comment le voir
+          if (relu) ed.annoncer(`${cree}Il se modifie désormais par sa page.`);
+          else ed.annoncer(`${cree}La liste des mots-clés n’a pas pu être relue : rechargez la page pour le voir.`, 'erreur');
         },
       }),
     );

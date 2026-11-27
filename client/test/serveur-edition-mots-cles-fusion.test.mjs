@@ -24,6 +24,7 @@ import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db
 import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { ajouterLesMotsClesDEssai, MOTS_CLES_D_ESSAI } from './aide-mots-cles.mjs';
 
 const SCRIPTS = fileURLToPath(new URL('../scripts/', import.meta.url));
@@ -124,7 +125,8 @@ test('R233 (11) : la fusion transmet les synonymes, la clé et les clés quitté
   const vocabulaire = motsClesDeLaBase(db);
   for (const ref of [A.cle, cleRenommee, 'zq essai ALPHA']) assert.equal(motCleDeLaRef(vocabulaire, ref)?.id, C.id, ref);
   // R233 (11), « Le nouveau la prend » : un mot-clé créé sous le libellé renommé de A prend sa clé ; la redirection vers C disparaît, l'autre reste
-  const neuf = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: renomme } }]).crees[0].id;
+  // nu, hors route (par une route, il naîtrait avec sa page de notion : aide-mot-cle-nu.mjs)
+  const neuf = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: renomme } }], 'regles/glossaire/').corps.crees[0].id;
   assert.equal(db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(neuf).cle, cleRenommee);
   assert.deepEqual(anciennes(C.id), [A.cle]);
   assert.equal(motCleDeLaRef(motsClesDeLaBase(db), cleRenommee)?.id, neuf);

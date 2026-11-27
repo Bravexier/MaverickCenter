@@ -18,6 +18,7 @@ import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { annonceDesFiches, attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
@@ -237,7 +238,8 @@ test('supprimer un métier dont l’ancre est l’adresse d’un mot-clé : 409 
   const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
   let libelle = 'Essai adresse de métier';
   for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE cle = ?', normalize(libelle)); i += 1) libelle = `Essai adresse de métier ${i}`;
-  const cree = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: adresseDeLaPage(id) } }], 'regles/glossaire/');
+  // nu, hors route : par une route, l'adresse d'un mot-clé vient de sa page de notion (aide-mot-cle-nu.mjs)
+  const cree = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: adresseDeLaPage(id) } }], 'regles/glossaire/');
   assert.equal(cree.statut, 200, JSON.stringify(cree.corps));
   const motCle = cree.corps.crees[0].id;
   assert.equal(ligne('SELECT url FROM mot_cle WHERE id = ?', motCle).url, `/metiers/#metier-${id.slice('metiers/'.length)}`);

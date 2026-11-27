@@ -10,6 +10,7 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -156,9 +157,11 @@ test('R184 (P7) : toute page guide/… a sa place : dans un onglet des Règles, 
   const dansLePlan = new Set(ENTREES_D_IMPORT.map((e) => e.page_id).filter(Boolean));
   const horsPlanDImport = historique.lignesDImport('page').filter((p) => p.type === 'guide' && !dansLePlan.has(p.id)).map((p) => `${p.id} ${p.statut}`).sort();
   assert.deepEqual(horsPlanDImport, HORS_PLAN);
-  // aujourd'hui : une page créée sur le site entre dans un onglet ; une page hors plan ne peut qu'avoir été retirée
-  const horsPlan = db.prepare(`SELECT id, statut FROM page WHERE type = 'guide'
-    AND id NOT IN (SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL) ORDER BY id`).all().map((r) => `${r.id} ${r.statut}`);
+  // aujourd'hui : une page créée sur le site entre dans un onglet ; une page hors plan ne peut qu'avoir été retirée, ou être une page de notion (R309 (7) :
+  // hors de tout menu, pas d'exemple, ancrée sur son mot-clé, son texte appelle le bloc `notion`)
+  const pageDeNotion = (r) => r.statut !== 'example' && r.mot_cle_id !== null && morceauxDuChapitre(r.corps_md).some((m) => m.bloc === 'notion');
+  const horsPlan = db.prepare(`SELECT id, statut, mot_cle_id, corps_md FROM page WHERE type = 'guide'
+    AND id NOT IN (SELECT page_id FROM regles_onglet_entree WHERE page_id IS NOT NULL) ORDER BY id`).all().filter((r) => !pageDeNotion(r)).map((r) => `${r.id} ${r.statut}`);
   assert.deepEqual(horsPlan.filter((p) => !HORS_PLAN.includes(p)), []);
 });
 

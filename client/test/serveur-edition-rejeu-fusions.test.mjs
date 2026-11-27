@@ -199,7 +199,8 @@ test('R211, rejeu : un lot d’avant 0090 rejoué sur des règles sans la cible 
   // les règles sans la cible (supprimée sur le site de dev, rapatriée : R211)
   const neuve = vivante();
   neuve.exec('PRAGMA foreign_keys = OFF');
-  for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) {
+  // sur un contenu où la cible a sa page de notion (R309 (7)), cette page ne la désigne plus : aucune référence n'est laissée rompue vers la cible retirée
+  for (const sql of ['DELETE FROM sort_mot_cle WHERE mot_cle_id = ?', 'DELETE FROM page_tag WHERE tag_id = ?', 'UPDATE page SET mot_cle_id = NULL WHERE mot_cle_id = ?', 'DELETE FROM mot_cle WHERE id = ?']) {
     neuve.prepare(sql).run(CORRUPTION);
   }
   neuve.exec('BEGIN');

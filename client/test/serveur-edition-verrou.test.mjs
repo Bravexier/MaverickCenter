@@ -36,6 +36,7 @@ import { TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { horsDeLa0120, MOTS_CLES_DE_LA_0120 } from './aide-races-0120.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 
@@ -60,7 +61,8 @@ function nouvelle() {
     for (let i = 2; prise(normalize(t)) || ligne('SELECT 1 FROM page WHERE titre_cle = ? OR id LIKE ?', normalize(t), `%/${normalize(t)}`); i += 1) t = `${base} ${process.pid} ${i}`;
     return t;
   };
-  const creer = (valeurs) => ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { ...valeurs, libelle: libre(valeurs.libelle) } }])).crees[0].id;
+  // nu, hors route (par une route, il naîtrait avec sa page de notion et ne se modifierait plus : aide-mot-cle-nu.mjs)
+  const creer = (valeurs) => ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { ...valeurs, libelle: libre(valeurs.libelle) } }], 'regles/glossaire/')).crees[0].id;
   /** La clé d'un mot-clé (migration 0113 : ce que citent les balises). */
   const cle = (id) => ligne('SELECT cle FROM mot_cle WHERE id = ?', id)?.cle;
   return { db, appel, lot, ligne, libre, creer, cle };
@@ -272,7 +274,10 @@ test('R218 (4), R219 (5) : aucune route n’écrit `verrou` ; un mot-clé créé
   assert.equal(s.ligne('SELECT verrou FROM mot_cle WHERE id = ?', avecAdresse).verrou, 0);
   assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id: avecAdresse }, valeurs: { verrou: 1 } }]).statut, 400);
   assert.equal(s.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: s.libre('Essai créé verrouillé'), verrou: 1 } }]).statut, 400);
-  const parLApi = ok(s.appel('POST', '/api/v1/mots-cles/', { libelle: s.libre('Essai API'), url: '/races/' }), 201);
+  // par l'API, le mot-clé naît avec sa page de notion, dont il prend l'adresse (docs/chantier-pages-de-notion.md, §4 ; « url » donnée : 409) ; un type donné
+  const type = s.ligne('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 1').id;
+  const parLApi = ok(s.appel('POST', '/api/v1/mots-cles/', { libelle: s.libre('Essai API'), categories: [type] }), 201);
+  assert.ok(parLApi.element.url, 'une adresse : celle de sa page');
   assert.equal(parLApi.element.verrou, 0);
   assert.equal(s.appel('PATCH', parLApi.adresse, { verrou: 1 }).statut, 400);
   assert.equal(s.appel('POST', '/api/v1/mots-cles/', { libelle: s.libre('Essai API verrouillé'), verrou: 1 }).statut, 400);

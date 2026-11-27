@@ -271,6 +271,8 @@ Ils auront chacun leur conception. Voici ce qui est déjà décidé et ce qu'il 
 
 ## Chantier 3 : les pages de notion
 
+**Conçu le 2026-11-27 : `docs/chantier-pages-de-notion.md`.** Ce qui suit est l'état d'avant cette conception.
+
 **Décidé** (décision 7) : chaque notion a sa page de wiki, qui liste factuellement ses éléments. Exemple : « Sort fer » (#332, 14 sorts) et « Sort grenade » (#333, 14 sorts), reliés par `sort_mot_cle`.
 
 **À trancher** :

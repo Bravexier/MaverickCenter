@@ -13,6 +13,7 @@ import { MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { MOTS_CLES_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('mots-cles-icone');
@@ -63,10 +64,11 @@ test('R235 : l’icône se choisit dans la liste (400 hors de la liste, champ ic
   assert.equal(iconeDe(A.id), premiere, 'rien d’écrit');
   ok(lot(modifier(A.id, '')));
   assert.equal(iconeDe(A.id), null);
-  const cree = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai icône zq', icone: seconde } }]);
+  // la création d'un mot-clé nu, hors route (par une route, il naîtrait avec sa page de notion : aide-mot-cle-nu.mjs)
+  const cree = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai icône zq', icone: seconde } }]);
   ok(cree);
   assert.equal(iconeDe(cree.corps.crees[0].id), seconde);
-  assert.equal(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai icône zq bis', icone: 'x:y' } }]).corps.champ, 'icone');
+  assert.equal(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai icône zq bis', icone: 'x:y' } }]).corps.champ, 'icone');
   // un mot-clé verrouillé (R218, R219), sans élément (R309) : son icône se change (demande du propriétaire : seule sa suppression est bloquée)
   const verrouille = db.prepare('SELECT id, icone FROM mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(db, m.id));
   const autre = ICONES.map((i) => i.valeur).find((v) => v !== verrouille.icone);

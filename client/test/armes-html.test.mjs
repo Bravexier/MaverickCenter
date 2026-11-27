@@ -142,9 +142,11 @@ test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, So
   assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', solidite, 'Origine']);
   // le mot-clé « Solidité », par son id entier, figé (migration 0113) : sa clé, que citent data-mot-cle et sa bulle, suit son libellé (R232)
   const idSolidite = idDuMotCleNomme('solidite');
-  const motSolidite = base.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(idSolidite);
+  const motSolidite = base.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idSolidite);
   if (motSolidite) {
-    assert.ok(tete.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="${motSolidite.cle}" data-bulle="mot-cle-${motSolidite.cle}"`));
+    // en gras, ou un lien s'il mène à une page (sa page de notion comprise, R309 (7))
+    const ouverture = motSolidite.url ? `<a class="mot-cle" href="${motSolidite.url}"` : '<strong class="mot-cle"';
+    assert.ok(tete.includes(`<th scope="col">${ouverture} data-mot-cle="${motSolidite.cle}" data-bulle="mot-cle-${motSolidite.cle}"`));
   } else {
     assert.ok(historiqueSite(base).supprimee('mot_cle', { id: idSolidite }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
   }

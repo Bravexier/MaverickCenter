@@ -191,3 +191,16 @@
 .guide-fil-rouge dt { margin-top: 0.3rem; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.03em; }
 .guide-fil-rouge dd { margin: 0; }
 .guide-fil-rouge dd ul { margin: 0; padding-left: 1rem; }
+
+/* Le bloc d'une page de notion (bloc notion, R309 (7) : components/guide/BlocNotion.astro) : la définition, le type et les autres noms, puis les sorts et
+   les pages du mot-clé ; couleurs par les variables du site et celles de la page (--guide-texte), listes longues sur plusieurs colonnes, sans script. */
+.guide-notion { margin: 1rem 0 1.5rem; }
+.guide-notion__definition { margin: 0 0 1rem; line-height: 1.5; }
+.guide-notion__infos { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 1rem; margin: 0 0 1rem; font-size: var(--fs-lg); }
+.guide-notion__infos dt { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.03em; align-self: baseline; }
+.guide-notion__infos dd { margin: 0; }
+.guide-notion__titre { margin: 1.25rem 0 0.4rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--guide-line); color: var(--guide-texte); font-size: 1.15rem; }
+.guide-notion__sous-titre { margin: 0.75rem 0 0.25rem; font-size: 1rem; }
+.guide-notion__liste { columns: 14rem; column-gap: 1.5rem; margin: 0; padding-left: 1.1rem; font-size: var(--fs-lg); line-height: 1.5; }
+.guide-notion__liste li { break-inside: avoid; }
+.guide-notion__recherche { margin: 1.25rem 0 0; }

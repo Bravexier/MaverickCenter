@@ -16,6 +16,8 @@ import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneaux } from '../src/lib/panneaux-regles-db.mjs';
+import { estUnePageDeNotion, installerLePlan } from '../src/lib/livres.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 // le processeur Markdown du site et la lecture du HTML comme le ferait le navigateur (hast-util-from-html, dépendance de @astrojs/markdown-remark)
 import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreCommeLeGuide, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
@@ -28,8 +30,9 @@ const pagesModifiables = ['guide', 'lore'].flatMap((type) =>
     .filter((f) => f.endsWith('.md'))
     .map((f) => ({ type, id: `${type}/${f.slice(0, -3)}`, ...splitFrontmatter(readFileSync(join(dossier, type, f), 'utf8')) }))
     .filter((p) => texteDePageModifiable(type, p.data.sources?.[0]))
-    .map((p) => ({ type: p.type, id: p.id, corps: p.body })),
+    .map((p) => ({ type: p.type, id: p.id, corps: p.body, data: p.data })),
 );
+installerLePlan(chargerPlanDesRegles(ouvrirBase({ sansExemples: false })));
 
 test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réécrit d’après le HTML redonne le même HTML', async () => {
   const effectif = (type) => pagesModifiables.filter((p) => p.type === type).length;
@@ -54,7 +57,8 @@ test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réé
       assert.equal(versMarkdown(enfants(htmlSur(enfants(html)))), md, `${page.id} : aperçu assaini`);
     }
   }
-  assert.ok(morceaux > pagesModifiables.length);
+  // plus de morceaux que de pages, sans compter les pages de notion (R309 (7)) : leur texte n'est que le bloc `notion`, sans morceau visible
+  assert.ok(morceaux > pagesModifiables.filter((p) => !estUnePageDeNotion(p)).length);
 });
 
 test('liens : [[cible]] et [[cible|texte]] (cible gardée telle qu’écrite), lien vers une page absente, lien Markdown et adresse nue', async () => {

@@ -14,13 +14,15 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { classeDeLaPage } from '../src/lib/couleur-de-la-page.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
-  ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, GUIDE_DU_MJ, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
+  ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, estUnePageDeNotion, GLOSSAIRE, GUIDE_DU_MJ, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
   PAGES_SUPPRIMEES, pagesDeLaRubrique, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
@@ -90,7 +92,9 @@ test('chaque page du guide est une page simple : ni flèches, ni pagination, ni 
     assert.match(main, /<h1 id="guide-titre">/, p.id);
     // le corps modifiable sur le site de dev, morceau par morceau ; une page d'exemple (HIDE_EXAMPLES=1 la retire) ne se modifie pas
     const modifiable = p.statut !== 'example';
-    assert.match(main, modifiable ? new RegExp(`<div class="guide-corps" data-ed-corps="${p.id}">`) : /<div class="guide-corps">/, `${p.id} : le corps`);
+    // une page de notion (hors de tout menu, R309 (7)) : `data-ed-notion` la désigne au mode modification
+    const notion = estUnePageDeNotion(p) ? ' data-ed-notion' : '';
+    assert.match(main, modifiable ? new RegExp(`<div class="guide-corps" data-ed-corps="${p.id}"${notion}>`) : /<div class="guide-corps">/, `${p.id} : le corps`);
     const visibles = decouperCorps(p.corps_md).filter((m) => m.visible).length;
     assert.equal((main.match(/data-ed-morceau/g) ?? []).length, modifiable ? visibles : 0, `${p.id} : un morceau modifiable par morceau visible`);
     // plus de sources sous le texte, quelle que soit la page (« Plus de sources ailleurs que dans les archives. ») : `sources:` reste dans la base
@@ -124,8 +128,19 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   assert.equal(fil('regles/combats'), '<a href="/">Accueil</a> › <a href="/regles/combats/">Les combats</a>', '/regles/combats/ : le fil de sa page d’ouverture');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
+  const vocabulaire = chargerVocabulaire(db);
   for (const p of pagesConstruites) {
     const { main } = lire(cheminDePage(p.id));
+    // une page de notion (hors de tout menu, R309 (7)) : rattachée au Glossaire ; la couleur de son mot-clé s'il en a une, sinon l'accent du site
+    if (estUnePageDeNotion(p)) {
+      assert.equal(fil(cheminDePage(p.id).slice(0, -1)), `<a href="/">Accueil</a> › <a href="/${GLOSSAIRE.chemin}">${GLOSSAIRE.titre}</a>`, `${p.id} : fil d’Ariane`);
+      const couleur = classeDeLaPage(vocabulaire, `/${cheminDePage(p.id)}`);
+      assert.ok(main.includes(couleur ? `<div class="guide-reference guide-reference--couleur ${couleur}">` : '<div class="guide-reference">'), `${p.id} : sa couleur`);
+      assert.doesNotMatch(main, /\.couleur-partie-[a-z-]+\{/, `${p.id} : sans la feuille des parties`);
+      assert.doesNotMatch(main, /--couleur-partie/, p.id);
+      assert.doesNotMatch(sansStyles(main), /<span class="badge">Guide|Aussi appelé|class="lateral-menu"/, `${p.id} : ni badge, ni « Aussi appelé », ni menu latéral`);
+      continue;
+    }
     // la couleur de la partie (lib/palette-css.mjs#classeDePartie), jamais un style ; la page en émet la feuille, une fois
     const classe = classeDePartie(partieDeLaPage(p.id));
     const feuille = `<style>${cssDesFamilles(['partie'])}</style>`;

@@ -13,8 +13,10 @@
 //     (RUBRIQUES_SOUS_LA_PAGE). La cible d'un renvoi d'une ancienne adresse (ADRESSES_DU_PLAN_PRECEDENT, PAGES_ECLATEES_DU_GUIDE) n'est PAS protégée
 //     (choix du leader-technique) : supprimée, son ancienne adresse mène à la 404 comme toute page supprimée (R185, P6) ;
 //   - le code la lit (PAGES_LUES_PAR_LE_CODE, ci-dessous ; test/pages-protegees.test.mjs relève tout « 'guide/… » écrit dans client/src/) ;
-//   - elle porte un bloc tiré de la base (`<!-- guide:… -->`, lib/guide.mjs#BLOCS).
+//   - elle porte un bloc tiré de la base (`<!-- guide:… -->`, lib/guide.mjs#BLOCS), sauf le bloc `notion` (BLOC_DE_NOTION) : c'est tout le texte d'une page de
+//     notion (docs/chantier-pages-de-notion.md, §4), qui se supprime avec son mot-clé.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant (la base vivante du service, une copie dans les tests).
+import { BLOC_DE_NOTION } from './guide.mjs';
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAR_OU_COMMENCER, RUBRIQUES_SOUS_LA_PAGE } from './livres.mjs';
 
@@ -96,6 +98,7 @@ export function raisonsDeProtection(db, id) {
   if (Object.hasOwn(RUBRIQUES_SOUS_LA_PAGE, id)) raisons.push({ raison: 'rubriques', texte: 'le site pose sous elle les rubriques qu’elle présente' });
   if (Object.hasOwn(PAGES_LUES_PAR_LE_CODE, id)) raisons.push({ raison: 'code', texte: `le code la lit : ${PAGES_LUES_PAR_LE_CODE[id]}` });
   for (const m of String(page.corps_md ?? '').matchAll(/<!--\s*guide:([a-z0-9-]+)\s*-->/g)) {
+    if (m[1] === BLOC_DE_NOTION) continue;
     raisons.push({ raison: 'bloc', bloc: m[1], texte: `elle porte le bloc « ${m[1]} », tiré de la base` });
   }
   return raisons;

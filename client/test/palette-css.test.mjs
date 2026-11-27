@@ -2210,7 +2210,13 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
   const natures = racesParNature(db);
   for (const r of natures.pures) avant.push([r.id, classeDeRace('pure')]);
   for (const r of natures.hybrides) avant.push([r.id, classeDeRace('hybride')]);
-  for (const p of db.prepare("SELECT id FROM page WHERE id LIKE 'guide/%'").all()) avant.push([p.id, classeDePartie(partieDeLaPage(p.id))]);
+  // une page de notion (R309 (7), née après la migration 0098) : la couleur de son propre mot-clé, comme toute page vers laquelle mène un mot-clé coloré
+  const { estUnePageDeNotion } = await import('../serveur/edition-notions.mjs');
+  const { classeDuMotCle } = await import('../src/lib/mots-cles-liens.mjs');
+  for (const p of db.prepare("SELECT id, mot_cle_id FROM page WHERE id LIKE 'guide/%'").all()) {
+    const notion = estUnePageDeNotion(db, p.id) ? vocabulaire.find((m) => m.id === p.mot_cle_id) : null;
+    avant.push([p.id, (notion && classeDuMotCle(notion)) ?? classeDePartie(partieDeLaPage(p.id))]);
+  }
   let parUnMotCle = 0;
   for (const [id, classe] of avant) {
     assert.equal(classeDeLaPage(vocabulaire, chemin(id), classe), classe, `${id} : la même couleur qu’avant`);

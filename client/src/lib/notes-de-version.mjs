@@ -21,7 +21,7 @@ import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
-import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, PAGES_RETIREES, placeDansLeGuide } from './livres.mjs';
+import { DECOUVRIR, estHorsDuPlan, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, PAGES_RETIREES, placeDansLeGuide } from './livres.mjs';
 
 /**
  * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
@@ -40,11 +40,13 @@ export const PAGES_RETIREES_DU_GUIDE = 'Pages retirées';
  * Règles dans leur ordre (le plan installé, celui de la base de dev : lib/plan-des-regles-db.mjs, R184 et R185), le Guide du MJ —, une page absorbée à
  * la place de celle qui l'absorbe (pageDuPlan) ; une page retirée (PAGES_RETIREES), ou que le plan ne range nulle part (supprimée, ou toute page d'un
  * onglet quand la base n'a pas encore de plan), sous « Pages retirées », après toutes les rubriques (choix du leader-technique, lot R184).
+ * `vivante` : la page est dans la base de dev. Hors du plan, elle se range alors sous le Glossaire (pages de notion, R309 (7) : hors menu, la page n'est
+ * pas retirée) ; absente de dev, elle reste sous « Pages retirées ».
  */
-function placeDeLaPage(id) {
+function placeDeLaPage(id, { vivante = false } = {}) {
   const retiree = { rubrique: PAGES_RETIREES_DU_GUIDE, rang: Number.MAX_SAFE_INTEGER, ordre: null };
   if (Object.hasOwn(PAGES_RETIREES, id)) return retiree;
-  const place = placeDansLeGuide(pageDuPlan(id));
+  const place = placeDansLeGuide(pageDuPlan(id), { notion: vivante });
   return place.rubrique === null ? retiree : place;
 }
 
@@ -234,12 +236,15 @@ const DEFINITIONS = [
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
     // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », les onglets des Règles — « Fiche de personnage », « Mécaniques générales »,
     // « Les combats », « Exploration » : le plan de la base, R184 et R185 —, « Guide du MJ »), dans l'ordre du plan
-    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe ; une page retirée : « Pages retirées » ; placeDeLaPage)
-    groupe: (r) => placeDeLaPage(r.id).rubrique,
-    entite: (r) => r.titre, ordre: (r) => {
-      const place = placeDeLaPage(r.id);
+    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe ; une page retirée : « Pages retirées » ; placeDeLaPage). Une page de notion
+    // (hors du plan, dans dev : sous le Glossaire) ajoutée à un mot-clé qui existait dans la production n'a pas de ligne à elle : la ligne condensée de
+    // comparerLesNotionsAjoutees la dit (`suit`) ; née avec son mot-clé, ou renommée ensuite, elle garde la sienne.
+    groupe: (r, x) => placeDeLaPage(r.id, { vivante: x.dans('dev', 'page', r.id) }).rubrique,
+    entite: (r) => r.titre, ordre: (r, x) => {
+      const place = placeDeLaPage(r.id, { vivante: x.dans('dev', 'page', r.id) });
       return [place.rang, place.ordre ?? 999, r.titre];
     },
+    suit: (r, x) => !x.dans('ref', 'page', r.id) && x.pageDeNotionAjoutee(r.mot_cle_id),
   },
   {
     // l'annonce de l'encart « Notre prochaine rencontre IRL » sur l'accueil (migration 0068 ; sur la page Liens jusqu'au 2026-10-22, puis sous le
@@ -458,12 +463,14 @@ const DEFINITIONS = [
   // (migration 0113 : le libellé n'est plus unique). R309 (l'ancrage : un mot-clé par page, par sort et par type de sort) : un mot-clé ancré à un élément ne fait
   // pas de ligne à lui. Créé, il est dit par la ligne condensée de comparerLesMotsClesAncres (`suit`) ; renommé en même temps que son élément (le mot-clé en
   // suit le nom), il est dit par celui de l'élément (`dejaDit`) ; renommé sans que son élément change, ou sans élément, il garde sa ligne. R316 (choix 9) : son
-  // adresse qui suit celle d'une page renommée (ancré ou menant à une section de la page) est dite par la ligne de la page.
+  // adresse qui suit celle d'une page renommée (ancré ou menant à une section de la page) est dite par la ligne de la page. Chantier 3 : un mot-clé de
+  // notion (sans élément dans la production) qui reçoit sa page voit son adresse devenir celle de la page : une ligne « Lien » par notion serait une
+  // répétition de la ligne condensée (`dejaDit`, colonne `url`) ; sa définition corrigée par un lot (R309 (17)) garde sa ligne.
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
     groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
     suit: (r, x) => x.ancres(r.id).length > 0,
-    dejaDit: (colonne, r, avant, x) => (colonne === 'libelle' && x.elementRenomme(r.id)) || (colonne === 'url' && x.adresseSuivie(avant.url, r.url)),
+    dejaDit: (colonne, r, avant, x) => (colonne === 'libelle' && x.elementRenomme(r.id)) || (colonne === 'url' && (x.adresseSuivie(avant.url, r.url) || x.pageDeNotionAjoutee(r.id))),
   },
   // les catégories des mots-clés (migration 0113, décision R232 (5)) : ajoutée, renommée, retirée
   {
@@ -601,6 +608,12 @@ function contexte(ref, dev) {
       const apres = d[table].get(id);
       return Boolean(colonne && avant && apres && !pareil(avant[colonne], apres[colonne]));
     }),
+    /**
+     * Chantier 3 : une page de notion a-t-elle été ajoutée à ce mot-clé ? Une page de dev absente de la production, du guide, hors du plan (lib/livres.mjs#estHorsDuPlan),
+     * qui n'est pas un exemple, dont `mot_cle_id` est ce mot-clé, lequel existait dans la production (une notion née avec son mot-clé n'est pas comptée).
+     */
+    pageDeNotionAjoutee: (motCleId) => r.mot_cle.has(motCleId) && (ancres.get(motCleId) ?? []).some(({ table, id, ligne: p }) => table === 'page'
+      && !r.page.has(id) && p.type === 'guide' && p.statut !== 'example' && estHorsDuPlan(id)),
     /** L'élément existait-il dans la production ? Un type de sort aussi quand sa table manque (production d'avant la 0131) : son code existait déjà. */
     elementExistait: ({ table, id }) => (table === 'type_sort' && !lignesDe(ref, 'type_sort')) || r[table].has(id),
     ligne,
@@ -852,6 +865,21 @@ function comparerLesMotsClesAncres(ref, dev, x) {
   const dit = `${nombreEnFrancais(total)} ${total > 1 ? 'mots-clés ajoutés' : 'mot-clé ajouté'} : ${familles.join(', ')}`;
   return [ligneDeNote({
     def: { table: 'mot_cle' }, domaine: 'mots-cles', groupe: null, entite: dit, ordre: [-1], champ: null, nature: 'ajoute', avant: null, apres: dit, cle: {},
+  })];
+}
+
+/**
+ * Les pages de notion ajoutées à des mots-clés qui existaient (chantier 3 : chaque mot-clé sans élément reçoit sa page des Règles, hors menu), dites en UNE
+ * ligne : « 156 pages de notion ajoutées » (le nombre vient du calcul, le singulier est accordé) ; neutre. Pas une ligne « Page du guide ajoutée » par page
+ * (`suit` de la table page), pas une ligne « Lien » par mot-clé (`dejaDit` de la table mot_cle). Une notion née avec son mot-clé garde la ligne de sa page,
+ * rangée sous le Glossaire (placeDeLaPage) ; la ligne ne dit rien des mots-clés ajoutés avec un élément (comparerLesMotsClesAncres).
+ */
+function comparerLesNotionsAjoutees(ref, dev, x) {
+  const total = (lignesDe(dev, 'mot_cle') ?? []).filter((m) => x.pageDeNotionAjoutee(m.id)).length;
+  if (!total) return [];
+  const dit = `${nombreEnFrancais(total)} ${total > 1 ? 'pages de notion ajoutées' : 'page de notion ajoutée'}`;
+  return [ligneDeNote({
+    def: { table: 'mot_cle' }, domaine: 'mots-cles', groupe: null, entite: dit, ordre: [-1, 1], champ: null, nature: 'ajoute', avant: null, apres: dit, cle: {},
   })];
 }
 
@@ -1150,6 +1178,7 @@ export function comparerBases(ref, dev) {
     ...comparerCategoriesDesEvenements(ref, dev, x),
     ...comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x),
     ...comparerLesMotsClesAncres(ref, dev, x),
+    ...comparerLesNotionsAjoutees(ref, dev, x),
     ...comparerOrdreDesBlocs(ref, dev, x),
     ...comparerPlanDesRegles(ref, dev, x),
     ...comparerOrdreDesRaces(ref, dev),

@@ -27,11 +27,13 @@ import {
   motsClesCites, pageAvecMotsCles, reciblerLeMotCle, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles, zonesDeCode,
 } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { comptesDesMotsCles, elementsDuMotCle } from '../src/lib/recherche-mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 // des mots-clés d'essai : un id entier (figé, migration 0113) et une clé (celle que citent les balises, R232 (3)) ; le libellé n'est pas unique
 const VOCABULAIRE = [
@@ -469,10 +471,11 @@ test('middleware : une réponse HTML rendue avec le vocabulaire (statut, en-têt
 test('middleware : le vocabulaire de la base construite (lu une fois), sur une vraie réponse', async () => {
   const r = await reponseAvecMotsCles(async () => new Response('<html><body>{{mordhau}}</body></html>', { headers: { 'content-type': 'text/html' } }));
   const db = new DatabaseSync(cheminBase(), { readOnly: true });
-  const mordhau = db.prepare("SELECT libelle, description FROM mot_cle WHERE cle = 'mordhau'").get();
+  const mordhau = db.prepare("SELECT libelle, description, url FROM mot_cle WHERE cle = 'mordhau'").get();
   db.close();
   const html = await r.text();
-  if (mordhau) assert.match(html, new RegExp(`data-mot-cle="mordhau"[^>]*>${mordhau.libelle}</strong>`));
+  // un mot-clé qui mène à une page (sa page de notion comprise, R309 (7)) est un lien, sinon du gras
+  if (mordhau) assert.match(html, new RegExp(`data-mot-cle="mordhau"[^>]*>${mordhau.libelle}</${mordhau.url ? 'a' : 'strong'}>`));
   else assert.match(html, /<body>mordhau<\/body>/, 'mot-clé absent de la base : texte simple');
 });
 
@@ -569,7 +572,12 @@ function service() {
     for (let i = 2; prise(t); i += 1) t = `${base} ${i}`;
     return t;
   };
-  const creerMotCle = (libelle, description = null, autres = {}) => ok([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, ...(description === null ? {} : { description }), ...autres } }]).crees[0].id;
+  // un mot-clé nu, hors route (par une route, il naîtrait avec sa page de notion et ne se modifierait plus : test/aide-mot-cle-nu.mjs)
+  const creerMotCle = (libelle, description = null, autres = {}) => {
+    const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, ...(description === null ? {} : { description }), ...autres } }], 'recherche/');
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    return r.corps.crees[0].id;
+  };
   /** La clé du mot-clé `id`, telle que la base la porte maintenant (elle suit le libellé et les homonymes : R232 (2)). */
   const cle = (id) => db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(id)?.cle;
   return { db, lot, ok, libre, creerMotCle, cle, ligne: (sql, ...p) => db.prepare(sql).get(...p), appel: (methode, chemin) => traiter({ methode, chemin, entetes: {} }, s) };
@@ -647,8 +655,9 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
 
 test('service : la définition d’un mot-clé non verrouillé se modifie, son libellé aussi (R195) ; vidée : pas encore décrit ; celle d’un mot-clé verrouillé aussi (seule sa suppression est bloquée) ; GET /api/edition/mots-cles/ la rend', () => {
   const s = service();
-  // un mot-clé des règles non verrouillé, décrit (le site de dev a pu le vider : on en prend un qui l'est)
-  const libre = s.ligne('SELECT * FROM mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id LIMIT 1');
+  // un mot-clé des règles non verrouillé, décrit (le site de dev a pu le vider : on en prend un qui l'est), relié à aucun élément : un mot-clé ancré (sa page
+  // de notion comprise, R309 (7), (9)) ne se modifie plus au Glossaire
+  const libre = s.db.prepare('SELECT * FROM mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: 'Une définition d’essai.' }, avant: { description: libre.description } }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, 'Une définition d’essai.');
   // décision R195 : « Un mot clé peut toujours être changé [dans] tous les champs (sauf l'id technique clé primaire) », verrouillé ou non
@@ -658,8 +667,11 @@ test('service : la définition d’un mot-clé non verrouillé se modifie, son l
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: '' } }]);
   assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
   // un mot-clé dont le site se sert est verrouillé (R219 (2)) : sa définition se modifie quand même (demande du propriétaire : seule sa suppression est
-  // bloquée), le verrou reste
-  const magique = s.ligne('SELECT * FROM mot_cle WHERE id = ?', IDS_DES_MOTS_CLES_PROTEGES.magique);
+  // bloquée), le verrou reste. « magique », sinon (il a sa page de notion, R309 (7) : ancré, il ne se modifie plus au Glossaire) un autre verrouillé sans élément
+  const verrouille = (id) => s.ligne('SELECT * FROM mot_cle WHERE id = ?', id);
+  const magique = !estAncre(s.db, IDS_DES_MOTS_CLES_PROTEGES.magique) ? verrouille(IDS_DES_MOTS_CLES_PROTEGES.magique)
+    : s.db.prepare('SELECT * FROM mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
+  assert.equal(magique.verrou, 1);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { description: 'Une classe magique.' } }]);
   assert.deepEqual({ ...s.ligne('SELECT * FROM mot_cle WHERE id = ?', magique.id) }, { ...magique, description: 'Une classe magique.' });
   const id = s.creerMotCle(s.libre('Essai décrit'), 'Ce qu’il veut dire.');

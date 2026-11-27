@@ -30,6 +30,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, ETIQUETTE_D_ESSAI, idDEssai, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 
@@ -76,8 +77,9 @@ const creerCategorie = (libelle) => {
   ok(r);
   return r.corps.crees[0].id;
 };
+// un mot-clé nu, hors route (par une route, il naîtrait avec sa page de notion et ne se modifierait plus : test/aide-mot-cle-nu.mjs)
 const creerMotCle = (libelle) => {
-  const r = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }]);
+  const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }], 'chronologie/');
   ok(r);
   return r.corps.crees[0].id;
 };
@@ -262,13 +264,13 @@ test('supprimer un événement : ses blocs et ses catégories partent avec lui ;
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'evenement', cle: { id } }]).statut, 404);
 });
 
-test('vocabulaire : créer, renommer (l’écriture change partout), refus d’une écriture prise, fusion, suppression de toutes les pages', () => {
+test('vocabulaire : créer (hors route), renommer (l’écriture change partout), refus d’une écriture prise par le service, fusion, suppression de toutes les pages', () => {
   // créer
   const libelle = motLibre('Essai vocabulaire');
   const id = creerMotCle(libelle);
   assert.ok(Number.isInteger(id), 'un id entier (migration 0113)');
   assert.equal(ligne('SELECT cle FROM mot_cle WHERE id = ?', id).cle, normalize(libelle), 'sa clé : le slug de son libellé');
-  assert.equal(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libelle.toUpperCase() } }]).statut, 409, 'même écriture, sans catégorie qui les distingue (R232 (9))');
+  assert.equal(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libelle.toUpperCase() } }]).statut, 409, 'le service (hors route) refuse la même écriture, sans catégorie qui les distingue (R232 (9))');
   // renommer un mot-clé posé sur des pages : l'id reste, les pages montrent la nouvelle écriture
   // un mot-clé non verrouillé (décisions R218, R219 : un verrouillé ne se renomme pas, test/serveur-edition-verrou.test.mjs)
   const surPages = ligne(`SELECT m.* FROM mot_cle m WHERE (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) >= 2 AND m.verrou = 0 AND m.id NOT IN (${[...MOTS_CLES_PROTEGES.keys()].map(() => '?').join(', ')}) ORDER BY m.id LIMIT 1`, ...MOTS_CLES_PROTEGES.keys());
@@ -448,9 +450,11 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
   const grenade = ligne(`SELECT * FROM mot_cle WHERE id = ${ID['sort-grenade']}`);
   assert.equal(ligne(`SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ${ID['sort-grenade']}`).n, 14, 'les 14 sorts « Grenade… » (R114)');
   assert.equal(grenade.verrou, 1);
+  // ancré (sa page de notion, R309 (7)) : le refus d'un mot-clé relié à un élément passe avant le verrou (serveur/edition-chronologie.mjs#supprimer, #fusionner)
+  const grenadeAncre = estAncre(db, grenade.id);
   for (const [operation, motif] of [
-    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: grenade.id } }, /est verrouillé.*\(décisions R218, R219\)/],
-    [{ op: 'fusionner_mots_cles', mot_cle: grenade.id, dans: libre }, /est verrouillé : il ne se fusionne pas dans un autre/],
+    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: grenade.id } }, grenadeAncre ? /est relié à un élément : il ne se supprime pas seul/ : /est verrouillé.*\(décisions R218, R219\)/],
+    [{ op: 'fusionner_mots_cles', mot_cle: grenade.id, dans: libre }, grenadeAncre ? /est relié à un élément : il ne se fusionne pas dans un autre/ : /est verrouillé : il ne se fusionne pas dans un autre/],
     [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: grenade.id }, / ne se fusionne pas depuis le site : il étiquette 14 sorts/],
   ]) {
     const r = enregistrer([operation]);
@@ -467,7 +471,7 @@ test('mots-clés qui étiquettent un sort (sort_mot_cle, migration 0067, décisi
     avant0067.exec('DROP TABLE sort_mot_cle');
     const sur = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
       corps: JSON.stringify({ page: 'chronologie/', operations }) }, { base: () => avant0067, etat: () => ({}), edition: true });
-    const autre = sur([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai repli 0067' } }]);
+    const autre = lotHorsRoute(avant0067, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Essai repli 0067' } }], 'chronologie/'); // nu (aide-mot-cle-nu.mjs)
     ok(autre);
     ok(sur([{ op: 'fusionner_mots_cles', mot_cle: autre.corps.crees[0].id, dans: ETIQUETTE_D_ESSAI.id }]));
     ok(sur([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ETIQUETTE_D_ESSAI.id } }]));
@@ -487,9 +491,11 @@ test('R164 : « Sort fer » (migration 0079) est verrouillé (R219 (2)) : ni sup
   assert.ok(nEtiquetes >= 13, 'les sorts « Fer… » (R164)');
   const libre = creerMotCle(motLibre('Essai sans sort fer'));
   const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
+  // ancré (sa page de notion, R309 (7)) : le refus d'un mot-clé relié à un élément passe avant le verrou
+  const ferAncre = estAncre(db, fer.id);
   for (const [operation, motif] of [
-    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: fer.id } }, /est verrouillé.*\(décisions R218, R219\)/],
-    [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, /est verrouillé : il ne se fusionne pas dans un autre/],
+    [{ op: 'supprimer', entite: 'mot_cle', cle: { id: fer.id } }, ferAncre ? /est relié à un élément : il ne se supprime pas seul/ : /est verrouillé.*\(décisions R218, R219\)/],
+    [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, ferAncre ? /est relié à un élément : il ne se fusionne pas dans un autre/ : /est verrouillé : il ne se fusionne pas dans un autre/],
     // la cible verrouillée reçoit une fusion (R219 (4)), mais une étiquette de sort, jamais (R164)
     [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, new RegExp(` ne se fusionne pas depuis le site : il étiquette ${nEtiquetes} sorts`)],
   ]) {
@@ -644,10 +650,11 @@ test('rejeu : une ligne créée puis supprimée, que cite une ligne existante, d
   // N : un mot-clé neuf ; S : un mot-clé existant posé sur des pages, fusionné dans N (ses lignes page_tag, existantes, passent à N)
   let libre = 'Essai fantôme';
   for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(normalize(libre)); i += 1) libre = `Essai fantôme ${i}`;
-  const n = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre } }]).crees[0].id;
+  const n = lotHorsRoute(base, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre } }], 'chronologie/').corps.crees[0].id; // nu (aide-mot-cle-nu.mjs)
   const proteges = [...MOTS_CLES_PROTEGES.keys()];
+  // un mot-clé relié à un élément (une page de notion comprise, R309 (7)) ne se fusionne plus : la source n'est pas ancrée
   const source = base.prepare(`SELECT m.id FROM mot_cle m WHERE m.id NOT IN (${proteges.map(() => '?').join(', ')})
-    AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3 ORDER BY m.id LIMIT 1`).get(...proteges).id;
+    AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3 ORDER BY m.id`).all(...proteges).find((m) => !estAncre(base, m.id)).id;
   const lignes = base.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source).map((l) => ({ ...l }));
   lot([{ op: 'fusionner_mots_cles', mot_cle: source, dans: n }]);
   // puis N est supprimé (ses lignes page_tag avec lui), dans un lot qui ne passera pas au rejeu : noté comme avant la décision R196 (le service refuse

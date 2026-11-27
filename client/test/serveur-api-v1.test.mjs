@@ -21,6 +21,7 @@ import { emplacements } from '../src/lib/monstre-champs.mjs';
 import { capacitesDe, MODULES, RESSOURCES, segmentDeCle, tablesDe } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { operationsDe, requeteDe } from './aide-openapi.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
@@ -703,9 +704,37 @@ test('opérations du lot : une valeur propre d’une capacité de monstre (R69) 
   ok(appel('DELETE', cat.adresse));
 });
 
+/**
+ * Un mot-clé nu, lu par l'API : créé hors route (test/aide-mot-cle-nu.mjs), car POST /api/v1/mots-cles/ le crée avec sa page de notion, après quoi il ne se
+ * renomme, ne se fusionne ni ne se supprime plus à son adresse (docs/chantier-pages-de-notion.md, §4).
+ */
+const motCleNu = (valeurs) => {
+  const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs }], 'regles/glossaire/');
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  return ok(appel('GET', `/api/v1/mots-cles/${r.corps.crees[0].id}/`));
+};
+
+test('POST /api/v1/mots-cles/ crée la notion et sa page (docs/chantier-pages-de-notion.md, §4) : « Notion » sans type donné, l’adresse de la page ; « url » donnée : 409 ; ensuite, ni PATCH ni DELETE à son adresse', () => {
+  // la catégorie « Notion » (créée par le premier lot d'ancrage sur le site de dev) : posée par l'API si la base n'en a pas
+  const notion = ligne("SELECT id FROM categorie_mot_cle WHERE libelle_cle = 'notion'")?.id ?? ok(appel('POST', '/api/v1/categories-de-mots-cles/', { libelle: 'Notion' }), 201).element.id;
+  const libelle = `Notion de l’API ${Date.now()}`;
+  const refus = appel('POST', '/api/v1/mots-cles/', { libelle, url: '/regles/' });
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.equal(refus.corps.champ, 'url');
+  assert.equal(ligne('SELECT 1 FROM mot_cle WHERE libelle = ?', libelle), null, 'rien d’écrit');
+  const cree = ok(appel('POST', '/api/v1/mots-cles/', { libelle }), 201);
+  const page = ligne('SELECT id, titre, resume FROM page WHERE mot_cle_id = ?', cree.element.id);
+  assert.ok(page, 'sa page de notion le relie');
+  assert.deepEqual([page.titre, page.resume], [libelle, null]);
+  assert.equal(cree.element.url, `/regles/${page.id.slice('guide/'.length)}/`, 'son adresse : celle de sa page');
+  assert.deepEqual(lignes('SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?', cree.element.id).map((c) => c.categorie_id), [notion]);
+  assert.equal(appel('PATCH', cree.adresse, { libelle: `${libelle} bis` }).statut, 409, 'son nom vient de sa page');
+  assert.equal(appel('DELETE', cree.adresse).statut, 409, 'relié à sa page, il ne se supprime pas à son adresse');
+});
+
 test('action « fusion » d’un mot-clé : le renommage vers l’écriture d’un autre dit l’action (409), qui verse ses pages dans l’autre et le retire', () => {
-  const a = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé A de l’API ${Date.now()}` }), 201);
-  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé B de l’API ${Date.now()}` }), 201);
+  const a = motCleNu({ libelle: `Mot-clé A de l’API ${Date.now()}` });
+  const b = motCleNu({ libelle: `Mot-clé B de l’API ${Date.now()}` });
   const refus = appel('PATCH', a.adresse, { libelle: b.element.libelle });
   assert.equal(refus.statut, 409);
   assert.deepEqual(refus.corps.action, { methode: 'POST', adresse: `${a.adresse}fusion/`, corps: { dans: b.element.id } });
@@ -721,9 +750,9 @@ test('action « fusion » d’un mot-clé : le renommage vers l’écriture d’
 });
 
 test('R196 : DELETE d’un mot-clé mentionné (une balise dans la définition d’un autre) → 409 avec `mentions`, rien d’écrit ; sans mention, il se supprime', () => {
-  const a = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé cité de l’API ${Date.now()}` }), 201);
+  const a = motCleNu({ libelle: `Mot-clé cité de l’API ${Date.now()}` });
   // la balise cite la clé (migration 0113)
-  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.cle}}}.` }), 201);
+  const b = motCleNu({ libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.cle}}}.` });
   const definition = ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description;
   assert.ok(definition.includes(`{{${a.element.cle}`), definition);
   const refus = appel('DELETE', a.adresse);
