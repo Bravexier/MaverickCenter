@@ -554,6 +554,64 @@ async function serviceDuBot({ simule, edition = true } = {}) {
   return { ...m, h, c, lire, depuis: (secondes) => { h.t += secondes * 1000; } };
 }
 
+test('R317 (2) : le nom (sans les personnages entre parenthèses), l’avatar et la bannière sont réécrits à chaque connexion ; /api/moi/ lit la base, jamais le cookie', async () => {
+  const m = await service({ simule: { utilisateur: { ...UTILISATEUR_D_ESSAI, global_name: 'Lodjay (Lucien de Lunastre)', avatar: HASH, banner: HASH }, membre: { ...MEMBRE_D_ESSAI, nick: null } } });
+  try {
+    const premiere = await seConnecter(m);
+    const cdn = `https://cdn.discordapp.com/avatars/${IDENTIFIANT_D_ESSAI}`;
+    assert.deepEqual([m.comptes()[0].nom_affichage, m.comptes()[0].avatar_url, m.comptes()[0].banniere_url], ['Lodjay', `${cdn}/${HASH}.png`, `https://cdn.discordapp.com/banners/${IDENTIFIANT_D_ESSAI}/${HASH}.png`]);
+    const id = m.comptes()[0].id;
+    // /api/moi/ lit la base : la ligne change (hors connexion), le même cookie montre le nouveau nom, sans rien rejouer
+    m.ecrire.prepare("UPDATE utilisateur SET nom_affichage = 'Écrit en base' WHERE id = ?").run(id);
+    assert.equal((await (await m.appel('GET', '/api/moi/', { entetes: premiere.session })).json()).utilisateur.nom, 'Écrit en base');
+    const charge = Buffer.from(premiere.session.cookie.split('=')[1].split('.')[1], 'base64url').toString('utf8');
+    assert.ok(!charge.includes('Lodjay') && !charge.includes('Écrit') && !charge.includes(HASH), 'le cookie ne porte ni nom ni image');
+    // le nom, l'avatar et la bannière ont changé sur Discord : la connexion suivante les réécrit (même ligne)
+    m.d.etat.utilisateur = { ...UTILISATEUR_D_ESSAI, global_name: 'Lodjay2 (Ilya)', avatar: 'd'.repeat(32), banner: null };
+    const seconde = await seConnecter(m);
+    const apres = m.comptes();
+    assert.equal(apres.length, 1);
+    assert.deepEqual([apres[0].id, apres[0].nom_affichage, apres[0].avatar_url, apres[0].banniere_url], [id, 'Lodjay2', `${cdn}/${'d'.repeat(32)}.png`, null]);
+    assert.deepEqual((await (await m.appel('GET', '/api/moi/', { entetes: seconde.session })).json()).utilisateur, {
+      nom: 'Lodjay2', avatar_url: `${cdn}/${'d'.repeat(32)}.png`, banniere_url: null, niveau: 'joueur', serveur_rejoint_le: '2024-03-05T10:20:30Z',
+    });
+    // le surnom du serveur prend le pas, lui aussi sans ses parenthèses
+    m.d.etat.membre = { ...MEMBRE_D_ESSAI, nick: 'Surnom (perso)' };
+    await seConnecter(m);
+    assert.equal(m.comptes()[0].nom_affichage, 'Surnom');
+  } finally {
+    await m.fin();
+  }
+});
+
+test('R317 (2), R314 : la revérification du niveau relit aussi le nom, l’avatar et la bannière (sans toucher à la date de connexion) ; un compte illisible ne change que le niveau', async () => {
+  const m = await serviceDuBot({ simule: { utilisateur: { ...UTILISATEUR_D_ESSAI, global_name: 'Avant (perso)' }, membre: { ...MEMBRE_D_ESSAI } } });
+  try {
+    const avant = m.comptes()[0];
+    assert.equal(avant.nom_affichage, 'Avant');
+    m.d.etat.utilisateur = { ...UTILISATEUR_D_ESSAI, global_name: 'Après (autre perso)', avatar: 'e'.repeat(32), banner: 'f'.repeat(32) };
+    m.d.etat.membre = { ...MEMBRE_D_ESSAI, nick: null, roles: [ROLE_MJ] };
+    m.depuis(INTERVALLE_DE_REVERIFICATION_S);
+    const r = await m.appel('GET', '/api/moi/', { entetes: m.c.session });
+    assert.equal(m.d.appelsDuBot().length, 1);
+    const moi = (await r.json()).utilisateur;
+    assert.deepEqual([moi.nom, moi.niveau], ['Après', 'mj']);
+    const apres = m.comptes()[0];
+    assert.deepEqual([apres.nom_affichage, apres.avatar_url, apres.banniere_url], ['Après', `https://cdn.discordapp.com/avatars/${IDENTIFIANT_D_ESSAI}/${'e'.repeat(32)}.png`, `https://cdn.discordapp.com/banners/${IDENTIFIANT_D_ESSAI}/${'f'.repeat(32)}.png`]);
+    assert.deepEqual([apres.id, apres.cree_le, apres.derniere_connexion_le], [avant.id, avant.cree_le, avant.derniere_connexion_le], 'ce n’est pas une connexion');
+    // le nom suit aussi un surnom qui change, et un retrait de bannière
+    m.d.etat.membre = { ...MEMBRE_D_ESSAI, nick: 'Surnom (x)', roles: [ROLE_MJ] };
+    m.d.etat.utilisateur = { ...UTILISATEUR_D_ESSAI, global_name: 'Après', avatar: null, banner: null };
+    m.depuis(INTERVALLE_DE_REVERIFICATION_S);
+    await m.appel('GET', '/api/moi/', { entetes: m.c.session });
+    const fin = m.comptes()[0];
+    assert.deepEqual([fin.nom_affichage, fin.banniere_url], ['Surnom', null]);
+    assert.match(fin.avatar_url, /embed\/avatars\/\d\.png$/);
+  } finally {
+    await m.fin();
+  }
+});
+
 test('R314 : le rôle retiré en cours de session — rien avant 5 minutes ; puis, dès la requête qui revérifie, la ligne, la porte (403) et /api/moi/ suivent, le cookie est réémis avec la même expiration, et l’ancien cookie en route reçoit le même résultat sans nouvel appel', async () => {
   const m = await serviceDuBot({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
   try {

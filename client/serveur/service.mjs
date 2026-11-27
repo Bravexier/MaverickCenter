@@ -694,7 +694,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       return connexion.reverifier(req.headers, {
         permis: () => Boolean(etat.db) && !gel.refus('POST', '/api/connexion/discord/retour/', { sansGeste: true }),
         discordIdDe: (u) => discordIdDe(base(), u),
-        mettreAJour: (u, niveau) => mettreAJourLeNiveau(base(), u, niveau),
+        mettreAJour: (u, niveau, profil) => mettreAJourLeNiveau(base(), u, niveau, profil),
         effacer: (discordId) => effacerLeCompte(base(), discordId),
         // R315 : la session venue de l'autre site (connexion commune) retrouve ou crée son compte comme au retour de Discord
         enregistrer: (profil) => enregistrerLaConnexion(base(), profil),

@@ -28,11 +28,15 @@ export function discordIdDe(db, id) {
 }
 
 /**
- * R314 : écrit le niveau revérifié du compte `id`, et rien d'autre (ce n'est pas une connexion : `derniere_connexion_le`, le nom et les images ne bougent pas).
+ * R314 : écrit le niveau revérifié du compte `id`, et, quand la lecture de Discord a rendu le compte (R317 (2)), son nom, son avatar, sa bannière et sa date d'arrivée ;
+ * rien d'autre (ce n'est pas une connexion : `derniere_connexion_le` ne bouge pas).
+ * @param {{ nom_affichage: string, avatar_url: string, banniere_url: string|null, serveur_rejoint_le: string|null }|null} [profil]
  * @returns {boolean} vrai si la ligne existe
  */
-export function mettreAJourLeNiveau(db, id, niveau) {
-  return db.prepare('UPDATE utilisateur SET niveau = ? WHERE id = ?').run(niveau, String(id)).changes > 0;
+export function mettreAJourLeNiveau(db, id, niveau, profil = null) {
+  if (!profil) return db.prepare('UPDATE utilisateur SET niveau = ? WHERE id = ?').run(niveau, String(id)).changes > 0;
+  return db.prepare('UPDATE utilisateur SET niveau = ?, nom_affichage = ?, avatar_url = ?, banniere_url = ?, serveur_rejoint_le = ? WHERE id = ?')
+    .run(niveau, profil.nom_affichage, profil.avatar_url, profil.banniere_url ?? null, profil.serveur_rejoint_le ?? null, String(id)).changes > 0;
 }
 
 /** Le profil d'un utilisateur du site (ce que montre la page profil), ou null s'il n'existe pas : jamais l'identifiant Discord. */
