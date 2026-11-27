@@ -26,7 +26,7 @@ const REPRISES_APRES_0098 = ['0123-fusion-pages-alignement'].flatMap((nom) => {
 });
 
 /** Les pages du site de dev seulement (et la page 404) : aucun mot-clé n'y mène. */
-const HORS_DES_ADRESSES = ['/404/', '/debug/', '/maintenance/', '/mise-a-jour/'];
+const HORS_DES_ADRESSES = ['/404/', '/connexion/', '/debug/', '/maintenance/', '/mise-a-jour/', '/profil/'];
 /**
  * Les adresses fixes que leur page n'a pas encore (tolérées tant que leur fichier manque ; une fois la page créée, elle sort d'ici) : aucune depuis la
  * page du Glossaire (pages/regles/glossaire.astro).

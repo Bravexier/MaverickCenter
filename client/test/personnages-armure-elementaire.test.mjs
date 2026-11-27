@@ -15,6 +15,7 @@ import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { rejouerLaMigration, vuesCourantes } from './aide-migration-rejouee.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 // Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
 const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
@@ -57,7 +58,7 @@ const sansDate = (notes) => notes?.replace(/^\[\d{2}\/\d{2}\/\d{4}\] /gm, '[date
 const reglesDArmure = (id) => db.prepare("SELECT regle FROM v_personnage_controle WHERE personnage_id = ? AND (regle LIKE 'armure%' OR regle = 'amelioration_cible')")
   .all(id).map((r) => r.regle);
 
-inserer('utilisateur', { id: 'joueuse', discord_id: null, nom_affichage: 'joueuse', cree_le: INSTANT });
+inserer('utilisateur', compteDEssai('joueuse', 'joueuse', INSTANT));
 // avant : l'armure et son élément (R95), deux parties abîmées, des notes du joueur
 fiche('transformee', { armure_id: GRILLE, armure_amelioration_id: amelioration('armure', 2), armure_elementaire_id: FEU,
   armure_amelioration_elementaire_id: amelioration('armure_elementaire', 3), notes: 'Mon texte' }, { casque: 1, torse: 0 });

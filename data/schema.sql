@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 131;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 132;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -4492,14 +4492,22 @@ CREATE INDEX recette_test_carac_1_fk ON recette (test_carac_1_id) WHERE test_car
 -- Instants : texte ISO 8601 en UTC ('2026-10-09T14:03:00Z'), portable tel quel vers PostgreSQL.
 -- ====================================================================================================================
 
--- Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant
--- Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord.
--- Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
+-- Personne qui s'est connectée au site, toujours par Discord (décision R310, migration 0132 ; plus de compte local : docs/feuille-de-route.md, E7).
+-- On ne garde que ce que dit R310 (5) : l'identifiant Discord (immuable), le nom affiché, l'avatar et la bannière, la date d'arrivée sur le serveur et le
+-- niveau ; jamais l'e-mail, ni les serveurs, ni les connexions, ni les rôles Discord bruts, ni de mot de passe ou de jeton. Le service réécrit la ligne à
+-- chaque connexion. Les rôles du site (visibilité des fiches) sont dans utilisateur_role ; leur lien avec le niveau relève d'E8.
 CREATE TABLE utilisateur (
-  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable du site, jamais réutilisé
-  discord_id     TEXT    UNIQUE CHECK (discord_id IS NULL OR (length(discord_id) > 0 AND discord_id NOT GLOB '*[^0-9]*')),   -- « snowflake » Discord ; NULL = compte local de secours
-  nom_affichage  TEXT    NOT NULL CHECK (length(nom_affichage) > 0),
-  cree_le        TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')
+  id                     TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable du site, jamais réutilisé
+  discord_id             TEXT    NOT NULL UNIQUE CHECK (length(discord_id) > 0 AND discord_id NOT GLOB '*[^0-9]*'),   -- « snowflake » Discord (`id`), chiffres seuls
+  nom_affichage          TEXT    NOT NULL CHECK (length(nom_affichage) > 0),   -- surnom sur le serveur, sinon `global_name`, sinon `username` (R310 (5))
+  cree_le                TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),   -- première connexion
+  niveau                 TEXT    NOT NULL CHECK (niveau IN ('observateur', 'joueur', 'mj', 'createur')),   -- R310 (2), recalculé à chaque connexion
+  avatar_url             TEXT    NOT NULL CHECK (avatar_url GLOB 'https://cdn.discordapp.com/?*'),   -- image complète : celle du serveur, sinon du compte, sinon
+                                                                                                    -- l'avatar par défaut ; chargée par le navigateur
+  banniere_url           TEXT    CHECK (banniere_url IS NULL OR banniere_url GLOB 'https://cdn.discordapp.com/?*'),   -- de même ; NULL = pas de bannière
+  serveur_rejoint_le     TEXT    CHECK (serveur_rejoint_le IS NULL OR serveur_rejoint_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),   -- `joined_at` du membre, tronqué à la
+                                                                                                    -- seconde ; NULL hors du serveur
+  derniere_connexion_le  TEXT    NOT NULL CHECK (derniere_connexion_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')   -- date du niveau affiché
 ) STRICT;
 
 -- Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) :

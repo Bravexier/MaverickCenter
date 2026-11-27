@@ -15,6 +15,7 @@ import { cheminDImport } from './aide-base-d-import.mjs';
 import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+import { compteDEssai } from './aide-compte-d-essai.mjs';
 
 // Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
 const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
@@ -58,7 +59,7 @@ testDeLaMixte('R251 : Projectile arcanique porte le coût, sa valeur et le coût
 });
 
 // --- fiches d'essai -------------------------------------------------------------------------------------------------------------------------------------
-inserer('utilisateur', { id: 'r236', discord_id: '100000000000000236', nom_affichage: 'r236', cree_le: INSTANT });
+inserer('utilisateur', compteDEssai('r236', 'r236', INSTANT));
 
 /** Deux magies qui ont leurs deux spécialisations (jamais le Potentiel Illimité), et une troisième ; par id. */
 const [A, B, C] = tous('SELECT magie_id FROM magie_specialisation GROUP BY magie_id HAVING count(*) = 2 ORDER BY magie_id LIMIT 3').map((r) => r.magie_id);
