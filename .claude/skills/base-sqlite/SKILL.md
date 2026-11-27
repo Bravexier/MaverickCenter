@@ -22,6 +22,7 @@ user-invocable: false
 ## À lire
 - `docs/sql/remplissage.md` : commandes, qui met quoi à jour, pourquoi `data/rows` est commité, onglet DB, pages fabriquées, `db:migrate`, colonne `remarque`.
 - `docs/sql/conception.md` : conventions (`nom`, `titre`, `*_cle`, `origine`, `source_ref`, cascades), §10.1 migrations.
+- Toute nouvelle référence vers `utilisateur(id)` choisit son `ON DELETE` en tenant compte de l'effacement du compte d'un non-membre ou de celui qui quitte le serveur (R312, R313) : sans cascade ni `SET NULL`, elle bloque l'effacement (skill `zone-service`).
 - `docs/sql/structure.md`, `docs/sql/apercu.md` : générés par `npm run db:doc`, jamais écrits à la main.
 - Procédures voisines : skill `ecrire-une-migration`, skill `interroger-la-base`, skill `modifier-une-page-wiki`, skill `revue-sql`, skill `relecture-db`.
 

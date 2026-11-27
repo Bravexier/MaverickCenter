@@ -136,7 +136,7 @@
 //   GET  /api/connexion/discord/retour/            le retour de Discord : vérifie l'état, lit le profil et l'appartenance au serveur, écrit `utilisateur`, révoque le
 //                                   jeton, pose le cookie de session `maverick_session` (12 h sur le site de dev, 7 jours en production) et renvoie (302) vers `retour` ;
 //                                   erreur : 302 vers /connexion/?erreur=refus|indisponible|discord|etat ; compte bot ou système : 403 { acces: 'bot' }, rien d'écrit
-//   GET  /api/moi/                  { connexion_disponible, connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null }
+//   GET  /api/moi/                  { connexion_disponible, connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null } ; session d'un non-membre : en plus `non_membre: true` (R313)
 //   POST /api/deconnexion/          (JSON, requête d'une page du site) retire le cookie de session → { connecte: false }
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
@@ -174,7 +174,7 @@ import { ErreurExtrait } from './extrait.mjs';
 import { etatDeLaProduction, retraitsBloquantsPourLaProduction } from './attestation.mjs';
 import { connexionSecurisee, refus as refusDeLAcces } from './acces.mjs';
 import { cookieDeSessionRetire } from './discord.mjs';
-import { enregistrerLaConnexion, lireLeProfil } from './utilisateurs.mjs';
+import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil } from './utilisateurs.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -844,22 +844,26 @@ function traiterConnexion(requete, service, action, reste, permis, params) {
     erreur: params.get('error'),
     entetes,
     enregistrer: (profil) => enregistrerLaConnexion(db, profil),
+    effacer: (discordId) => effacerLeCompte(db, discordId),
   }).then((r) => (r.interdit
     ? json(403, { erreur: 'Connexion refusée : les comptes bot et système n’ont pas accès au site.', acces: 'bot' }, { 'Set-Cookie': r.cookies })
     : redirection(r)));
 }
 
-/** GET /api/moi/ : le profil de la session de l'appelant (jamais l'identifiant Discord), ou « non connecté ». Ouverte. */
+/** GET /api/moi/ : le profil de la session de l'appelant (jamais l'identifiant Discord), ou « non connecté » (pas de session, compte effacé : R312) ; la session d'un non-membre, sans compte, porte en plus `non_membre: true` (R313). Ouverte. */
 function traiterMoi(requete, service, permis) {
   const refus = permis('GET');
   if (refus) return refus;
   const connexion = service.connexion ?? null;
   const session = connexion?.session(requete.entetes ?? {}) ?? null;
-  const db = session ? service.base() : null;
+  // une session sans compte (non-membre, `u` null, R312) ou dont le compte a été effacé depuis : « non connecté », jamais une erreur
+  const db = session?.u ? service.base() : null;
   const profil = db ? lireLeProfil(db, session.u) : null;
   // le niveau est celui du cookie (celui que la porte applique) : une autre session plus récente ne change pas celle-ci
   const utilisateur = profil ? { ...profil, niveau: session.n } : null;
-  return json(200, { connexion_disponible: Boolean(connexion?.disponible()), connecte: Boolean(utilisateur), utilisateur });
+  // R313 (1) : la session d'un non-membre (`u` null) est connectée mais sans compte ni niveau : `non_membre: true` permet aux pages de l'en avertir. Le champ n'existe que dans ce
+  // cas (les autres réponses gardent leur forme) ; aucun nom n'est mis dans le cookie : rien de lui n'est gardé (R312 (1)), pas même chez lui
+  return json(200, { connexion_disponible: Boolean(connexion?.disponible()), connecte: Boolean(utilisateur), utilisateur, ...(session && session.u === null ? { non_membre: true } : {}) });
 }
 
 /** POST /api/deconnexion/ : retire le cookie de session (sans révocation côté serveur : le jeton expire seul). Mêmes refus que les écritures : JSON, requête d'une page du site. */

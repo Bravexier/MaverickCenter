@@ -27,6 +27,10 @@ const introduction = site.test
     </p>
     <p><a class="bouton-connexion" data-lien-connexion href={url('api/connexion/discord/')}>Connexion via Discord</a></p>
     <p data-connexion-indisponible hidden>La connexion par Discord n’est pas disponible sur ce serveur pour le moment.</p>
+    <div data-connexion-non-membre hidden>
+      <p data-message-non-membre></p>
+      <p><button type="button" data-deconnexion>Se déconnecter</button></p>
+    </div>
     <div data-connexion-connecte hidden>
       <p>Vous êtes connecté en tant que <strong data-connexion-nom></strong> (niveau <span data-connexion-niveau></span>).</p>
       <p><button type="button" data-deconnexion>Se déconnecter</button></p>

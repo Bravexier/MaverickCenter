@@ -10,7 +10,7 @@ import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { COOKIE_ETAT, COOKIE_SESSION, reglageApres } from '../serveur/discord.mjs';
 import { demarrerService } from '../serveur/service.mjs';
-import { enregistrerLaConnexion, lireLeProfil } from '../serveur/utilisateurs.mjs';
+import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil } from '../serveur/utilisateurs.mjs';
 import { ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SERVEUR_D_ESSAI, poserLAcces } from './aide-acces-d-essai.mjs';
 import { poserUnCompte } from './aide-compte-d-essai.mjs';
 import { IDENTIFIANT_D_ESSAI, MEMBRE_D_ESSAI, UTILISATEUR_D_ESSAI, discordSimule } from './aide-discord-simule.mjs';
@@ -88,8 +88,11 @@ async function service({ edition = true, simule = {}, roles } = {}) {
     method: methode, redirect: 'manual', headers: { ...(corps === undefined ? {} : JSON_), ...entetes }, ...(corps === undefined ? {} : { body: JSON.stringify(corps) }),
   });
   const db = new DatabaseSync(join(dossier, 'service-db', FICHIER_BASE), { readOnly: true });
-  const fin = async () => { db.close(); await s.arreter(); };
-  return { s, d, a, appel, db, lignes, fin, comptes: () => db.prepare('SELECT * FROM utilisateur ORDER BY cree_le').all().map((l) => ({ ...l })) };
+  // un second accès, en écriture, pour poser les comptes et les fiches d'un test (clés étrangères actives, comme le service)
+  const ecrire = new DatabaseSync(join(dossier, 'service-db', FICHIER_BASE));
+  ecrire.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000');
+  const fin = async () => { db.close(); ecrire.close(); await s.arreter(); };
+  return { s, d, a, appel, db, ecrire, lignes, fin, comptes: () => db.prepare('SELECT * FROM utilisateur ORDER BY cree_le').all().map((l) => ({ ...l })) };
 }
 const cookiesPoses = (reponse) => Object.fromEntries(reponse.headers.getSetCookie().map((c) => [c.split('=')[0], c]));
 const valeur = (cookie) => cookie.split(';')[0];
@@ -187,8 +190,8 @@ test('R310 (3) : sur le site de dev, la porte suit le niveau du cookie de la con
       await m.fin();
     }
   }
-  // non membre, adhésion en attente, exclusion : observateur, connecté mais sans rien
-  for (const simule of [{ membre: null }, { membre: { ...MEMBRE_D_ESSAI, pending: true, roles: [ROLE_CREATEUR] } }, { membre: { ...MEMBRE_D_ESSAI, communication_disabled_until: '2999-01-01T00:00:00+00:00', roles: [ROLE_CREATEUR] } }]) {
+  // adhésion en attente, exclusion : observateur, connecté mais sans rien (le compte reste, R312)
+  for (const simule of [{ membre: { ...MEMBRE_D_ESSAI, pending: true, roles: [ROLE_CREATEUR] } }, { membre: { ...MEMBRE_D_ESSAI, communication_disabled_until: '2999-01-01T00:00:00+00:00', roles: [ROLE_CREATEUR] } }]) {
     const m = await service({ simule });
     try {
       const { session, fin } = await seConnecter(m);
@@ -202,6 +205,191 @@ test('R310 (3) : sur le site de dev, la porte suit le niveau du cookie de la con
       await m.fin();
     }
   }
+});
+
+/** Un compte posé pour le Discord simulé, avec ce que R312 doit effacer avec lui (rôle, groupe, partage) : { id, fiche } ; `proprietaire` : une fiche qu'il possède (référence sans cascade). */
+function poserUnCompteAEffacer(m, { proprietaire = false, auteur = false } = {}) {
+  const db = m.ecrire;
+  const t = '2026-01-01T00:00:00Z';
+  const id = 'u-a-effacer';
+  poserUnCompte(db, id, 'Compte à effacer', t, { discord_id: IDENTIFIANT_D_ESSAI });
+  db.prepare("INSERT INTO utilisateur_role (utilisateur_id, role) VALUES (?, 'mj')").run(id);
+  db.prepare("INSERT INTO groupe (id, nom, nature, cree_le) VALUES ('g-essai', 'Table d’essai', 'one_shot', ?)").run(t);
+  db.prepare("INSERT INTO groupe_membre (groupe_id, utilisateur_id, role, personnage_id, rejoint_le) VALUES ('g-essai', ?, 'joueur', NULL, ?)").run(id, t);
+  poserUnCompte(db, 'u-autre', 'Autre compte', t);
+  const fiche = (fid, proprio) => db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, nom, mode_classe, xp, alignement_loyal, alignement_chaotique,
+    alignement_bon, alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', ?, 'privee', 'Fiche d’essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, ?, ?)`)
+    .run(fid, proprio, t, t);
+  fiche('f-d-un-autre', 'u-autre');
+  db.prepare('INSERT INTO personnage_partage (personnage_id, utilisateur_id) VALUES (?, ?)').run('f-d-un-autre', id);
+  if (proprietaire) fiche('f-du-compte', id);
+  if (auteur) db.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, resume) VALUES ('lot-essai', ?, ?, 'Lot d’essai')").run(t, id);
+  return id;
+}
+const lignesDe = (m, table, colonne, valeur) => m.db.prepare(`SELECT count(*) AS n FROM ${table} WHERE ${colonne} = ?`).get(valeur).n;
+
+test('R312 : un non-membre (404 ou 403) voit son compte effacé avec ses rôles, groupes et partages (CASCADE) ; la fiche d’un autre reste ; la connexion aboutit en Observateur sans compte', async () => {
+  for (const statutMembre of [404, 403]) {
+    const m = await service({ simule: { membre: null, statutMembre } });
+    try {
+      const id = poserUnCompteAEffacer(m);
+      assert.equal(m.ecrire.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+      const { fin, session } = await seConnecter(m);
+      assert.equal(fin.status, 302, statutMembre);
+      assert.equal(fin.headers.get('location'), '/regles/');
+      assert.equal(lignesDe(m, 'utilisateur', 'id', id), 0, `${statutMembre} : compte effacé`);
+      assert.equal(lignesDe(m, 'utilisateur_role', 'utilisateur_id', id), 0, 'rôles effacés');
+      assert.equal(lignesDe(m, 'groupe_membre', 'utilisateur_id', id), 0, 'appartenance au groupe effacée');
+      assert.equal(lignesDe(m, 'personnage_partage', 'utilisateur_id', id), 0, 'partage effacé');
+      assert.equal(lignesDe(m, 'groupe', 'id', 'g-essai'), 1, 'le groupe reste');
+      assert.equal(lignesDe(m, 'personnage', 'id', 'f-d-un-autre'), 1, 'la fiche d’un autre reste');
+      assert.equal(lignesDe(m, 'utilisateur', 'id', 'u-autre'), 1);
+      assert.deepEqual(m.comptes().map((c) => c.id), ['u-autre']);
+      // la session : Observateur, sans compte ; /api/moi/ ne plante pas, rien de lui n'est rendu
+      assert.ok(session, 'une session est posée');
+      const moi = await m.appel('GET', '/api/moi/', { entetes: session });
+      assert.equal(moi.status, 200);
+      assert.deepEqual(await moi.json(), { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
+      const acces = await (await m.appel('GET', '/api/acces/', { entetes: session })).json();
+      assert.deepEqual([acces.connecte, acces.niveau, acces.droit], [true, 'observateur', 'aucun'], 'la porte le voit Observateur');
+      assert.equal((await m.appel('GET', '/api/v1/', { entetes: session })).status, 403);
+      assert.match(m.lignes.join('\n'), /non-membre, compte u-a-effacer effacé \(R312\)/);
+    } finally {
+      await m.fin();
+    }
+  }
+});
+
+test('R313 (1) : `non_membre: true` n’est dans /api/moi/ que pour la session d’un non-membre ; sans nom, sans rien de lui dans le cookie ni en base ; les autres réponses gardent leur forme', async () => {
+  const nonMembre = await service({ simule: { membre: null, utilisateur: { ...UTILISATEUR_D_ESSAI, global_name: 'Nom Secret', username: 'nom_secret' } } });
+  try {
+    const { session } = await seConnecter(nonMembre);
+    const moi = await (await nonMembre.appel('GET', '/api/moi/', { entetes: session })).json();
+    assert.deepEqual(moi, { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
+    // le cookie signé ne porte ni nom ni identifiant Discord : seulement { u: null, n, exp }
+    const charge = JSON.parse(Buffer.from(session.cookie.split('=')[1].split('.')[1], 'base64url').toString('utf8'));
+    assert.deepEqual(Object.keys(charge).sort(), ['exp', 'n', 'u']);
+    assert.equal(charge.u, null);
+    assert.ok(!session.cookie.includes('Nom') && !Buffer.from(session.cookie.split('=')[1].split('.')[1], 'base64url').toString('utf8').includes(IDENTIFIANT_D_ESSAI));
+    assert.deepEqual(nonMembre.comptes(), []);
+  } finally {
+    await nonMembre.fin();
+  }
+  const membre = await service();
+  try {
+    const { session } = await seConnecter(membre);
+    const moi = await (await membre.appel('GET', '/api/moi/', { entetes: session })).json();
+    assert.deepEqual(Object.keys(moi).sort(), ['connecte', 'connexion_disponible', 'utilisateur'], 'un membre : la forme d’avant');
+    assert.deepEqual(Object.keys(await (await membre.appel('GET', '/api/moi/')).json()).sort(), ['connecte', 'connexion_disponible', 'utilisateur'], 'sans session : de même');
+  } finally {
+    await membre.fin();
+  }
+});
+
+test('R312 : un non-membre sans compte n’en voit jamais un créé ; la base reste telle quelle', async () => {
+  const m = await service({ simule: { membre: null } });
+  try {
+    poserUnCompte(m.ecrire, 'u-autre', 'Autre compte');
+    const avant = m.comptes();
+    const { fin, session } = await seConnecter(m);
+    assert.equal(fin.status, 302);
+    assert.deepEqual(m.comptes(), avant, 'aucune ligne créée ni touchée');
+    assert.deepEqual(await (await m.appel('GET', '/api/moi/', { entetes: session })).json(), { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
+  } finally {
+    await m.fin();
+  }
+});
+
+test('R312 : adhésion en attente, exclusion temporaire ou membre sans rôle : le compte reste (et se met à jour), au niveau Observateur', async () => {
+  for (const membre of [{ ...MEMBRE_D_ESSAI, pending: true }, { ...MEMBRE_D_ESSAI, communication_disabled_until: '2999-01-01T00:00:00+00:00' }, { ...MEMBRE_D_ESSAI, roles: [] }]) {
+    const m = await service({ simule: { membre } });
+    try {
+      const id = poserUnCompteAEffacer(m);
+      await seConnecter(m);
+      const compte = m.comptes().find((c) => c.id === id);
+      assert.ok(compte, 'le compte reste');
+      assert.equal(compte.niveau, 'observateur');
+      assert.equal(lignesDe(m, 'utilisateur_role', 'utilisateur_id', id), 1, 'ses rôles restent');
+      assert.equal(lignesDe(m, 'groupe_membre', 'utilisateur_id', id), 1);
+      assert.equal(lignesDe(m, 'personnage_partage', 'utilisateur_id', id), 1);
+    } finally {
+      await m.fin();
+    }
+  }
+});
+
+test('R312 : une panne de Discord (5xx, limite d’appels, profil illisible) ne constate rien : aucun compte effacé, la connexion s’arrête', async () => {
+  for (const simule of [{ membre: null, statutMembre: 500 }, { membre: null, statutMembre: 503 }, { membre: null, statutMembre: 429 }, { statutUtilisateur: 500 }, { statutJeton: 500 }]) {
+    const m = await service({ simule });
+    try {
+      const id = poserUnCompteAEffacer(m);
+      const debut = await m.appel('GET', '/api/connexion/discord/');
+      const etat = new URL(debut.headers.get('location')).searchParams.get('state');
+      const fin = await m.appel('GET', `/api/connexion/discord/retour/?code=${m.d.code}&state=${etat}`, { entetes: { cookie: valeur(cookiesPoses(debut)[COOKIE_ETAT]) } });
+      assert.equal(fin.headers.get('location'), '/connexion/?erreur=discord', JSON.stringify(simule));
+      assert.equal(cookiesPoses(fin)[COOKIE_SESSION], undefined);
+      assert.equal(lignesDe(m, 'utilisateur', 'id', id), 1, `${JSON.stringify(simule)} : le compte reste`);
+      assert.equal(lignesDe(m, 'utilisateur_role', 'utilisateur_id', id), 1);
+    } finally {
+      await m.fin();
+    }
+  }
+});
+
+test('R312 : une référence sans cascade (fiche possédée, auteur d’un lot du journal) empêche l’effacement : rien n’est effacé, une ligne au journal du service sans donnée personnelle, la connexion continue en Observateur', async () => {
+  for (const [options, motif] of [[{ proprietaire: true }, 'personnage.proprietaire_id \\(1\\)'], [{ auteur: true }, 'modification_lot.auteur_id \\(1\\)'], [{ proprietaire: true, auteur: true }, 'modification_lot.auteur_id \\(1\\)']]) {
+    const m = await service({ simule: { membre: null } });
+    try {
+      const id = poserUnCompteAEffacer(m, options);
+      const { fin, session } = await seConnecter(m);
+      assert.equal(fin.status, 302, motif);
+      assert.equal(fin.headers.get('location'), '/regles/');
+      assert.equal(lignesDe(m, 'utilisateur', 'id', id), 1, 'le compte reste');
+      assert.equal(lignesDe(m, 'utilisateur_role', 'utilisateur_id', id), 1, 'rien n’est effacé, cascades comprises');
+      assert.equal(lignesDe(m, 'groupe_membre', 'utilisateur_id', id), 1);
+      assert.equal(lignesDe(m, 'personnage_partage', 'utilisateur_id', id), 1);
+      if (options.proprietaire) assert.equal(lignesDe(m, 'personnage', 'proprietaire_id', id), 1, 'la fiche reste à son propriétaire');
+      const journal = m.lignes.join('\n');
+      assert.match(journal, new RegExp(`compte u-a-effacer NON effacé : référencé par .*${motif}`));
+      for (const secret of [IDENTIFIANT_D_ESSAI, 'Compte à effacer', 'Fiche d’essai']) assert.ok(!journal.includes(secret), `« ${secret} » au journal`);
+      // la session est Observateur, et /api/moi/ ne montre rien du compte gardé
+      assert.deepEqual(await (await m.appel('GET', '/api/moi/', { entetes: session })).json(), { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true });
+    } finally {
+      await m.fin();
+    }
+  }
+});
+
+test('R312 : une session ouverte dont le compte a été effacé depuis : /api/moi/ répond « non connecté » sans planter, la porte garde le niveau du cookie jusqu’à son expiration', async () => {
+  const m = await service({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  try {
+    const { session } = await seConnecter(m);
+    assert.equal((await (await m.appel('GET', '/api/moi/', { entetes: session })).json()).utilisateur.niveau, 'mj');
+    m.ecrire.prepare('DELETE FROM utilisateur').run();
+    const moi = await m.appel('GET', '/api/moi/', { entetes: session });
+    assert.equal(moi.status, 200);
+    assert.deepEqual(await moi.json(), { connexion_disponible: true, connecte: false, utilisateur: null }, 'R313 : pas de `non_membre` : ce n’est pas la session d’un non-membre');
+    assert.equal((await m.appel('GET', '/api/v1/', { entetes: session })).status, 200, 'le niveau est celui du cookie (R310)');
+  } finally {
+    await m.fin();
+  }
+});
+
+test('R312 : l’effacement refuse de tourner sans clés étrangères actives (jamais de références rompues)', () => {
+  const db = baseVive();
+  poserUnCompte(db, 'u-x', 'X', undefined, { discord_id: '800000000000000009' });
+  db.exec('PRAGMA foreign_keys = OFF');
+  assert.throws(() => effacerLeCompte(db, '800000000000000009'), /clés étrangères inactives/);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM utilisateur').get().n, 1);
+  db.exec('PRAGMA foreign_keys = ON');
+  assert.deepEqual(effacerLeCompte(db, '800000000000000009'), { id: 'u-x', efface: true, bloque: [] });
+  assert.deepEqual(effacerLeCompte(db, '800000000000000009'), { id: null, efface: false, bloque: [] }, 'déjà effacé : rien');
+  assert.deepEqual(effacerLeCompte(db, '800000000000000010'), { id: null, efface: false, bloque: [] }, 'jamais de compte créé');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM utilisateur').get().n, 0);
+});
+
+test('R312 : la base vivante ouverte pour le service a ses clés étrangères actives (la cascade de l’effacement en dépend)', () => {
+  assert.equal(baseVive().prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
 });
 
 test('R307, R310 (4) : sur la production la connexion et le profil marchent (session de 7 jours) et rien n’est restreint de plus', async () => {

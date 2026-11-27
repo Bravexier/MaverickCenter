@@ -93,12 +93,14 @@ export function profilAAfficher(utilisateur) {
 
 /**
  * L'état du compte d'après `GET /api/moi/` : 'indisponible' (la requête a échoué ou la connexion n'est pas réglée : rien à montrer, pas de bouton mort),
- * 'connecte' ou 'deconnecte'.
- * @returns {'indisponible'|'connecte'|'deconnecte'}
+ * 'connecte', 'non_membre' (R313 (1) : une session sans compte, la personne n'est pas membre du serveur Discord ; le service ne garde rien d'elle, `non_membre`
+ * n'existe que s'il vaut `true`) ou 'deconnecte'.
+ * @returns {'indisponible'|'connecte'|'non_membre'|'deconnecte'}
  */
 export function etatDuCompte(moi) {
   if (!moi || typeof moi !== 'object' || moi.connexion_disponible !== true) return 'indisponible';
-  return moi.connecte === true && profilAAfficher(moi.utilisateur) ? 'connecte' : 'deconnecte';
+  if (moi.connecte === true && profilAAfficher(moi.utilisateur)) return 'connecte';
+  return moi.non_membre === true ? 'non_membre' : 'deconnecte';
 }
 
 /**
@@ -127,6 +129,9 @@ export const MESSAGES_DES_ERREURS = Object.freeze({
   etat: 'La connexion n’a pas pu être vérifiée (la demande est périmée ou inconnue). Recommencez.',
   niveau: `Votre niveau d’accès ne suffit pas pour ce site : il faut au moins le niveau ${LIBELLES_DES_NIVEAUX.mj}.`,
 });
+
+/** Ce que dit la page à une personne connectée qui n'est pas membre du serveur Discord du jeu (R313 (1)) : aucun niveau, rien de gardé. */
+export const MESSAGE_DU_NON_MEMBRE = 'Vous êtes connecté, mais vous n’êtes pas membre du serveur Discord : aucun niveau n’est donné.';
 
 /** Le message d'un code d'erreur de la page de connexion, ou null (code absent ou inconnu : aucun message). */
 export function messageDErreur(code) {

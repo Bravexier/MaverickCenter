@@ -185,6 +185,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
   À chaque connexion, le service lit l'appartenance au serveur (portée OAuth `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions. À terme, l'Observateur ne verra que les rubriques Règles et Personnage du menu
   (réponse du 2026-10-29), sur la production.
 - **Joueur, MJ et Créateur d'après les rôles Discord** (R311) : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; la correspondance du propriétaire (neuf rôles Joueur, deux MJ, un Créateur) est dans `serveur.md`, « Connexion par Discord ». Le lien avec `utilisateur_role` (visibilité des fiches, `v_personnage_visible`) reste à faire avec E8.
+- **Conservation des comptes** (R312) : pas de date d'expiration ; le compte s'efface quand son titulaire quitte le serveur Discord, constaté pour l'instant à la connexion seulement (appel membre en 404 ou 403, jamais sur une panne de Discord ; jamais de compte créé pour
+  un non-membre). R313 (2) : quand un joueur quitte le serveur, son compte est effacé et **ses fiches restent, sans propriétaire** ; d'ici E8, état provisoire : un compte référencé par une fiche (`personnage.proprietaire_id`) ou par le journal n'est pas effacé, noté au journal du service.
 - **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, la production reste ouverte (R307) et le site de dev reste fermé (les clés de lecture et de dépôt restent, R275, R291) ; le compte local que prévoyait la
   table `utilisateur` (`discord_id` NULL) est retiré (migration 0132).
 - **Ce que les niveaux ouvrent** : sur le site de dev, plus rien sans MJ au moins ; l'édition des règles et le bouton « Effectuer la mise à jour » demandent le niveau Créateur. L'auteur de chaque modification dans l'historique
@@ -197,6 +199,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 - **À faire** : le service ne lit que les fiches de `v_personnage_visible` et n'écrit que pour leur propriétaire (ou un administrateur) ; « Mes
   personnages » dans l’Espace joueur du menu ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
   ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
+- **Fiches détachées** (R313 (2)) : la fiche d'un joueur qui quitte le serveur **reste, sans propriétaire**, et son compte est effacé (R312). Aujourd'hui une fiche sans propriétaire est un prétiré : le schéma (`personnage.proprietaire_id`, `CHECK` de `nature`) devra
+  distinguer une fiche détachée d'un prétiré. D'ici là, le service n'efface pas un compte que référence une fiche.
 
 ### E9 — Groupes (OS, HC, campagne) et planning des parties (jalon D)
 
@@ -214,7 +218,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
   dès le jalon A par un simple webhook de salon appelé à la livraison, sans bot ni comptes.
 - **Notifications ciblées** (après E7, en message privé ou dans le salon d'un groupe) : partie planifiée ou déplacée, rappel la veille, sondage de dates,
   fiche partagée avec soi, inscription dans un groupe, réponse à un ticket ; chacun choisit ce qu'il reçoit.
-- **Autres usages** : synchroniser les rôles (E7) ; des commandes (consulter un sort, une fiche, les prochaines parties) ; lire en lecture seule les salons
+- **Autres usages** : synchroniser les rôles (E7) ; constater qu'un compte a quitté le serveur entre deux connexions et l'effacer (R312, E7 : aujourd'hui l'effacement se fait à la connexion) ; des commandes (consulter un sort, une fiche, les prochaines parties) ; lire en lecture seule les salons
   du lore pour l'import (option « bot dédié » de [`sources.md`](sources.md), utile à E2, E5 et E6).
 - **Architecture proposée** : le service inscrit chaque événement dans une file (table de notifications de la base vivante : événement, destinataire,
   texte, état, essais) que le bot vide ; le site ne dépend jamais du bot (Discord en panne : rien ne bloque). L'API REST de Discord suffit pour écrire, et

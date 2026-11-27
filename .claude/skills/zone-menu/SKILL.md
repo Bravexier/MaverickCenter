@@ -42,6 +42,7 @@ user-invocable: false
 - La hauteur de la bande est celle du menu, pas du logo : l'image est en absolu dans le lien, qui garde sa largeur, et la pointe de l'épée dépasse sous la bordure (`test/site-html.test.mjs`).
 - Le bandeau du site de dev (`.bandeau-test` de `site-shell.css`) lit les jetons `--bandeau-dev` et `--texte-sur-fonce` (skill `ui-couleurs-theme`).
 - Le compte du visiteur est à droite de l'en-tête : `Base.astro` pose `components/Compte.astro` (R310 (7) ; absent du portable et de la page de maintenance). Un seul script, `scripts/compte.mjs` (logique : `lib/compte.mjs`), fait un `GET /api/moi/` par page : lien du profil (avatar, nom) ou bouton « Connexion via Discord » ; styles : `styles/global/compte.css`. Pages `/profil/` et `/connexion/` : `pages/profil.astro`, `pages/connexion.astro`. Détail : `docs/serveur.md`, « Accès au site de dev ». Plus de mention « Connecté · Se déconnecter » au pied de page.
+- `lib/compte.mjs` a un état `non_membre` (R313 (1)) : connecté sans être membre du serveur, aucun niveau. Son message est la constante `MESSAGE_DU_NON_MEMBRE`, affichée sur `/profil/` et `/connexion/` avec un bouton « Se déconnecter ». Le menu garde « Connexion via Discord ».
 - Les icônes `favicon.png` (32 px) et `apple-touch-icon.png` sont tirées du même logo.
 
 ## Tests

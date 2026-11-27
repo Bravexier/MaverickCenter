@@ -156,10 +156,11 @@ export function lireSigne(secret, type, jeton) {
 /** Le jeton d'une session : `u` l'identifiant de l'utilisateur du site, `n` son niveau, `exp` l'expiration (secondes depuis 1970). */
 export const creerJetonDeSession = (secret, { u, n, exp }) => signer(secret, 'session', { u, n, exp });
 
-/** La session d'un jeton bien signé, valide et pas encore expiré : { u, n, exp }, sinon null. */
+/** La session d'un jeton bien signé, valide et pas encore expiré : { u, n, exp } (`u` null : sans compte), sinon null. */
 export function lireJetonDeSession(secret, jeton, maintenantS) {
   const c = lireSigne(secret, 'session', jeton);
-  if (!c || typeof c.u !== 'string' || !c.u || c.u.length > 100 || !estUnNiveau(c.n) || !Number.isInteger(c.exp) || c.exp <= maintenantS) return null;
+  // `u` : l'identifiant du site, ou null pour un non-membre du serveur (R312 : aucun compte n'est gardé, la session n'est qu'Observateur)
+  if (!c || !(c.u === null || (typeof c.u === 'string' && c.u && c.u.length <= 100)) || !estUnNiveau(c.n) || !Number.isInteger(c.exp) || c.exp <= maintenantS) return null;
   return { u: c.u, n: c.n, exp: c.exp };
 }
 
@@ -388,9 +389,10 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
    * Le retour de Discord. `enregistrer(profil)` écrit la ligne de `utilisateur` (serveur/utilisateurs.mjs) et rend l'identifiant du site ; rien n'est écrit si le
    * flux échoue avant. Rend { location, cookies } (302 : retour demandé, ou /connexion/?erreur=<code>), ou { interdit: true } pour un compte bot ou système (403,
    * R310 (2)).
-   * @param {{ code?: string|null, etat?: string|null, erreur?: string|null, entetes?: object, enregistrer: (profil: object) => string }} o
+   * `effacer(discordId)` (R312) : efface le compte d'un non-membre s'il existe, rend { id, efface, bloque } (serveur/utilisateurs.mjs#effacerLeCompte).
+   * @param {{ code?: string|null, etat?: string|null, erreur?: string|null, entetes?: object, enregistrer: (profil: object) => string, effacer?: ((discordId: string) => { id: string|null, efface: boolean, bloque: string[] }) | null }} o
    */
-  async function terminer({ code = null, etat = null, erreur = null, entetes = {}, enregistrer }) {
+  async function terminer({ code = null, etat = null, erreur = null, entetes = {}, enregistrer, effacer = null }) {
     const securise = connexionSecurisee(entetes);
     const retire = [cookieDeLEtatRetire({ securise })];
     const echec = (c) => ({ location: `/connexion/?erreur=${c}`, cookies: retire });
@@ -422,6 +424,13 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
         return echec(jeton.statut === 400 ? 'refus' : 'discord');
       }
       jetons = [{ valeur: jeton.corps.access_token, indice: 'access_token' }, { valeur: jeton.corps.refresh_token, indice: 'refresh_token' }];
+      // Discord répond aussi 403 à l'appel membre quand le jeton n'a pas la portée `guilds.members.read` : sans elle, ce 403 ne dit rien de l'appartenance, et chaque compte serait
+      // effacé à sa connexion (R312). La portée accordée est donc vérifiée AVANT tout appel membre : absente, la connexion s'arrête comme sur une panne, rien d'effacé ni d'écrit.
+      const accordees = typeof jeton.corps.scope === 'string' ? jeton.corps.scope.split(/[\s,]+/) : [];
+      if (!accordees.includes('guilds.members.read')) {
+        journal?.('connexion : la portée guilds.members.read n’a pas été accordée par Discord : connexion arrêtée, rien d’effacé');
+        return echec('discord');
+      }
       const acces = { Authorization: `Bearer ${jeton.corps.access_token}`, 'User-Agent': 'MaverickCenter (connexion)' };
       const moi = await appeler(`${API_DISCORD}/users/@me`, { entetes: acces });
       const utilisateur = moi.corps;
@@ -446,13 +455,29 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
       const maintenant = horloge();
       const niveau = niveauDuMembre({ membre: objetMembre, roles: r.roles, maintenant });
       const instant = new Date(maintenant).toISOString().replace(/\.\d{3}Z$/, 'Z');
+      const exp = maintenantS() + dureeS;
+      const poser = (u, niveauDeLaSession) => ({ location: retour, cookies: [cookieDeSession(creerJetonDeSession(r.secret_de_session, { u, n: niveauDeLaSession, exp }), { securise, dureeS }), ...retire] });
+      // R312 : le compte d'un non-membre ne se garde pas. Il est effacé s'il existe (jamais sur une panne : on n'arrive ici que sur un 200, 404 ou 403 de l'appel membre),
+      // jamais créé ; la session reste celle d'un Observateur, sans identifiant de compte. Un effacement refusé (référence sans cascade) ou en échec laisse le compte,
+      // est noté au journal (identifiant du site seulement) et ne bloque pas la connexion.
+      if (!objetMembre) {
+        try {
+          const e = effacer ? effacer(String(utilisateur.id)) : { id: null, efface: false, bloque: [] };
+          if (e.efface) journal?.(`connexion : non-membre, compte ${e.id} effacé (R312)`);
+          else if (e.bloque.length) journal?.(`connexion : non-membre, compte ${e.id} NON effacé : référencé par ${e.bloque.join(', ')} (R312, R313 : état provisoire jusqu'à E8, où les fiches resteront sans propriétaire)`);
+        } catch (e) {
+          journal?.(`connexion : non-membre, effacement du compte impossible (${e?.message ?? e})`);
+        }
+        journal?.(`connexion : observateur sans compte (non-membre, session de ${dureeS / 3600} h)`);
+        return poser(null, 'observateur');
+      }
       const profil = {
         discord_id: String(utilisateur.id),
         nom_affichage: nomAffiche({ membre: objetMembre, utilisateur }),
         niveau,
         avatar_url: adresseDAvatar({ membre: objetMembre, utilisateur, serveur: r.serveur }),
         banniere_url: adresseDeBanniere({ membre: objetMembre, utilisateur, serveur: r.serveur }),
-        serveur_rejoint_le: objetMembre ? instantDeDiscord(objetMembre.joined_at) : null,
+        serveur_rejoint_le: instantDeDiscord(objetMembre.joined_at),
         instant,
       };
       let id;
@@ -463,8 +488,7 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
         return echec('indisponible');
       }
       journal?.(`connexion : ${niveau} (utilisateur ${id}, session de ${dureeS / 3600} h)`);
-      const exp = maintenantS() + dureeS;
-      return { location: retour, cookies: [cookieDeSession(creerJetonDeSession(r.secret_de_session, { u: id, n: niveau, exp }), { securise, dureeS }), ...retire] };
+      return poser(id, niveau);
     } catch (e) {
       if (e instanceof ErreurDeConnexion) {
         journal?.(`connexion : ${e.message}`);

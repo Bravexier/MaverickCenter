@@ -21,12 +21,12 @@ const reponse = (statut, corps) => new Response(corps === undefined ? '' : JSON.
  *   code?: string, serveur?: string, client?: { id: string, secret: string } }} [o] `membre: null` : non membre (404) ; `statutMembre` : un autre statut d'échec
  */
 export function discordSimule({ utilisateur = UTILISATEUR_D_ESSAI, membre = MEMBRE_D_ESSAI, statutMembre = 404, statutUtilisateur = 200, statutJeton = 200, revocation = 'ok',
-  code = 'code-d-essai', serveur = SERVEUR_D_ESSAI, client = null } = {}) {
+  code = 'code-d-essai', serveur = SERVEUR_D_ESSAI, client = null, scope = 'identify guilds.members.read' } = {}) {
   const appels = [];
   const jetons = [];
   const revoques = [];
   let n = 0;
-  const etat = { utilisateur, membre, statutMembre, statutUtilisateur, statutJeton, revocation, code };
+  const etat = { utilisateur, membre, statutMembre, statutUtilisateur, statutJeton, revocation, code, scope };
   async function simule(url, init = {}) {
     const adresse = String(url);
     const entetes = Object.fromEntries(Object.entries(init.headers ?? {}).map(([k, v]) => [k.toLowerCase(), String(v)]));
@@ -41,7 +41,7 @@ export function discordSimule({ utilisateur = UTILISATEUR_D_ESSAI, membre = MEMB
       const acces = `jeton-d-acces-${n}`;
       const refresh = `jeton-de-renouvellement-${n}`;
       jetons.push(acces, refresh);
-      return reponse(200, { access_token: acces, refresh_token: refresh, token_type: 'Bearer', expires_in: 604800, scope: 'identify guilds.members.read' });
+      return reponse(200, { access_token: acces, refresh_token: refresh, token_type: 'Bearer', expires_in: 604800, ...(etat.scope === null ? {} : { scope: etat.scope }) });
     }
     if (adresse === 'https://discord.com/api/v10/oauth2/token/revoke') {
       if (etat.revocation === 'reseau') throw new TypeError('fetch failed');
