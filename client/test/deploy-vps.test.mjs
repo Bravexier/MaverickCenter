@@ -3,7 +3,7 @@
 // bon dans des dossiers temporaires, avec de faux « caddy » et « systemctl ». Le premier vrai lancement est celui du serveur.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -71,6 +71,22 @@ test('Caddyfile : le site de dev est fermé par la connexion Discord (forward_au
   // la production : aucune porte
   assert.doesNotMatch(normal, /forward_auth|handle_response|\/connexion|verifier/);
   assert.match(normal, /reverse_proxy 127\.0\.0\.1:8080/);
+});
+
+test('Caddyfile : HTTP/3 coupé, et Caddy redémarré, jamais rechargé (le Caddy d’Ubuntu laisse l’ancien serveur HTTP/3 avaler la connexion QUIC suivante, 2026-11-27)', () => {
+  const c = lire('Caddyfile');
+  // les options globales ouvrent le fichier (Caddy les veut en tête) et ne gardent que HTTP/1.1 et HTTP/2
+  assert.equal(c.split('\n').find((l) => l.trim() && !l.startsWith('#')).trim(), '{', 'les options globales sont le premier bloc');
+  const globales = c.match(/^\{\n([\s\S]*?)\n\}/m)[1];
+  assert.match(globales, /^\tservers \{\n\t\tprotocols h1 h2\n\t\}$/m);
+  assert.doesNotMatch(c, /^\s*protocols\b[^\n]*\bh3\b/m, 'jamais HTTP/3');
+  // une pose qui rechargerait Caddy laisserait ouverte l'écoute UDP d'un ancien serveur HTTP/3 : instances.sh et les procédures redémarrent
+  const racineDepot = join(vps, '..', '..');
+  const procedures = readdirSync(vps).filter((f) => f !== 'Caddyfile' && statSync(join(vps, f)).isFile()).map((f) => join('deploy', 'vps', f));
+  for (const f of [...procedures, join('docs', 'serveur.md')]) {
+    assert.doesNotMatch(readFileSync(join(racineDepot, f), 'utf8'), /systemctl\s+reload\s+caddy|\bcaddy\s+reload\b/, f);
+  }
+  assert.match(lire('instances.sh'), /^systemctl restart caddy$/m);
 });
 
 test('durcir.sh : seuls 22, 80 et 443 sont ouverts, SSH par clé, jamais de coupure sans clé installée', () => {

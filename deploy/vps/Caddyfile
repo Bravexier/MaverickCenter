@@ -15,6 +15,17 @@
 #
 # Les ports 8080 et 8081 ne sont publiés que sur 127.0.0.1 (.env de chaque instance, posé par instances.sh) : seul Caddy les atteint.
 
+# HTTP/3 coupé : le Caddy des paquets Ubuntu (2.6.2, recompilé avec quic-go 0.54) laisse vivre l'ancien serveur HTTP/3 après un rechargement
+# (« systemctl reload caddy », « caddy reload ») ; ce serveur prend la connexion QUIC suivante sans jamais la servir, et le navigateur qui l'a ouverte
+# attend sans fin (constaté le 2026-11-27 ; caddyserver/caddy#7172, corrigé dans Caddy 2.10.1). HTTP/1.1 et HTTP/2 suffisent au site.
+# Ce fichier se pose donc par « systemctl restart caddy » (instances.sh le fait), jamais par un rechargement : seul un redémarrage ferme l'écoute UDP
+# d'un ancien serveur HTTP/3. Rallumer HTTP/3 demande d'abord un Caddy qui porte ce correctif.
+{
+	servers {
+		protocols h1 h2
+	}
+}
+
 (maverick_commun) {
 	encode zstd gzip
 
