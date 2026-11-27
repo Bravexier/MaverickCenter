@@ -91,9 +91,39 @@ export function niveauDuMembre({ membre, roles = {}, maintenant = Date.now() }) 
 
 const texteUtile = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
-/** Le nom affiché (R310 (5)) : le surnom du membre sur le serveur, sinon le `global_name` du compte, sinon son nom d'utilisateur. */
+const PARENTHESES_OUVRANTES = new Set(['(', '（']);
+const PARENTHESES_FERMANTES = new Set([')', '）']);
+const espacesNets = (t) => t.replace(/\s+/g, ' ').trim();
+
+/**
+ * Le pseudo d'un nom écrit « pseudo (personnage(s) joué(s)) » (R317 (1), convention du serveur Discord) : les parties entre parenthèses sont retirées, puis les
+ * espaces en trop (début, fin, doubles). Règles des cas limites : des parenthèses **imbriquées** se retirent d'un bloc (jusqu'à la parenthèse fermante qui
+ * rééquilibre) ; une parenthèse **non fermée** retire tout ce qui la suit (un surnom de serveur est tronqué à 32 caractères : « Lodjay (Lucien de Lunastre » est
+ * un pseudo suivi d'un personnage coupé) ; une parenthèse **fermante seule** reste du texte (« :) »). Les parenthèses pleine chasse (« （ » et « ） ») comptent comme les autres.
+ * Rend « » quand rien ne reste hors des parenthèses.
+ * @param {string} nom
+ */
+export function pseudoSansPersonnages(nom) {
+  let profondeur = 0;
+  let sortie = '';
+  for (const c of String(nom)) {
+    if (PARENTHESES_OUVRANTES.has(c)) {
+      if (profondeur === 0) sortie += ' '; // une partie retirée vaut une espace : « A(b)C » donne « A C », jamais « AC »
+      profondeur += 1;
+    } else if (PARENTHESES_FERMANTES.has(c) && profondeur > 0) profondeur -= 1;
+    else if (profondeur === 0) sortie += c;
+  }
+  return espacesNets(sortie);
+}
+
+/**
+ * Le nom affiché (R310 (5), R317) : le surnom du membre sur le serveur, sinon le `global_name` du compte, sinon son nom d'utilisateur, **sans les parties entre
+ * parenthèses** (« Lodjay (Lucien de Lunastre) » donne « Lodjay »). Une source qui ne laisse rien hors des parenthèses cède la place à la suivante ; si toutes se
+ * vident, le premier nom brut (espaces nettoyés) est gardé plutôt qu'un nom vide (la base refuse `length = 0`). Aucun nom du tout : erreur.
+ */
 export function nomAffiche({ membre = null, utilisateur }) {
-  const nom = texteUtile(membre?.nick) ?? texteUtile(utilisateur?.global_name) ?? texteUtile(utilisateur?.username);
+  const sources = [membre?.nick, utilisateur?.global_name, utilisateur?.username].map(texteUtile).filter(Boolean);
+  const nom = sources.map(pseudoSansPersonnages).find(Boolean) ?? (sources[0] ? espacesNets(sources[0]) : null);
   if (!nom) throw new Error('aucun nom à afficher');
   return nom.slice(0, 100);
 }
@@ -698,8 +728,24 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
       };
       if (lu.membre) {
         const niveau = niveauDuMembre({ membre: lu.membre, roles: r.roles, maintenant });
+        // R317 (2) : le nom, l'avatar et la bannière suivent Discord à chaque lecture, comme à la connexion (le bot lit le compte avec le membre)
+        let profil = null;
+        const u = lu.membre.user;
+        if (u && typeof u === 'object' && String(u.id) === String(discordId) && u.bot !== true && u.system !== true) {
+          try {
+            profil = {
+              nom_affichage: nomAffiche({ membre: lu.membre, utilisateur: u }),
+              avatar_url: adresseDAvatar({ membre: lu.membre, utilisateur: u, serveur: r.serveur }),
+              banniere_url: adresseDeBanniere({ membre: lu.membre, utilisateur: u, serveur: r.serveur }),
+              serveur_rejoint_le: instantDeDiscord(lu.membre.joined_at),
+            };
+          } catch (e) {
+            profil = null; // un compte illisible : le niveau seul est mis à jour (noté, sans donnée personnelle)
+            journal?.(`connexion : profil lu par le bot illisible (utilisateur ${s.u} : ${e?.message ?? e}), le niveau seul est mis à jour`);
+          }
+        }
         try {
-          mettreAJour(s.u, niveau);
+          mettreAJour(s.u, niveau, profil);
         } catch (e) {
           journal?.(`connexion : niveau revérifié non écrit (utilisateur ${s.u} : ${e?.message ?? e})`);
         }

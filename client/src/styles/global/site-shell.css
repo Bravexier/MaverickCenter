@@ -4,7 +4,7 @@
    Pas de barre de recherche (demande du propriétaire) : la recherche est une page du menu Outils. La hauteur de la bande est celle du MENU, pas du logo (demande du propriétaire) :
    le lien garde la largeur du logo et la hauteur de la bande, l'image y est posée en absolu, alignée en haut, et la pointe de l'épée dépasse sous la
    bordure. Seul le lien est cliquable (l'image laisse passer les clics) : la partie qui dépasse ne cache rien du contenu. */
-.site-header__inner { display: flex; align-items: center; gap: 1.5rem; padding-block: 0.5rem; }
+.site-header__inner { position: relative; display: flex; align-items: center; gap: 1.5rem; padding-block: 0.5rem; } /* relative : le compte (styles/global/compte.css) se place dans la marge à droite */
 .brand { flex: none; align-self: stretch; position: relative; width: 7rem; line-height: 0; }
 .brand img { position: absolute; top: 0; left: 0; display: block; height: 7rem; width: auto; pointer-events: none; }
 .site-header__menu { flex: 1; min-width: 0; }

@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import {
   CODES_D_ERREUR, COOKIE_ETAT, COOKIE_SESSION, INTERVALLE_DE_REVERIFICATION_S, PAUSE_MAX_S, DUREE_SESSION_DEV_S, DUREE_SESSION_PROD_S, NIVEAUX, PORTEES_OAUTH, RETOUR_PAR_DEFAUT, SERVEUR_PAR_DEFAUT,
   adresseDAvatar, adresseDeBanniere, adresseDeRetourValide, avatarParDefaut, commandeDiscord, cookiesDeSession, creerConnexion, creerJetonDeSession, instantDeDiscord,
-  lireJetonDeSession, lireSigne, niveauDuMembre, nomAffiche, resumeDuReglage, retourValide, reglageApres, signer, validerReglage,
+  lireJetonDeSession, lireSigne, niveauDuMembre, nomAffiche, pseudoSansPersonnages, resumeDuReglage, retourValide, reglageApres, signer, validerReglage,
 } from '../serveur/discord.mjs';
 import {
   ADRESSE_DE_RETOUR_D_ESSAI, CLIENT_D_ESSAI, ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SECRET_D_ESSAI, SERVEUR_D_ESSAI, poserLAcces, reglageDiscordDEssai,
@@ -50,6 +50,51 @@ test('R310 (2), R311 : le niveau se recalcule du membre — non membre, adhésio
   assert.equal(niveau({ roles: [Number(ROLE_MJ)] }, { roles: { [ROLE_MJ]: 'mj' } }), 'observateur', 'un rôle qui n’est pas un identifiant en texte ne correspond pas par accident');
   assert.equal(niveau({ roles: [ROLE_JOUEUR] }, { roles: { [ROLE_JOUEUR]: 'observateur' } }), 'observateur', 'une valeur de correspondance hors joueur, mj, createur ne donne rien');
   for (const n of ['observateur', 'joueur', 'mj', 'createur']) assert.ok(NIVEAUX.includes(n));
+});
+
+test('R317 (1) : le nom affiché est le pseudo, sans les personnages entre parenthèses ; espaces nettoyés ; une source vide cède à la suivante ; imbriquées, non fermée, fermante seule', () => {
+  const u = { username: 'compte', global_name: 'Global' };
+  const nom = (nick, utilisateur = u) => nomAffiche({ membre: { nick }, utilisateur });
+  assert.equal(nom('Lodjay (Lucien de Lunastre)'), 'Lodjay');
+  assert.equal(nom('  Lodjay   (Lucien)  '), 'Lodjay');
+  assert.equal(nom('Lodjay(Lucien)'), 'Lodjay', 'sans espace avant la parenthèse');
+  assert.equal(nom('A(b)C'), 'A C', 'une partie retirée vaut une espace : jamais « AC »');
+  assert.equal(nom('A(b)(c)D'), 'A D');
+  assert.equal(nom('A (b)C'), 'A C');
+  assert.equal(nom('Lo(x)djay (Lucien)'), 'Lo djay');
+  assert.equal(nom('Lodjay (Lucien) (Ilya)'), 'Lodjay', 'plusieurs personnages, plusieurs blocs');
+  assert.equal(nom('Lodjay (Lucien, Ilya)'), 'Lodjay');
+  assert.equal(nom('Jean (A) Dupont (B)'), 'Jean Dupont', 'une partie hors parenthèses après un bloc reste, avec une seule espace');
+  assert.equal(nom('Lodjay'), 'Lodjay', 'sans parenthèses : tel quel');
+  assert.equal(nom('Lo  djay'), 'Lo djay', 'les espaces doubles se resserrent');
+  // imbriquées : retirées d'un bloc
+  assert.equal(nom('Lodjay (Lucien (de Lunastre))'), 'Lodjay');
+  assert.equal(nom('Lodjay (A (B) C) fin'), 'Lodjay fin');
+  // non fermée : tout ce qui suit est retiré (un surnom de serveur est tronqué à 32 caractères)
+  assert.equal(nom('Lodjay (Lucien de Lunastre'), 'Lodjay');
+  assert.equal(nom('Lodjay (A) (B'), 'Lodjay');
+  // fermante seule : du texte
+  assert.equal(nom('Lodjay :)'), 'Lodjay :)');
+  assert.equal(nom('Lodjay ) (A)'), 'Lodjay )');
+  // pleine chasse
+  assert.equal(nom('Lodjay （Lucien）'), 'Lodjay');
+  // d'autres parenthèses (crochets, accolades) ne sont pas la convention : gardées
+  assert.equal(nom('Lodjay [Lucien]'), 'Lodjay [Lucien]');
+  // rien hors des parenthèses : la source suivante
+  assert.equal(nom('(Lucien)'), 'Global');
+  assert.equal(nom('  (Lucien) (Ilya) '), 'Global');
+  assert.equal(nom('(Lucien)', { username: 'compte', global_name: '(Autre)' }), 'compte');
+  assert.equal(nom(null, { username: 'compte', global_name: 'Glo (perso)' }), 'Glo');
+  assert.equal(nom(null, { username: 'compte (x)', global_name: null }), 'compte');
+  // toutes les sources se vident : le nom brut (jamais un nom vide)
+  assert.equal(nom('(Lucien)', { username: '(a)', global_name: '(b)' }), '(Lucien)');
+  assert.equal(nom('  ( Lucien )  ', { username: '(a)', global_name: null }), '( Lucien )');
+  assert.equal(nomAffiche({ utilisateur: { username: '()', global_name: null } }), '()');
+  assert.throws(() => nomAffiche({ utilisateur: { username: '', global_name: null } }), /aucun nom/);
+  // la longueur est bornée après le retrait
+  assert.equal(nom(`${'x'.repeat(150)} (perso)`).length, 100);
+  assert.equal(pseudoSansPersonnages('Lodjay (Lucien)'), 'Lodjay');
+  assert.equal(pseudoSansPersonnages('(Lucien)'), '');
 });
 
 test('R310 (5) : le nom affiché est le surnom du serveur, sinon global_name, sinon le nom d’utilisateur', () => {
@@ -738,6 +783,33 @@ test('R314 : pas d’appel avant 5 minutes ; une session sans compte (`u` null),
   const b = mondeDuBot();
   assert.equal(typeof b.reverifier(b.cookie('joueur', { age: null }))?.then, 'function', 'un ancien cookie sans `v` est à revérifier');
   await new Promise((ok) => setImmediate(ok));
+});
+
+test('R317 (2), R314 : la revérification passe le profil relu au rappel `mettreAJour` ; membre lu sans compte, compte bot ou compte sans nom : le niveau seul, noté au journal quand le compte est illisible', async () => {
+  /** Une revérification où le bot rend `corps` (undefined : le membre simulé et son compte) ; rend le profil passé à `mettreAJour` et le journal. */
+  const relire = async (corps, utilisateur) => {
+    const m = mondeDuBot();
+    if (utilisateur) m.d.etat.utilisateur = utilisateur;
+    if (corps !== undefined) m.d.etat.bot.corps = corps;
+    const profils = [];
+    await m.reverifier(m.cookie('joueur', { age: 3600 }), { ...m.rappels, mettreAJour: (u, n, profil) => profils.push(profil) });
+    return { profils, journal: m.journal.join('\n') };
+  };
+  const lu = await relire(undefined, { ...UTILISATEUR_D_ESSAI, global_name: 'Pseudo (perso)', avatar: HASH2 });
+  assert.deepEqual(lu.profils, [{
+    nom_affichage: 'Pseudo', avatar_url: `https://cdn.discordapp.com/avatars/${IDENTIFIANT_D_ESSAI}/${HASH2}.png`, banniere_url: null, serveur_rejoint_le: '2024-03-05T10:20:30Z',
+  }]);
+  const membre = { ...MEMBRE_D_ESSAI, roles: [ROLE_JOUEUR] };
+  for (const [nom, corps, journale] of [
+    ['sans `user`', membre, false],
+    ['compte bot', { ...membre, user: { ...UTILISATEUR_D_ESSAI, bot: true } }, false],
+    ['compte sans nom', { ...membre, user: { id: IDENTIFIANT_D_ESSAI, username: '', global_name: null } }, true],
+  ]) {
+    const r = await relire(corps);
+    assert.deepEqual(r.profils, [null], `${nom} : le niveau seul`);
+    assert.equal(/profil lu par le bot illisible \(utilisateur u-1 : aucun nom à afficher\)/.test(r.journal), journale, `${nom} : journal`);
+    assert.ok(!r.journal.includes(IDENTIFIANT_D_ESSAI), `${nom} : jamais l’identifiant Discord au journal`);
+  }
 });
 
 test('R314, R312 : un compte effacé depuis (départ constaté sur un autre appareil) ramène la session de cet appareil à Observateur sans compte, même `exp`, sans appel à Discord ; un identifiant Discord invalide ne change rien', async () => {

@@ -38,7 +38,7 @@ function afficherLeMenu(choix) {
   if (choix.type === 'compte') {
     lien.className = 'site-compte__lien';
     lien.setAttribute('href', choix.href);
-    lien.title = 'Mon profil';
+    lien.title = `Mon profil : ${choix.nom}`;
     const rond = choix.avatar ? image(choix.avatar, 'site-compte__avatar') : document.createElement('span');
     if (!choix.avatar) { rond.className = 'site-compte__avatar site-compte__avatar--vide'; rond.textContent = [...choix.nom][0] ?? ''; }
     rond.setAttribute('width', '32');
@@ -50,7 +50,14 @@ function afficherLeMenu(choix) {
   } else {
     lien.className = 'site-compte__connexion';
     lien.setAttribute('href', choix.href);
-    lien.textContent = 'Connexion via Discord';
+    const icone = document.createElement('span');
+    icone.className = 'site-compte__icone';
+    icone.setAttribute('aria-hidden', 'true');
+    const libelle = document.createElement('span');
+    libelle.className = 'site-compte__libelle';
+    libelle.textContent = 'Connexion via Discord';
+    lien.title = 'Connexion via Discord';
+    lien.append(icone, libelle);
   }
   zone.append(lien);
   zone.hidden = false;

@@ -320,6 +320,36 @@ test('/profil/ et /connexion/ non-membre : le message (celui de lib/compte.mjs),
   assert.equal(autre.document.querySelector('[data-profil-non-membre]').hidden, true, 'caché pour qui n’est pas connecté');
 });
 
+test('R317 (3) : en menu, le nom et le libellé restent dans la page (nom accessible), l’icône Discord est décorative', async () => {
+  const connecteMenu = await ouvrir({ moi: [200, connecte({ nom: 'Lodjay' })] });
+  const lien = connecteMenu.zone.querySelector('a');
+  assert.equal(lien.querySelector('.site-compte__nom').textContent, 'Lodjay', 'le nom est dans le lien, même quand il est masqué à l’œil');
+  assert.ok(lien.title.includes('Lodjay'), 'et dans l’infobulle');
+  const non = await ouvrir({ moi: [200, deconnecte] });
+  const bouton = non.zone.querySelector('a');
+  assert.ok(bouton.querySelector('.site-compte__libelle').textContent.trim(), 'le libellé est dans le lien');
+  assert.equal(bouton.querySelector('.site-compte__icone').getAttribute('aria-hidden'), 'true');
+  assert.ok(bouton.title.trim());
+});
+
+test('R317 (3) : le compte sort dans la marge sans élargir l’en-tête, et sur écran étroit le nom et le libellé sont masqués à l’œil seulement (jamais display:none, qui les ôterait aux lecteurs d’écran)', () => {
+  const css = lire('../src/styles/global/compte.css');
+  const etroit = /@media \(max-width: (\d+(?:\.\d+)?)rem\) \{\s*\.site-compte__nom, \.site-compte__libelle \{([^}]*)\}/.exec(css);
+  assert.ok(etroit, 'une règle d’écran étroit pour le nom et le libellé');
+  assert.ok(Number(etroit[1]) >= 60, 'au moins la largeur où le menu passe sous le logo');
+  assert.match(etroit[2], /clip-path|clip:/);
+  assert.doesNotMatch(etroit[2], /display:\s*none|visibility:\s*hidden/);
+  assert.doesNotMatch(css, /\.site-compte__(nom|libelle)[^{}]*\{[^}]*display:\s*none/);
+  const coque = lire('../src/styles/global/site-shell.css');
+  assert.doesNotMatch(coque, /\.site-header__inner \{[^}]*max-width/, 'l’en-tête garde la largeur du contenu : le logo reste aligné sur le texte');
+  assert.match(coque, /\.site-header__inner \{ position: relative;/, 'le compte se place par rapport à l’en-tête');
+  assert.match(css, /\.site-compte \{ position: absolute; left: 100%;/, 'le compte sort de la largeur, dans la marge à droite');
+  const enFlux = /@media \(max-width: (\d+(?:\.\d+)?)rem\) \{\s*\.site-compte \{ position: static;/.exec(css);
+  assert.ok(enFlux, 'sans marge, le compte reprend sa place dans la ligne');
+  assert.ok(Number(enFlux[1]) <= Number(etroit[1]), 'la marge loge l’avatar avant le nom');
+  assert.doesNotMatch(css, /\.site-compte \{[^}]*max-width/, 'la zone du compte ne se resserre pas : elle ne pousse pas le menu');
+});
+
 // --- Câblage ---------------------------------------------------------------------------------------------------------------------------------
 
 test('un seul script de page importe lib/compte.mjs ; il n’importe que lui ; le composant est absent de la version portable et de la maintenance', () => {
