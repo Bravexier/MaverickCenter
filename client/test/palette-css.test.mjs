@@ -4,6 +4,7 @@
 // cadrage « Module JS → classe », « Règle de calcul », « Garder séparées ») : une classe par couleur des règles, sa valeur lue dans le module de sa
 // règle, lisible (« Privilégé la lisibilité. ») ; les combinaisons des potions calculées depuis leur classe de base ; le module n'écrit aucune couleur.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { lireSansCrlf } from './aide-fins-de-ligne.mjs';
 import { test } from 'node:test';
@@ -1840,7 +1841,7 @@ test('les restes : le bandeau du site de dev, l’échelle des relations et l’
       .filter(([, , corps]) => /background: var\(--good\)/.test(corps)).map(([, s, corps]) => ({ regle: `${f} ${s.trim().replace(/\s+/g, ' ')}`, corps })));
   assert.deepEqual(surLeVert.map((r) => r.regle), [
     "src/styles/edition/edition.css .ed-confirmer", "src/styles/edition/edition.css .ed-dialogue button[type='submit']",
-    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', 'src/styles/global/compte.css .site-compte__connexion, .bouton-connexion', 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
   ]);
   for (const { regle, corps } of surLeVert) assert.match(corps, /color: var\(--texte-sur-good\);/, regle);
   // le compteur des onglets de la fiche dans ses autres états : sur le rouge du site (règles à revoir), --texte-sur-danger (réponse du propriétaire du
@@ -1918,6 +1919,39 @@ test('lisibilité des restes dans les deux thèmes : le bandeau du site de dev, 
   }
   assert.equal(valeur(clair, '--texte-sur-danger'), valeur(clair, '--texte-sur-fonce'));
   assert.ok(contraste(valeur(clair, '--texte-sur-danger'), valeur(clair, '--danger')) > 7.6);
+});
+
+// Demande du propriétaire du 2026-11-27 : « Le bouton "Connexion avec Discord" devrait reprendre exactement le logo et la couleur de discord officiel ».
+// La couleur (« Blurple », #5865F2) et le symbole (fichier « Symbol.svg », viewBox 0 0 59 44) sont ceux de la page de marque https://discord.com/branding.
+test('le bouton « Connexion via Discord » : le Blurple officiel (#5865f2), jeton du thème, le même dans les deux thèmes ; texte et symbole blancs (4,5:1) ; le tracé officiel du symbole, sans retouche, dans le menu et sur les pages', () => {
+  const blocs = blocsDuTheme();
+  const clair = blocs.find((b) => b.sel === ':root');
+  const sombres = blocs.filter((b) => b.sel !== ':root' && b.valeur('--bg'));
+  assert.equal(sombres.length, 2);
+  assert.equal(clair.valeur('--discord'), '#5865f2');
+  for (const b of sombres) {
+    assert.equal(b.valeur('--discord'), undefined, `${b.sel} : la couleur de la marque ne change pas en sombre`);
+    assert.equal(b.valeur('--texte-sur-fonce'), undefined, `${b.sel} : son texte non plus`);
+  }
+  assert.equal(clair.valeur('--texte-sur-fonce'), '#fff');
+  assert.equal(contraste('#ffffff', clair.valeur('--discord')).toFixed(2), '4.61');
+  assert.ok(contraste('#ffffff', clair.valeur('--discord')) >= CONTRASTE_MINIMAL);
+  const css = lire('src/styles/global/compte.css');
+  const bouton = regleDe(css, '.site-compte__connexion, .bouton-connexion');
+  for (const attendu of ['background: var(--discord);', 'border: 1px solid var(--discord);', 'color: var(--texte-sur-fonce);']) assert.ok(bouton.includes(attendu), `« ${attendu} » dans « ${bouton} »`);
+  assert.doesNotMatch(bouton, /--good/, 'plus le vert du site');
+  // le symbole : un masque, donc de la couleur du texte ; le même dessin dans le menu (un élément) et sur /connexion/ et /profil/ (un pseudo-élément)
+  const symbole = regleDe(css, '.site-compte__icone, .bouton-connexion::before');
+  for (const attendu of ['background: currentColor;', 'mask: var(--dessin-discord) center / contain no-repeat;']) assert.ok(symbole.includes(attendu), `« ${attendu} » dans « ${symbole} »`);
+  assert.ok(regleDe(css, '.bouton-connexion::before').includes('content: "";'));
+  const dessins = [...css.matchAll(/\n([^\n{}]+) \{ --dessin-discord: url\("data:image\/svg\+xml,%3Csvg xmlns='http:\/\/www\.w3\.org\/2000\/svg' viewBox='([^']+)'%3E%3Cpath d='([^']+)'\/%3E%3C\/svg%3E"\); \}/g)];
+  assert.equal(dessins.length, 1, 'un seul dessin');
+  const [, selecteur, viewBox, trace] = dessins[0];
+  assert.equal(selecteur, '.site-compte, .bouton-connexion');
+  assert.equal(viewBox, '0 0 59 44');
+  // l'empreinte du tracé du fichier officiel (attribut `d` de son seul <path>), relevée au téléchargement : un tracé retouché ou repris d'ailleurs ne passe pas
+  assert.equal(createHash('sha256').update(trace).digest('hex'), '0cd297c117c22f7245e4b62e7c48b72e1753b6f5845e356846f47b29c968c831');
+  assert.doesNotMatch(css, /simple-icons/);
 });
 
 // Lot des restes, partie B (2026-10-23) : les teintes des genres de sort et des types de don, couleurs du site (réponse du propriétaire : « Garder les
