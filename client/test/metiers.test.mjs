@@ -2,6 +2,7 @@
 //   node --test test/metiers.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { installerLesAdresses } from '../src/lib/adresses-renommees.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { adresseDePage, ancreDeMetier, chargerMetiers, cheminDePage, estUnMetier, PAGE_DES_REGLES, pageSansAdresse } from '../src/lib/metiers.mjs';
@@ -25,9 +26,12 @@ test('un métier est une page du type metiers, sauf la page des règles', () => 
 });
 
 test('un lien vers un métier mène à sa ligne du tableau ; les autres pages gardent leur adresse', () => {
+  // sans segment renommé (rien n'est installé ici) ; l'ancre suit le nom d'un métier renommé (R316, décision 4 : test/adresses-renommees.test.mjs)
   assert.equal(ancreDeMetier('metiers/ange-gardien'), 'metier-ange-gardien');
   assert.deepEqual(adresseDePage('metiers/forgeron'), { chemin: 'metiers/', ancre: 'metier-forgeron' });
   assert.equal(cheminDePage('metiers/forgeron'), 'metiers/#metier-forgeron');
+  assert.equal(cheminDePage('metiers/forgeron', null), 'metiers/#metier-forgeron');
+  assert.equal(cheminDePage('metiers/forgeron', 'ferronnier'), 'metiers/#metier-ferronnier', 'R316');
   assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `${PAGE_DES_REGLES}/`, ancre: '' });
   assert.equal(cheminDePage('races/elfe'), 'races/elfe/');
   // les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont servies par les pages de l'équipement (2026-10-29) :
@@ -47,6 +51,13 @@ test('les [[liens]] vers un métier mènent à sa ligne, préfixe de déploiemen
   assert.equal(entryUrl('/', index.byId.get('metiers/mineur')), '/metiers/#metier-mineur');
   assert.equal(entryUrl('/MaverickCenter/', index.byId.get('metiers/mineur')), '/MaverickCenter/metiers/#metier-mineur');
   assert.equal(entryUrl('/', index.byId.get(PAGE_DES_REGLES)), `/${PAGE_DES_REGLES}/`);
+  // un métier renommé (R316) : le lien suit l'état installé (le build, le navigateur), vers sa nouvelle ancre
+  installerLesAdresses([['metiers/mineur', 'houilleur']]);
+  try {
+    assert.equal(entryUrl('/', index.byId.get('metiers/mineur')), '/metiers/#metier-houilleur');
+  } finally {
+    installerLesAdresses([]);
+  }
 });
 
 test('les métiers sont exactement les lignes de la table metier ; la page des règles existe et n’en est pas une', () => {

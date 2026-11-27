@@ -222,7 +222,7 @@ export function sortsParSpecialisation(sorts, specialisations) {
 
 /**
  * Ancre figée d'une spécialisation magique : le segment de son identifiant qui suit `#specialisation:` (`magies/magie-du-feu#specialisation:volcan` →
- * `volcan`), jamais `nom` ni `nom_cle`, que le service recalcule au renommage (R236 (1) ; « Identifiants figés »). Le titre (`#specialisation-<ancre>`), les
+ * `volcan`), jamais `nom` ni `nom_cle`, que le service recalcule au renommage (R236 (1) ; « Identifiants figés, adresses qui suivent »). Le titre (`#specialisation-<ancre>`), les
  * tableaux (`#npm-<ancre>-N`) et la navigation de la page la tirent tous d'ici.
  * @param {string} id  `magie_specialisation.id`
  * @returns {string}

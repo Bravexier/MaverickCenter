@@ -24,6 +24,8 @@
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
+//   GET  /api/edition/page-de-l-adresse/?adresse=<chemin>   { page } : l'id de la page vivante à cette adresse (relative à la racine du site, sans « / » initiale :
+//                                   « races/elfe/ »), sinon celle dont c'est une ancienne adresse (R316), sinon null — la page 404 du site de dev, avant la refabrication
 //   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés (/regles/glossaire/ en mode modification) : id entier, clé, synonymes, catégories et
 //                                   clés quittées (R232, R233), leurs pages, leur lien, leur couleur et sa classe, leur verrou, leurs mentions (R196) et le
 //                                   refus prévu de leur suppression forcée (`refus_du_forcage`, R223) ; les catégories des mots-clés (`categories`) ; la
@@ -148,6 +150,7 @@ import {
   ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe, refusDesForcages,
 } from './edition.mjs';
 import { ligneSansImage } from '../src/lib/edition-modele.mjs';
+import { indexDesAdresses, pageDeLAdresse, pageDeLAncienneAdresse } from '../src/lib/adresses-db.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './edition-chronologie.mjs';
@@ -288,7 +291,7 @@ export function traiter(requete, service) {
   if (ressource === 'deconnexion' && brut === undefined) return traiterDeconnexion(requete, permis);
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
-  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture);
+  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture, params);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
   if (ressource === 'debug') return traiterDebug(requete, service, brut, reste, permis, params);
@@ -600,13 +603,22 @@ function traiterLAtelier(service, reste, permis) {
   });
 }
 
+/** Une adresse demandée à la page 404 : un chemin relatif à la racine du site (« races/elfe/ »), de 300 caractères au plus, sans requête, ancre, « \ », caractère de commande ni « / » initiale. */
+const ADRESSE_DEMANDEE = /^[^/?#\\\u0000-\u001f\u007f][^?#\\\u0000-\u001f\u007f]{0,299}$/;
+
+/** L'id de la page vivante à l'adresse demandée, sinon de celle dont c'est une ancienne adresse (R316), sinon null (aussi pour une adresse absente ou mal formée). */
+function pageDeLAdresseDemandee(db, adresse) {
+  if (typeof adresse !== 'string' || !ADRESSE_DEMANDEE.test(adresse)) return null;
+  return pageDeLAdresse(indexDesAdresses(db), `/${adresse}`) ?? pageDeLAncienneAdresse(db, adresse);
+}
+
 /** Les routes /api/edition/… (site de dev seulement). */
-function traiterEdition(requete, service, action, reste, permis, lecture = () => true) {
+function traiterEdition(requete, service, action, reste, permis, lecture = () => true, params = new URLSearchParams()) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
   if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
   if (action === 'lots') return traiterLots(requete, service, reste, permis);
   if (action === 'atelier') return traiterLAtelier(service, reste, permis);
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'page-de-l-adresse', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }
   const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].includes(action) ? permis('POST') : permis('GET');
@@ -620,6 +632,7 @@ function traiterEdition(requete, service, action, reste, permis, lecture = () =>
   if (action === 'mots-cles') return json(200, vocabulaireEtFeuille(db, { refusDesForcages }));
   if (action === 'chronologie') return json(200, chronologieVivante(db));
   if (action === 'plan') return json(200, planVivant(db));
+  if (action === 'page-de-l-adresse') return json(200, { page: pageDeLAdresseDemandee(db, params.get('adresse')) });
   if (action === 'journal') {
     const jour = new Date().toISOString().slice(0, 10);
     return json(200, journalExporte(db), { 'Content-Disposition': `attachment; filename="journal-edition-${jour}.json"` });

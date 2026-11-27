@@ -72,6 +72,7 @@ import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuDetachement, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
+import { outilsDesAdresses, refusDeLAdresse } from './edition-adresses.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
@@ -89,7 +90,7 @@ import {
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { fauteDeLUrl, lienGarde, motsClesDeLAdresse } from '../src/lib/mots-cles-liens.mjs';
 import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
-import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adresseDuSort, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
+import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSortEnBase, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
 import { baliseDuLien, convertirLesLiens, liensDuTexte, motCleDuLien, tableDeConversion } from '../src/lib/liens-en-mots-cles.mjs';
@@ -141,8 +142,11 @@ const refus = (message, details) => new ErreurEdition(400, message, details);
 /** Les catégories, les synonymes et la clé recalculée des mots-clés (décisions R232, R233 : serveur/edition-mots-cles.mjs). */
 const MOTS_CLES = outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie });
 
+/** L'adresse d'une page suit son titre en fin de lot (décision R316 : serveur/edition-adresses.mjs) ; l'ancrage l'appelle (suivreLesElements). */
+const ADRESSES = outilsDesAdresses({ ErreurEdition });
+
 /** Créer un mot-clé ancré, poser une ancre, aligner un mot-clé sur son élément (décision R309 : serveur/edition-ancrage.mjs) ; seuls les lots s'en servent. */
-const ANCRAGE = outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle });
+const ANCRAGE = outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESSES });
 
 /** Les contraintes de la base qui refusent un objet par magie du Potentiel Illimité (décision R160, migration 0078) : leur refus se dit en clair. */
 const CONTRAINTES_R160 = new Set(OBJETS_PAR_MAGIE.map(contrainteR160));
@@ -225,10 +229,12 @@ export function supprimerPage(ctx, pageId, options = {}) {
     if (raisons.length) throw new ErreurEdition(409, `${pageId} ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: pageId, raisons });
   }
   const motCle = options.motCle !== undefined ? options.motCle : ANCRAGE.motCleARetirer(ctx, { table: 'page', id: pageId });
+  const adresse = adresseDeLaPageEnBase(db, pageId); // lue avant que la page parte (son segment renommé, R316)
   const sources = db.prepare('SELECT source_id FROM page_source WHERE page_id = ?').all(pageId).map((s) => s.source_id);
   for (const table of ['alias', 'page_tag', 'page_source']) {
     for (const l of db.prepare(`SELECT * FROM "${table}" WHERE page_id = ?`).all(pageId)) w.supprimer(table, cleDe(db, table, l));
   }
+  ADRESSES.retirerLesAnciennes(ctx, pageId); // ses anciennes adresses (R316) : la cascade du schéma ne noterait rien au journal
   for (const l of db.prepare('SELECT * FROM page_entite WHERE page_id = ?').all(pageId)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
   // un bloc de description de la chronologie qui la citait garde son texte et perd son lien (sa légende)
   for (const b of db.prepare('SELECT evenement_id, rang FROM evenement_extrait WHERE page_id = ?').all(pageId)) {
@@ -237,7 +243,7 @@ export function supprimerPage(ctx, pageId, options = {}) {
   w.supprimer('page', { id: pageId });
   // le dictionnaire des sources n'a pas d'orphelin (comme tools/db/pages_md.py sync)
   for (const id of sources) if (!db.prepare('SELECT 1 FROM page_source WHERE source_id = ?').get(id)) w.supprimer('source', { id });
-  if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse: adresseDeLaPage(pageId) });
+  if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse });
 }
 
 /**
@@ -387,7 +393,7 @@ function texteSansLiens(ctx, champ, colonne, valeur, avant, quoi, { exemple = fa
     if (lien.sorte === 'markdown') return lien.cible;
     index ??= indexDesLiens(db);
     const r = resoudreLeLien(index, lien.cible);
-    return r?.entry && r.entry.statut !== 'example' ? adresseDeLaPage(r.entry.id) : null;
+    return r?.entry && r.entry.statut !== 'example' ? adresseDeLaPageEnBase(db, r.entry.id) : null;
   };
   const refuses = [];
   const nonSimples = [];
@@ -627,15 +633,23 @@ export function refusDesForcages(db, motsCles) {
 /**
  * Une page neuve (type, slug, titre…) : refusée si l'id existe déjà. Sa provenance est sa première (et seule) source, comme pour les pages importées
  * (`sources:` du `.md`) : la source « Site de dev › édition du AAAA-MM-JJ » (table source, id comme tools/db/maverick.py#decouper_source), partagée
- * par les pages créées le même jour.
+ * par les pages créées le même jour. Son adresse (tirée de l'id) : refusée si une autre page vivante la tient (une page renommée, R316 : 409 qui la nomme) ;
+ * une ancienne adresse, elle la reprend (sa ligne de page_ancienne_adresse est retirée, décision 3 de docs/chantier-adresses.md). `index` :
+ * indexDesAdresses(db, { exemples: true }) que l'appelant a déjà lu pour choisir l'identifiant.
  */
-function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, motsCles = [] }) {
+function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, motsCles = [], index }) {
   const { db, w, instant } = ctx;
   if (!slug) throw refus(`« ${titre} » : le nom doit contenir au moins une lettre ou un chiffre`);
   const origine = FAMILLE_DES_PAGES_DU_SITE[type];
   if (!origine) throw refus(`pages ${type} : pas de création depuis le site`);
   const id = `${type}/${slug}`;
   if (lireLigne(db, 'page', { id })) throw new ErreurEdition(409, `La page ${id} existe déjà : choisissez un autre nom.`);
+  const adresse = adresseDeLaPage(id, null); // une page neuve n'a pas de segment renommé
+  const tenue = ADRESSES.adressePrise(db, adresse, { index });
+  const autre = tenue ? lireLigne(db, 'page', { id: tenue }) : null; // une route ou un nom réservé : la création les évite déjà (edition-plan.mjs#idPris)
+  if (autre) {
+    throw new ErreurEdition(409, `L’adresse ${adresse} est déjà celle de la page « ${autre.titre} » (${autre.id}) : choisissez un autre nom.`, { page: autre.id });
+  }
   const texte = provenance(instant);
   w.inserer('page', {
     id, type, slug, titre, titre_cle: normalize(titre), resume, donnees: donnees === null ? null : jsonCommePython(donnees), corps_md: corps, statut: 'draft',
@@ -647,6 +661,7 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
     w.inserer('source', { id: source, nature: 'libelle', texte, url: null, genre: null, google_id: null, fichier: null, onglets: null });
   }
   w.inserer('page_source', { page_id: id, ordre: 0, source_id: source });
+  ADRESSES.libererLAdresse(ctx, adresse);
   ANCRAGE.ancrerLaPage(ctx, { id, type, titre }); // son mot-clé (R309) ; null : le nom attend, la page est créée quand même
   return id;
 }
@@ -1364,10 +1379,14 @@ export function rangLibre(db, table, colonneParent, parentId) {
   return plus + 1;
 }
 
-/** Id de fiche de don pris : page ou don existant, clé (slug) d'une autre page dans cle_page, ou id employé par l'historique ou le journal. */
-const idDeDonPris = (db, id) => Boolean(lireLigne(db, 'page', { id }) || lireLigne(db, 'capacite', { id })
+/**
+ * Id de fiche de don pris : page ou don existant, clé (slug) d'une autre page dans cle_page, id employé par l'historique ou le journal, ou id dont l'adresse
+ * est celle d'une page vivante (une page renommée, R316). `index` : indexDesAdresses(db, { exemples: true }), lu une fois pour tous les essais d'une création.
+ */
+const idDeDonPris = (db, id, index) => Boolean(lireLigne(db, 'page', { id }) || lireLigne(db, 'capacite', { id })
   || db.prepare('SELECT 1 FROM cle_page WHERE cle = ? AND page_id <> ?').get(id.slice(id.indexOf('/') + 1), id)
-  || idDejaEmploye(db, ['page', 'capacite'], id));
+  || idDejaEmploye(db, ['page', 'capacite'], id)
+  || ADRESSES.adressePrise(db, adresseDeLaPage(id, null), { index }));
 /** Clé de titre prise : un titre, un slug ou un alias de cle_page (les [[liens]] deviendraient ambigus). */
 const titrePris = (db, cle) => Boolean(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(cle));
 /** Id de spécialité pris : ligne existante (une spécialité renommée garde son id), ou employé par l'historique ou le journal (supprimée). */
@@ -1425,7 +1444,8 @@ function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang,
   const colonnes = colonnesDuTypeDeDon(typeBrut);
   if (!colonnes.type) throw refus(`Type « ${typeBrut} » : le premier mot doit être Passif, Actif, Action, Réaction ou Variable`);
   const variable = magieDuDonVariable(db, colonnes.type, magie);
-  const id = idDeDon({ slugClasse: slugDeClasse(classe.id), nom, niveau, rang }, (x) => idDeDonPris(db, x));
+  const index = indexDesAdresses(db, { exemples: true });
+  const id = idDeDon({ slugClasse: slugDeClasse(classe.id), nom, niveau, rang }, (x) => idDeDonPris(db, x, index));
   const titre = titreDeDon({ nom, classeNom: classe.nom, niveau }, (cle) => titrePris(db, cle));
   if (!titre) throw new ErreurEdition(409, `Un don « ${nom} » existe déjà dans cette classe, aussi au niveau ${niveau} : choisissez un autre nom.`);
   const don = {
@@ -1437,6 +1457,7 @@ function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang,
     type: 'capacites', slug: id.slice(id.indexOf('/') + 1), titre, resume: resumeDeDon(don), corps: corpsDeDon(don),
     donnees: donneesDeDon(don, { specialites: L.specialites, donsDeLaClasse: [...L.dons, don] }),
     motsCles: motsClesDeDon(),
+    index,
   });
   w.inserer('capacite', don);
   w.inserer('page_entite', { entite_table: 'capacite', entite_id: id, page_id: id, principale: 1, origine: 'classes' });
@@ -1822,7 +1843,8 @@ const PAGE = {
     return { corps_md: ligne.corps_md.endsWith('\n') ? ligne.corps_md : `${ligne.corps_md}\n` };
   },
   deriver(ctx, avant, apres) {
-    // un titre changé : l'ancien devient un alias, pour que les [[liens]] qui l'écrivent mènent toujours à la page (son adresse ne change pas)
+    // un titre changé : l'ancien devient un alias, pour que les [[liens]] qui l'écrivent mènent toujours à la page (son adresse suit le titre en fin de lot,
+    // décision R316 : serveur/edition-adresses.mjs, et l'ancienne y mène encore)
     if (normalize(avant.titre) === normalize(apres.titre) || normalize(avant.titre) === apres.slug) return;
     const { db, w } = ctx;
     if (db.prepare('SELECT 1 FROM alias WHERE page_id = ? AND (texte = ? OR cle = ?)').get(apres.id, avant.titre, normalize(avant.titre))) return;
@@ -1876,7 +1898,7 @@ const CONSOMMABLES = domainesDesConsommables({ refus, ErreurEdition, synchronise
  * Le plan des Règles (menus des onglets, pages des Règles créées et supprimées) et l'ordre de la liste des races (serveur/edition-plan.mjs) : le domaine
  * de regles_onglet_entree, la création et la suppression d'une page des Règles (ENTITES.page_des_regles, sur la table page), l'opération `ordonner`.
  */
-const PLAN = domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, A_COMPLETER });
+const PLAN = domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise: ADRESSES.adressePrise, A_COMPLETER });
 
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
@@ -3652,9 +3674,10 @@ const OPERATIONS_DU_LOT = {
   ecrire_modifier(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
-    // le verrou d'un mot-clé ancré d'abord (R309) : son refus ne cite aucun numéro, une session Créateur ne l’ouvre pas, contrairement à celui d'une colonne tenue
+    // le verrou d'un mot-clé ancré d'abord (R309), puis l'adresse d'une page (R316) : leur refus ne cite aucun numéro, une session Créateur ne l’ouvre pas,
+    // contrairement à celui d'une colonne tenue
     const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, Object.keys(op.valeurs).filter((c) => (op.valeurs[c] ?? null) !== (avant[c] ?? null))) : null)
-      ?? refusDuDetachement(ctx, op.table, avant, op.valeurs);
+      ?? refusDuDetachement(ctx, op.table, avant, op.valeurs) ?? refusDeLAdresse(ctx, op.table, op.valeurs);
     if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
@@ -3662,6 +3685,8 @@ const OPERATIONS_DU_LOT = {
     return `${op.table} ${Object.keys(op.valeurs).join(', ')}`;
   },
   ecrire_inserer(ctx, op) {
+    const adresse = refusDeLAdresse(ctx, op.table, op.valeurs); // l'ancienne adresse d'une page (R316), avant le gel : une session Créateur ne l’ouvre pas
+    if (adresse) throw new ErreurEdition(409, adresse);
     if (TABLES_FIGEES[op.table] && ctx.gel !== false) throw new ErreurEdition(409, `${op.table} : ${TABLES_FIGEES[op.table]}.`);
     // `restaurer` : l'annulation d'un lot remet une ligne qu'il a retirée, à l'identique (ses colonnes tenues par le service comprises : ce n'est pas une
     // écriture de `verrou` ou de `cle`, mais le retour de la ligne telle que le service l'avait)
@@ -3673,14 +3698,15 @@ const OPERATIONS_DU_LOT = {
   ecrire_supprimer(ctx, op) {
     const avant = lireLigne(ctx.db, op.table, op.cle);
     if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
-    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null) ?? refusDuDetachement(ctx, op.table, avant);
+    const ferme = (op.table === 'mot_cle' ? ANCRAGE.refusDuVerrou(ctx, avant.id, ['suppression']) : null) ?? refusDuDetachement(ctx, op.table, avant)
+      ?? refusDeLAdresse(ctx, op.table);
     if (ferme) throw new ErreurEdition(409, ferme);
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
     // le mot-clé d'un sort (R309) : même règle qu'une page, contrôlé avant, retiré après
     const motCle = op.table === 'sort' ? ANCRAGE.motCleARetirer(ctx, { table: 'sort', id: op.cle.id }) : null;
     ctx.w.supprimer(op.table, op.cle);
-    if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse: adresseDuSort(op.cle.id) });
+    if (motCle !== null) ANCRAGE.retirerLeMotCle(ctx, motCle, { adresse: adresseDuSortEnBase(ctx.db, op.cle.id) });
     return `${op.table} : une ligne retirée`;
   },
   /**

@@ -198,12 +198,15 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null, nat
   const interdire = (table) => {
     if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal ou des fiches, jamais modifiée par l'édition`);
   };
-  const lignes = []; // { table, cle, operation, colonnes } : ce que le lot a touché, dans l'ordre ; `colonnes` : celles qu'un 'modifier' a changées (null sinon)
+  // { table, cle, operation, colonnes, avant } : ce que le lot a touché, dans l'ordre ; `colonnes` : celles qu'un 'modifier' a changées, `avant` : leurs valeurs
+  // d'avant (le titre quitté d'une page renommée : serveur/edition-adresses.mjs) ; null pour une insertion ou une suppression
+  const lignes = [];
   const note = (table, cle, operation, avant, apres, apercu = null) => {
     rang += 1;
     noter.run(id, rang, table, JSON.stringify(cle), operation, avant === null ? null : JSON.stringify(avant), apres === null ? null : JSON.stringify(apres),
       apercu === null ? null : JSON.stringify(apercu));
-    lignes.push({ table, cle, operation, colonnes: operation === 'modifier' ? Object.keys(apres) : null });
+    const modifie = operation === 'modifier';
+    lignes.push({ table, cle, operation, colonnes: modifie ? Object.keys(apres) : null, avant: modifie ? avant : null });
   };
   return {
     lire: (table, cle) => lireLigne(db, table, cle),
@@ -1059,8 +1062,13 @@ export function rompuesDuLot(db, entrees, { horsControle = [], tables: autres = 
 
 /** Les tables du vocabulaire : les pages et le Glossaire les lisent en direct (GET edition/listes/, GET edition/mots-cles/), la surcouche des pages ne les rejoue pas. */
 const TABLES_DU_VOCABULAIRE = new Set(['mot_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle', 'categorie_mot_cle']);
-/** Les tables dont l'ancrage (R309, migration 0131) pose `mot_cle_id` : une page construite ne montre pas cette colonne. */
-const TABLES_ANCREES = new Set(['page', 'sort', 'type_sort']);
+/** Les anciennes adresses des pages renommées (R316, migration 0133) : la page 404 les lit au build, aucune page ne les montre. */
+const TABLES_DES_ADRESSES = new Set(['page_ancienne_adresse']);
+/**
+ * Les colonnes qu'une page construite ne montre pas, par table : `mot_cle_id`, que pose l'ancrage (R309, migration 0131), et `slug_adresse`, le segment de
+ * l'adresse d'une page renommée (R316, migration 0133 : la page se sert à sa nouvelle adresse après la refabrication).
+ */
+const COLONNES_SANS_PAGE = Object.freeze({ page: new Set(['mot_cle_id', 'slug_adresse']), sort: new Set(['mot_cle_id']), type_sort: new Set(['mot_cle_id']) });
 
 /**
  * L'état net des lignes que le journal a en attente : une entrée par ligne (table, clé), avec la ligne telle qu'elle est maintenant dans la base
@@ -1070,8 +1078,10 @@ const TABLES_ANCREES = new Set(['page', 'sort', 'type_sort']);
  * d'un lot gardé où le site ne gagne que sur les passages en conflit — : la page ne peut pas montrer son nouveau texte avant la prochaine livraison).
  * Les lignes d'un lot gardé (en conflit, la valeur du site en place : rejouer, `garder`) y sont, comme celles d'un lot en attente.
  * @param {{ tables?: string[], pourLesPages?: boolean }} [filtre]  `pourLesPages` : ce que la surcouche des pages a à réécrire (GET /api/edition/en-attente/), sans les
- *   lignes que les pages lisent en direct (TABLES_DU_VOCABULAIRE : GET edition/listes/ et edition/mots-cles/) ni celles qui ne changent que `mot_cle_id` (l'ancrage R309 :
- *   page, sort, type_sort) ; une insertion, une suppression, un conflit à reprendre ou une autre colonne sur la même ligne la garde. Le tri se fait avant lireLigne.
+ *   lignes que les pages lisent en direct (TABLES_DU_VOCABULAIRE : GET edition/listes/ et edition/mots-cles/), ni les anciennes adresses (TABLES_DES_ADRESSES,
+ *   R316), ni celles qui ne changent que des colonnes qu'aucune page ne montre (COLONNES_SANS_PAGE : `mot_cle_id` de l'ancrage R309 sur page, sort, type_sort ;
+ *   `slug_adresse` d'une page renommée, R316) ; une insertion, une suppression, un conflit à reprendre ou une autre colonne sur la même ligne la garde. Le tri se
+ *   fait avant lireLigne.
  */
 export function lignesEnAttente(db, { tables, pourLesPages = false } = {}) {
   const vues = new Map();
@@ -1084,11 +1094,13 @@ export function lignesEnAttente(db, { tables, pourLesPages = false } = {}) {
     .all(MARQUE_DE_REPRISE);
   for (const m of toutes) {
     if (tables && !tables.includes(m.table_nom)) continue;
-    if (pourLesPages && TABLES_DU_VOCABULAIRE.has(m.table_nom)) continue;
+    if (pourLesPages && (TABLES_DU_VOCABULAIRE.has(m.table_nom) || TABLES_DES_ADRESSES.has(m.table_nom))) continue;
     const k = `${m.table_nom}\u0000${m.cle}`;
-    if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer', seulementMotCle: true });
+    if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer', sansPage: true });
     const apres = m.apres ? JSON.parse(m.apres) : null;
-    if (!(m.operation === 'modifier' && m.etat === 'en_attente' && apres && Object.keys(apres).join() === 'mot_cle_id')) vues.get(k).seulementMotCle = false;
+    const cachees = COLONNES_SANS_PAGE[m.table_nom];
+    const ecrites = apres ? Object.keys(apres) : [];
+    if (!(m.operation === 'modifier' && m.etat === 'en_attente' && cachees && ecrites.length && ecrites.every((c) => cachees.has(c)))) vues.get(k).sansPage = false;
     if (m.table_nom === 'page' && apres && 'corps_md' in apres) {
       // un lot gardé : l'aperçu ne vaut que si le rejeu a écrit le corps du site tel quel (pas la fusion où le site gagne sur les passages en conflit)
       const reprise = m.etat === 'conflit' ? lireLaTrace(m.detail).reprise : null;
@@ -1096,7 +1108,7 @@ export function lignesEnAttente(db, { tables, pourLesPages = false } = {}) {
       vues.get(k).apercu = m.apercu === null || perime ? null : JSON.parse(m.apercu);
     }
   }
-  const aEnvoyer = [...vues.values()].filter((v) => !(pourLesPages && v.seulementMotCle && TABLES_ANCREES.has(v.table))).map(({ seulementMotCle, ...v }) => v);
+  const aEnvoyer = [...vues.values()].filter((v) => !(pourLesPages && v.sansPage)).map(({ sansPage, ...v }) => v);
   return aEnvoyer.map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
 }
 

@@ -13,6 +13,7 @@ import css from '../../styles/edition/edition.css?raw';
 import { annonceDesFiches, cleDeLigne, lireAttributEd, optionsDuChoix } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { rejouerLesLignes } from '../../lib/edition-rejeu.mjs';
+import { installerLesAdressesDeLaPage } from '../../lib/adresses-renommees.mjs';
 import { EXTENSIONS } from './extensions.mjs';
 import { couleurDuCercle, decocherLesAutres, optionsDeCouleur, valeurDeCouleur } from '../../lib/mots-cles-edition.mjs';
 import { glossaireVivant } from './mots-cles-vivants.mjs';
@@ -31,6 +32,8 @@ class ErreurService extends Error {
 
 /** Met en place l'éditeur sur la page. `racine` : l'élément [data-edition] (adresse de l'API, id de la page). */
 export function demarrer(racine, etatService) {
+  // les segments d'adresse que le build a renommés (R316, layouts/Base.astro) : installés avant toute adresse lue par lib/metiers.mjs#cheminDePage(id)
+  installerLesAdressesDeLaPage(document.getElementById('adresses-renommees')?.textContent);
   const style = document.createElement('style');
   style.textContent = css;
   document.head.append(style);

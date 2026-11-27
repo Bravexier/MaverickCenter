@@ -45,7 +45,7 @@ const TABLE = [
   [['POST'], /^\/api\/personnages$/, 'ecriture'],
   [['PUT', 'DELETE'], /^\/api\/personnages\/[^/]+$/, 'ecriture'],
   // édition : ce que les pages lisent au chargement pour montrer la base vivante (surcouche), puis les écritures
-  [LECTURE, /^\/api\/edition\/(en-attente|listes|pages|mots-cles|chronologie|plan)$/, 'lecture'],
+  [LECTURE, /^\/api\/edition\/(en-attente|listes|pages|mots-cles|chronologie|plan|page-de-l-adresse)$/, 'lecture'],
   [['POST'], /^\/api\/edition\/(lignes|race|classe|bestiaire|portrait|evenement)$/, 'lecture'],
   [LECTURE, /^\/api\/edition\/journal$/, 'lecture'],
   // l'extrait du contenu pour les sessions de Claude (serveur/extrait.mjs) : règles, notes et historique ; les tables des fiches, comptes, groupes et du journal y sont vides

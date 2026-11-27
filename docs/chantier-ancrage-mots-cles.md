@@ -258,6 +258,8 @@ Ils auront chacun leur conception. Voici ce qui est déjà décidé et ce qu'il 
 
 ## Chantier 2 : l'adresse qui suit le titre
 
+**Conçu le 2026-11-27 : `docs/chantier-adresses.md`, décision R316.** Ce qui suit est l'état d'avant cette conception.
+
 **Décidé** (décision 10) : renommer une page change son adresse, l'ancienne redirige vers la nouvelle, l'identifiant interne ne bouge pas (23 colonnes et 9 629 lignes le citent). Les 733 adresses qui diffèrent déjà du titre (694 capacités, 30 guides, 4 créatures, 4 ressources, 1 métier) ne changent qu'au prochain renommage.
 
 **À concevoir** :

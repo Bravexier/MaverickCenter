@@ -11,6 +11,7 @@ import Compte from '../components/Compte.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 import { cssDeLaPalette } from '../lib/palette-css.mjs';
 import { classeDeLaPageDuSite, cssDesMotsClesDuSite } from '../lib/couleur-de-la-page.mjs';
+import { jsonDesAdressesRenommees } from '../lib/adresses-renommees.mjs';
 
 interface Props {
   title: string;
@@ -51,6 +52,9 @@ const pageMesuree = Astro.url.pathname;
 // La couleur principale d'une page vers laquelle mène un mot-clé coloré (réponse Q5 du propriétaire, migration 0098) : sur <main>, pour une page qui
 // n'a pas de gabarit coloré (`couleurPropre`) ; aucune au départ (les mots-clés colorés mènent aux pages des magies, classes, races et du guide).
 const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSite(Astro.url.pathname, null, { base });
+// Les segments d'adresse renommés (R316 : page.slug_adresse, installés par lib/wiki.ts), pour les scripts du navigateur qui calculent une adresse depuis un
+// identifiant (src/lib/adresses-renommees.mjs#jsonDesAdressesRenommees) ; null, donc rien d'écrit, tant qu'aucune page n'est renommée.
+const adressesRenommees = jsonDesAdressesRenommees();
 ---
 
 <!doctype html>
@@ -72,6 +76,8 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />
+    {/* les segments d'adresse renommés { id: segment } (R316), lus par les scripts du navigateur (#adresses-renommees) ; rien tant qu'aucune page n'est renommée */}
+    {adressesRenommees && <script is:inline type="application/json" id="adresses-renommees" set:html={adressesRenommees}></script>}
     {/* l'accès au site de dev (R310 : sur un refus de la porte, propose la connexion ou dit que le niveau ne suffit pas ; src/scripts/acces.mjs) : ni dans la version portable (pas de service) */}
     {!portable && <Acces />}
     {

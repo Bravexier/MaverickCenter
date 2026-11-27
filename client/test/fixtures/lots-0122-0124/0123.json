@@ -389,7 +389,8 @@
     "statut": "draft",
     "origine": "docs",
     "source_ref": "Google Doc « Règle du jeu/Guide pour MJ - Maverick »",
-    "mot_cle_id": null
+    "mot_cle_id": null,
+    "slug_adresse": null
    }
   }
  ]

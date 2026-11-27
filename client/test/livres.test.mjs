@@ -205,12 +205,14 @@ test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /gui
   // 67 avant la migration 0122 (La montée de niveau retirée), 66 avant la 0123 (Les neuf alignements fondue dans Alignement),
   // 65 avant la 0124 (Accessoires et Ceinture fondue dans Inventaire/Sac à dos)
   assert.ok(ids.length >= 64, `${ids.length} pages du guide`);
-  const chemins = ids.map(cheminDePage);
+  // l'adresse sans segment renommé (R316 : l'état d'import n'en a aucun, rien n'est installé ici) ; une page renommée : test/adresses-renommees.test.mjs
+  const chemins = ids.map((id) => cheminDePage(id));
+  for (const [i, id] of ids.entries()) assert.equal(cheminDePage(id, null), chemins[i], `${id} : aucun segment renommé installé`);
   assert.equal(new Set(chemins).size, chemins.length, 'deux pages à la même adresse');
   for (const [i, id] of ids.entries()) {
     assert.doesNotMatch(chemins[i], /^guide\//, id);
     assert.match(chemins[i], /^(?:decouvrir\/(?:[a-z0-9-]+\/)?|regles\/[a-z0-9-]+\/|mj\/[a-z0-9-]+\/)$/, id);
-    assert.equal(estServieASonId(id), false, `${id} : la route des pages du wiki ne la sert pas`);
+    assert.equal(estServieASonId(id), false, `${id} : la route des pages du wiki ne la sert pas, quel que soit son segment (R316)`);
     const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
     assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
     // le slug de l'id, sauf une adresse renommée par le propriétaire (ADRESSES_RENOMMEES_DU_GUIDE, R228 : test plus bas)
@@ -395,7 +397,7 @@ test('placeDansLeGuide : la rubrique et l’ordre d’une page (notes de version
 test('les pages nommées par le plan : « Par où commencer ? », L’univers et ses rubriques, l’Artisanat, les liens et l’encart de la rencontre', () => {
   // R184 ; défaut confirmé par le propriétaire (R185 (4)) : la troisième carte mène à l'introduction de l'onglet Fiche de personnage
   assert.deepEqual(PAR_OU_COMMENCER, ['guide/bienvenue', 'guide/l-univers', 'guide/creer-son-personnage']);
-  assert.deepEqual(PAR_OU_COMMENCER.map(cheminDePage), ['decouvrir/', 'decouvrir/l-univers/', 'regles/creer-son-personnage/']);
+  assert.deepEqual(PAR_OU_COMMENCER.map((id) => cheminDePage(id)), ['decouvrir/', 'decouvrir/l-univers/', 'regles/creer-son-personnage/']);
   assert.deepEqual(PAR_OU_COMMENCER.map(partieDeLaPage), ['decouvrir', 'decouvrir', 'creer']);
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE, { 'guide/l-univers': ['races', 'magies', 'classes'] });
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE['guide/l-univers'].map((k) => TYPES[k].label), ['Races', 'Magies', 'Classes']);
@@ -424,7 +426,7 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
 
 test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les onglets), Espace MJ (Guide du MJ) ; chaque page ouvre sa rubrique', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
-  assert.deepEqual(rubrique('regles').items.slice(0, 2).map((i) => i.path), DECOUVRIR.groupes[0].pages.map(cheminDePage));
+  assert.deepEqual(rubrique('regles').items.slice(0, 2).map((i) => i.path), DECOUVRIR.groupes[0].pages.map((id) => cheminDePage(id)));
   // les onglets, puis le Glossaire (une page seule, hors du plan)
   assert.deepEqual(rubrique('regles').items.slice(2, -1).map((i) => [i.label, i.path]), ongletsDesRegles().map((o) => [o.titre, o.chemin]));
   assert.equal(rubrique('regles').items.at(-1).path, 'regles/glossaire/');
@@ -827,11 +829,10 @@ test('les anciennes adresses du guide d’avant (/guide/<slug>/, Liens, Rejoindr
   assert.equal(nouvelleAdresse('/guide//evil.example/', '/', renvois), null, 'jamais hors du site');
 });
 
-test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe nav.mjs ; livres.mjs entre dans la chaîne de l’édition) ; la page 404 reçoit les renvois et les pages éclatées', () => {
-  for (const f of ['../src/lib/nav.mjs', '../src/lib/livres.mjs']) {
-    const source = readFileSync(new URL(f, import.meta.url), 'utf8');
-    assert.doesNotMatch(source, /^\s*(?:import|export\s+[^;]*\sfrom)\s/m, f);
-  }
+test('nav.mjs et adresses-renommees.mjs n’importent rien, livres.mjs seulement adresses-renommees.mjs (R316) (le script de la page 404 importe nav.mjs ; livres.mjs entre dans la chaîne de l’édition) ; la page 404 reçoit les renvois et les pages éclatées', () => {
+  const importsDe = (f) => [...readFileSync(new URL(f, import.meta.url), 'utf8').matchAll(/^\s*(?:import|export\s+[^;]*\sfrom)\s[^;]*?['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+  for (const f of ['../src/lib/nav.mjs', '../src/lib/adresses-renommees.mjs']) assert.deepEqual(importsDe(f), [], f);
+  assert.deepEqual(importsDe('../src/lib/livres.mjs'), ['./adresses-renommees.mjs']);
   const page404 = readFileSync(new URL('../src/pages/404.astro', import.meta.url), 'utf8');
   assert.match(page404, /data-renvois=\{JSON\.stringify\(renvois\)\}/);
   assert.match(page404, /const eclatees = \{ \.\.\.RENVOIS_DES_PAGES_ECLATEES, \.\.\.pagesEclateesDuGuide\(\(id: string\) => charges\.has\(id\)\) \};/);

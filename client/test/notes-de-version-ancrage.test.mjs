@@ -249,6 +249,29 @@ test('R309 (relecture finale, Fable « Declined ») : `mot_cle_ancienne_cle`, un
   assert.deepEqual(lignes.filter((l) => l.table_nom === 'mot_cle_ancienne_cle' || l.groupe === 'mot_cle_ancienne_cle'), []);
 });
 
+test('R316 (choix 9) : un renommage n’a qu’une ligne, celle de la page ; ni son segment d’adresse, ni l’ancienne adresse, ni l’adresse de son mot-clé n’en ont une', () => {
+  const { dev } = avantEtApresAncrage();
+  const ref = structuredClone(dev);
+  const anciennes = (lignes) => ({ colonnes: ['adresse', 'page_id'], cle: ['adresse'], lignes });
+  for (const base of [ref, dev]) {
+    base.tables.page.forEach((p) => { p.slug_adresse = null; });
+    base.tables.mot_cle.find((k) => k.id === 12).url = '/regles/regle-essai/';
+  }
+  ref.autres = { page_ancienne_adresse: anciennes([]) };
+  const page = dev.tables.page.find((p) => p.id === 'guide/regle-essai');
+  Object.assign(page, { titre: 'Règle renommée', corps_md: ref.tables.page.find((p) => p.id === 'guide/regle-essai').corps_md, slug_adresse: 'regle-renommee' });
+  Object.assign(dev.tables.mot_cle.find((k) => k.id === 12), { libelle: 'Règle renommée', cle: 'regle-renommee', url: '/regles/regle-renommee/' });
+  dev.autres = { page_ancienne_adresse: anciennes([{ adresse: 'regles/regle-essai/', page_id: 'guide/regle-essai' }]) };
+  const lignes = comparerBases(ref, dev);
+  assert.deepEqual(lignes.map((l) => [l.table_nom, l.nature, l.avant, l.apres]), [['page', 'modifie', 'Règle d’essai', 'Règle renommée']], JSON.stringify(lignes));
+  assert.ok(!JSON.stringify(lignes).includes('adresse'), 'aucune ligne ne parle d’adresse');
+  assert.equal(estUneTableAutre('page_ancienne_adresse'), false);
+  // un mot-clé sans élément qui mène à une section de la page la suit aussi sans ligne ; une adresse changée ailleurs garde la sienne
+  ref.tables.mot_cle.push(motCle(80, 'Section', 'section', { url: '/regles/regle-essai/#zephyrion' }), motCle(81, 'Ailleurs', 'ailleurs', { url: '/regles/regle-essai/' }));
+  dev.tables.mot_cle.push(motCle(80, 'Section', 'section', { url: '/regles/regle-renommee/#zephyrion' }), motCle(81, 'Ailleurs', 'ailleurs', { url: '/regles/' }));
+  assert.deepEqual(comparerBases(ref, dev).filter((l) => l.table_nom === 'mot_cle').map((l) => [l.entite, l.colonne]), [['Ailleurs', 'url']]);
+});
+
 test('R309 : dans les « autres tables », une colonne mot_cle_id hors de la clé n’est ni comparée ni listée (« Structure changée » compris) ; une table dont la clé la contient garde ses lignes', () => {
   const table = (colonnes, cle, lignes) => ({ colonnes, cle, lignes });
   const degats = (lignes, colonnes = ['id', 'nom', 'mot_cle_id']) => table(colonnes, ['id'], lignes);

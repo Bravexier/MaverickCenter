@@ -17,7 +17,8 @@ import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { clesDesMotsCles, HomonymesRefuses, RAISONS } from '../src/lib/mots-cles-cles.mjs';
 import { fauteDeLUrl, lienGarde } from '../src/lib/mots-cles-liens.mjs';
-import { adressesDuSite } from '../src/lib/adresses-db.mjs';
+import { adresseDeLaPage, adressesDuSite } from '../src/lib/adresses-db.mjs';
+import { pageARouteFixe } from '../src/lib/metiers.mjs';
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { liensDuTexte } from '../src/lib/liens-en-mots-cles.mjs';
 import { fauteDeLIcone } from '../src/lib/icones.mjs';
@@ -455,6 +456,30 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
         if (faute) signaler('mot_cle', m.id, 'icone_du_mot_cle', `mot_cle ${m.id} : l’icône « ${m.icone} » ne convient pas (${faute})`);
       }
       bilan.icones_mots_cles = icones;
+    }
+  }
+
+  // Adresses des pages (décision R316, migration 0133, docs/chantier-adresses.md §1 : aucun index unique, ce contrôle tient l'unicité ; l'annulation d'un
+  // renommage dont l'adresse d'avant est reprise est refusée par lui) : deux pages, d'exemple comprises, n'ont jamais la même adresse (lib/adresses-db.mjs
+  // #adresseDeLaPage, segment lu en base, ancre comprise) ; une ancienne adresse (page_ancienne_adresse, sans barre initiale) n'est l'adresse d'aucune page
+  // vivante (celle-ci la reprend : la ligne part, serveur/edition-adresses.mjs) ; une page à route fixe (lib/metiers.mjs#pageARouteFixe) n'a pas de segment.
+  if (noms.has('page') && colonnes('page').some((c) => c.name === 'slug_adresse')) {
+    const pagesDe = new Map();
+    for (const p of db.prepare('SELECT id, slug_adresse FROM page ORDER BY id').all()) {
+      if (p.slug_adresse !== null && pageARouteFixe(p.id)) {
+        signaler('page', p.id, 'adresse_route_fixe', `page ${p.id} : le segment d’adresse « ${p.slug_adresse} » est posé sur une page à route fixe, dont l’adresse ne suit pas le titre`);
+      }
+      const adresse = adresseDeLaPage(p.id, p.slug_adresse);
+      pagesDe.set(adresse, [...(pagesDe.get(adresse) ?? []), p.id]);
+    }
+    for (const [adresse, ids] of pagesDe) {
+      if (ids.length > 1) signaler('page', ids[0], 'adresse_en_double', `page : « ${adresse} » est l’adresse de ${ids.length} pages (${ids.join(', ')})`);
+    }
+    if (noms.has('page_ancienne_adresse')) {
+      for (const a of db.prepare('SELECT adresse, page_id FROM page_ancienne_adresse ORDER BY adresse').all()) {
+        const vivantes = pagesDe.get(`/${a.adresse}`);
+        if (vivantes) signaler('page_ancienne_adresse', a.adresse, 'ancienne_adresse_tenue', `page_ancienne_adresse ${a.adresse} : cette ancienne adresse de ${a.page_id} est l’adresse de la page ${vivantes.join(', ')}`);
+      }
     }
   }
 

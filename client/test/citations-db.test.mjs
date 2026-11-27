@@ -110,6 +110,19 @@ test('R228 : une page dont l’adresse ne se tire pas de l’id (ADRESSES_RENOMM
   db.close();
 });
 
+test('R316 : une page renommée (page.slug_adresse, lu en base) est citée par son adresse d’aujourd’hui, sous /regles/ seulement, et par son identifiant', () => {
+  const db = baseDEssai();
+  db.prepare("UPDATE page SET slug_adresse = 'la-cible-renommee' WHERE id = 'guide/la-cible'").run();
+  const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, 'guide', ?, ?, ?, NULL, ?, 'draft', 'docs')");
+  page.run('guide/par-la-renommee', 'par-la-renommee', 'Par la renommée', 'par-la-renommee', 'Voir /regles/la-cible-renommee/#une-ancre.');
+  page.run('guide/sous-guide-renommee', 'sous-guide-renommee', 'Sous guide renommée', 'sous-guide-renommee', 'Pas elle : guide/la-cible-renommee.');
+  const parAdresse = citationsDe(db, 'guide/la-cible').filter((c) => c.comment === 'adresse').map((c) => c.cle.id).sort();
+  assert.ok(parAdresse.includes('guide/par-la-renommee'), 'son adresse d’aujourd’hui');
+  assert.ok(parAdresse.includes('guide/par-l-adresse'), 'son identifiant (l’adresse qu’il donnait)');
+  assert.ok(!parAdresse.includes('guide/sous-guide-renommee'));
+  db.close();
+});
+
 test('citationsDesPages : un lien ambigu cite chacune de ses candidates ; une page que rien ne cite : liste vide ; une seule lecture pour plusieurs pages', () => {
   const db = baseDEssai();
   const m = citationsDesPages(db, ['guide/doublon', 'races/doublon', 'guide/ambigu', 'guide/la-cible']);

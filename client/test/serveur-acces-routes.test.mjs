@@ -75,7 +75,7 @@ test('le classement : seul le nécessaire est ouvert, la lecture (session MJ ou 
       ['GET', '/api/tipeee/'], ['POST', '/api/classeur/'], ['POST', '/api/metriques/page/'],
       ['GET', '/api/personnages/'], ['GET', '/api/personnages/essai/'], ['GET', '/api/personnages/essai/portrait/'],
       ['GET', '/api/edition/en-attente/'], ['GET', '/api/edition/listes/'], ['GET', '/api/edition/pages/'], ['GET', '/api/edition/mots-cles/'],
-      ['GET', '/api/edition/chronologie/'], ['GET', '/api/edition/plan/'],
+      ['GET', '/api/edition/chronologie/'], ['GET', '/api/edition/plan/'], ['GET', '/api/edition/page-de-l-adresse/'],
       ['POST', '/api/edition/lignes/'], ['POST', '/api/edition/race/'], ['POST', '/api/edition/classe/'], ['POST', '/api/edition/bestiaire/'],
       ['POST', '/api/edition/portrait/'], ['POST', '/api/edition/evenement/'],
       ['GET', '/api/mise-a-jour/'], ['GET', '/api/mise-a-jour/lancement/'],

@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { CATEGORIES_NOUVELLES } from '../src/lib/mots-cles-ancrage.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
@@ -63,6 +64,56 @@ export function poserMotCle(db, { id, libelle, url = null, categories = [], syno
 /** Une page (son type : ce qui précède le « / » de son id). */
 export function poserPage(db, id, titre, { resume = null } = {}) {
   inserer(db, 'page', { id, type: id.split('/')[0], titre, resume, statut: 'draft' });
+  return id;
+}
+
+/**
+ * Une page que le service d'édition relit et réécrit (un renommage, R316) : son slug tiré de l'id, la clé de son titre et un corps, que poserPage laisse au
+ * remplissage. Rend son id.
+ */
+export function poserPageLisible(db, id, titre, { corps = 'Texte.\n', resume = null } = {}) {
+  poserPage(db, id, titre, { resume });
+  db.prepare('UPDATE page SET slug = ?, titre_cle = ?, corps_md = ? WHERE id = ?').run(id.slice(id.indexOf('/') + 1), normalize(titre), corps, id);
+  return id;
+}
+
+/** Le mot-clé ancré d'une page ou d'un sort : le nom et l'adresse de l'élément (sans segment renommé), ses catégories ; `verrou` : verrouillé. Rend son id. */
+export function ancrerUnMotCle(db, table, id, { categories = [], verrou = false } = {}) {
+  const nom = db.prepare(`SELECT ${table === 'page' ? 'titre' : 'nom'} AS nom FROM "${table}" WHERE id = ?`).get(id).nom;
+  const motCle = poserMotCle(db, { libelle: nom, url: table === 'page' ? adresseDeLaPage(id, null) : adresseDuSort(id, null), categories });
+  db.prepare(`UPDATE "${table}" SET mot_cle_id = ? WHERE id = ?`).run(motCle, id);
+  if (verrou) db.prepare('UPDATE mot_cle SET verrou = 1 WHERE id = ?').run(motCle);
+  return motCle;
+}
+
+/** Une entité typée et sa page (même id) : `table` (metier, race, classe, capacite), ses colonnes en plus du nom ; `titre`, celui de la page. */
+function poserElement(db, table, id, nom, { titre = nom, ...colonnes } = {}) {
+  poserPageLisible(db, id, titre);
+  inserer(db, table, { id, nom, ...colonnes });
+  inserer(db, 'page_entite', { entite_table: table, entite_id: id, page_id: id, principale: 1 });
+  return id;
+}
+
+/** Un métier et sa page : une ligne du tableau de /metiers/ (son adresse est une ancre). */
+export const poserMetier = (db, id, nom) => poserElement(db, 'metier', id, nom, {
+  nom_cle: normalize(nom), description: '', bonus_brut: '', artisanat_brut: '', equipement_brut: '', origine: 'docs_typees',
+});
+
+/** Une race et sa page. */
+export const poserRace = (db, id, nom) => poserElement(db, 'race', id, nom);
+
+/** Une classe et sa page : `titre`, celui de la page (« Nom (classe) » pour l'homonyme d'une race) ; `categorie` (classe-champs.mjs#CATEGORIE_RACIALE : une classe raciale). */
+export const poserClasse = (db, id, nom, { titre = nom, categorie = 'essai' } = {}) => poserElement(db, 'classe', id, nom, { titre, nom_cle: normalize(nom), categorie_id: categorie });
+
+/** Un don de la classe `classe` et sa fiche « Nom (Classe) », de niveau `niveau` et de rang `rang`, seul sur sa ligne. */
+export function poserCapacite(db, id, { classe, nom, niveau = 1, rang = 1 }) {
+  const titre = `${nom} (${db.prepare('SELECT nom FROM classe WHERE id = ?').get(classe).nom})`;
+  return poserElement(db, 'capacite', id, nom, { titre, classe_id: classe, niveau, rang, nature: 'classe', nom_cle: normalize(nom), type: 'passif', type_brut: 'Passif', origine: 'classes' });
+}
+
+/** Un onglet des Règles (son id est un nom réservé : /regles/<onglet>/). */
+export function poserOnglet(db, id, titre) {
+  inserer(db, 'regles_onglet', { id, titre });
   return id;
 }
 

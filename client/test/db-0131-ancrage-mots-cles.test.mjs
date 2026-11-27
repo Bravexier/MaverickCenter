@@ -27,11 +27,12 @@ test('0131 (R309) : page et sort citent mot_cle, sans cascade, NULL permis', () 
     assert.equal(fk.on_delete, 'NO ACTION', `${t} : un mot-clé ancré ne se supprime pas en cascade`);
     assert.equal(essai.prepare(`SELECT "notnull" n FROM pragma_table_info('${t}') WHERE name = 'mot_cle_id'`).get().n, 0, `${t} : NULL permis`);
   }
-  // une colonne ajoutée va en dernier (règle des migrations) : la colonne d'ancrage ferme page et sort
-  for (const t of ['page', 'sort']) {
-    const colonnes = essai.prepare(`SELECT name FROM pragma_table_info('${t}') ORDER BY cid`).all().map((c) => c.name);
-    assert.equal(colonnes.at(-1), 'mot_cle_id', t);
-  }
+  // une colonne ajoutée va en dernier (règle des migrations) : la colonne d'ancrage ferme sort ; sur page, les migrations suivantes (0133 : slug_adresse, R316) viennent après elle
+  const colonnesDe = (t) => essai.prepare(`SELECT name FROM pragma_table_info('${t}') ORDER BY cid`).all().map((c) => c.name);
+  assert.equal(colonnesDe('sort').at(-1), 'mot_cle_id', 'sort');
+  const page = colonnesDe('page');
+  assert.ok(page.includes('mot_cle_id') && page.indexOf('mot_cle_id') > page.indexOf('source_ref'), 'page : mot_cle_id vient après les colonnes d’origine');
+  if (page.includes('slug_adresse')) assert.ok(page.indexOf('mot_cle_id') < page.indexOf('slug_adresse'), 'page : slug_adresse (0133) vient après mot_cle_id');
   essai.close();
 });
 

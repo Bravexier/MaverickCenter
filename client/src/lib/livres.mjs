@@ -27,10 +27,12 @@
 // recherche, et emporté par la chaîne de l'édition du navigateur avec le reste du module.
 // Les identifiants de page ne changent pas (« guide/le-tour-de-jeu ») : seules leurs adresses viennent d'ici (lib/metiers.mjs#adresseDePage, puis
 // cheminDePage, entryHref, pageHref, entryUrl, l'index de la recherche) ; les anciennes adresses mènent aux nouvelles par la page 404
-// (lib/metiers.mjs#renvoisDuGuide, PAGES_ECLATEES_DU_GUIDE). Une adresse se tire de l'id, sauf exception voulue par le propriétaire
-// (ADRESSES_RENOMMEES_DU_GUIDE, R228).
-// Sans aucun import : lu par lib/metiers.mjs (chaîne de l'édition du navigateur comprise), lib/guide.mjs, lib/notes-de-version.mjs (service),
-// lib/wiki.ts, les composants et les tests.
+// (lib/metiers.mjs#renvoisDuGuide, PAGES_ECLATEES_DU_GUIDE). Le dernier segment d'une adresse est le segment renommé de la page (R316 :
+// page.slug_adresse, donné ou installé), sinon celui d'une exception voulue par le propriétaire (ADRESSES_RENOMMEES_DU_GUIDE, R228, R272), sinon
+// celui de l'id.
+// Un seul import, lib/adresses-renommees.mjs, qui n'importe rien : lu par lib/metiers.mjs (chaîne de l'édition du navigateur comprise),
+// lib/guide.mjs, lib/notes-de-version.mjs (service), lib/wiki.ts, les composants et les tests.
+import { pageAuSlug, slugRenomme } from './adresses-renommees.mjs';
 
 /**
  * Les parties de l'ancien guide, dont Découvrir et la création du personnage prennent la couleur (`partie` d'un groupe : l'id d'une partie). Leurs
@@ -259,19 +261,19 @@ export function adresseDeLaPageRetiree(chemin, { existe = () => false } = {}) {
 /**
  * L'adresse d'une page `guide/<slug>`, relative à la racine du site, sans le plan des onglets (la chaîne de l'édition du navigateur la calcule aussi) :
  * Bienvenue à /decouvrir/, L'univers à `decouvrir/<slug>/`, une page du Guide du MJ à `mj/<slug>/`, toute autre page `guide/…` à `regles/<slug>/` (les
- * pages des onglets, « adresses à plat » ; la fixture `guide/utiliser-ce-wiki` aussi, sans entrée de menu). Le slug est celui de l'id, sauf pour une
- * page de ADRESSES_RENOMMEES_DU_GUIDE (R228 : guide/liste-des-effets-mode-super à regles/mode-super/).
+ * pages des onglets, « adresses à plat » ; la fixture `guide/utiliser-ce-wiki` aussi, sans entrée de menu). Le dernier segment est celui de
+ * slugDAdresse(id, slug) (R316 : `slug` undefined lit l'état installé, null n'en prend aucun) ; Bienvenue reste à /decouvrir/ (route fixe).
  */
-export function adresseDuGuide(id) {
+export function adresseDuGuide(id, slug) {
   if (id === DECOUVRIR.accueil) return DECOUVRIR.chemin;
-  if (estDansDecouvrir(id)) return `${DECOUVRIR.chemin}${slugDAdresse(id)}/`;
-  if (estDuGuideDuMj(id)) return `${GUIDE_DU_MJ.chemin}${slugDAdresse(id)}/`;
-  return `${CHEMIN_DES_REGLES}${slugDAdresse(id)}/`;
+  if (estDansDecouvrir(id)) return `${DECOUVRIR.chemin}${slugDAdresse(id, slug)}/`;
+  if (estDuGuideDuMj(id)) return `${GUIDE_DU_MJ.chemin}${slugDAdresse(id, slug)}/`;
+  return `${CHEMIN_DES_REGLES}${slugDAdresse(id, slug)}/`;
 }
 
 /**
- * Les pages du guide dont l'adresse ne se tire pas de l'identifiant : id → dernier segment de son adresse. Exceptions voulues par le propriétaire à la
- * règle des adresses figées (CLAUDE.md, « Identifiants figés ») ; l'identifiant reste, lu par les tables (mode_texte.page_id, regles_onglet_entree,
+ * Les pages du guide dont l'adresse ne se tire pas de l'identifiant (hors R316 : une page renommée depuis prend `slug_adresse`, qui l'emporte) : id → dernier segment de son adresse. Exceptions voulues par le propriétaire à la
+ * règle des adresses figées d'alors (aujourd'hui : « Identifiants figés, adresses qui suivent », CLAUDE.md, R316 : l'adresse d'une page suit son titre) ; l'identifiant reste, lu par les tables (mode_texte.page_id, regles_onglet_entree,
  * alias, historique_modification…). Liste figée : adresseDuGuide la lit, pageDuGuideALAdresse la lit à l'envers ; l'ancienne adresse de chaque page est
  * dans ADRESSES_DU_PLAN_PRECEDENT (page 404, liens écrits) ; aucune autre page ne prend la nouvelle (verifierLePlan, serveur/edition-plan.mjs#idPris).
  *   - R228 (2026-11-08 : « https://dev.maverick-jdr.com/regles/liste-des-effets-mode-super/ à changer en https://dev.maverick-jdr.com/regles/mode-super/
@@ -285,8 +287,12 @@ export const ADRESSES_RENOMMEES_DU_GUIDE = Object.freeze({
   'guide/fiche-inventaire-sac-a-dos': 'inventaire-sac-a-dos',
 });
 
-/** Le dernier segment de l'adresse d'une page `guide/<slug>` : son slug, ou celui que lui donne ADRESSES_RENOMMEES_DU_GUIDE. */
-export const slugDAdresse = (id) => (Object.hasOwn(ADRESSES_RENOMMEES_DU_GUIDE, id) ? ADRESSES_RENOMMEES_DU_GUIDE[id] : slugDe(id));
+/**
+ * Le dernier segment de l'adresse d'une page `guide/<slug>` : son segment renommé (R316 : `slug`, page.slug_adresse ; undefined lit l'état installé,
+ * lib/adresses-renommees.mjs, null n'en prend aucun), sinon celui que lui donne ADRESSES_RENOMMEES_DU_GUIDE, sinon son slug.
+ */
+export const slugDAdresse = (id, slug = slugRenomme(id)) =>
+  slug ?? (Object.hasOwn(ADRESSES_RENOMMEES_DU_GUIDE, id) ? ADRESSES_RENOMMEES_DU_GUIDE[id] : slugDe(id));
 
 /** La page d'un segment d'adresse renommé (ADRESSES_RENOMMEES_DU_GUIDE lue à l'envers) : « mode-super » → guide/liste-des-effets-mode-super. */
 const PAGES_DES_ADRESSES_RENOMMEES = new Map(Object.entries(ADRESSES_RENOMMEES_DU_GUIDE).map(([id, slug]) => [slug, id]));
@@ -327,7 +333,7 @@ const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
  *   - les six étapes de la création (/decouvrir/<étape>/), de nouveau des pages (R184) ;
  *   - les Règles avancées (R184 : plus de rubrique) : /regles/avancees/ mène au Mode Hyper, sa page d'ouverture, et chacune de ses pages
  *     (ANCIENNES_REGLES_AVANCEES) à sa nouvelle adresse ;
- *   - une page dont l'adresse a changé sans son identifiant (ADRESSES_RENOMMEES_DU_GUIDE) : son adresse tirée de l'identifiant, /regles/<slug>/ (R228 :
+ *   - une page dont l'adresse a changé sans son identifiant (ADRESSES_RENOMMEES_DU_GUIDE, ou `slug_adresse` depuis R316) : son adresse tirée de l'identifiant, /regles/<slug>/ (R228 :
  *     /regles/liste-des-effets-mode-super/ mène à /regles/mode-super/) ;
  *   - une page des Règles fusionnée depuis dans une autre (PAGES_DES_REGLES_ABSORBEES : /regles/les-neuf-alignements/, migration 0123 ;
  *     /regles/fiche-accessoires-et-ceinture/, migration 0124) ; /regles/fiche-inventaire-sac-a-dos/ (page renommée, R272) mène à /regles/inventaire-sac-a-dos/.
@@ -395,17 +401,17 @@ export const PAGES_ECLATEES_DU_GUIDE = gele({
 
 /**
  * La page `guide/…` servie à une adresse du guide, relative à la racine du site (« regles/l-embuscade/ », « regles/<slug>/#ancre », « decouvrir/ ») ; la
- * requête et l'ancre ne comptent pas : l'inverse d'adresseDuGuide, ADRESSES_RENOMMEES_DU_GUIDE comprises (« regles/mode-super/ » :
- * guide/liste-des-effets-mode-super ; son ancienne adresse, « regles/liste-des-effets-mode-super/ », ne sert plus aucune page). null pour toute autre
- * adresse.
+ * requête et l'ancre ne comptent pas : l'inverse d'adresseDuGuide, segments renommés installés (R316) et ADRESSES_RENOMMEES_DU_GUIDE comprises
+ * (« regles/mode-super/ » : guide/liste-des-effets-mode-super ; son ancienne adresse, « regles/liste-des-effets-mode-super/ », ne sert plus aucune
+ * page). null pour toute autre adresse, et pour le segment d'une page qui en a reçu un autre.
  */
 export function pageDuGuideALAdresse(adresse) {
   const chemin = String(adresse).replace(/[?#].*$/, '');
   if (chemin === DECOUVRIR.chemin) return DECOUVRIR.accueil;
   const m = chemin.match(/^(?:decouvrir|regles|mj)\/([a-z0-9]+(?:-[a-z0-9]+)*)\/$/);
   if (!m) return null;
-  if (PAGES_DES_ADRESSES_RENOMMEES.has(m[1])) return PAGES_DES_ADRESSES_RENOMMEES.get(m[1]);
-  return Object.hasOwn(ADRESSES_RENOMMEES_DU_GUIDE, `guide/${m[1]}`) ? null : `guide/${m[1]}`;
+  const id = pageAuSlug('guide', m[1]) ?? PAGES_DES_ADRESSES_RENOMMEES.get(m[1]) ?? `guide/${m[1]}`;
+  return slugDAdresse(id) === m[1] ? id : null;
 }
 
 /**

@@ -4,7 +4,7 @@
 //   - un lien du wiki `[[…]]` (résolu comme le site : lib/wikilinks-resolution.mjs, index des titres, slugs et alias de toutes les pages ; un lien
 //     ambigu dont la page est une candidate compte aussi : la supprimer changerait sa cible) ;
 //   - un lien écrit vers son adresse, `/regles/<slug>/` (ou l'ancienne `/regles/avancees/<slug>/`), ou vers son identifiant `guide/<slug>` ; une page
-//     dont l'adresse ne se tire pas de l'id (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228) est citée aussi par sa nouvelle adresse (`/regles/mode-super/`) ;
+//     dont l'adresse ne se tire pas de l'id (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228, ou `page.slug_adresse`, R316) est citée aussi par sa nouvelle adresse (`/regles/mode-super/`) ;
 //   - un bloc de description de la chronologie qui la cite pour légende (evenement_extrait.page_id) ;
 //   - depuis la migration 0098 (les liens devenus des balises du glossaire) : une balise dont le mot-clé a une adresse qui mène à la page
 //     (lib/adresses-db.mjs#pageDeLAdresse ; la supprimer laisserait la balise sans page), et le mot-clé lui-même, dont l'adresse mènerait nulle part
@@ -15,7 +15,7 @@
 // compte). La page elle-même ne se cite pas. Une citation depuis une page d'exemple (statut `example`) est rendue avec `exemple: true` : elle ne bloque
 // pas une suppression.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant (la base vivante du service, une copie dans les tests).
-import { indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
+import { indexDesAdresses, pageDeLAdresse, slugsDAdresse } from './adresses-db.mjs';
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { slugDAdresse } from './livres.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -67,8 +67,11 @@ export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = fals
   ]);
   // les slugs des pages demandées que les adresses écrites désignent (guide/<slug> et /regles/<slug>/ : les pages du guide)
   const parSlug = new Map([...voulues].filter((id) => id.startsWith('guide/')).map((id) => [id.slice('guide/'.length), id]));
-  // sous /regles/ seulement, le slug d'une adresse renommée (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE : « regles/mode-super/ », R228)
-  const parAdresse = new Map([...parSlug.values()].filter((id) => slugDAdresse(id) !== id.slice('guide/'.length)).map((id) => [slugDAdresse(id), id]));
+  // sous /regles/ seulement, le slug d'une adresse renommée (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE : « regles/mode-super/ », R228 ; page.slug_adresse
+  // lu en base, R316 : l'adresse d'aujourd'hui)
+  const segments = slugsDAdresse(db);
+  const slugDe = (id) => slugDAdresse(id, segments.get(id) ?? null);
+  const parAdresse = new Map([...parSlug.values()].filter((id) => slugDe(id) !== id.slice('guide/'.length)).map((id) => [slugDe(id), id]));
   const vues = new Set();
   const ajouter = (id, { table, cle, colonne, comment, ligne = null }) => {
     if (!voulues.has(id)) return;

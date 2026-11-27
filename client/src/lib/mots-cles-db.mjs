@@ -10,7 +10,7 @@
 // portent l'écriture de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages : le libellé, ou la clé d'un homonyme).
 // Et les textes de la base où une balise peut s'écrire (textesDeLaBase : db:check, le rejeu du journal ; hors tables de lib/tables-de-la-base.mjs).
 // Sans dépendance Astro ni navigateur : la base est passée par l'appelant (pages, middleware, service, scripts, tests).
-import { adresseDeLaPage, adresseDuSort, indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
+import { adresseDeLaPage, adresseDuSort, indexDesAdresses, pageDeLAdresse, slugsDAdresse } from './adresses-db.mjs';
 import { typeDeTexte } from './edition-modele.mjs';
 import { parLibelle } from './mots-cles.mjs';
 import { motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -119,10 +119,14 @@ export function elementsDesMotsCles(db) {
   const sansTexte = { adresse: null, texte: null };
   // le texte : une colonne que la base n'a pas (base d'essai réduite à ce que son test lit) n'en donne pas
   const texteDe = (table, colonne) => (tableExiste(db, table) && colonnesDe(db, table).includes(colonne) ? colonne : 'NULL');
-  ajouter('page', `SELECT id, mot_cle_id, titre AS nom, ${texteDe('page', 'resume')} AS resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDeLaPage(l.id), texte: l.resume ?? null }));
-  ajouter('sort', `SELECT id, mot_cle_id, nom, ${texteDe('sort', 'effets')} AS effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDuSort(l.id), texte: l.effets ?? null }));
+  // l'adresse d'aujourd'hui : le segment renommé de la page (d'un sort : celui de sa magie) lu en base (R316)
+  const segments = slugsDAdresse(db);
+  const adresseDe = (id) => adresseDeLaPage(id, segments.get(id) ?? null);
+  ajouter('page', `SELECT id, mot_cle_id, titre AS nom, ${texteDe('page', 'resume')} AS resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`, (l) => ({ adresse: adresseDe(l.id), texte: l.resume ?? null }));
+  ajouter('sort', `SELECT id, mot_cle_id, nom, ${texteDe('sort', 'effets')} AS effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id`,
+    (l) => ({ adresse: adresseDuSort(l.id, segments.get(String(l.id).split('#sort:')[0]) ?? null), texte: l.effets ?? null }));
   ajouter('type_sort', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_sort t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
-  ajouter('magie', 'SELECT id, mot_cle_id, nom FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: null }));
+  ajouter('magie', 'SELECT id, mot_cle_id, nom FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDe(l.id), texte: null }));
   ajouter('type_degats', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_degats t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
   if (colonnesDe(db, 'mot_cle').includes('monnaie_id')) {
     ajouter('monnaie', 'SELECT n.id, m.id AS mot_cle_id, n.nom FROM mot_cle m JOIN monnaie n ON n.id = m.monnaie_id ORDER BY n.id', () => sansTexte);

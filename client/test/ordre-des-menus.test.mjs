@@ -12,6 +12,7 @@ import {
   placeAuClavier, placeAuPointeur, raceDuLien, vitesseDeDefilement, voisinsADeplacer,
 } from '../src/lib/ordre-des-menus.mjs';
 import { GROUPES_DE_RACES as GROUPES_DU_SERVICE } from '../serveur/edition-plan.mjs';
+import { installerLesAdresses } from '../src/lib/adresses-renommees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 /** Un plan vivant d'essai, de la forme de GET /api/edition/plan/ (serveur/edition-plan.mjs#planVivant). */
@@ -109,6 +110,13 @@ test('le plan vivant : les entrées d’un menu d’onglet (pages, lien, « bien
   assert.deepEqual(entreesDuPlanVivant(PLAN, { races: true }).map((e) => [e.id, e.rang, e.groupe, e.texte, e.adresse]), [
     ['races/humain', 1, 'pures', 'Humain', 'races/humain/'], ['races/nain', 2, 'pures', 'Nain', 'races/nain/'], ['races/orios', null, 'hybrides', 'Orios', 'races/orios/'],
   ]);
+  // une race renommée (R316) : son adresse suit le segment installé par la chaîne de l'édition, comme cheminDePage
+  installerLesAdresses([['races/nain', 'nain-renomme']]);
+  try {
+    assert.equal(entreesDuPlanVivant(PLAN, { races: true }).find((e) => e.id === 'races/nain').adresse, 'races/nain-renomme/');
+  } finally {
+    installerLesAdresses([]);
+  }
   assert.deepEqual(entreesDuPlanVivant(PLAN, { onglet: 'absent' }), []);
   assert.deepEqual(entreesDuPlanVivant(null, { races: true }), []);
   // le HTML : celui du composant (classes, aria-current, « (bientôt) »), texte échappé, et les attributs du mode modification

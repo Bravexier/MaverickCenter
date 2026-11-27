@@ -27,7 +27,8 @@ export async function getStaticPaths() {
   // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont servies par les pages de l'équipement
   // (pages/ressources/armes.astro…), « Bâton magique » par la page Ceinture, « Pièces élémentaires » par les pages Armes et Armures
   // (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
-  // par pages/decouvrir/, pages/regles/ et pages/mj/ (components/guide/PageDuPlan.astro).
+  // par pages/decouvrir/, pages/regles/ et pages/mj/ (components/guide/PageDuPlan.astro). `slug` : le segment de l'adresse de la page (lib/wiki.ts#slugOf),
+  // celui de son titre quand elle a été renommée (R316), alors que `entry.id` ne change jamais.
   return entries.filter((entry) => estServieASonId(entry.id))
     .map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
 }

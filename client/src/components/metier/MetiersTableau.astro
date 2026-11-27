@@ -61,6 +61,7 @@ const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => REN
           <tbody class="metier" id={m.ancre} data-ed-metier={m.id}>
             <tr class="metier__main">
               <th scope="row" class="metier__nom" data-ed={ed(m.id, 'nom')} data-ed-cible=".metier__choisir" data-colonne="nom">
+                {m.anciennesAncres.map((ancienne) => <span class="metier__ancienne-ancre" id={ancienne}></span>)}
                 <button type="button" class="metier__choisir" aria-expanded="false" aria-controls={`detail-${m.ancre}`}>
                   {m.nom}
                 </button>
@@ -165,7 +166,10 @@ const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => REN
     if (e.key === 'Escape' && !(e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) toutFermer();
   });
 
-  /** Adresse `#metier-…` (lien `[[Forgeron]]`, recherche, mot-clé) : ouvre ce métier ; toute autre adresse ferme le métier ouvert. */
+  /**
+   * Adresse `#metier-…` (lien `[[Forgeron]]`, recherche, mot-clé) : ouvre ce métier ; toute autre adresse ferme le métier ouvert. L'ancre d'un métier renommé
+   * (R316) : l'ancre d'aujourd'hui est la ligne même, une ancienne est l'élément posé dans sa ligne (`.metier__ancienne-ancre`) : la ligne s'ouvre de même.
+   */
   function depuisLien() {
     let id = '';
     try {
@@ -173,7 +177,7 @@ const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => REN
     } catch {
       return; // adresse mal formée : ignorée
     }
-    const ligne = id.startsWith('metier-') ? lignes().find((l) => l.id === id) : undefined;
+    const ligne = id.startsWith('metier-') ? document.getElementById(id)?.closest<HTMLElement>('tbody.metier') : undefined;
     if (ligne) ouvrir(ligne, true);
     else fermer();
   }

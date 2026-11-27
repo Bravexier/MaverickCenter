@@ -154,7 +154,8 @@ export function comparerLesBases(a, b, { renumeroter = {}, tables = tablesDeCont
  * rendue à part (`couvertes`, le complément du lot) et l'épreuve vérifie que la base obtenue est la même. table de l'entité → [table, colonne vers l'entité].
  */
 export const COUVERT_PAR_L_ENTITE = Object.freeze({
-  page: Object.freeze([['regles_onglet_entree', 'page_id'], ['alias', 'page_id'], ['page_tag', 'page_id'], ['page_source', 'page_id'], ['page_entite', 'page_id']]),
+  page: Object.freeze([['regles_onglet_entree', 'page_id'], ['alias', 'page_id'], ['page_tag', 'page_id'], ['page_source', 'page_id'], ['page_entite', 'page_id'],
+    ['page_ancienne_adresse', 'page_id']]),
   mot_cle: Object.freeze([['mot_cle_categorie', 'mot_cle_id'], ['mot_cle_synonyme', 'mot_cle_id'], ['mot_cle_ancienne_cle', 'mot_cle_id']]),
 });
 

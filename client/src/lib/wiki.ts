@@ -1,9 +1,11 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { buildIndex, extractLinks, resolve } from './wikilinks.mjs';
 import { TYPES } from './types.mjs';
-import { cheminDePage } from './metiers.mjs';
+import { cheminDePage, segmentDePage } from './metiers.mjs';
 import { ouvrirBase } from './donnees.mjs';
 import { installerLePlan } from './livres.mjs';
+import { installerLesAdresses } from './adresses-renommees.mjs';
+import { slugsDAdresse } from './adresses-db.mjs';
 import { chargerPlanDesRegles } from './plan-des-regles-db.mjs';
 import { avecLesMotsCles, motsClesDesPages } from './pages-db.mjs';
 
@@ -15,13 +17,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 // Le plan des onglets des Règles (tables regles_onglet et regles_onglet_entree, R184) : installé dans lib/livres.mjs, qui n'importe rien, dès que ce
 // module se charge, avant toute route ou composant qui range une page (menu latéral, fil d'Ariane, verifierLePlan, placeDansLeGuide).
 installerLePlan(chargerPlanDesRegles(ouvrirBase()));
+// Les segments d'adresse renommés (R316, page.slug_adresse) : installés de même, ici pour les pages (astro.config.mjs les installe pour le sien : les deux
+// graphes de modules ne partagent pas l'état), avant toute adresse lue par cheminDePage(id) (lib/metiers.mjs).
+installerLesAdresses(slugsDAdresse(ouvrirBase()));
 
 /** URL absolue (avec le préfixe de déploiement) d'un chemin du site. */
 export const url = (path = '') => `${base}/${path.replace(/^\//, '')}`;
 /** Lien vers une page du wiki ; pour un métier, sa ligne du tableau de /metiers/ (lib/metiers.mjs). */
 export const entryHref = (entry: WikiEntry) => url(cheminDePage(entry.id));
 export const typeOf = (entry: WikiEntry) => entry.id.split('/')[0] as TypeKey;
-export const slugOf = (entry: WikiEntry) => entry.id.split('/')[1];
+/** Le dernier segment de l'adresse de la page (paramètre `slug` de pages/[type]/[slug].astro) : son segment renommé (R316), sinon le slug de son identifiant. */
+export const slugOf = (entry: WikiEntry) => segmentDePage(entry.id);
+/** Le slug de l'identifiant `<type>/<slug>`, qui ne change jamais : la clé de l'index des [[liens]] (lib/wikilinks-remark.mjs#entryUrl refait l'id par `<type>/<slug>`). */
+export const idSlugOf = (entry: WikiEntry) => entry.id.split('/')[1];
 export const byTitle = (a: WikiEntry, b: WikiEntry) => a.data.title.localeCompare(b.data.title, 'fr');
 
 let cache: ReturnType<typeof compute> | undefined;
@@ -34,7 +42,7 @@ async function compute() {
   const entries = (avecLesMotsCles(pages, motsClesDesPages(ouvrirBase())) as (WikiEntry & { data: { mots_cles: string[] } })[]).sort(byTitle);
   const byId = new Map(entries.map((e) => [e.id, e]));
   const index = buildIndex(
-    entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })),
+    entries.map((e) => ({ id: e.id, type: typeOf(e), slug: idSlugOf(e), title: e.data.title, aliases: e.data.aliases })),
   );
 
   const outgoing = new Map<string, WikiEntry[]>();

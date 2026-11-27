@@ -1,0 +1,1 @@
+-- data/rows/page_ancienne_adresse.sql : export déterministe, une instruction par ligne, triée par (adresse). NE PAS ÉDITER À LA MAIN.

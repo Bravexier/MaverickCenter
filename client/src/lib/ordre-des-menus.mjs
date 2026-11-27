@@ -5,7 +5,9 @@
 // déplace au clavier, ce qu'on annonce, les opérations `ordonner` d'un lot (serveur/edition-plan.mjs), les entrées d'un menu d'après le plan vivant
 // (GET /api/edition/plan/) et leur HTML (celui de components/guide/MenuLateral.astro), l'adresse d'une page créée, le refus d'une suppression.
 // Le geste lui-même (Pointer Events, clavier, défilement) est dans src/scripts/edition/glisser.mjs, l'extension dans src/scripts/edition/menus.mjs.
-// Sans DOM ni Astro (il entre dans la chaîne de l'édition du navigateur) ; seul import : lib/text.mjs#normalize (l'adresse d'une page, comme le service).
+// Sans DOM ni Astro (il entre dans la chaîne de l'édition du navigateur) ; imports : lib/text.mjs#normalize (l'adresse d'une page, comme le service) et
+// lib/metiers.mjs#cheminDePage (l'adresse d'une race, son segment renommé compris : R316 ; déjà dans la même chaîne, par menus.mjs et nouvelles.mjs).
+import { cheminDePage } from './metiers.mjs';
 import { normalize } from './text.mjs';
 
 /** Le menu latéral des races (data-ed-menu) ; un menu d'onglet des Règles est `onglet:<id>` (lib/livres.mjs#editionDuMenuLateral). */
@@ -128,7 +130,7 @@ export function operationsDOrdre(menus) {
 export function entreesDuPlanVivant(plan, menu) {
   if (menu?.races) {
     return GROUPES_DE_RACES.flatMap((groupe) => (plan?.races?.[groupe] ?? []).map((r) => ({
-      id: r.id, rang: r.rang_liste ?? null, groupe, sorte: 'page', page: r.id, texte: r.nom, adresse: `${r.id}/`,
+      id: r.id, rang: r.rang_liste ?? null, groupe, sorte: 'page', page: r.id, texte: r.nom, adresse: cheminDePage(r.id),
     })));
   }
   const onglet = plan?.onglets?.find((o) => o.id === menu?.onglet);
