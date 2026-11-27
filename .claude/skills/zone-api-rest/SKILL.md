@@ -18,7 +18,7 @@ user-invocable: false
 ## Choix du propriétaire
 - Un CRUD pour tous les éléments du jeu (demande du propriétaire).
 - Site de dev seulement : en production, tout `/api/v1/` répond `403`, lectures comprises (décision du propriétaire du 2026-10-15 : la base n'est ouverte que par le front). Le `403` passe avant tout le reste (`service.edition` faux).
-- Accès (R275 b ; `docs/api.md`, « Principes » ; skill `zone-service`) : une fois le mot de passe posé, `GET /api/v1/…` demande la clé de lecture ou le mot de passe, `POST`, `PATCH`, `PUT` et `DELETE` le mot de passe ; refus : 401 `{ erreur, acces }`. `/api/acces/` (connexion, `/verifier/`) est décrit dans l'OpenAPI comme toute route de l'en-tête de `api.mjs`.
+- Accès (R275, R310 ; `docs/api.md`, « Principes » ; skill `zone-service`) : `GET /api/v1/…` demande une session MJ ou la clé de lecture, `POST`, `PATCH`, `PUT` et `DELETE` une session Créateur ; refus : 401 ou 403 `{ erreur, acces }`. `/api/acces/` (connexion, `/verifier/`) est décrit dans l'OpenAPI comme toute route de l'en-tête de `api.mjs`.
 
 ## Invariants
 - Une ressource n'est qu'une description dans le registre (`lib/ressources/<module>.mjs`, au format de l'en-tête de `lib/ressources.mjs`). Chaque table de la base y est rangée une fois et une seule : ressource, sous-ressource, extension, dérivée ou `HORS_RESSOURCE`.

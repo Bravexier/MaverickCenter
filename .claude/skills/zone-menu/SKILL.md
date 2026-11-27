@@ -1,7 +1,7 @@
 ---
 name: zone-menu
 description: "Menu du site (lib/nav.mjs : rubriques, entrées « bientôt », devSeulement, PAGES_RENOMMEES, renvois de la page 404) et en-tête (layouts/Base.astro, site-shell.css, logo et icônes). À charger avant de lire, modifier ou relire le menu, l'en-tête ou leurs tests."
-paths: ["client/src/lib/nav.mjs", "client/src/layouts/Base.astro", "client/src/components/Acces.astro", "client/src/styles/global/acces.css", "client/src/styles/global/site-shell.css", "client/public/logo.webp", "client/public/favicon.png", "client/public/apple-touch-icon.png", "client/test/nav.test.mjs"]
+paths: ["client/src/lib/nav.mjs", "client/src/layouts/Base.astro", "client/src/components/Acces.astro", "client/src/components/Compte.astro", "client/src/styles/global/acces.css", "client/src/styles/global/compte.css", "client/src/scripts/compte.mjs", "client/src/lib/compte.mjs", "client/src/pages/profil.astro", "client/src/pages/connexion.astro", "client/test/compte.test.mjs", "client/src/styles/global/site-shell.css", "client/public/logo.webp", "client/public/favicon.png", "client/public/apple-touch-icon.png", "client/test/nav.test.mjs"]
 user-invocable: false
 ---
 # Menu et en-tête
@@ -11,7 +11,7 @@ user-invocable: false
 - Menu : `client/src/lib/nav.mjs` (`NAV`, `entreesDuMenu`, `activeGroup`, `groupIsCurrent`, `legacyWikiRedirect`, `PAGES_RENOMMEES`, `nouvelleAdresse`, `adresseEclatee`, `adresseDeRenvoi`, `cheminVersUnePageEclatee`), `client/src/layouts/Base.astro`.
 - En-tête : `layouts/Base.astro`, `styles/global/site-shell.css`, `public/logo.webp`, `public/favicon.png`, `public/apple-touch-icon.png`.
 
-`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`), accès au site de dev (`components/Acces.astro`, `styles/global/acces.css`, mention « Connecté · Se déconnecter » au pied de page ; skill `site-version-portable`), feuille des mots-clés colorés et couleur de `<main>` (skill `zone-mots-cles-liens`).
+`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`), avis d'accès au site de dev (`components/Acces.astro`, `styles/global/acces.css` ; skill `site-version-portable`), feuille des mots-clés colorés et couleur de `<main>` (skill `zone-mots-cles-liens`).
 
 ## À lire
 
@@ -41,10 +41,12 @@ user-invocable: false
 - Pas de barre de recherche : la recherche est une page du menu Outils, mêlée aux mots-clés (skill `zone-recherche`).
 - La hauteur de la bande est celle du menu, pas du logo : l'image est en absolu dans le lien, qui garde sa largeur, et la pointe de l'épée dépasse sous la bordure (`test/site-html.test.mjs`).
 - Le bandeau du site de dev (`.bandeau-test` de `site-shell.css`) lit les jetons `--bandeau-dev` et `--texte-sur-fonce` (skill `ui-couleurs-theme`).
+- Le compte du visiteur est à droite de l'en-tête : `Base.astro` pose `components/Compte.astro` (R310 (7) ; absent du portable et de la page de maintenance). Un seul script, `scripts/compte.mjs` (logique : `lib/compte.mjs`), fait un `GET /api/moi/` par page : lien du profil (avatar, nom) ou bouton « Connexion via Discord » ; styles : `styles/global/compte.css`. Pages `/profil/` et `/connexion/` : `pages/profil.astro`, `pages/connexion.astro`. Détail : `docs/serveur.md`, « Accès au site de dev ». Plus de mention « Connecté · Se déconnecter » au pied de page.
 - Les icônes `favicon.png` (32 px) et `apple-touch-icon.png` sont tirées du même logo.
 
 ## Tests
 
 - `test/nav.test.mjs` épingle le plan du menu et les renvois (pages renommées, pages éclatées) ; `test/livres.test.mjs` son accord avec `lib/livres.mjs`, et avec la table `regles_onglet` pour les onglets.
+- `test/compte.test.mjs` : choix du menu, `retour` filtré comme le service, un seul `GET /api/moi/`, profil, déconnexion, messages d'erreur.
 - `test/site-html.test.mjs` : en-tête, logo et icônes, hauteur de la bande, rubrique courante de Familiers et de `/ressources/`, Autres en dernière entrée (site construit, CI après le build).
 - Le seul `href="/ressources/"` d'une page est l'entrée Autres (`test/composants-html.test.mjs`, `test/equipement-html.test.mjs`).
