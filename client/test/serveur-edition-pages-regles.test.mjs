@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { A_COMPLETER, ErreurEdition, FAMILLE_DES_PAGES_DU_SITE, supprimerPage } from '../serveur/edition.mjs';
 import { journalExporte, nouveauLot, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { estUnePageDeNotion } from '../serveur/edition-notions.mjs';
@@ -188,6 +189,24 @@ test('le résumé d’une page du guide se modifie ; pas celui d’une page du C
   const r = lot([{ op: 'modifier', table: 'page', cle: { id: codex.id }, valeurs: { resume: 'Non.' } }]);
   assert.equal(r.statut, 400);
   assert.match(r.corps.erreur, /le résumé ne se modifie que pour une page du guide/);
+});
+
+test('l’index de recherche des pages (page_fts) suit une page des Règles créée puis supprimée par la route : une ligne par page, les contrôles du contenu sans écart', () => {
+  const { db, lot } = nouvelle();
+  const parPage = () => {
+    const { pages, lignes, manquantes } = db.prepare(`SELECT (SELECT count(*) FROM page) AS pages, (SELECT count(*) FROM page_fts) AS lignes,
+      (SELECT count(*) FROM page WHERE id NOT IN (SELECT page_id FROM page_fts)) AS manquantes`).get();
+    return lignes === pages && manquantes === 0;
+  };
+  const ecart = () => controlerLeContenu(db).emplacements.some((e) => e.table === 'page_fts');
+  const id = ok(creer(lot, { titre: titreLibre(db, 'Page d’essai de l’index'), onglet_id: 'combats', resume: 'Un résumé d’essai.' })).crees[0].id;
+  assert.ok(parPage(), 'après la création');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM page_fts WHERE page_id = ?').get(id).n, 1, 'la page créée a sa ligne');
+  assert.equal(ecart(), false);
+  ok(lot([{ op: 'supprimer', entite: 'page_des_regles', cle: { id } }]));
+  assert.ok(parPage(), 'après la suppression');
+  assert.equal(db.prepare('SELECT count(*) AS n FROM page_fts WHERE page_id = ?').get(id).n, 0, 'sa ligne est partie');
+  assert.equal(ecart(), false);
 });
 
 test('supprimer une page des Règles : 404, 400 hors des onglets (Découvrir, une page d’exemple hors plan), 409 protégée (raisons) ou citée (citations) avant écriture ; une citation d’exemple ne bloque pas', () => {

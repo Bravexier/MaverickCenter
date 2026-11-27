@@ -33,6 +33,7 @@ import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
 import { empreinteLogique } from './empreintes.mjs';
+import { tenirLIndexDesPages } from './index-des-pages.mjs';
 import { noterLesMigrationsRecues } from './structure-sur-place.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle, retirerLesManquants } from './fiches-retraits.mjs';
 import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
@@ -520,6 +521,8 @@ function transferer(db, ancienne, instant, evenement = null, poidsPortable = und
         // la valeur du site prime : une fusion ambiguë avec les nouvelles règles la garde, son lot à résoudre (serveur/edition-journal.mjs#rejouer)
         rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES, garderLeSite });
         evenement?.('rejeu', { duree_ms: performance.now() - t0, detail: { lots: rejeu?.lots ?? 0, appliquees: rejeu?.appliquees ?? 0, integrees: rejeu?.integrees ?? 0, conflits: rejeu?.conflits ?? 0 } });
+        // une page créée ou retirée par le rejeu : sa ligne de l'index de recherche (les règles l'ont déjà pour les leurs ; serveur/index-des-pages.mjs)
+        if (rejeu?.appliquees) tenirLIndexDesPages(db);
       }
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);

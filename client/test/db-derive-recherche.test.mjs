@@ -1,4 +1,4 @@
-// La recherche plein texte de la base (table page_fts, remplie par scripts/db-derive.mjs#textePlein) indexe le texte tel qu'il s'affiche : depuis la
+// La recherche plein texte de la base (table page_fts, remplie par scripts/db-derive.mjs avec lib/index-des-pages.mjs#textePlein) indexe le texte tel qu'il s'affiche : depuis la
 // migration 0098, un lien est une balise du glossaire, souvent sans texte (« {{orios}} », « {{lequipement}} »), et le mot affiché est le libellé du
 // mot-clé (« Orios », « L’équipement ») ; chaque balise est donc remplacée par son texte affiché (le texte écrit, sinon le libellé ; « Libellé :
 // définition » pour le mode complet : lib/mots-cles-balises.mjs#texteSansBalises), dans le corps, le titre et le résumé. L'id d'un mot-clé n'est pas

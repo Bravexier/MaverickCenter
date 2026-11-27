@@ -73,3 +73,24 @@ export function htmlDuGroupe({ intro = '', onglets, actif = 0 }) {
     `<section class="${classesDeLOnglet(CLASSES_DES_ONGLETS.panneau, o.classe, i === ouvert).join(' ')}" id="${echapper(o.id)}"${o.couleur ? ` data-couleur="${echapper(o.couleur)}"` : ''}>${o.html}</section>`);
   return `<div class="${CLASSES_DES_ONGLETS.groupe}" data-onglets-md data-onglets="${NOM_DE_LA_BARRE}">${intro}${htmlDeLaBarre(onglets, ouvert)}${panneaux.join('')}</div>`;
 }
+
+/**
+ * Le Markdown sans ses lignes de marque `::: onglets` et `:::` (texte de la recherche : lib/recherche-index.ts, lib/index-des-pages.mjs), le code délimité intact ;
+ * les autres lignes (intertitres des onglets compris) restent. Ici, sans dépendance, pour le service ; lib/markdown-onglets.mjs le réexporte.
+ */
+export function sansMarquesDOnglets(markdown) {
+  let fence = null;
+  return String(markdown ?? '').split('\n').filter((ligne) => {
+    const f = /^ {0,3}(`{3,}|~{3,})/.exec(ligne);
+    if (fence) {
+      if (f && f[1][0] === fence[0] && f[1].length >= fence.length && ligne.trim() === f[1]) fence = null;
+      return true;
+    }
+    if (f) {
+      fence = f[1];
+      return true;
+    }
+    const t = ligne.trim().replace(/[ \t]+/g, ' ');
+    return t !== MARQUE_D_OUVERTURE && t !== MARQUE_DE_FERMETURE;
+  }).join('\n');
+}
