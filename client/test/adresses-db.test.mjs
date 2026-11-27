@@ -7,7 +7,7 @@ import { readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { ADRESSE_DU_GLOSSAIRE, ADRESSES_FIXES, adresseDeLaPage, adressesDuSite, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
+import { ADRESSE_DU_GLOSSAIRE, ADRESSES_FIXES, adresseDeLaPage, adresseDeLaPageEnBase, adressesDuSite, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { cheminDeLAdresse, fauteDeLUrl } from '../src/lib/mots-cles-liens.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
@@ -66,11 +66,13 @@ test('adressesDuSite : les routes fixes, les rubriques, le chemin de chaque page
   for (const a of ADRESSES_FIXES) assert.ok(adresses.has(a), a);
   for (const { id } of db.prepare('SELECT id FROM type_page').all()) assert.ok(adresses.has(`/${id}/`), id);
   const pages = db.prepare('SELECT id, statut FROM page').all();
-  for (const p of pages.filter((x) => x.statut !== 'example')) assert.ok(adresses.has(cheminDeLAdresse(adresseDeLaPage(p.id))), p.id);
+  // chaque page à l'adresse de son segment lu en base (R316 : une page renommée sur le site de dev ; test/adresses-renommees.test.mjs)
+  const chemin = (id) => cheminDeLAdresse(adresseDeLaPageEnBase(db, id));
+  for (const p of pages.filter((x) => x.statut !== 'example')) assert.ok(adresses.has(chemin(p.id)), p.id);
   for (const a of adresses) assert.ok(!a.includes('#') && a.startsWith('/') && a.endsWith('/'), a);
   // une page d'exemple n'est pas une adresse du site (elle n'est pas sur le site livré)
-  const exemples = pages.filter((x) => x.statut === 'example').map((x) => cheminDeLAdresse(adresseDeLaPage(x.id)));
-  const reelles = new Set(pages.filter((x) => x.statut !== 'example').map((x) => cheminDeLAdresse(adresseDeLaPage(x.id))));
+  const exemples = pages.filter((x) => x.statut === 'example').map((x) => chemin(x.id));
+  const reelles = new Set(pages.filter((x) => x.statut !== 'example').map((x) => chemin(x.id)));
   const seulementExemples = exemples.filter((a) => !reelles.has(a) && !ADRESSES_FIXES.includes(a));
   assert.ok(seulementExemples.length > 0);
   for (const a of seulementExemples) assert.ok(!adresses.has(a), a);

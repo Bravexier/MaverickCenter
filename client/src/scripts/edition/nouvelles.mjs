@@ -5,6 +5,7 @@
 //   - l'adresse d'une entité créée tombe sur la page 404 du site : on y dessine sa page à partir de la base vivante, avec ses champs modifiables
 //     (les mêmes attributs `data-ed` que les gabarits), pour la compléter ; une classe créée y reçoit aussi ses spécialités et ses dons (D11 :
 //     src/scripts/edition/classes.mjs) ;
+//   - l'adresse d'une page renommée dont le fichier n'est pas encore refabriqué (R316) renvoie à l'adresse où le site construit la sert encore ;
 //   - l'adresse d'un don créé (sa fiche n'existe pas encore) mène à son ancre sur la page de sa classe ;
 //   - une page des Règles créée (lot de l'édition des menus : « + Ajouter une page », « Créer la page » d'une entrée « bientôt » ; edition/menus.mjs) :
 //     à son adresse /regles/<slug>/, sa page comme PageDuGuide.astro, à côté du menu latéral de son onglet (MenuLateral.astro, d'après le plan vivant,
@@ -24,13 +25,19 @@ import { entreesDuPlanVivant, htmlDUneEntree } from '../../lib/ordre-des-menus.m
 // la couleur d'une race ou d'une classe créée : la classe de sa nature ou de sa catégorie, comme les gabarits (familles `race` et `classe`, émises avec
 // la page dessinée : la page 404 ne les a pas) ; l'éditeur peut importer la palette (hors version portable : skill ui-couleurs)
 import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { adresseEncoreServie } from '../../lib/metiers.mjs';
 import { nomDuProtege } from '../../lib/mots-cles-proteges.mjs';
 import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
 
+// la page 404 d'une adresse que la base a déjà renommée (R316) renvoie vers l'adresse où le site construit sert encore la page (lib/metiers.mjs#adresseEncoreServie)
+export { adresseEncoreServie };
+
 const ed_ = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
 const estPage404 = () => Boolean(document.querySelector('#introuvable'));
+/** L'adresse demandée, relative à la racine du site (« /MaverickCenter/races/lycan/ » → « races/lycan/ »), préfixe de déploiement retiré. */
+const cheminDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.length - 1)).replace(/^\/+/, '');
 /** Id de page d'après l'adresse (« /races/lycan/ » → « races/lycan »), préfixe de déploiement retiré. */
-const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.length - 1)).replace(/^\/|\/$/g, '');
+const idDeLAdresse = (base) => cheminDeLAdresse(base).replace(/\/$/, '');
 
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
 /**
@@ -160,7 +167,28 @@ function pageDesRegles(ed, page, plan) {
 
 const PAGES = { races: pageDeRace, classes: pageDeClasse };
 
+/**
+ * Une page renommée avant la refabrication (R316) : sa nouvelle adresse n'a pas encore de fichier (les liens des mots-clés, lus en direct, y mènent déjà).
+ * Le service dit quelle page vit à cette adresse (GET /api/edition/page-de-l-adresse/), et l'on va à l'adresse où le site construit la sert encore, requête
+ * et ancre gardées. Faux quand la page est inconnue ou que le site construit la sert déjà à cette adresse (pas de boucle) ; une erreur du service est sans effet.
+ */
+async function renvoyerVersLAdresseServie(ed) {
+  const chemin = cheminDeLAdresse(ed.base);
+  let page = null;
+  try {
+    page = (await ed.appel('GET', `edition/page-de-l-adresse/?adresse=${encodeURIComponent(chemin)}`))?.page ?? null;
+  } catch {
+    return false;
+  }
+  const servie = adresseEncoreServie(page, chemin);
+  if (!servie) return false;
+  const [adresse, ancre] = servie.split('#');
+  location.replace(`${ed.base}${adresse}${location.search}${ancre ? `#${ancre}` : location.hash}`);
+  return true;
+}
+
 async function dessinerPage(ed, lignes) {
+  if (await renvoyerVersLAdresseServie(ed)) return true;
   const id = idDeLAdresse(ed.base);
   const type = id.split('/')[0];
   // une page des Règles créée : regles/<slug> est la page guide/<slug> (lib/livres.mjs#adresseDuGuide : adresses à plat)

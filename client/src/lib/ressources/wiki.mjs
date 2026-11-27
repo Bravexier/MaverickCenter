@@ -29,9 +29,9 @@ export const RESSOURCES = [
       'Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de personnage », et quatre pages tirées des classeurs : la liste des altérations d’état, la ' +
       'météo, les effets des modes hyper et super) ; le titre et le texte (Markdown) ' +
       'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, ancre figée d’un intertitre (« {#ancre} ») ni ' +
-      'retirée, ni renommée, ni doublée (400), un titre qui est déjà le nom d’une autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé (une ' +
+      'retirée, ni renommée, ni doublée (400), un titre qui est déjà le nom d’une autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> ne change jamais, l’adresse suit le titre (décision R316 : le service la recalcule au renommage, l’ancienne redirige) ; le résumé (une ' +
       'ligne) se modifie aussi. Une page des Règles (les quatre onglets) se crée — titre, onglet et résumé obligatoires, texte « À compléter. », ' +
-      'adresse tirée du titre puis figée, en fin du menu de l’onglet ou à la place d’une entrée « bientôt » (`bientot`) — et se supprime avec son ' +
+      'adresse tirée du titre (recalculée au renommage), en fin du menu de l’onglet ou à la place d’une entrée « bientôt » (`bientot`) — et se supprime avec son ' +
       'entrée de menu, sauf une page protégée (409 avec ses raisons : clé étrangère, famille tirée d’un classeur, ouverture d’onglet, page nommée ' +
       'par le plan du site ou lue par le code, bloc tiré de la base) ou citée par une autre (409 avec les citations) ; une page de Découvrir ou du ' +
       'Guide du MJ ne se supprime pas (400).',
@@ -66,7 +66,7 @@ export const RESSOURCES = [
     noms: 'Pages du wiki',
     description:
       'Les autres pages du wiki (races, classes, dons de classe, magies, bestiaire, ressources, métiers, description des relations entre les peuples, ' +
-      'pages d’exemple hors du guide — celle du guide est dans pages-du-guide, modifiable comme les autres), à l’adresse /<type>/<slug>/ (un métier : ' +
+      'pages d’exemple hors du guide — celle du guide est dans pages-du-guide, modifiable comme les autres), à l’adresse /<type>/<slug>/ (celle de l’identifiant tant que la page n’est pas renommée, R316 ; un métier : ' +
       'sa ligne de /metiers/) : leur texte ne se modifie pas par le service ; le corps et le ' +
       'résumé des pages typées sont produits depuis leurs tables (lib/corps-*.mjs) et refaits quand l’entité change ; une page se crée ou se supprime ' +
       'avec son entité (métier, race, classe, don…), par la ressource de cette entité : en lecture seule ici.',
@@ -462,6 +462,7 @@ const JOURNAL = 'journal de l’édition du site de dev (section 14), servi par 
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
 export const HORS_RESSOURCE = {
+  page_ancienne_adresse: 'Registre technique des renvois : l’adresse quittée d’une page renommée (décision R316, migration 0133), écrite par le service au renommage, qui sert à la page 404 ; pas un élément de l’API.',
   utilisateur: `Compte utilisateur (identifiant Discord, nom affiché) : ${FICHES} ; aucun code ne le remplit encore.`,
   utilisateur_role: `Rôles cumulables d’un compte (mj, editeur, admin), tirés d’une configuration des rôles Discord : ${FICHES}.`,
   personnage: `Fiche de personnage (prétiré ou fiche de joueur, ses choix seulement) : ${FICHES}.`,

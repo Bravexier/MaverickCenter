@@ -36,8 +36,8 @@ const N = (numero) => String(numero).padStart(4, '0');
  * appliquées sur place. Une migration plus récente qui touche une autre table l'ajoute ici.
  */
 const TABLES_QUE_LES_MIGRATIONS_CHANGENT = ['migration_recue'];
-/** Les tables à qui une migration livrée ajoute une colonne (0131 : mot_cle_id sur page et sur sort) : leur empreinte suit leur forme, leurs lignes ne bougent pas. */
-const COLONNES_AJOUTEES = { page: ['mot_cle_id'], sort: ['mot_cle_id'] };
+/** Les tables à qui une migration livrée ajoute une colonne (0131 : mot_cle_id sur page et sur sort ; 0133 : slug_adresse sur page) : leur empreinte suit leur forme, leurs lignes ne bougent pas. */
+const COLONNES_AJOUTEES = { page: ['mot_cle_id', 'slug_adresse'], sort: ['mot_cle_id'] };
 const TABLES_A_COLONNE_AJOUTEE = Object.keys(COLONNES_AJOUTEES);
 const lire = (chemin) => new DatabaseSync(chemin, { readOnly: true });
 /** Une base ouverte comme celle du service (clés étrangères contrôlées). */
@@ -442,8 +442,8 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.tables.modifiees, Object.fromEntries(Object.entries(COLONNES_AJOUTEES).map(([table, colonnes]) => [table,
     { ajoutees: 0, retirees: 0, modifiees: 0, structure_changee: true, colonnes_ajoutees: colonnes, colonnes_retirees: [] }])), 'aucune ligne de contenu ne bouge : seules page et sort changent de forme (colonne ajoutée)');
   assert.deepEqual(bilan.totaux, { ajoutees: 0, retirees: 0, modifiees: 0 });
-  // les trois index d'ancrage de la 0131 (un mot-clé ancre au plus une page, un sort, un type de sort)
-  assert.deepEqual(bilan.objets, { crees: ['index page_ancre_mot_cle', 'index sort_ancre_mot_cle', 'index type_sort_ancre_mot_cle'], retires: [], modifies: [] });
+  // les index d'ancrage de la 0131 (un mot-clé ancre au plus une page, un sort, un type de sort) et celui des anciennes adresses de la 0133
+  assert.deepEqual(bilan.objets, { crees: ['index page_ancre_mot_cle', 'index sort_ancre_mot_cle', 'index type_sort_ancre_mot_cle', 'index page_ancienne_adresse_page'], retires: [], modifies: [] });
   // toutes les autres tables sont listées inchangées : fiches, journal, historique et règles comprises (page et sort, qui gagnent une colonne, sont dites modifiées)
   const db = lire(chemin);
   try {

@@ -26,6 +26,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { adresseDeLaPage, adresseQuiSuit, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
 import { ErreurCorpsArmures } from '../src/lib/corps-armures.mjs';
 import {
@@ -41,6 +42,7 @@ import { lecteurDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
+import { tableDeLElement } from './edition-adresses.mjs';
 import { lectureDesBalises } from './edition-ancrage.mjs';
 import { libelleDeLigne } from './edition-conflits.mjs';
 import { corpsEntierDesArmes } from './edition-armes.mjs';
@@ -887,8 +889,10 @@ const tientAuMotCle = (n, k) => (n.table === 'mot_cle' && n.cle.id === k) || (n.
  * seule. Un mot-clé créé et ancré par le lot : sa ligne, ses catégories, ses clés quittées et les ancres qui le citent. Dans un lot de l'action « Préparer l'ancrage »
  * (`lot` : sa décision et son auteur, lib/lots-d-ancrage.mjs#estUnLotDAncrage ; un lot de l'équipe qui cite R309 n'en est pas un), le
  * reclassement d'un mot-clé : toutes ses lignes de `mot_cle_categorie`. Par mot-clé, les éléments ancrés retirés avec lui : eux, sa ligne, ses catégories, synonymes et clés
- * quittées ; s'il est gardé par un autre élément (R289) et que son adresse s'est vidée : eux et sa ligne.
- * Rien d'autre : un renommage, l'ancre d'un mot-clé existant, un lot sans ancrage restent ligne à ligne.
+ * quittées ; s'il est gardé par un autre élément (R289) et que son adresse s'est vidée : eux et sa ligne. Par page dont le lot a déplacé l'adresse (R316,
+ * `groupesDesAdresses`) : sa ligne, la ligne de l'élément dont elle tire son segment s'il a changé (don, métier, race, classe), ses anciennes adresses et les
+ * mots-clés dont l'adresse l'a suivie ; ce groupe s'unit à ceux qu'il recoupe.
+ * Rien d'autre : un renommage qui ne déplace pas l'adresse, l'ancre d'un mot-clé existant, un lot sans ancrage restent ligne à ligne.
  */
 function lignesEmportees(nets, lot) {
   const groupes = new Map();
@@ -908,10 +912,66 @@ function lignesEmportees(nets, lot) {
     if (motCle?.genre === 'supprimer') grouper([...elements, ...nets.filter((n) => tientAuMotCle(n, k) || (n.table === 'mot_cle_synonyme' && n.origine?.mot_cle_id === k))]);
     else if (motCle?.genre === 'modifier' && motCle.fin.url === null) grouper([...elements, motCle]);
   }
+  // les adresses en dernier : un groupe qui recoupe un groupe déjà fait l'absorbe (la ligne de la page peut être l'ancre d'un mot-clé créé)
+  for (const lignes of groupesDesAdresses(nets)) {
+    const rangs = new Set(lignes.flatMap((n) => groupes.get(n.rang) ?? [n.rang]));
+    grouper([...rangs].map((r) => ({ rang: r })));
+  }
   return groupes;
 }
 
+/** `page_ancienne_adresse.adresse` (sans barre initiale) en adresse de `mot_cle.url`. */
+const avecBarre = (adresse) => `/${adresse}`;
+
+/**
+ * Les lignes de l'effet net qu'un déplacement d'adresse lie (R316, serveur/edition-adresses.mjs#suivreLesTitres), une liste par page déplacée, deux lignes au
+ * moins : la page dont le lot a changé `slug_adresse` (ou qui a reçu une ancienne adresse : son segment, null avant comme après, n'est pas dans l'effet net) ; la
+ * ligne de l'élément dont elle tire son segment, s'il a changé (un don, un métier, une race, une classe : edition-adresses.mjs#tableDeLElement ; remis en premier,
+ * dans l'ordre du lot, il ramène le titre de la page, que l'annulation ne remet pas elle-même) ; les lignes de `page_ancienne_adresse` écrites pour elle
+ * (insérées ou reprises à son nom) et celle retirée de sa nouvelle adresse ; les mots-clés dont le lot a fait passer l'adresse de l'adresse quittée à la nouvelle
+ * (lib/adresses-db.mjs#adresseQuiSuit). Une page créée par le lot n'en a pas : sa ligne est entière.
+ */
+function groupesDesAdresses(nets) {
+  const anciennes = nets.filter((n) => n.table === 'page_ancienne_adresse');
+  const pages = new Map();
+  for (const n of nets) {
+    if (n.table === 'page' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'slug_adresse') && !memeValeur(n.origine.slug_adresse ?? null, n.fin.slug_adresse ?? null)) pages.set(n.cle.id, n);
+  }
+  for (const a of anciennes) {
+    const id = a.genre === 'supprimer' ? null : a.fin.page_id;
+    if (id != null && !pages.has(id)) pages.set(id, nets.find((n) => n.table === 'page' && n.genre === 'modifier' && n.cle.id === id) ?? null);
+  }
+  const sortie = [];
+  for (const [id, page] of pages) {
+    const segment = (cote) => (page && Object.hasOwn(page[cote], 'slug_adresse') ? page[cote].slug_adresse ?? null : null);
+    const adresse = adresseDeLaPage(id, segment('fin'));
+    const ecrites = anciennes.filter((a) => a.genre !== 'supprimer' && a.fin.page_id === id);
+    const retiree = anciennes.filter((a) => a.genre === 'supprimer' && avecBarre(a.cle.adresse) === adresse);
+    // l'adresse quittée : celle du segment d'avant, et chaque ancienne adresse écrite pour la page
+    const quittees = new Set([...(page && Object.hasOwn(page.origine, 'slug_adresse') ? [adresseDeLaPage(id, segment('origine'))] : []), ...ecrites.map((a) => avecBarre(a.cle.adresse))]);
+    quittees.delete(adresse);
+    const motsCles = nets.filter((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'url')
+      && [...quittees].some((quittee) => adresseQuiSuit(n.origine.url, { quittee, adresse }) === n.fin.url));
+    const element = nets.find((n) => n.genre === 'modifier' && n.table === tableDeLElement(id) && n.cle.id === id);
+    const lignes = [...(element ? [element] : []), ...(page ? [page] : []), ...ecrites, ...retiree, ...motsCles];
+    if (lignes.length > 1) sortie.push(lignes);
+  }
+  return sortie;
+}
+
 const MOTIF_DU_GROUPE_GARDE = 'Ce mot-clé a changé depuis le lot : ses lignes restent toutes en place.';
+/**
+ * L'adresse que la page d'un groupe d'adresse avait avant le lot est-elle aujourd'hui celle d'une autre page (R316, choix 12) ? La même adresse, ancre comprise
+ * (l'ancre d'un métier n'est pas tenue par la page servie à son chemin). `index` : rend indexDesAdresses(db, { exemples: true }), lu une fois par appelant.
+ */
+function adresseDAvantReprise(index, lignes) {
+  const page = lignes.find((n) => n.table === 'page' && n.genre === 'modifier' && Object.hasOwn(n.origine, 'slug_adresse'));
+  if (!page) return false;
+  const tenante = index().exactes.get(adresseDeLaPage(page.cle.id, page.origine.slug_adresse ?? null)) ?? null;
+  return tenante !== null && tenante !== page.cle.id;
+}
+
+const MOTIF_DE_L_ADRESSE_GARDEE = 'Cette page, son adresse ou un mot-clé qui la suit a changé depuis le lot : les lignes de son adresse restent toutes en place.';
 const MOTIF_DE_LA_CATEGORIE_GARDEE = 'Cette catégorie range encore un mot-clé qui a changé depuis le lot : elle reste en place.';
 
 /** Où en est une ligne d'un groupe : `en_place`, `revenue` (comme avant le lot) ou `changee`. D'une ancre, seule `mot_cle_id` compte (le lot a pu réécrire une balise de la même ligne). */
@@ -962,6 +1022,8 @@ function groupesGardes(db, nets, lot, annulees = new Set()) {
   const parRang = new Map(nets.map((n) => [n.rang, n]));
   const juge = jugeDesLignes(db, nets);
   const avecFilles = fillesAjoutees(db, nets, groupes, juge);
+  let lu = null;
+  const index = () => (lu ??= indexDesAdresses(db, { exemples: true })); // les adresses d'aujourd'hui, lues au premier groupe d'adresse jugé
   const lue = (n) => {
     try {
       return lireLigne(db, n.table, n.cle);
@@ -975,7 +1037,12 @@ function groupesGardes(db, nets, lot, annulees = new Set()) {
     const enPlace = etats.filter((e) => e === 'en_place').length;
     if (!enPlace && !etats.includes('changee')) continue;
     const motCle = lignes.find((n) => n.table === 'mot_cle');
-    if (enPlace < etats.length || (motCle && avecFilles.has(motCle.cle.id))) for (const r of rangs) gardes.set(r, MOTIF_DU_GROUPE_GARDE);
+    // le groupe d'une adresse déplacée (sans mot-clé créé) dit le sien
+    const motif = lignes.some((n) => n.table === 'page_ancienne_adresse' || (n.table === 'page' && Object.hasOwn(n.fin ?? {}, 'slug_adresse')))
+      && !lignes.some((n) => n.table === 'mot_cle' && n.genre === 'inserer') ? MOTIF_DE_L_ADRESSE_GARDEE : MOTIF_DU_GROUPE_GARDE;
+    // l'adresse d'avant reprise par une autre page n'est pas une retouche : l'annulation se tente, et la refuse en nommant cette page (R316, choix 12)
+    if (motif === MOTIF_DE_L_ADRESSE_GARDEE && adresseDAvantReprise(index, lignes)) continue;
+    if (enPlace < etats.length || (motCle && avecFilles.has(motCle.cle.id))) for (const r of rangs) gardes.set(r, motif);
   }
   const rangees = nets.filter((n) => gardes.has(n.rang) && n.table === 'mot_cle_categorie' && n.fin);
   for (const n of nets) {

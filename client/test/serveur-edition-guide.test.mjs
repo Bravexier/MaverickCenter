@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
+import { adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { decouperCorps, recomposerCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -54,6 +55,9 @@ test('titre changé : clé de titre recalculée, l’ancien titre devient un ali
     assert.equal(alias.at(-1), TITRE_AVANT, 'l’ancien titre, dernier autre nom');
     assert.equal(db.prepare('SELECT page_id FROM cle_page WHERE cle = ?').get(normalize(TITRE_AVANT)).page_id, 'guide/bienvenue');
   }
+  // R316 : Bienvenue est servie par une route fixe (/decouvrir/) : renommée, elle garde son adresse, sans segment ni ancienne adresse
+  assert.equal(p.slug_adresse, null);
+  assert.equal(db.prepare("SELECT count(*) AS n FROM page_ancienne_adresse WHERE page_id = 'guide/bienvenue'").get().n, 0);
   // un titre qui est déjà le nom d'une autre page rendrait les liens ambigus
   const refus = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { titre: 'Humain' } }]);
   assert.equal(refus.statut, 409);
@@ -111,13 +115,18 @@ test('pages du wiki, cibles d’un lien posé dans le texte : toutes sauf les ex
 test('page du Codex (lore tiré du Google Doc « CODEX Maverick ») : titre et texte modifiés comme une page du guide, ni HTML brut ni lien non sûr', () => {
   const id = 'lore/eaunoire';
   const avant = page(id);
+  const quittee = adresseDeLaPageEnBase(db, id);
   const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les {{nain|nains}}.\n`;
   const r = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: corps, titre: 'Eaunoire la déesse' }, avant: { corps_md: avant.corps_md } }] });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(page(id).corps_md, corps);
   assert.equal(page(id).titre_cle, 'eaunoire-la-deesse');
-  // l'ancien titre est l'adresse de la page : les [[liens]] qui l'écrivent y mènent toujours (sinon il deviendrait un alias)
+  // l'ancien titre est le slug de la page : les [[liens]] qui l'écrivent y mènent toujours (sinon il deviendrait un alias)
   assert.equal(db.prepare("SELECT page_id FROM cle_page WHERE cle = 'eaunoire'").get().page_id, id);
+  // R316 : son adresse suit le nouveau titre ; l'ancienne y mène toujours
+  assert.equal(page(id).slug_adresse, 'eaunoire-la-deesse');
+  assert.equal(adresseDeLaPageEnBase(db, id), '/lore/eaunoire-la-deesse/');
+  assert.equal(db.prepare('SELECT page_id FROM page_ancienne_adresse WHERE adresse = ?').get(quittee.slice(1))?.page_id, id, `${quittee} mène toujours à la page`);
   const html = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: `${corps}\n<script>alert(1)</script>\n` } }] });
   assert.equal(html.statut, 400);
 });

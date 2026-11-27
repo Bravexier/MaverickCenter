@@ -4,7 +4,7 @@
 // Aucun refus d'ici ne cite un numéro de décision : un refus qui en cite un devient un verrou que une session Créateur ouvre (edition-lots.mjs#ecrireLesOperations).
 // Ces opérations n'existent que dans un lot (edition.mjs#OPERATIONS_DU_LOT) : le rejeu relit leurs lignes du journal (`ctx.w`) sans repasser par ces refus (R219 (6)).
 // Sans import de serveur/edition.mjs : ses outils sont donnés par outilsDeLAncrage (patron de edition-mots-cles.mjs#outilsDesMotsCles).
-import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
+import { adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSortEnBase } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { categorieDuType, estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
@@ -85,16 +85,17 @@ export function motsClesAncres(db) {
 
 /**
  * L'élément `id` de `table` : { nom, adresse, parent, mot_cle_id }, ou null. `nom` : le titre d'une page, le nom d'un sort, l'écriture d'un type de sort dans
- * `sort_type` (null si ses sorts n'en ont pas une seule) ; `parent` : le nom de la magie d'un sort, qui départage deux homonymes de même type.
+ * `sort_type` (null si ses sorts n'en ont pas une seule) ; `parent` : le nom de la magie d'un sort, qui départage deux homonymes de même type. `adresse` : celle
+ * de la base vivante (le segment renommé de la page, décision R316), jamais celle du build.
  */
 function elementDe(db, table, id) {
   if (table === 'page') {
     const p = db.prepare('SELECT titre, mot_cle_id FROM page WHERE id = ?').get(id);
-    return p ? { nom: p.titre, adresse: adresseDeLaPage(id), parent: null, mot_cle_id: p.mot_cle_id } : null;
+    return p ? { nom: p.titre, adresse: adresseDeLaPageEnBase(db, id), parent: null, mot_cle_id: p.mot_cle_id } : null;
   }
   if (table === 'sort') {
     const s = db.prepare('SELECT s.nom, s.mot_cle_id, m.nom AS parent FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.id = ?').get(id);
-    return s ? { nom: s.nom, adresse: adresseDuSort(id), parent: s.parent, mot_cle_id: s.mot_cle_id } : null;
+    return s ? { nom: s.nom, adresse: adresseDuSortEnBase(db, id), parent: s.parent, mot_cle_id: s.mot_cle_id } : null;
   }
   if (table === 'type_sort') {
     const t = db.prepare('SELECT mot_cle_id FROM type_sort WHERE id = ?').get(id);
@@ -188,9 +189,10 @@ export function motsClesPropres(db, table, ids, { avec = [] } = {}) {
 /**
  * Les outils de l'ancrage, liés au service : { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer,
  * retirerLeMotCle, sousLeVerrou, refusDuVerrou, secondesCategories }. Les écritures de ce module ne passent jamais sous le verrou : elles vont directement par `w`.
- * @param {{ ErreurEdition: Function, MOTS_CLES: object, creerMotCle: Function }} o la classe d'erreur, les outils du vocabulaire et la création d'un mot-clé
+ * @param {{ ErreurEdition: Function, MOTS_CLES: object, creerMotCle: Function, ADRESSES: object }} o la classe d'erreur, les outils du vocabulaire, la création
+ *   d'un mot-clé et les outils des adresses (serveur/edition-adresses.mjs)
  */
-export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
+export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESSES }) {
   function elementOuRefus(db, table, id) {
     if (!TABLES_ANCRABLES.includes(table)) throw new ErreurEdition(400, `Ancrage : la table « ${table} » n’ancre pas de mot-clé.`);
     const e = elementDe(db, table, id);
@@ -296,7 +298,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
     if (!nom || !aDesAncres(db, 'page')) return null;
     const categorie = categorieDuType(db, nom); // même renommée au Glossaire
     if (categorie === null) return null;
-    const url = adresseDeLaPage(id);
+    const url = adresseDeLaPage(id, null); // une page neuve n'a pas de segment renommé (R316)
     if (db.prepare('SELECT 1 FROM mot_cle WHERE url = ?').get(url)) return null;
     ctx.adressesDuLot = null; // la page vient d'être créée : les adresses retenues par le lot ne la connaissent pas
     try {
@@ -343,9 +345,11 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle }) {
    * refus les cite, `details.mots_cles`), et les autres suivent. `magie.nom` : la clé des sorts homonymes dépend de leur parent ; un mot-clé retiré (`ctx.clesDues`) : un
    * homonyme peut retrouver sa clé. Dans ces deux cas le recalcul est dû : s'il est refusé sans renommage à écarter, le refus remonte (sans numéro de décision), car le
    * vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal). Rend vrai s'il a recalculé les clés : l'appelant n'a pas à le refaire.
+   * D'abord, l'adresse d'une page renommée suit son titre (décision R316, serveur/edition-adresses.mjs) : le mot-clé aligné ensuite la trouve déjà à jour.
    */
   function suivreLesElements(ctx) {
     if (ctx.annulation) return false;
+    ADRESSES.suivreLesTitres(ctx);
     const { db, w } = ctx;
     const clesDues = ctx.clesDues === true;
     ctx.clesDues = false;

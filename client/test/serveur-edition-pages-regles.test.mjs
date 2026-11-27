@@ -141,11 +141,14 @@ test('créer : un identifiant déjà employé (journal, page supprimée par le p
     assert.match(id, new RegExp(`^guide/${slug}-\\d+$`), titre);
     assert.notEqual(cheminDePage(id), cheminDePage(page));
   }
-  // renommée, la page garde son adresse ; l'ancien titre, qui est son slug, la nomme toujours (cle_page)
+  // R316 : renommée, la page prend l'adresse de son nouveau titre et garde l'ancienne (page_ancienne_adresse) ; son identifiant et son slug ne changent pas, et
+  // l'ancien titre, qui est son slug, la nomme toujours (cle_page)
   const titre = titreLibre(db, 'Page renommée d’essai');
   const id = ok(creer(lot, { titre, onglet_id: 'exploration', resume: 'Essai.' })).crees[0].id;
+  const quittee = cheminDePage(id, null);
   ok(lot([{ op: 'modifier', table: 'page', cle: { id }, valeurs: { titre: `${titre} bis` } }]));
-  assert.equal(db.prepare('SELECT slug FROM page WHERE id = ?').get(id).slug, normalize(titre));
+  assert.deepEqual({ ...db.prepare('SELECT slug, slug_adresse FROM page WHERE id = ?').get(id) }, { slug: normalize(titre), slug_adresse: normalize(`${titre} bis`) });
+  assert.equal(db.prepare('SELECT page_id FROM page_ancienne_adresse WHERE adresse = ?').get(quittee)?.page_id, id, `${quittee} mène toujours à la page`);
   assert.equal(db.prepare('SELECT page_id FROM cle_page WHERE cle = ?').get(normalize(titre)).page_id, id);
 });
 

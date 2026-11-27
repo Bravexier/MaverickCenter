@@ -13,7 +13,7 @@ import { motsClesPropres } from '../serveur/edition-ancrage.mjs';
 import { appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, deposerEtAppliquer, lire, netsDuLot, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
-import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
+import { adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
@@ -151,7 +151,7 @@ test('une page sans catégorie à sa rubrique est créée sans mot-clé', () => 
   }
 });
 
-test('renommer une page renomme le mot-clé, sa clé et ses balises, l’adresse ne bouge pas', () => {
+test('renommer une page renomme le mot-clé, sa clé et ses balises ; son adresse suit le nouveau titre (R316)', () => {
   const m = reelle();
   try {
     poserLaCategorieGuide(m);
@@ -165,7 +165,10 @@ test('renommer une page renomme le mot-clé, sa clé et ses balises, l’adresse
     const mc = motCle(m, motCleId);
     assert.equal(mc.libelle, nouveau);
     assert.equal(mc.cle, normalize(nouveau));
-    assert.equal(mc.url, adresseDeLaPage(id), 'l’adresse suit l’id de la page, qui ne change pas');
+    // R316 : l'adresse suit le titre (l'identifiant, lui, ne change pas), et le mot-clé la suit
+    assert.equal(mc.url, `/regles/${normalize(nouveau)}/`, 'l’adresse suit le nouveau titre');
+    assert.equal(mc.url, adresseDeLaPageEnBase(m.db, id));
+    assert.notEqual(mc.url, adresseDeLaPage(id, null), 'l’adresse tirée de l’identifiant est quittée');
     assert.ok(corpsDe(m, citante).includes(`{{${normalize(nouveau)}`), 'la balise suit la clé');
     clesJustes(m);
   } finally {

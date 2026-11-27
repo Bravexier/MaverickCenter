@@ -473,7 +473,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   « Sorts communs » (les sorts sans spécialisation, `specialisationId` nul : NPM 1 et 2), puis la section de chacune des deux spécialisations de la magie, dans l'ordre 1, 2 :
   son nom **tel que la base l'écrit, en capitales** (aucun `text-transform`, comme les spécialités des classes), sa description et sa remarque (`magie_specialisation`, modifiables sur le site de dev ;
   un cadre vide est caché en lecture), puis ses sorts, un tableau par NPM (les deux spécialisations ont chacune leur NPM 3 : identifiants `#npm-<spécialisation>-<NPM>`, `#specialisation-<spécialisation>`) ; `<spécialisation>` est **l'ancre figée** : le segment de l'identifiant après `#specialisation:`
-  (`lib/sort-format.mjs#ancreDeSpecialisation`), jamais le nom ni `nom_cle`, que le service recalcule au renommage (« Identifiants figés »).
+  (`lib/sort-format.mjs#ancreDeSpecialisation`), jamais le nom ni `nom_cle`, que le service recalcule au renommage (« Identifiants figés, adresses qui suivent »).
   Les deux spécialisations sont **côte à côte** (R245 (2), classeur : une colonne chacune, `div.specialisations` ; l'une sous l'autre sous 72rem, chaque tableau défile dans son cadre, jamais la page).
   **Zone élargie** (R247 (3), « Elargir la zone sur les cotés pour remplir les espace vides ») : à partir de 72rem, une page qui a des spécialisations (page d'une magie, Potentiel Illimité)
   occupe toute la largeur de la fenêtre, panneau latéral compris, au lieu de rester centrée (`.magie-cadre--large`, posée par `MagiePage.astro` ; `main` jusqu'à `--max-magie-large`, 120rem) ;
@@ -1385,7 +1385,7 @@ dev (un commit la change) ni cherchée par la recherche.
   une poignée devant chaque entrée (pages, lien, « bientôt ») la fait glisser à la souris ou au doigt (Pointer Events ; `touch-action: none` sur la
   poignée seule ; défilement automatique ; Échap annule) ou au clavier (↑ ↓, Début, Fin ; la nouvelle place annoncée, `aria-live`) ; sur petit écran le
   menu replié s'ouvre ; « Enregistrer » envoie une opération `ordonner` par menu changé. Sous le menu d'un onglet, **« + Ajouter une page »** : titre,
-  onglet (celui du menu) et résumé, tous obligatoires, sans source ; l'adresse `/regles/<slug>/` est tirée du titre et figée ; la page est créée tout de
+  onglet (celui du menu) et résumé, tous obligatoires, sans source ; l'adresse `/regles/<slug>/` est tirée du titre (un renommage la recalcule et l'ancienne redirige, R316) ; la page est créée tout de
   suite, en fin de menu, avec le texte « À compléter. », puis s'ouvre : tant que le site n'est pas reconstruit, la 404 la dessine (menu latéral, fil
   d'Ariane, titre, texte en place, bandeau « Page créée sur le site de dev » ; `edition/nouvelles.mjs`). Une entrée « bientôt » a **« Créer la page »**
   (son libellé pour titre, son onglet ; la page prend sa place). Sous le titre d'une page du guide, son **résumé** (une ligne ; `edition/guide.mjs`),
@@ -1698,7 +1698,7 @@ désigner une page et un type de sort (Météo). Les mots-clés sans élément (
   R233 (4)), la création ou le renommage de l'élément passe quand même, sans toucher au mot-clé, et « Préparer l'ancrage » le liste « à trancher ». Il se règle
   en changeant le nom de l'élément, ou par un lot sur le type ou les synonymes.
 - **Le nom, l'adresse et la clé** d'un mot-clé ancré viennent de son élément : `mot_cle.libelle` et `mot_cle.url` en sont des **copies provisoires**, écrites
-  seulement par ce module jusqu'au retrait des colonnes (chantier 4) ; les adresses ne bougent pas dans ce chantier. Deux éléments de même nom se distinguent
+  seulement par ce module jusqu'au retrait des colonnes (chantier 4) ; l'adresse de la page, elle, suit son titre au renommage (R316, ci-dessous). Deux éléments de même nom se distinguent
   par leur type (`force-metier`) et, **à type égal, par leur parent** : la magie d'un sort (`contre-sort-arcane`, `contre-sort-corruption` ; `parent`, lu
   par `lib/mots-cles-db.mjs#motsClesDeLaBase` et donné à `lib/mots-cles-cles.mjs#clesDesMotsCles`, jumelle de `tools/db/maverick.py#cles_des_mots_cles`).
   Le parent ne sert qu'à départager : il n'entre pas dans la clé d'un mot-clé sans homonyme ni d'un homonyme que ses catégories distinguent déjà.
@@ -1714,6 +1714,11 @@ désigner une page et un type de sort (Météo). Les mots-clés sans élément (
   manque), ne devine rien (« à trancher »), arrête la suite au premier refus avec son motif, et **ne refait pas une ligne annulée** : seul « Reprendre les
   lignes annulées » les redépose. Une page dont un mot-clé a exactement l'adresse reprend ce mot-clé, comme les cinq noms que le propriétaire a déclarés identiques (Attributs, Initiative,
   Caractéristiques, Mode Hyper 100 %, et le type de sort Météo) : aucun nouveau mot-clé.
+- **L'adresse suit le titre** (décision R316, migration `0133`, conception : `docs/chantier-adresses.md`, suite de R309 (10) ; `serveur/edition-adresses.mjs`) : renommer une page (guide, Codex, capacité, métier)
+  change son adresse dans le même lot, l'identifiant ne bouge jamais. Une race ou une classe a sa règle d'adresse (le nom de l'élément), mais aucune voie du site ni d'un lot ne change encore le titre de leur page. La nouvelle adresse est celle que la création donnerait à ce nom (une capacité garde `<classe>-<nom>`) ; **prise par une autre page, elle reçoit un suffixe**
+  (`-2`, le niveau pour une capacité), jamais un refus ; une page vivante reprend une adresse qui redirigeait ailleurs. Corriger un accent ou une majuscule ne déplace rien, ni une page servie par une route fixe. L'ancienne adresse
+  mène à la page par la 404 (requête et ancre gardées) ; l'ancre d'un métier suit aussi, l'ancienne mène toujours à sa ligne. L'adresse ne se saisit nulle part : le service l'écrit (`page.slug_adresse`, `page_ancienne_adresse`), le
+  mot-clé de la page et les mots-clés qui menaient à l'adresse quittée la suivent. Annuler la ligne du renommage emporte le groupe (élément, page, anciennes adresses, mots-clés suivis) et rend l'état d'avant (R291) ; refusé tant qu'une autre page tient l'adresse d'avant (contrôle du contenu « deux pages à la même adresse », lu aussi par `db:check`). Aucun lot déposé n'écrit `slug_adresse` ni `page_ancienne_adresse`. Les adresses d'aujourd'hui ne bougent qu'à leur prochain renommage.
 - **Le nom d'un mot-clé change** pour 20 mots-clés (le titre de leur page) ; 18 changent aussi de clé et 100 balises sont réécrites. Le tri du Glossaire
   ignore l'article de tête et la ponctuation de tête (`lib/mots-cles.mjs#cleDeTri`).
 

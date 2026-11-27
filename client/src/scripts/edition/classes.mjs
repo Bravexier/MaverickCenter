@@ -26,6 +26,7 @@ import {
 } from '../../lib/dons-edition.mjs';
 import { CHAMPS_HORS_COLONNES, ENTITES, MAGIES_D_UN_DON_VARIABLE } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
+import { cheminDePage } from '../../lib/metiers.mjs';
 
 const racine = () => document.querySelector('.classe[data-ed-classe]');
 const classeDeLaPage = () => racine()?.dataset.edClasse ?? null;
@@ -163,7 +164,7 @@ function redessiner(ed, { adresse = false } = {}) {
   const ouvert = racine().querySelector('section.specialite.is-active')?.id ?? null;
   const options = {
     base: ed.base, typesDon: etat.typesDon, amMagique: etat.amMagique,
-    hrefDuDon: (don) => (ancresConstruites?.has(don.ancre) ? `${ed.base}capacites/${don.slug}/` : `#${don.ancre}`),
+    hrefDuDon: (don) => (ancresConstruites?.has(don.ancre) ? `${ed.base}${cheminDePage(don.id)}` : `#${don.ancre}`),
   };
   remplacer('specialites', htmlDesSpecialites(classe), ['#depart', '#dons', '#annexe']);
   const dons = remplacer('dons', htmlDesDons(classe, options), ['#annexe']);

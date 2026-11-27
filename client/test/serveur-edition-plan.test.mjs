@@ -164,7 +164,8 @@ test('GET /api/edition/plan/ : onglets dans l’ordre, entrées du menu avec leu
       assert.deepEqual(Object.keys(e), ['id', 'sorte', 'rang', 'page_id', 'titre', 'libelle', 'adresse', 'protection', 'citations', 'supprimable'], e.id);
       if (e.sorte === 'page') {
         assert.equal(e.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(e.page_id).titre);
-        assert.equal(e.adresse, `regles/${slugDAdresse(e.page_id)}/`); // le slug de l'id, sauf une adresse renommée (R228 : regles/mode-super/)
+        // le slug de l'id, sauf une adresse renommée (R228 : regles/mode-super/ ; R316 : page.slug_adresse, lu en base)
+        assert.equal(e.adresse, `regles/${slugDAdresse(e.page_id, db.prepare('SELECT slug_adresse AS s FROM page WHERE id = ?').get(e.page_id).s)}/`);
         assert.ok(Array.isArray(e.protection) && Array.isArray(e.citations));
         assert.equal(e.supprimable, !e.protection.length && !e.citations.some((c) => !c.exemple));
       } else {

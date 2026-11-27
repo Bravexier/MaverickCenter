@@ -10,7 +10,8 @@
 //     autre page la cite, lib/citations-db.mjs) ;
 //   - le plan vivant pour la page (GET /api/edition/plan/ : planVivant).
 // Les onglets eux-mêmes (regles_onglet) ne changent jamais ici. Les outils communs du service (refus, ErreurEdition, creerPage, supprimerPage,
-// idDejaEmploye, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
+// idDejaEmploye, adressePrise, A_COMPLETER) sont donnés par serveur/edition.mjs, sans import en retour. Node seulement (node:sqlite), sans dépendance.
+import { adresseDeLaPage, indexDesAdresses, slugsDAdresse } from '../src/lib/adresses-db.mjs';
 import { citationsBloquantes, citationsDe, citationsDesPages, motsClesVerrouillesQuiYMenent, refusDuMotCleVerrouille } from '../src/lib/citations-db.mjs';
 import { ADRESSES_RENOMMEES_DU_GUIDE, adresseDuGuide, NOMS_RESERVES, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
@@ -46,9 +47,10 @@ export function rangsReordonnes(rangs, apres = 0) {
 /**
  * Les domaines et l'opération du plan pour serveur/edition.mjs : { entree (DOMAINES.regles_onglet_entree), page: { creer, supprimer } (ENTITES
  * .page_des_regles, sur la table page), ordonner (opération du lot) }.
- * @param {{ refus: Function, ErreurEdition: Function, creerPage: Function, supprimerPage: Function, idDejaEmploye: Function, A_COMPLETER: string }} outils
+ * @param {{ refus: Function, ErreurEdition: Function, creerPage: Function, supprimerPage: Function, idDejaEmploye: Function, adressePrise: Function,
+ *   A_COMPLETER: string }} outils
  */
-export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, A_COMPLETER }) {
+export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage, idDejaEmploye, adressePrise, A_COMPLETER }) {
   /** Une liste d'identifiants (chaînes), sans doublon : 400 sinon. */
   function identifiants(liste, quoi) {
     if (!Array.isArray(liste) || !liste.length || !liste.every((x) => typeof x === 'string' && x)) throw refus(`${quoi} : une liste d’identifiants est attendue (« ids »).`);
@@ -120,19 +122,21 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
 
   /**
    * L'identifiant d'une page des Règles est-il pris ou réservé (le slug `slug`) ? Voir creer. Le slug de l'adresse d'une page renommée
-   * (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228 : « mode-super ») est pris : guide/<slug> serait servie à la même adresse.
+   * (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE, R228 : « mode-super ») est pris : guide/<slug> serait servie à la même adresse ; l'adresse d'une page
+   * renommée (R316, page.slug_adresse) aussi. `index` : indexDesAdresses(db, { exemples: true }), lu une fois pour tous les essais.
    */
-  function idPris(db, slug, onglets) {
+  function idPris(db, slug, onglets, index) {
     const id = `guide/${slug}`;
     return Boolean(lireLigne(db, 'page', { id }) || idDejaEmploye(db, ['page'], id) || PAGES_SUPPRIMEES.includes(id) || Object.hasOwn(PAGES_ABSORBEES, id)
       || Object.hasOwn(PAGES_RETIREES, id) || NOMS_RESERVES.includes(slug) || onglets.includes(slug)
       || Object.values(ADRESSES_RENOMMEES_DU_GUIDE).includes(slug)
-      || db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(slug));
+      || db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(slug)
+      || adressePrise(db, adresseDeLaPage(id, null), { index }));
   }
 
   const page = {
     /**
-     * Une page des Règles : { titre, onglet_id, resume, bientot? }. Son adresse vient du titre (normalize), figée : /regles/<slug>/ ; un titre qui est
+     * Une page des Règles : { titre, onglet_id, resume, bientot? }. Son adresse vient du titre (normalize) à la création, puis un renommage la recalcule (R316) : /regles/<slug>/ ; un titre qui est
      * déjà le nom (titre, adresse ou alias) d'une autre page : 409 (les [[liens]] deviendraient ambigus) ; un identifiant déjà employé (une page, une
      * page supprimée par le journal ou l'historique, une page supprimée, absorbée ou retirée par le plan, un nom réservé, un id d'onglet) : suffixé -2,
      * -3… Corps « À compléter. », statut brouillon, provenance « Site de dev › édition du … » (famille docs : creerPage). Son entrée en fin du menu de
@@ -155,9 +159,10 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
       const autre = db.prepare('SELECT page_id FROM cle_page WHERE cle = ? ORDER BY page_id LIMIT 1').get(cle);
       if (autre) throw new ErreurEdition(409, `Titre « ${valeurs.titre} » : c’est déjà le nom de la page ${autre.page_id} (les [[liens]] deviendraient ambigus).`, { page: autre.page_id });
       const onglets = db.prepare('SELECT id FROM regles_onglet').all().map((o) => o.id);
+      const index = indexDesAdresses(db, { exemples: true });
       let slug = cle;
-      for (let n = 2; idPris(db, slug, onglets); n += 1) slug = `${cle}-${n}`;
-      const id = creerPage(ctx, { type: 'guide', slug, titre: valeurs.titre, resume: valeurs.resume, corps: `${A_COMPLETER}\n` });
+      for (let n = 2; idPris(db, slug, onglets, index); n += 1) slug = `${cle}-${n}`;
+      const id = creerPage(ctx, { type: 'guide', slug, titre: valeurs.titre, resume: valeurs.resume, corps: `${A_COMPLETER}\n`, index });
       let rang;
       if (bientot) {
         rang = bientot.rang;
@@ -222,6 +227,7 @@ export function planVivant(db) {
   const onglets = db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all();
   const toutes = db.prepare(`SELECT e.*, p.titre AS page_titre FROM regles_onglet_entree e LEFT JOIN page p ON p.id = e.page_id ORDER BY e.onglet_id, e.rang, e.id`).all();
   const ids = toutes.filter((e) => e.page_id !== null).map((e) => e.page_id);
+  const segments = slugsDAdresse(db); // l'adresse d'aujourd'hui d'une page renommée (R316), lue en base
   const citations = citationsDesPages(db, ids, { sansSonMotCle: true });
   const propres = motsClesPropres(db, 'page', ids); // les textes qui citent le mot-clé d'une page la retiennent comme une citation (R309)
   return {
@@ -243,7 +249,7 @@ export function planVivant(db) {
           page_id: e.page_id,
           titre: estPage ? e.page_titre : null,
           libelle: e.libelle,
-          adresse: estPage ? adresseDuGuide(e.page_id) : e.adresse,
+          adresse: estPage ? adresseDuGuide(e.page_id, segments.get(e.page_id) ?? null) : e.adresse,
           protection,
           citations: estPage ? [...cites, ...mentions] : null,
           supprimable: estPage && !protection.length && !citationsBloquantes(cites).length && !mentions.length,

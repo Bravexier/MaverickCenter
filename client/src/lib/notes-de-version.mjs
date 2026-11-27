@@ -13,7 +13,9 @@ import { MAINS } from './arme-champs.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
 import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
+import { adresseDeLaPage, adresseQuiSuit } from './adresses-db.mjs';
 import { lireBalises, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
+import { cheminDeLAdresse } from './mots-cles-liens.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
 import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
@@ -455,12 +457,13 @@ const DEFINITIONS = [
   // le vocabulaire des mots-clés (migration 0043, le Glossaire sur le site de dev) : ajouté, renommé, retiré (de toutes les pages) ; ordonné par clé
   // (migration 0113 : le libellé n'est plus unique). R309 (l'ancrage : un mot-clé par page, par sort et par type de sort) : un mot-clé ancré à un élément ne fait
   // pas de ligne à lui. Créé, il est dit par la ligne condensée de comparerLesMotsClesAncres (`suit`) ; renommé en même temps que son élément (le mot-clé en
-  // suit le nom), il est dit par celui de l'élément (`dejaDit`) ; renommé sans que son élément change, ou sans élément, il garde sa ligne.
+  // suit le nom), il est dit par celui de l'élément (`dejaDit`) ; renommé sans que son élément change, ou sans élément, il garde sa ligne. R316 (choix 9) : son
+  // adresse qui suit celle d'une page renommée (ancré ou menant à une section de la page) est dite par la ligne de la page.
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
     groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
     suit: (r, x) => x.ancres(r.id).length > 0,
-    dejaDit: (colonne, r, _avant, x) => colonne === 'libelle' && x.elementRenomme(r.id),
+    dejaDit: (colonne, r, avant, x) => (colonne === 'libelle' && x.elementRenomme(r.id)) || (colonne === 'url' && x.adresseSuivie(avant.url, r.url)),
   },
   // les catégories des mots-clés (migration 0113, décision R232 (5)) : ajoutée, renommée, retirée
   {
@@ -570,7 +573,25 @@ function contexte(ref, dev) {
       ancres.get(l.mot_cle_id).push({ table, id: l.id, ligne: l });
     }
   }
+  // R316 : l'adresse dans la production → l'adresse dans dev, des pages dont le segment d'adresse (`slug_adresse`, absent d'une base d'avant la migration 0133) a changé
+  let deplacees = null;
+  const adressesDeplacees = () => {
+    if (deplacees) return deplacees;
+    deplacees = new Map();
+    for (const [id, apres] of d.page) {
+      const avant = r.page.get(id);
+      if (avant && !pareil(avant.slug_adresse ?? null, apres.slug_adresse ?? null)) deplacees.set(adresseDeLaPage(id, avant.slug_adresse ?? null), adresseDeLaPage(id, apres.slug_adresse ?? null));
+    }
+    return deplacees;
+  };
   return {
+    /** R316 (choix 9) : l'adresse d'un mot-clé a-t-elle suivi celle de sa page renommée (lib/adresses-db.mjs#adresseQuiSuit) ? La ligne de la page le dit. */
+    adresseSuivie: (avant, apres) => {
+      if (typeof avant !== 'string' || typeof apres !== 'string') return false;
+      const nouvelles = adressesDeplacees();
+      const quittee = nouvelles.has(avant) ? avant : cheminDeLAdresse(avant);
+      return nouvelles.has(quittee) && adresseQuiSuit(avant, { quittee, adresse: nouvelles.get(quittee) }) === apres;
+    },
     /** Les éléments de dev (page, sort, type de sort) que le mot-clé ancre : { table, id, ligne }, aucun s'il n'ancre rien. */
     ancres: (motCleId) => ancres.get(motCleId) ?? [],
     /** L'élément que le mot-clé ancre a-t-il changé de nom entre la production et dev (le mot-clé en suit le nom : un titre de page, le nom d'un sort) ? */
@@ -1011,10 +1032,11 @@ const comparerOrdres = (p, q) => {
 };
 
 /**
- * Les traces techniques du vocabulaire, que la note publique ne dit pas : `mot_cle_ancienne_cle` (les clés quittées, pour qu'une balise écrite avec l'une d'elles
- * se lise encore ; R309, relecture finale, Fable « Declined »). Le renommage d'un mot-clé se dit par sa ligne de mot-clé.
+ * Les traces techniques du vocabulaire et des adresses, que la note publique ne dit pas : `mot_cle_ancienne_cle` (les clés quittées, pour qu'une balise écrite avec
+ * l'une d'elles se lise encore ; R309, relecture finale, Fable « Declined ») et `page_ancienne_adresse` (les adresses quittées par une page renommée, qui
+ * deviennent des renvois ; R316). Le renommage d'un mot-clé se dit par sa ligne de mot-clé, celui d'une page par sa ligne de page.
  */
-const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle']);
+const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle', 'page_ancienne_adresse']);
 /**
  * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
  * lien_candidat), traces techniques (TRACES_TECHNIQUES) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute

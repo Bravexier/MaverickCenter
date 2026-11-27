@@ -8,6 +8,9 @@ import { remarkAncresFigees } from './src/lib/ancres-figees.mjs';
 import { remarkOnglets } from './src/lib/markdown-onglets.mjs';
 import { integrationServeur } from './serveur/livraison.mjs';
 import { integrationReference } from './scripts/db-reference.mjs';
+import { installerLesAdresses } from './src/lib/adresses-renommees.mjs';
+import { slugsDAdresse } from './src/lib/adresses-db.mjs';
+import { ouvrirBase } from './src/lib/donnees.mjs';
 
 // Déploiement sous un sous-chemin (ex. GitHub Pages) : SITE_BASE=/MaverickCenter/ SITE_URL=https://…
 const base = process.env.SITE_BASE ?? '/';
@@ -18,6 +21,11 @@ const contentDir = fileURLToPath(new URL('./src/content/wiki', import.meta.url))
 // HIDE_EXAMPLES=1 : version à montrer, sans les pages de démonstration (`status: example`).
 // Même filtre dans src/lib/wiki.ts, sinon les liens pointeraient vers des pages absentes.
 const includeExamples = process.env.HIDE_EXAMPLES !== '1';
+
+// Les segments d'adresse renommés (R316, page.slug_adresse) : le plugin des [[liens]] (lib/wikilinks-remark.mjs#entryUrl) lit l'adresse d'une page par son id
+// (lib/metiers.mjs#cheminDePage). Ce fichier et les pages (lib/wiki.ts, qui les installe aussi) sont chargés dans deux graphes de modules qui ne partagent
+// pas l'état de lib/adresses-renommees.mjs : chacun installe le sien, d'après la même base.
+installerLesAdresses(slugsDAdresse(ouvrirBase()));
 
 // L'index est lu au démarrage : relancer `npm run dev` après l'ajout d'une nouvelle page.
 const index = buildIndex(scanContent(contentDir, { includeExamples }));

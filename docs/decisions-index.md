@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 315 décisions, de R1 à R315, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 316 décisions, de R1 à R316, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
 
 | Réf. | Sujet |
 | --- | --- |
@@ -321,3 +321,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R313 | Le non-membre averti ; les fiches d'un joueur qui quit… |
 | R314 | Les rôles Discord revérifiés pendant la session (2026-… |
 | R315 | Une connexion commune au site de dev et à la productio… |
+| R316 | L'adresse d'une page suit son titre (chantier 2 des mo… |

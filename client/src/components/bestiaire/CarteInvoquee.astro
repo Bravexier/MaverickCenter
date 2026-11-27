@@ -17,6 +17,7 @@ import ValeurParNpm from './ValeurParNpm.astro';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { htmlDeLaCible, htmlDeLaDefenseDeCreature, htmlDeLaMagie, htmlDesTypesDeLAttaque } from '../../lib/valeurs-fermees-rendu.mjs';
 import { url } from '../../lib/wiki';
+import { cheminDePage } from '../../lib/metiers.mjs';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 
 interface Props {
@@ -204,7 +205,7 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
     {
       !bulle && (
         <p>
-          <a href={url(`${l.id}/`)}>Page de la créature</a>
+          <a href={url(cheminDePage(l.id))}>Page de la créature</a>
         </p>
       )
     }

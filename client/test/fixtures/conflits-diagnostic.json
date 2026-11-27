@@ -142,13 +142,13 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.595Z-000000-2eeddf13-e8a1-4b02-9433-192dda09d9de",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.060Z-000000-cc57c4a9-d5e6-46c8-8e58-0d29fae7a138",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "guide/la-magie-en-jeu",
    "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description",
-   "detail": "lot 2026-11-12T17:22:31.595Z-000000-2eeddf13-e8a1-4b02-9433-192dda09d9de : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-27T12:36:20.060Z-000000-cc57c4a9-d5e6-46c8-8e58-0d29fae7a138 : page {\"id\":\"guide/la-magie-en-jeu\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « La magie en jeu » : les règles ont changé « Texte » autrement",
-   "empreinte": "a2393b32c4f5bf5ad8668ab8b02aeb01",
+   "empreinte": "4d4e8c76d4c7810f6c4300a9947410ed",
    "saines": [
     {
      "rang": 2,
@@ -188,7 +188,7 @@
      "genre": "champ",
      "version_1": {
       "genre": "valeur",
-      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\nque, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\n: {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
      },
      "version_2": {
       "genre": "valeur",
@@ -196,7 +196,7 @@
      },
      "avant": {
       "genre": "valeur",
-      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\ns : celles qui ont un rang l’ont en niveau de puissance magique, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.\n"
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\n puissance magique, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.\n"
      },
      "apercu": [
       "<p>aperçu 0</p>"
@@ -214,8 +214,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.595Z-000000-2eeddf13-e8a1-4b02-9433-192dda09d9de",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.060Z-000000-cc57c4a9-d5e6-46c8-8e58-0d29fae7a138",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Page La magie en jeu : Texte ; Métier Forgeron : Description"
      },
      "provenance_2": {
@@ -223,14 +223,14 @@
      },
      "passages": [
       {
-       "base": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\ns : celles qui ont un rang l’ont en niveau de puissance magique, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.\n",
-       "site": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\nque, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n",
+       "base": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\n puissance magique, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.\n",
+       "site": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\n: {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n",
        "code": "Page guide/la-magie-en-jeu réécrite par les règles livrées (essai des conflits).\n"
       }
      ],
      "valeur_1": {
       "genre": "valeur",
-      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\nque, de NPM 1 à NPM 5.\n\nPour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
+      "valeur": "Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.\n\n## Lire un sort\n\nLes sorts de chaque magie sont sur sa page (voir {{magies|les magies}}), un tableau par \n…\n: {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.\n\nParagraphe ajouté sur le site de dev (essai des conflits).\n"
      },
      "valeur_2": {
       "genre": "valeur",
@@ -243,13 +243,13 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.630Z-000000-243ec524-6b67-40f0-a19d-61e9147535cd",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.076Z-000000-f4ab4c3b-fb99-4204-928b-f32a6a6617d3",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "guide/le-mode-hyper",
    "resume": "Page Le Mode Hyper : Texte",
-   "detail": "lot 2026-11-12T17:22:31.630Z-000000-243ec524-6b67-40f0-a19d-61e9147535cd : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
+   "detail": "lot 2026-11-27T12:36:20.076Z-000000-f4ab4c3b-fb99-4204-928b-f32a6a6617d3 : page {\"id\":\"guide/le-mode-hyper\"} : la ligne n’existe plus dans les règles",
    "detail_lisible": "Page guide/le-mode-hyper : la ligne n’existe plus dans les règles",
-   "empreinte": "03c2aac8af042c38238e27735d0746df",
+   "empreinte": "0e6149a6db7f305c655bee03ca8d9462",
    "saines": [],
    "conflits": [
     {
@@ -291,8 +291,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.630Z-000000-243ec524-6b67-40f0-a19d-61e9147535cd",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.076Z-000000-f4ab4c3b-fb99-4204-928b-f32a6a6617d3",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Page Le Mode Hyper : Texte"
      },
      "provenance_2": {
@@ -306,13 +306,13 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.640Z-000000-95a7d6a2-1805-4548-b14a-1d193d36f146",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.084Z-000000-161ba6bc-71e3-46d6-b873-a548095fad3d",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "guide/s-entrainer-et-exercer-un-metier",
    "resume": "Page S’entraîner : Texte",
-   "detail": "lot 2026-11-12T17:22:31.640Z-000000-95a7d6a2-1805-4548-b14a-1d193d36f146 : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
+   "detail": "lot 2026-11-27T12:36:20.084Z-000000-161ba6bc-71e3-46d6-b873-a548095fad3d : page {\"id\":\"guide/s-entrainer-et-exercer-un-metier\"} : les règles ont changé corps_md autrement",
    "detail_lisible": "Page « S’entraîner » : les règles ont changé « Texte » autrement",
-   "empreinte": "a410ccf8ac8c5ec0e0dcff509509f917",
+   "empreinte": "2e4a56b1791e895ad3ef3667d56048a2",
    "saines": [],
    "conflits": [
     {
@@ -358,8 +358,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.640Z-000000-95a7d6a2-1805-4548-b14a-1d193d36f146",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.084Z-000000-161ba6bc-71e3-46d6-b873-a548095fad3d",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Page S’entraîner : Texte"
      },
      "provenance_2": {
@@ -387,13 +387,13 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.646Z-000000-cd1f5671-8cdc-43f6-b933-ab3e1bf54386",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.091Z-000000-e91d5e68-98a2-4e10-951b-79b9b68c0ebd",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "metiers/forgeron",
    "resume": "Métier Forgeron : Bonus",
-   "detail": "lot 2026-11-12T17:22:31.646Z-000000-cd1f5671-8cdc-43f6-b933-ab3e1bf54386 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
+   "detail": "lot 2026-11-27T12:36:20.091Z-000000-e91d5e68-98a2-4e10-951b-79b9b68c0ebd : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé bonus_brut autrement",
    "detail_lisible": "Métier « Forgeron » : les règles ont changé « Bonus » autrement",
-   "empreinte": "45bd02074f727ed35a035e8d1ec4fe9a",
+   "empreinte": "6b407a9df3d71f0b533df7ed79523469",
    "saines": [
     {
      "rang": 2,
@@ -471,8 +471,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.646Z-000000-cd1f5671-8cdc-43f6-b933-ab3e1bf54386",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.091Z-000000-e91d5e68-98a2-4e10-951b-79b9b68c0ebd",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Métier Forgeron : Bonus"
      },
      "provenance_2": {
@@ -494,13 +494,13 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.657Z-000000-af13c2d5-eb41-4c66-94b8-50abf35b7f49",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.107Z-000000-46644fbc-66da-4c3c-a61d-3831eb093529",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "recherche/",
    "resume": "Mot-clé supprimé : Essai conflits étiquette",
-   "detail": "lot 2026-11-12T17:22:31.657Z-000000-af13c2d5-eb41-4c66-94b8-50abf35b7f49 : sort_mot_cle : clé étrangère rompue vers mot_cle",
+   "detail": "lot 2026-11-27T12:36:20.107Z-000000-46644fbc-66da-4c3c-a61d-3831eb093529 : sort_mot_cle : clé étrangère rompue vers mot_cle",
    "detail_lisible": "Étiquette du sort : clé étrangère rompue vers Mot-clé",
-   "empreinte": "f38f84e70c70e5bccebbe9d8e74be9d8",
+   "empreinte": "cc9edf254392cf927b1d5014c3c1a2ec",
    "saines": [],
    "conflits": [
     {
@@ -576,8 +576,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.657Z-000000-af13c2d5-eb41-4c66-94b8-50abf35b7f49",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.107Z-000000-46644fbc-66da-4c3c-a61d-3831eb093529",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Mot-clé supprimé : Essai conflits étiquette"
      },
      "provenance_2": {
@@ -591,14 +591,35 @@
    "bloque": false
   },
   {
-   "lot": "2026-11-12T17:22:31.757Z-000000-781374ab-e000-4848-80e3-b982acc399e6",
-   "fait_le": "2026-11-12T17:22:31Z",
+   "lot": "2026-11-27T12:36:20.210Z-000000-c50687b0-bf32-42b7-9405-c29c00bf3545",
+   "fait_le": "2026-11-27T12:36:20Z",
    "page_id": "metiers/acrobate",
    "resume": "Métier Acrobate : Nom",
-   "detail": "lot 2026-11-12T17:22:31.757Z-000000-781374ab-e000-4848-80e3-b982acc399e6 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
+   "detail": "lot 2026-11-27T12:36:20.210Z-000000-c50687b0-bf32-42b7-9405-c29c00bf3545 : metier {\"id\":\"metiers/acrobate\"} : les règles ont changé nom, nom_cle autrement",
    "detail_lisible": "Métier « Acrobate des règles (essai des conflits) » : les règles ont changé « Nom » autrement",
-   "empreinte": "6fad4c76f4f68d14947b05a8b160c039",
-   "saines": [],
+   "empreinte": "baf6235f8dd038b801135521ff33546a",
+   "saines": [
+    {
+     "rang": 3,
+     "table": "page",
+     "cle": {
+      "id": "metiers/acrobate"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Acrobate des règles (essai des conflits) »",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 4,
+     "table": "page_ancienne_adresse",
+     "cle": {
+      "adresse": "metiers/#metier-acrobate"
+     },
+     "operation": "inserer",
+     "libelle": "Ancienne adresse de la page ancienne adresse metiers/#metier-acrobate",
+     "issue": "reappliquee"
+    }
+   ],
    "conflits": [
     {
      "rang": 1,
@@ -640,8 +661,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.757Z-000000-781374ab-e000-4848-80e3-b982acc399e6",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.210Z-000000-c50687b0-bf32-42b7-9405-c29c00bf3545",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Métier Acrobate : Nom"
      },
      "provenance_2": {
@@ -698,8 +719,8 @@
      "garde": false,
      "provenance_1": {
       "genre": "site",
-      "lot": "2026-11-12T17:22:31.757Z-000000-781374ab-e000-4848-80e3-b982acc399e6",
-      "fait_le": "2026-11-12T17:22:31Z",
+      "lot": "2026-11-27T12:36:20.210Z-000000-c50687b0-bf32-42b7-9405-c29c00bf3545",
+      "fait_le": "2026-11-27T12:36:20Z",
       "resume": "Métier Acrobate : Nom"
      },
      "provenance_2": {

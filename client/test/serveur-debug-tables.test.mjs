@@ -103,8 +103,8 @@ test('liste : chaque table (sections 0 à 15, dérivées comprises) et chaque vu
   // les mêmes objets que data/schema.sql : toutes les tables et vues, sans les tables de recherche plein texte
   const attendus = OBJETS.filter((o) => o.genre === 'table' || o.genre === 'vue').map((o) => o.nom).sort();
   assert.deepEqual(noms, attendus);
-  // 223 depuis la migration 0131 (type_sort) ; 222 depuis la migration 0130 (monstre_attaque_type) ; 221 depuis la migration 0129 (migration_recue) ; 220 depuis la migration 0128 (lot_de_changements, numero_donne) ; 218 depuis la 0125 (type_degats) ; 217 depuis la 0118 (personnage_specialisation_magie) ; 216 depuis les migrations 0113 et 0115 (categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle, mot_cle_synonyme)
-  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 223, '223 tables STRICT');
+  // 224 depuis la migration 0133 (page_ancienne_adresse) ; 223 depuis la migration 0131 (type_sort) ; 222 depuis la migration 0130 (monstre_attaque_type) ; 221 depuis la migration 0129 (migration_recue) ; 220 depuis la migration 0128 (lot_de_changements, numero_donne) ; 218 depuis la 0125 (type_degats) ; 217 depuis la 0118 (personnage_specialisation_magie) ; 216 depuis les migrations 0113 et 0115 (categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle, mot_cle_synonyme)
+  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 224, '224 tables STRICT');
   assert.equal(tables.filter((t) => t.genre === 'vue').length, 38, '38 vues');
   for (const nom of ['sqlite_schema', 'sqlite_master', 'page_fts', 'entite_fts', 'page_fts_data', 'page_fts_idx', 'entite_fts_content']) assert.ok(!noms.includes(nom), nom);
   // genre : vue, table dérivée (`-- @derivee`, hors FTS5), sinon table

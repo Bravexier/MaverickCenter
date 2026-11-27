@@ -10,7 +10,7 @@ import { ACCUEIL_DU_GUIDE, pagesEclateesDuGuide } from './livres.mjs';
 import { cheminDePage } from './metiers.mjs';
 import { RENVOIS_DES_PAGES_ECLATEES } from './equipement.mjs';
 import { cheminVersUnePageEclatee } from './nav.mjs';
-import { loadWiki, slugOf, typeOf } from './wiki';
+import { idSlugOf, loadWiki, typeOf } from './wiki';
 
 // Rendu Markdown des pages du guide (lib/guide.mjs) : une page est coupée à ses blocs tirés de la base, chaque morceau de texte est rendu ici
 // avec les mêmes plugins ([[liens]], couleur des cases, monnaies, ancres figées des intertitres) que les autres pages (astro.config.mjs), sur l'index des pages chargées (lib/wiki.ts).
@@ -27,7 +27,7 @@ let processeur: ReturnType<typeof createMarkdownProcessor> | undefined;
 async function creer() {
   const { entries } = await loadWiki();
   const pages = new Set(entries.map((e) => e.id));
-  const index = buildIndex(entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })));
+  const index = buildIndex(entries.map((e) => ({ id: e.id, type: typeOf(e), slug: idSlugOf(e), title: e.data.title, aliases: e.data.aliases })));
   // une cible absente (une page des Règles supprimée sur le site de dev) est sautée : le lien reste tel qu'écrit, la 404 (lib/livres.mjs#pagesEclateesDuGuide)
   const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...pagesEclateesDuGuide((page: string) => pages.has(page)) };
   const adresse = (chemin: string) => {

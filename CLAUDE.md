@@ -66,7 +66,7 @@ Deux agents transverses, en lecture seule, servent les chefs et la session princ
 - **Le site de dev est la source de tout le contenu.** La valeur d'import se lit dans `historique_modification` (`client/src/lib/historique-site.mjs`). Les analyses de règles et de lore lisent l'extrait du jour du site de dev (clé de lecture) ; `var/maverick.db`, bâti depuis `data/rows`, n'est qu'une copie datée.
 - **Connexion par Discord** (R310 à R313) : quatre niveaux (Observateur, Joueur, MJ, Créateur) donnés par les rôles du serveur Discord. Le site de dev est fermé sous le niveau MJ, hors connexion et Confidentialité ; les clés de lecture et de dépôt gardent leurs droits. Détail : skill `zone-service`.
 - **Migrations : structure seule**, sans texte de règle. Le service les applique sur place au démarrage.
-- **Identifiants figés.** Un nom corrigé ou renommé ne change jamais son identifiant ni son adresse.
+- **Identifiants figés, adresses qui suivent.** Un nom corrigé ou renommé ne change jamais son identifiant. L'adresse d'une page suit son titre : le service la recalcule au renommage et l'ancienne redirige (R316) ; elle ne s'écrit jamais à la main.
 - **Modules et scripts de page** (skill `site-version-portable`). `src/lib/*.mjs` reste sans dépendance navigateur ni Astro ; le code qui touche au DOM va dans `src/scripts/` ; deux scripts de page n'importent jamais le même module.
 - **Provenance** (`famille`, `origine`, `source_ref`) : retirée à la 1.0, n'y rien investir.
 - **`api/`** est inutilisé (le service actif est `client/serveur/`) : ne pas le modifier sans demande.

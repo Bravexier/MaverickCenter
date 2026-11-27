@@ -7,16 +7,17 @@ import { nomsSeRepondent } from './classe-dons.mjs';
 import { CLASSE_MAGIQUE_HORS_CATEGORIE } from './classe-magique.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { echapperHtml, htmlDesBlocs, RENDUS } from './edition-rendu.mjs';
+import { cheminDePage } from './metiers.mjs';
 
 const ed = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
 const EN_LETTRES = { 2: 'deux', 3: 'trois', 4: 'quatre' };
 
 /**
  * Options communes : `base` (préfixe des adresses du site, « / » par défaut), `typesDon` (table type_don : nom et définition du guide), `amMagique`
- * (bonus d'armure magique d'une classe magique), `hrefDuDon(don)` (lien du nom d'un don ; par défaut sa fiche, `<base>capacites/<slug>/` : la page
+ * (bonus d'armure magique d'une classe magique), `hrefDuDon(don)` (lien du nom d'un don ; par défaut sa fiche, `<base>capacites/<segment>/` : la page
  * d'un don créé depuis la construction n'existe pas encore, l'éditeur lui donne l'ancre du don sur la page).
  */
-const lienParDefaut = (base) => (don) => `${base}capacites/${don.slug}/`;
+const lienParDefaut = (base) => (don) => `${base}${cheminDePage(don.id)}`; // le segment renommé de sa page (R316, état installé), sinon le slug de son id
 
 /** Un don en carte (DonCarte.astro). */
 export function htmlDeDon(don, { titre = 'h4', cartouche = false, base = '/', typesDon = [], hrefDuDon = lienParDefaut(base) } = {}) {

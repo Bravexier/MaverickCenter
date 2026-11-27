@@ -55,7 +55,7 @@ export const CLASSES_DE_TABLES = Object.freeze({ CONTENU: 'contenu', PROPRE_AU_S
 /** Sections 0 à 10 de data/schema.sql : les règles, le lore et leurs traces (la section 11 est calculée ; la 12 est faite de vues). */
 export const TABLES_DE_REGLES = Object.freeze([
   'famille', 'type_page', 'page', 'alias', 'mot_cle', 'categorie_mot_cle', 'mot_cle_categorie', 'mot_cle_ancienne_cle', 'mot_cle_synonyme',
-  'page_tag', 'source', 'page_source', 'page_entite', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet', 'annonce', 'regles_onglet',
+  'page_ancienne_adresse', 'page_tag', 'source', 'page_source', 'page_entite', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet', 'annonce', 'regles_onglet',
   'regles_onglet_entree', 'caracteristique', 'competence', 'niveau_global', 'niveau_deblocage', 'seuil_niveau', 'regle_constante',
   'entrainement_palier', 'initiative_agilite', 'type_don', 'posture', 'posture_effet', 'posture_critique', 'magie', 'magie_role', 'magie_resistance',
   'magie_incompatibilite', 'magie_ethnie_secondaire', 'magie_dieu', 'magie_specialisation', 'sort', 'sort_type', 'sort_mode', 'sort_bonus_maitrise',

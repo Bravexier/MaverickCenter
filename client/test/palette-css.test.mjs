@@ -1486,7 +1486,9 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   for (const f of readdirSync(new URL('../src/scripts/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.mjs'))) {
     assert.doesNotMatch(lire(`src/scripts/${f}`), /parties-couleurs\.mjs/, f);
   }
-  for (const f of ['src/lib/livres.mjs', 'src/lib/parties-couleurs.mjs']) assert.doesNotMatch(lire(f), /^import /m, f);
+  // (livres.mjs n'importe que lib/adresses-renommees.mjs, sans import ni couleur, R316 : test/livres.test.mjs)
+  for (const f of ['src/lib/adresses-renommees.mjs', 'src/lib/parties-couleurs.mjs']) assert.doesNotMatch(lire(f), /^import /m, f);
+  for (const ligne of lire('src/lib/livres.mjs').match(/^import .*$/gm) ?? []) assert.match(ligne, / from '\.\/adresses-renommees\.mjs';$/, 'src/lib/livres.mjs');
 });
 
 test('lisibilité des parties du guide dans les deux thèmes : le blanc sur leur couleur, le texte coloré du guide, de la fiche et de l’accueil (4,5:1)', () => {

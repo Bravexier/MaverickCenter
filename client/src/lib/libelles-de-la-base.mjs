@@ -26,6 +26,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   page_entite: 'Entité d’une page',
   page_source: 'Source de la page',
   page_tag: 'Mot-clé de la page',
+  // les adresses quittées par une page renommée (migration 0133, décision R316)
+  page_ancienne_adresse: 'Ancienne adresse de la page',
   // les catégories, les synonymes et les clés quittées d'un mot-clé (migrations 0113 à 0115, décisions R232, R233) : les noms de leurs sous-ressources
   mot_cle_categorie: 'Catégorie du mot-clé',
   mot_cle_synonyme: 'Synonyme du mot-clé',
@@ -324,7 +326,8 @@ export const NOMS_DES_COLONNES = geler({
   mot_cle_synonyme: { libelle: 'Synonyme', ordre: 'Rang' },
   mot_cle_ancienne_cle: { cle: 'Ancienne clé' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
-  page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
+  page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut', slug_adresse: 'Segment d’adresse' },
+  page_ancienne_adresse: { adresse: 'Ancienne adresse' },
   page_entite: { principale: 'Page principale' },
   personnage_don_obtenu: { source: 'Don « Variable »', entree_id: 'Entrée obtenue' },
   personnage_specialisation_magie: { specialisation_id: 'Spécialisation magique' },

@@ -6,7 +6,7 @@
 //   Lots 2 à 4 (`sorts`, `pages`, `capacites`) : les mots-clés créés. Leur `ancrage.type` est un id de catégorie : ils ne sont rendus qu'une fois les quatre
 //   catégories nouvelles en base (l'action recalcule le plan après le lot 1) ; `comptes` décrit tout de même l'ancrage entier.
 // Sans dépendance navigateur ni Astro : la base est passée par l'appelant.
-import { adresseDeLaPage, adresseDuSort } from './adresses-db.mjs';
+import { adresseDeLaPage, adresseDuSort, slugsDAdresse } from './adresses-db.mjs';
 import { FORMAT_DU_LOT } from './lot-de-changements.mjs';
 import { AUTEUR_DE_L_ANCRAGE, DECISION_DE_L_ANCRAGE } from './lots-d-ancrage.mjs';
 import { referencesDesMotsCles } from './mentions-des-mots-cles.mjs';
@@ -278,9 +278,13 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
   const parAdresse = new Map();
   for (const m of motsCles) if (m.url && !REPRISES.has(m.id)) (parAdresse.get(m.url) ?? parAdresse.set(m.url, []).get(m.url)).push(m);
   const pris = new Map(pages.filter((p) => p.mot_cle_id !== null).map((p) => [p.mot_cle_id, p.id]));
+  // l'adresse d'aujourd'hui d'une page, et d'un sort par celle de sa magie : son segment renommé lu en base (R316)
+  const segments = slugsDAdresse(db);
+  const adresseDe = (id) => adresseDeLaPage(id, segments.get(id) ?? null);
+  const adresseDuSortDe = (sortId) => adresseDuSort(sortId, segments.get(String(sortId).split('#sort:')[0]) ?? null);
 
   for (const p of pages) {
-    const adresse = adresseDeLaPage(p.id);
+    const adresse = adresseDe(p.id);
     const base = { cle: `page:${p.id}`, table: 'page', id: p.id, nom: p.titre, adresse };
     if (!normalize(p.titre)) {
       if (p.mot_cle_id === null) trancher('page', p.id, p.titre, 'son titre n’a ni lettre ni chiffre');
@@ -329,13 +333,13 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
     if (s.mot_cle_id !== null) {
       // un sort ancré se relit comme une page ancrée : son mot-clé reprend son nom et son adresse, sauf si la règle le refuse (à trancher) ; une page qui le tient décide de son nom
       const m = parId.get(s.mot_cle_id);
-      const adresse = adresseDuSort(s.id);
+      const adresse = adresseDuSortDe(s.id);
       if (!m || !normalize(s.nom) || pris.has(m.id) || (m.libelle === s.nom && (m.url ?? null) === adresse) || !retenu(`sort:${s.id}`)) continue;
       elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse, mot_cle: m.id, ancrer: false, aligner: retenu(`nom:${m.id}`), famille: 'noms' });
       continue;
     }
     if (typeDesSorts === null || !normalize(s.nom)) trancher('sort', s.id, s.nom, typeDesSorts === null ? `le type « ${TYPE_D_UN_SORT} » n’existe plus` : 'son nom n’a ni lettre ni chiffre');
-    else if (retenu(`sort:${s.id}`)) elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse: adresseDuSort(s.id), mot_cle: null, type: typeDesSorts, parent: s.parent, famille: 'sorts' });
+    else if (retenu(`sort:${s.id}`)) elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse: adresseDuSortDe(s.id), mot_cle: null, type: typeDesSorts, parent: s.parent, famille: 'sorts' });
   }
 
   const ecritures = libellesDesTypes(db);

@@ -18,6 +18,7 @@ import {
 import { journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { routeNormalisee } from '../serveur/metriques.mjs';
 import { CONFIRMATION, enregistrerMajeure, figerLot, lireLot, noteEnPreparation } from '../serveur/notes-de-version.mjs';
+import { adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
@@ -89,6 +90,8 @@ before(() => {
   for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
   // le métier renommé du scénario, sans ancre (R309) : son mot-clé suivrait le nom et ajouterait des lignes au lot, que la fixture, faite sur un contenu sans ancre, ne connaît pas
   r0db.prepare('UPDATE page SET mot_cle_id = NULL WHERE id = ?').run(ACROBATE);
+  // et, pour la même raison, sans mot-clé qui mène à sa ligne (R316) : sur un contenu ancré, l'adresse de ce mot-clé suivrait le renommage du métier
+  r0db.prepare('UPDATE mot_cle SET url = NULL WHERE url = ?').run(adresseDeLaPageEnBase(r0db, ACROBATE));
   r0db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)')
     .run(ETIQUETTE.id, ETIQUETTE.libelle, ETIQUETTE.cle, 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
   r0db.close();

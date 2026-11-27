@@ -1,14 +1,14 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 132 : 223 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 133 : 224 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
 ## Sommaire
 
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
-- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
+- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `page_ancienne_adresse`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `magie_specialisation`, `sort`, `sort_type`, `type_sort`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `type_degats`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
@@ -71,6 +71,7 @@ Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd
 | `origine` | TEXT | oui | → famille.id | clé de l'importeur : docs, magies, classes, races, bestiaire, equipement, craft, annexes ; 'exemple' pour les fixtures de démo |
 | `source_ref` | TEXT | non |  | provenance fine, lisible : « Google Sheet « Magie Maverick V8 », onglet « Feu » ». NULL quand la source n'en cite aucune (pages d'exemple). |
 | `mot_cle_id` | INTEGER | non | → mot_cle.id, unique | le mot-clé que la page ancre (R309) ; NULL = page pas encore ancrée |
+| `slug_adresse` | TEXT | non |  |  |
 
 ### `alias`
 
@@ -82,6 +83,15 @@ Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. `
 | `ordre` | INTEGER | oui | PK 2 | rang dans la liste `aliases:` (0 = premier) : l'ordre est conservé |
 | `texte` | TEXT | oui |  |  |
 | `cle` | TEXT | oui |  | normalize(texte), calculé par l'importeur ; client/scripts/db-derive.mjs le vérifie |
+
+### `page_ancienne_adresse`
+
+Les anciennes adresses d'une page (décision R316, migration 0133) : une ligne par adresse que la page a eue, telle que `cheminDePage` la donnait, relative à la racine du site et sans barre initiale (« capacites/anansi-anti-corps/ », « metiers/#metier-forgeron » : la forme des clés de data-renvois). Elle mène toujours à la page vivante (la page 404 en fait un renvoi) ; elle part avec sa page (ON DELETE CASCADE). Écrite par le service au renommage, jamais à la main. Pas d'index UNIQUE entre pages : l'unicité des adresses est un contrôle du contenu (service et db:check). Même idée que mot_cle_ancienne_cle.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `adresse` | TEXT | oui | PK | 'capacites/x/' ou 'metiers/#metier-x' |
+| `page_id` | TEXT | oui | → page.id |  |
 
 ### `mot_cle`
 

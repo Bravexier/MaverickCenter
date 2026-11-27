@@ -5,6 +5,7 @@
 // Chaque ajout ou retrait redemande les filtres et le tri du tableau (évènement « metiers:rafraichir »).
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
+import { ancreDeMetier } from '../../lib/metiers.mjs';
 
 const table = () => document.querySelector('.metiers-table');
 const ligneDe = (id) => document.querySelector(`tbody.metier[data-ed-metier="${CSS.escape(id)}"]`);
@@ -13,7 +14,7 @@ const supprimes = new Set();
 
 /** La ligne d'un métier, comme la construit MetiersTableau.astro (champs vides : remplis ensuite depuis la ligne de la base). */
 function nouvelleLigne(id) {
-  const ancre = `metier-${id.slice(id.indexOf('/') + 1)}`;
+  const ancre = ancreDeMetier(id); // l'ancre d'aujourd'hui de la ligne, segment renommé compris (R316)
   const ed = (colonne) => echapperHtml(attributEd('metier', { id }, colonne));
   const tbody = document.createElement('tbody');
   tbody.className = 'metier';

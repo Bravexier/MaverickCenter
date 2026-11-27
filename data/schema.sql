@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 132;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 133;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -85,6 +85,11 @@ CREATE TABLE page (
   -- nom, l'adresse et la clé suivront la page (chantier de l'ancrage). NULL tant que la page n'est pas ancrée. Un mot-clé ancre au plus une page (index
   -- UNIQUE page_ancre_mot_cle) ; la même clé peut aussi être celle d'un type de sort (type_sort : Météo). Pas de cascade : un mot-clé ancré ne se supprime pas.
   mot_cle_id INTEGER REFERENCES mot_cle(id),   -- le mot-clé que la page ancre (R309) ; NULL = page pas encore ancrée
+  -- Colonne ajoutée par la migration 0133 (décision R316, « l'adresse d'une page suit son titre ») : le dernier segment de l'adresse de la page quand il ne
+  -- se tire plus de son identifiant, qui ne change jamais. NULL : l'adresse est celle d'aujourd'hui, tirée de l'identifiant. Même forme que `slug`. Écrite par
+  -- le service au renommage, jamais à la main ; l'ancienne adresse est gardée dans page_ancienne_adresse.
+  slug_adresse TEXT CHECK (slug_adresse IS NULL OR (length(slug_adresse) > 0 AND slug_adresse NOT GLOB '*[^a-z0-9-]*'
+                                                    AND slug_adresse NOT GLOB '*--*' AND slug_adresse NOT GLOB '-*' AND slug_adresse NOT GLOB '*-')),
   CHECK (id = type || '/' || slug)
 ) STRICT;
 
@@ -112,6 +117,16 @@ CREATE TABLE alias (
 ) STRICT;
 
 CREATE INDEX alias_cle   ON alias (cle);
+
+-- Les anciennes adresses d'une page (décision R316, migration 0133) : une ligne par adresse que la page a eue, telle que `cheminDePage` la donnait, relative à la
+-- racine du site et sans barre initiale (« capacites/anansi-anti-corps/ », « metiers/#metier-forgeron » : la forme des clés de data-renvois). Elle mène toujours à
+-- la page vivante (la page 404 en fait un renvoi) ; elle part avec sa page (ON DELETE CASCADE). Écrite par le service au renommage, jamais à la main. Pas d'index
+-- UNIQUE entre pages : l'unicité des adresses est un contrôle du contenu (service et db:check). Même idée que mot_cle_ancienne_cle.
+CREATE TABLE page_ancienne_adresse (
+  adresse TEXT NOT NULL PRIMARY KEY CHECK (length(adresse) > 0 AND adresse NOT GLOB '/*' AND (adresse GLOB '*/' OR adresse GLOB '*#*')),   -- 'capacites/x/' ou 'metiers/#metier-x'
+  page_id TEXT NOT NULL REFERENCES page(id) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+CREATE INDEX page_ancienne_adresse_page ON page_ancienne_adresse (page_id);
 
 -- Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). Demandes du
 -- propriétaire : en mode modification, « supprimer / ajouter / modifier des mots clés » (page Glossaire, /regles/glossaire/) ; une suppression le retire de tous les
