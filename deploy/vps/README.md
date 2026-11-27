@@ -32,7 +32,7 @@ Changer de serveur (autre hébergeur, serveur plus grand) : [`DEMENAGEMENT.md`](
 2. **Accès SSH par clé** au serveur (compte `ubuntu` chez Infomaniak).
 3. **Pare-feu de l'hébergeur** : il filtre avant le serveur, `durcir.sh` ne règle que celui du serveur (`ufw`). Chez Infomaniak (Manager → le serveur →
    *Régler le Firewall*), seuls le SSH (22) et le ping étaient ouverts au départ (constaté le 2026-10-10). **Ajouter une règle TCP pour les ports 80 et 443**
-   (et UDP 443 pour HTTP/3), pour toutes les adresses, sans toucher à la règle du 22. Sans cela, Caddy n'obtient aucun certificat.
+   pour toutes les adresses, sans toucher à la règle du 22 (UDP 443 ne sert pas : HTTP/3 est coupé, voir l'en-tête du `Caddyfile`). Sans cela, Caddy n'obtient aucun certificat.
 4. Ces fichiers sur votre ordinateur (cloner le dépôt, ou télécharger la branche en zip).
 
 ## 1. Copier ce dossier sur le serveur
@@ -145,7 +145,8 @@ sudo sh /srv/maverick-center-test/acces/acces.sh --cle        # la clé de lectu
 `discord.sh` demande l'identifiant de l'application et son secret (**sans écho**, jamais en argument) et propose l'adresse de retour d'après le domaine (`https://dev.<domaine>/api/connexion/discord/retour/` pour le site de dev,
 `https://<domaine>/api/connexion/discord/retour/` pour la production) : **la même adresse, à l'identique, se déclare dans le portail développeur Discord** (« OAuth2 », « Redirects »). Sans réglage Discord, le site de dev est fermé à tous (les clés exceptées).
 `acces.sh` ne pose plus que les clés : `--cle` (lecture), `--cle-de-depot` / `--sans-cle-de-depot` (R291), `--etat`, `--retirer`. Elles refusent la production (`acces.sh`), jamais les deux instances (`discord.sh`).
-**Le `Caddyfile` ferme les pages du site de dev** (`forward_auth` vers `/api/acces/verifier/`) : il n'est pas livré par l'installateur, il se repose par `instances.sh` (ou `sudo install -m 644 Caddyfile /etc/caddy/Caddyfile`, `caddy validate`, `systemctl reload caddy`).
+**Le `Caddyfile` ferme les pages du site de dev** (`forward_auth` vers `/api/acces/verifier/`) : il n'est pas livré par l'installateur, il se repose par `instances.sh` (ou `sudo install -m 644 Caddyfile /etc/caddy/Caddyfile`, `caddy validate`, `systemctl restart caddy`).
+Toujours un redémarrage, jamais un rechargement (`reload`) : l'en-tête du `Caddyfile` dit pourquoi (HTTP/3 coupé).
 Le workflow GitHub n'y gagne ni ne perd rien : il ne télécharge que le lot figé (`/api/mise-a-jour/lots/<uuid>/`), qui reste ouvert ; aucune clé d'écriture n'est donnée à GitHub. Détail : [`docs/serveur.md`](../../docs/serveur.md), « Accès au site de dev » et « Connexion par Discord ».
 
 ## 8. Maintenance pendant une mise à jour
