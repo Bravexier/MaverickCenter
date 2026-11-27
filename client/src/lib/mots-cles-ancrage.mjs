@@ -5,6 +5,8 @@
 //   Lot 1 (`noms`) : les catégories nouvelles, le type unique, les ancres des mots-clés existants, le nom et l'adresse alignés sur la page.
 //   Lots 2 à 4 (`sorts`, `pages`, `capacites`) : les mots-clés créés. Leur `ancrage.type` est un id de catégorie : ils ne sont rendus qu'une fois les quatre
 //   catégories nouvelles en base (l'action recalcule le plan après le lot 1) ; `comptes` décrit tout de même l'ancrage entier.
+//   Lot 5 (`notions`, docs/chantier-pages-de-notion.md, §3 ; R309 (7)) : la page de notion de chaque mot-clé sans élément, ou dont les éléments ne sont que
+//   types de sort, types de dégâts et monnaies, et sans adresse. Rendu seulement quand les quatre autres n'ont plus rien à faire.
 // Sans dépendance navigateur ni Astro : la base est passée par l'appelant.
 import { adresseDeLaPage, adresseDuSort, slugsDAdresse } from './adresses-db.mjs';
 import { FORMAT_DU_LOT } from './lot-de-changements.mjs';
@@ -12,7 +14,7 @@ import { AUTEUR_DE_L_ANCRAGE, DECISION_DE_L_ANCRAGE } from './lots-d-ancrage.mjs
 import { referencesDesMotsCles } from './mentions-des-mots-cles.mjs';
 import { synonymesPris, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { clesDesMotsCles, HomonymesRefuses, RAISONS } from './mots-cles-cles.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase } from './mots-cles-db.mjs';
+import { categoriesDesMotsCles, elementsDesMotsCles, motsClesDeLaBase } from './mots-cles-db.mjs';
 import { normalize } from './text.mjs';
 
 /** Les quatre catégories que l'ancrage crée (conception, §2). */
@@ -44,7 +46,10 @@ const TITRES = Object.freeze({
   sorts: 'Ancrage des mots-clés : sorts et types de sort',
   pages: 'Ancrage des mots-clés : pages hors capacités',
   capacites: 'Ancrage des mots-clés : capacités de classe',
+  notions: 'Ancrage des mots-clés : pages de notion',
 });
+// les éléments qui laissent un mot-clé candidat à sa page de notion (famille B, conception §3) : ils n'ont ni nom ni adresse à eux
+const ELEMENTS_SANS_PAGE = new Set(['type_sort', 'type_degats', 'monnaie']);
 
 const TYPE_DU_MOT_CLE = new Map(Object.entries(TYPE_UNIQUE).flatMap(([type, ids]) => ids.map((id) => [id, type])));
 
@@ -232,14 +237,72 @@ function alignement(e, m) {
 }
 
 /**
- * Le plan de l'ancrage. `ecartees` : les clés à ne pas refaire (`page:<id>`, `sort:<id>`, `type_sort:<id>`, `nom:<mot_cle_id>`, `type:<mot_cle_id>`), sautées
- * et rendues dans `ecartees` quand elles ont retenu quelque chose.
- * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ ecartees?: Set<string> }} [options]
- * @returns {{ lots: object[], a_trancher: { table: string, id: string | number, nom: string, raison: string }[], ecartees: string[],
- *   comptes: { crees: number, capacites: number, autres_pages: number, sorts: number, types: number, renommes: number, reclasses: number, ancres_existants: number } }}
+ * L'identifiant d'une page de notion sans le service (un calcul pur, les tests) : guide/<normalize(nom)>, suffixé -2, -3… tant qu'une page porte cet id ou que
+ * `pris` le contient ; null si le nom n'a ni lettre ni chiffre. Le service donne le sien (serveur/edition-notions.mjs#idDeNotion), qui connaît aussi le journal,
+ * les noms réservés et les onglets.
  */
-export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
+function idDeNotionLocal(db, nom, pris) {
+  const cle = normalize(String(nom ?? ''));
+  if (!cle) return null;
+  const existe = db.prepare('SELECT 1 FROM page WHERE id = ?');
+  let id = `guide/${cle}`;
+  for (let n = 2; pris.has(id) || existe.get(id); n += 1) id = `guide/${cle}-${n}`;
+  return id;
+}
+
+/**
+ * Les pages de notion (lot 5, conception §3) : une opération par mot-clé candidat, par id croissant. Candidat : un mot-clé sans élément, ou dont les éléments
+ * sont tous des types de sort, de dégâts ou des monnaies (lib/mots-cles-db.mjs#elementsDesMotsCles), et que le plan n'ancre pas sur une page dans ce même
+ * calcul (`ancres`). Il ne devine rien : un candidat qui a une adresse, un nom sans lettre ni chiffre, un nom déjà titre, slug ou alias d'une page (`cle_page`),
+ * deux candidats de même nom, un id introuvable sont « à trancher », sans opération. `notion:<mot_cle_id>` écartée : sautée. Jamais candidats (« Choix de l'équipe », 12) : un
+ * mot-clé sans type unique après ce plan (`sansTypeUnique` : déjà « à trancher » pour son type, ou dont le reclassement `type:<id>` est écarté), et les mots-clés
+ * repris (REPRISES, TYPE_REPRIS), même quand la ligne de leur reprise a été annulée.
+ */
+function pagesDeNotion(db, { motsCles, ancres, sansTypeUnique, idDeNotion, retenu, trancher }) {
+  const elements = elementsDesMotsCles(db);
+  const exclus = (m) => ancres.has(m.id) || sansTypeUnique.has(m.id) || REPRISES.has(m.id) || m.id === TYPE_REPRIS.mot_cle;
+  const candidats = motsCles.filter((m) => !exclus(m) && (elements.get(m.id) ?? []).every((e) => ELEMENTS_SANS_PAGE.has(e.table))).sort((a, b) => a.id - b.id);
+  const homonymes = new Map();
+  for (const m of candidats) homonymes.set(normalize(m.libelle), (homonymes.get(normalize(m.libelle)) ?? 0) + 1);
+  const pageDuNom = db.prepare('SELECT page_id FROM cle_page WHERE cle = ? ORDER BY page_id LIMIT 1');
+  const pris = new Set();
+  const operations = [];
+  for (const m of candidats) {
+    const cle = normalize(m.libelle);
+    const page = cle ? pageDuNom.get(cle)?.page_id : undefined;
+    let raison = null;
+    if (m.url) raison = `il mène déjà à ${m.url}`;
+    else if (!cle) raison = 'son nom n’a ni lettre ni chiffre';
+    else if (page) raison = `c’est déjà le nom de la page « ${page} »`;
+    else if (homonymes.get(cle) > 1) raison = 'un autre mot-clé sans page porte le même nom';
+    if (raison) {
+      trancher('mot_cle', m.id, m.libelle, raison);
+      continue;
+    }
+    if (!retenu(`notion:${m.id}`)) continue;
+    const id = idDeNotion(m.libelle, pris);
+    if (!id) {
+      trancher('mot_cle', m.id, m.libelle, 'aucun identifiant libre pour sa page');
+      continue;
+    }
+    pris.add(id);
+    operations.push({ table: 'page', cle: { id }, operation: 'inserer', apres: { id, titre: m.libelle, mot_cle_id: m.id }, ancrage: { notion: true } });
+  }
+  return operations;
+}
+
+/**
+ * Le plan de l'ancrage. `ecartees` : les clés à ne pas refaire (`page:<id>`, `sort:<id>`, `type_sort:<id>`, `nom:<mot_cle_id>`, `type:<mot_cle_id>`,
+ * `notion:<mot_cle_id>`), sautées et rendues dans `ecartees` quand elles ont retenu quelque chose. `idDeNotion(nom, pris)` : l'id de la page de notion de `nom`,
+ * hors de `pris` (les ids déjà retenus par ce lot), ou null ; le service donne le sien, sinon une version locale (idDeNotionLocal). Le lot `notions` n'est rendu
+ * que quand les quatre autres n'ont plus d'opération ; `comptes.notions` le compte dans tous les cas.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ ecartees?: Set<string>, idDeNotion?: ((nom: string, pris: Set<string>) => string | null) | null }} [options]
+ * @returns {{ lots: object[], a_trancher: { table: string, id: string | number, nom: string, raison: string }[], ecartees: string[],
+ *   comptes: { crees: number, capacites: number, autres_pages: number, sorts: number, types: number, renommes: number, reclasses: number, ancres_existants: number,
+ *   notions: number } }}
+ */
+export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } = {}) {
   const motsCles = motsClesDeLaBase(db, { elements: false });
   const parId = new Map(motsCles.map((m) => [m.id, m]));
   const categories = lesCategories(db);
@@ -369,6 +432,10 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
 
   // la règle éprouve le vocabulaire final : ce qu'elle refuse sort du plan
   const gardes = eprouver({ motsCles, parId, libelles: categories.libelles, elements, reclasses, trancher });
+  // les pages de notion : tout mot-clé que le plan ancre ici sur une page (`pris`) a déjà la sienne
+  const notions = pagesDeNotion(db, {
+    motsCles, ancres: new Set(pris.keys()), sansTypeUnique: new Set(motsCles.filter((m) => m.categories.length !== 1 && !reclasses.has(m.id)).map((m) => m.id)), idDeNotion: idDeNotion ?? ((nom, idsPris) => idDeNotionLocal(db, nom, idsPris)), retenu, trancher,
+  });
 
   const crees = gardes.filter((e) => e.mot_cle === null);
   const deFamille = (famille) => crees.filter((e) => e.famille === famille);
@@ -378,6 +445,7 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
     crees: crees.length, capacites: deFamille('capacites').length, autres_pages: deFamille('pages').length,
     sorts: crees.filter((e) => e.table === 'sort').length, types: crees.filter((e) => e.table === 'type_sort').length,
     renommes: alignes.filter((e) => e.nom !== parId.get(e.mot_cle).libelle).length, reclasses: reclasses.size, ancres_existants: existants.filter((e) => e.ancrer).length,
+    notions: notions.length,
   };
 
   const lot = (famille, operations) => ({
@@ -395,8 +463,10 @@ export function planDeLAncrage(db, { ecartees = new Set() } = {}) {
     lot('pages', deFamille('pages').map((e) => creation(e, jeton))),
     lot('capacites', deFamille('capacites').map((e) => creation(e, jeton))),
   ];
+  // les pages de notion viennent après tout le reste : un mot-clé que les quatre autres lots ancrent n'en est plus candidat
+  const quatre = [lot('noms', premier), ...suite].filter((l) => l.operations.length);
   return {
-    lots: [lot('noms', premier), ...suite].filter((l) => l.operations.length),
+    lots: quatre.length ? quatre : [lot('notions', notions)].filter((l) => l.operations.length),
     a_trancher: [...aTrancher.values()],
     ecartees: [...sautees].sort(),
     comptes,

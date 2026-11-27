@@ -21,6 +21,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { ficheVide, jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { poserUnCompte } from './aide-compte-d-essai.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition-classes');
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
@@ -617,7 +618,8 @@ test('un don dont la fiche est citée (le mot-clé dont l’adresse y mène) ne 
   const motCle = (d, n) => {
     let libelle = `Lien d’essai vers un don ${n}`;
     for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE cle = ?', normalize(libelle)); i += 1) libelle = `Lien d’essai vers un don ${n} ${i}`;
-    const r = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: `/capacites/${d.id.slice('capacites/'.length)}/` } }]);
+    // nu, hors route : par une route, l'adresse d'un mot-clé vient de sa page de notion (aide-mot-cle-nu.mjs)
+    const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: `/capacites/${d.id.slice('capacites/'.length)}/` } }]);
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     return r.corps.crees[0].id;
   };

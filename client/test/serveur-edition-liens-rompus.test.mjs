@@ -18,6 +18,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { retirerLeMotCleDeLaPage } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('liens-rompus');
 let compteur = 0;
@@ -205,7 +206,8 @@ test('rejeu : une page citée par un mot-clé à adresse et ses balises (migrati
     titre = titreLibre(site.db, 'Formule à adresse d’essai');
     cible = creer(site.lot, titre);
     citante = creer(site.lot, titreLibre(site.db, 'Guide à balise d’essai'));
-    mot = ok(site.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: motCleLibre(site.db, 'Essai adresse rompue'), url: adresseDeLaPage(cible) } }])).crees[0].id;
+    // nu, hors route : par une route, l'adresse d'un mot-clé vient de sa page de notion (aide-mot-cle-nu.mjs)
+    mot = ok(lotHorsRoute(site.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: motCleLibre(site.db, 'Essai adresse rompue'), url: adresseDeLaPage(cible) } }], 'regles/')).crees[0].id;
     const cleDuMot = site.db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(mot).cle;
     ok(site.lot([{ op: 'modifier', table: 'page', cle: { id: citante }, valeurs: { corps_md: `Voir {{${cleDuMot}}}.` } }]));
     // le garde-fou direct (serveur/edition-plan.mjs : citationsDe sur la base où la page est encore) voit le mot-clé et sa balise

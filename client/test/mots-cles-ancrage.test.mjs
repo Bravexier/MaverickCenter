@@ -19,6 +19,8 @@ const creationDe = (plan, table, id) => plan.lots.flatMap((l) => l.operations).f
 const ancreDe = (plan, table, id) => plan.lots.flatMap((l) => l.operations).find((o) => o.operation === 'modifier' && o.table === table && o.cle.id === id);
 const alignementDe = (plan, id) => plan.lots.flatMap((l) => l.operations).find((o) => o.operation === 'modifier' && o.table === 'mot_cle' && o.cle.id === id);
 const aTrancher = (plan, table, id) => plan.a_trancher.find((x) => x.table === table && x.id === id);
+/** Les lots des quatre premières familles : un mot-clé d'essai sans élément reçoit en plus sa page de notion (test/mots-cles-ancrage-notions.test.mjs). */
+const lotsHorsNotions = (plan) => plan.lots.filter((l) => l.famille !== 'notions');
 
 test('une page sans mot-clé reçoit une création portant son type de rubrique (R309)', () => {
   const db = baseComplete();
@@ -116,7 +118,7 @@ test('un reclassement que la règle refuse retient l’ancre de son mot-clé : l
   assert.equal(aTrancher(plan, 'mot_cle', homonyme), undefined);
   assert.equal(plan.comptes.reclasses, 0);
   assert.equal(plan.comptes.ancres_existants, 0);
-  assert.deepEqual(plan.lots, []);
+  assert.deepEqual(lotsHorsNotions(plan), []);
 });
 
 test('`meteo` attend avec #239 quand il n’a pas de type unique ; #239 est hors de TYPE_UNIQUE, aucun reclassement ne le vise', () => {
@@ -276,7 +278,7 @@ test('tant qu’une catégorie nouvelle manque, seul le lot 1 est rendu ; les co
   assert.deepEqual(plan.lots.map((l) => l.famille), ['noms']);
   assert.deepEqual(plan.lots[0].operations.map((o) => o.apres.libelle), [...CATEGORIES_NOUVELLES]);
   assert.deepEqual(plan.lots[0].operations.map((o) => o.cle.id.$numero), ['c1', 'c2', 'c3', 'c4']);
-  assert.deepEqual(plan.comptes, { crees: 4, capacites: 1, autres_pages: 1, sorts: 1, types: 1, renommes: 0, reclasses: 0, ancres_existants: 0 });
+  assert.deepEqual(plan.comptes, { crees: 4, capacites: 1, autres_pages: 1, sorts: 1, types: 1, renommes: 0, reclasses: 0, ancres_existants: 0, notions: 0 });
 });
 
 test('ordre du lot 1 : catégories, reclassements, ancres, alignements', () => {
@@ -325,13 +327,17 @@ test('rejouable : une fois appliqué, le plan est vide', () => {
   poserSort(db, magieB, 'Souffle commun', { types: ['soin'] });
   poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', url: '/regles/zephyr-meteo/', categories: ['Règles'] });
   let plan = planDeLAncrage(db);
+  // noms, sorts, pages, capacités, puis les pages de notion (« Zéphyr notion », sans élément ni adresse)
   for (let tour = 0; plan.lots.length && tour < 6; tour += 1) {
     appliquerEnSql(db, plan.lots[0]);
     plan = planDeLAncrage(db);
   }
   assert.deepEqual(plan.lots, []);
-  assert.deepEqual(plan.a_trancher, []);
-  assert.deepEqual(plan.comptes, { crees: 0, capacites: 0, autres_pages: 0, sorts: 0, types: 0, renommes: 0, reclasses: 0, ancres_existants: 0 });
+  // #239 désigne le type de sort repris et garde son adresse, sans page derrière : un mot-clé repris n'est jamais candidat à une page de notion, rien à trancher
+  // (docs/chantier-pages-de-notion.md, « Choix de l'équipe », 12)
+  assert.deepEqual(plan.a_trancher.map((x) => [x.table, x.id]), []);
+  assert.deepEqual(plan.comptes, { crees: 0, capacites: 0, autres_pages: 0, sorts: 0, types: 0, renommes: 0, reclasses: 0, ancres_existants: 0, notions: 0 });
+  assert.notEqual(db.prepare('SELECT mot_cle_id FROM page WHERE mot_cle_id = ?').get(TYPE_UNIQUE.Notion[0]), undefined, 'la notion a sa page');
   assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE mot_cle_id IS NULL').get().n, 0);
   assert.equal(db.prepare('SELECT count(*) AS n FROM sort WHERE mot_cle_id IS NULL').get().n, 0);
   assert.equal(db.prepare("SELECT mot_cle_id FROM type_sort WHERE id = 'meteo'").get().mot_cle_id, 239);
@@ -367,12 +373,12 @@ test('un sort ancré dont le nom a quitté son mot-clé (retiré, renommé, remi
   assert.equal(ancreDe(plan, 'sort', sort), undefined, 'déjà ancré');
   assert.equal(plan.comptes.renommes, 1);
   appliquerEnSql(db, plan.lots[0]);
-  assert.deepEqual(planDeLAncrage(db).lots, []);
+  assert.deepEqual(lotsHorsNotions(planDeLAncrage(db)), []);
   const ecarte = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
-  assert.deepEqual(ecarte.lots, [], 'aligné : plus rien à écarter');
+  assert.deepEqual(lotsHorsNotions(ecarte), [], 'aligné : plus rien à écarter');
   db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run('Souffle encore', sort);
   const ecarteApres = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
-  assert.deepEqual([ecarteApres.lots, ecarteApres.ecartees], [[], [`sort:${sort}`]], 'une ligne annulée reste écartée');
+  assert.deepEqual([lotsHorsNotions(ecarteApres), ecarteApres.ecartees], [[], [`sort:${sort}`]], 'une ligne annulée reste écartée');
 });
 
 test('un sort ancré dont le nom est le synonyme d’un autre mot-clé : à trancher, son mot-clé ne bouge pas', () => {
@@ -387,7 +393,7 @@ test('un sort ancré dont le nom est le synonyme d’un autre mot-clé : à tran
   const plan = planDeLAncrage(db);
   assert.equal(alignementDe(plan, m), undefined);
   assert.ok(aTrancher(plan, 'sort', sort), JSON.stringify(plan.a_trancher));
-  assert.deepEqual(plan.lots, []);
+  assert.deepEqual(lotsHorsNotions(plan), []);
 });
 
 test('un type de sort ancré suit l’écriture unique de ses sorts ; écrit de deux façons : à trancher ; celui qui reprend un mot-clé garde son nom', () => {

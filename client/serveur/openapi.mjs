@@ -118,6 +118,13 @@ function corpsDeCreation(creation, exemple, { sansExemple = false, quoi = '' } =
   };
 }
 
+/**
+ * La création d'un mot-clé par une route (docs/chantier-pages-de-notion.md, §4 ; serveur/edition-chronologie.mjs, MOT_CLE.creer) : la notion et sa page. Ni
+ * corps d'exemple : le mot-clé créé, relié à sa page, ne se supprime plus à son adresse (le test qui rejoue les exemples ne pourrait pas le défaire).
+ */
+const CREATION_D_UNE_NOTION = 'Le mot-clé naît avec sa page de notion, qui le relie, dans le même lot : « url » est refusée (409, son adresse vient de la page) ; '
+  + 'sans « categories », son type est « Notion » (si cette catégorie n’existe pas dans la base, il est créé sans type, sans refus). Relié à sa page, il ne se modifie ni ne se supprime ensuite à son adresse : '
+  + 'renommer la page le renomme. Pas de corps d’exemple : écrivez-le.';
 /** Phrase `x-sans-retour` d'une création que ni l'API ni le site ne savent défaire (la ressource n'a pas de suppression). */
 const creationSansRetour = (nom) =>
   `Création définitive : ${nom} créé(e) ne se supprime ni par l’API ni sur le site (seule une retouche à la main de data/rows la retirerait) ; ` +
@@ -230,13 +237,14 @@ function cheminsDeRessource(r, tag) {
   const refusDuGel = figee ? `\n\nRefusé (409) : ${figee}.` : '';
   if (r.capacites.creer) {
     const sansRetour = r.capacites.supprimer ? null : creationSansRetour(r.nom);
+    const notion = r.table === 'mot_cle' ? `\n\n${CREATION_D_UNE_NOTION}` : '';
     chemins[base].post = {
       operationId: `creer_${id}`,
       tags: [tag],
       summary: `Créer : ${r.nom}`,
-      description: `Crée par ${ecritPar(r.creation)} : un lot du journal du site de dev. Rend 201, l’adresse de la ligne créée (Location) et son détail.${sansRetour ? `\n\n${sansRetour}` : ''}${refusDuGel}`,
+      description: `Crée par ${ecritPar(r.creation)} : un lot du journal du site de dev. Rend 201, l’adresse de la ligne créée (Location) et son détail.${sansRetour ? `\n\n${sansRetour}` : ''}${notion}${refusDuGel}`,
       ...(sansRetour ? { 'x-sans-retour': sansRetour } : {}),
-      requestBody: corpsDeCreation(r.creation, r.exemple, { sansExemple: Boolean(sansRetour) || Boolean(figee), quoi: r.nom.toLowerCase() }),
+      requestBody: corpsDeCreation(r.creation, r.exemple, { sansExemple: Boolean(sansRetour) || Boolean(figee) || Boolean(notion), quoi: r.nom.toLowerCase() }),
       responses: { 201: reponse('Créé.', ref('schemas', 'DetailEcrit'), { headers: { Location: { schema: { type: 'string' } }, ETag: { schema: { type: 'string' } } } }), ...ERREURS_D_ECRITURE },
     };
   }

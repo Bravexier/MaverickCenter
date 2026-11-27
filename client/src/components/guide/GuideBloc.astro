@@ -15,6 +15,7 @@ import { rendreLigne } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import { classeDeCaracteristique, classeDeMagie, classeDePosture, cssDesFamilles } from '../../lib/palette-css.mjs';
 import TableauRelationsMagies from '../magie/TableauRelationsMagies.astro';
+import BlocNotion from './BlocNotion.astro';
 import type { WikiEntry } from '../../lib/wiki';
 
 // Un bloc d'une page du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
@@ -367,6 +368,9 @@ const moitieDuChakra = (chakra: number) =>
     </div>
   )
 }
+
+{/* « notion » : ce que la base sait du mot-clé de la page (R309 (7), lib/notion-db.mjs) : son composant lit lui-même la base */}
+{bloc === 'notion' && <BlocNotion entry={entry} />}
 
 {
   bloc === 'relations-des-magies' && (

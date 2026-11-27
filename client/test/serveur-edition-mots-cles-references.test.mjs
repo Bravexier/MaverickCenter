@@ -14,8 +14,10 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
+import { estUnePageDeNotion } from '../serveur/edition-notions.mjs';
 import { mentionsDe, referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-mots-cles-references');
@@ -32,10 +34,10 @@ function nouvelle(db = vivante()) {
   const lotAncien = (operations) => enregistrer(db, { page: 'regles/glossaire/', operations }, { gel: false });
   const lire = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
   const ligne = (sql, ...p) => lire(sql, ...p)[0];
-  /** Un mot-clé créé par le service, sous un libellé que personne ne porte. */
+  /** Un mot-clé créé par le service, sous un libellé que personne ne porte ; nu, hors route (par une route, il naîtrait avec sa page : aide-mot-cle-nu.mjs). */
   const creer = (base) => {
     const libre = `${base} ${process.pid} ${(compteur += 1)}`;
-    const r = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre } }]);
+    const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre } }], 'regles/glossaire/');
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     return r.corps.crees[0].id;
   };
@@ -85,10 +87,12 @@ test('mentions : chaque référence de la base est une mention du mot-clé (`ref
 test('suppression, simple ou forcée : refusée proprement (409, `references`), rien d’écrit ; `refus_du_forcage` le dit au Glossaire (par analogie avec R223 (5))', () => {
   const s = nouvelle();
   const { type, mot } = typeCite(s);
+  // sur un contenu où le mot-clé a sa page de notion (R309 (7) : il désigne et le type et la page), la page est aussi une référence, nommée
+  const pageDeNotion = s.lire('SELECT id FROM page WHERE mot_cle_id = ?', mot).filter((p) => estUnePageDeNotion(s.db, p.id)).map((p) => ['page', p.id]);
   const avant = { mots: s.lire('SELECT * FROM mot_cle ORDER BY id'), types: s.lire('SELECT * FROM type_degats ORDER BY id'), lots: s.ligne('SELECT count(*) AS n FROM modification_lot').n };
   for (const [quoi, forcer] of [['simple', undefined], ['forcée', true]]) {
     const corps = refuse(s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: mot }, ...(forcer ? { forcer } : {}) }]), quoi);
-    assert.deepEqual(corps.references?.map((r) => [r.table, r.id]), [['type_degats', type]], `${quoi} : la référence est nommée`);
+    assert.deepEqual(corps.references?.map((r) => [r.table, r.id]), [['type_degats', type], ...pageDeNotion], `${quoi} : la référence est nommée`);
   }
   refuse(s.appel('DELETE', `/api/v1/mots-cles/${mot}/?forcer=1`), 'API v1, forcée');
   assert.deepEqual({ mots: s.lire('SELECT * FROM mot_cle ORDER BY id'), types: s.lire('SELECT * FROM type_degats ORDER BY id'), lots: s.ligne('SELECT count(*) AS n FROM modification_lot').n }, avant, 'rien n’est écrit');

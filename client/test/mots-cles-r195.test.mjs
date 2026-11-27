@@ -29,6 +29,7 @@ import { groupRaces, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { chargerRaces, racesParNature } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const dossier = dossierTemporaire('mots-cles-r195');
 const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossier, 'db') }).chemin);
@@ -109,12 +110,12 @@ test('R195 : l’écriture qu’un mot-clé dont le site se sert a quittée se r
   // deux écritures quittées par le test précédent (des mots-clés sans élément : un ancré ne se renomme plus, R309)
   const [[premier, ecriture], [, secondeEcriture]] = [...quittes];
   assert.notEqual(normalize(ligne('SELECT libelle FROM mot_cle WHERE id = ?', premier).libelle), normalize(ecriture), 'renommé par le test précédent');
-  // un mot-clé créé sous la première : un autre id, non protégé
-  const cree = ok(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: ecriture } }])).crees[0].id;
+  // un mot-clé créé sous la première : un autre id, non protégé ; nu, hors route (par une route, il naîtrait avec sa page : test/aide-mot-cle-nu.mjs)
+  const cree = ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: ecriture } }])).crees[0].id;
   assert.notEqual(cree, premier);
   assert.equal(MOTS_CLES_PROTEGES.has(cree), false);
   // un mot-clé renommé vers la seconde (le refus d'avant R195 est levé)
-  const autre = ok(enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre('Essai R195') } }])).crees[0].id;
+  const autre = ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre('Essai R195') } }])).crees[0].id;
   ok(enregistrer([renommer(autre, secondeEcriture)]));
   assert.deepEqual(lecture(), avant);
   // l'un et l'autre se suppriment (rien ne les mentionne)

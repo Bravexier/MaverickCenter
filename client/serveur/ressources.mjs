@@ -851,7 +851,8 @@ const sansRang = (message) => String(message).replace(/^operations\[\d+\] : /, '
 function ecrire(db, service, { methode, adresse, page, operations }) {
   let resultat;
   try {
-    resultat = enregistrer(db, { page, operations });
+    // une route du site : un mot-clé créé l'est avec sa page de notion (docs/chantier-pages-de-notion.md, §4)
+    resultat = enregistrer(db, { page, operations }, { voie: 'route' });
   } catch (e) {
     if (e instanceof ErreurEdition) throw new ErreurApi(e.statut, sansRang(e.message), e.details);
     throw e;

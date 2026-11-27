@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAR_OU_COMMENCER, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
 import { REPRISES } from '../src/lib/mots-cles-ancrage.mjs';
 import { PAGES_LUES_PAR_LE_CODE, raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
@@ -27,6 +28,8 @@ function baseDEssai() {
   p('guide/libre');
   p('guide/annexe', { origine: 'annexes' });
   p('guide/avec-bloc', { corps: 'Avant.\n\n<!-- guide:initiative -->\n\nAprès.\n' });
+  p('guide/de-notion', { corps: CORPS_D_UNE_PAGE_DE_NOTION });
+  p('guide/de-notion-et-bloc', { corps: `${CORPS_D_UNE_PAGE_DE_NOTION}\n<!-- guide:initiative -->\n` });
   p('guide/citee-par-une-cle');
   p('guide/ouvre-un-onglet');
   p('guide/chronologie');
@@ -39,7 +42,7 @@ function baseDEssai() {
 }
 const raisons = (db, id) => raisonsDeProtection(db, id).map((r) => r.raison);
 
-test('raisonsDeProtection : clé étrangère sans cascade, famille hors docs, ouverture d’onglet, bloc tiré de la base ; rien pour une page libre ou absente', () => {
+test('raisonsDeProtection : clé étrangère sans cascade, famille hors docs, ouverture d’onglet, bloc tiré de la base (pas le bloc `notion`) ; rien pour une page libre ou absente', () => {
   const db = baseDEssai();
   assert.deepEqual(raisonsDeProtection(db, 'guide/libre'), [], 'son entrée de menu (ON DELETE CASCADE) ne la protège pas');
   assert.deepEqual(raisonsDeProtection(db, 'guide/absente'), []);
@@ -50,6 +53,9 @@ test('raisonsDeProtection : clé étrangère sans cascade, famille hors docs, ou
   assert.deepEqual(raisons(db, 'guide/annexe'), ['famille']);
   assert.deepEqual(raisonsDeProtection(db, 'guide/ouvre-un-onglet').map((r) => [r.raison, r.onglet, r.texte]), [['ouverture', 'combats', 'page d’ouverture de l’onglet « Les combats »']]);
   assert.deepEqual(raisonsDeProtection(db, 'guide/avec-bloc').map((r) => [r.raison, r.bloc]), [['bloc', 'initiative']]);
+  // le bloc d'une page de notion est tout son texte : il ne la protège pas ; un autre bloc, si
+  assert.deepEqual(raisonsDeProtection(db, 'guide/de-notion'), []);
+  assert.deepEqual(raisonsDeProtection(db, 'guide/de-notion-et-bloc').map((r) => [r.raison, r.bloc]), [['bloc', 'initiative']]);
   db.close();
 });
 

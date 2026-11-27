@@ -109,7 +109,11 @@ function barreDOutils(ed, signal) {
   return barre;
 }
 
-/** Le résumé d'une page du guide, sous son titre : un champ `data-ed` de la ligne `page` (déjà chargée avec le titre), monté par l'éditeur commun. */
+/**
+ * Le résumé d'une page du guide, sous son titre : un champ `data-ed` de la ligne `page` (déjà chargée avec le titre), monté par l'éditeur commun. Facultatif
+ * pour une page de notion (`data-ed-notion` : une page hors du plan, que le service crée sans résumé ; R309 (7) — le champ accepte le vide), dont il dit
+ * seulement qu'il n'est pas obligatoire.
+ */
 function poserLeResume(ed, id) {
   const titre = document.querySelector('#guide-titre');
   if (!titre || etat.resume) return;
@@ -117,7 +121,7 @@ function poserLeResume(ed, id) {
   p.className = 'ed-resume-page';
   const libelle = document.createElement('span');
   libelle.className = 'ed-libelle';
-  libelle.textContent = 'Résumé (sommaires, recherche)';
+  libelle.textContent = document.querySelector('[data-ed-corps][data-ed-notion]') ? 'Résumé (facultatif : sommaires, recherche)' : 'Résumé (sommaires, recherche)';
   const champ = document.createElement('span');
   champ.setAttribute('data-ed', attributEd('page', { id }, 'resume'));
   p.append(libelle, champ);

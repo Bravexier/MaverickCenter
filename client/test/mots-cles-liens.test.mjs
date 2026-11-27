@@ -20,6 +20,7 @@ import { lisible } from '../src/lib/alchimie-couleurs.mjs';
 import { texteSurCouleur } from '../src/lib/sort-format.mjs';
 import { adressesDuSite } from '../src/lib/adresses-db.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { spawnSync } from 'node:child_process';
 import { cpSync } from 'node:fs';
@@ -220,7 +221,9 @@ test('db:check (migration 0098) : un lien mal écrit (guillemet compris) ou vers
   const d = new DatabaseSync(copie);
   assert.equal(avant.bilan.liens_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE url IS NOT NULL').get().n);
   assert.equal(avant.bilan.couleurs_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE couleur IS NOT NULL').get().n);
-  const [a, b, c, e] = d.prepare('SELECT id FROM mot_cle WHERE url IS NULL ORDER BY id LIMIT 4').all().map((m) => m.id);
+  // quatre mots-clés qui ne sont reliés à aucun élément (leur adresse n'est pas la copie de celle d'une page : R309), sans adresse d'abord ; sur un contenu
+  // où les notions ont leur page (R309 (7)), il en reste peu sans adresse
+  const [a, b, c, e] = d.prepare('SELECT id FROM mot_cle ORDER BY url IS NOT NULL, id').all().filter((m) => !estAncre(d, m.id)).slice(0, 4).map((m) => m.id);
   d.prepare("UPDATE mot_cle SET url = '/races/pas-de-page-d-essai/' WHERE id = ?").run(a);
   d.prepare("UPDATE mot_cle SET url = '/races/drakos' WHERE id = ?").run(b);
   d.prepare("UPDATE mot_cle SET couleur = 'race:inconnue' WHERE id = ?").run(c);

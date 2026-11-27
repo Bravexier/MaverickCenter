@@ -161,7 +161,7 @@ test('panneau des armes : les huit blocs de l’import dans l’ordre (tant que 
 
 test('panneaux de règles : leurs balises du glossaire rendues (mode complet « Libellé : définition », gras), aucune brute hors de `data-balise`', options, () => {
   // par leur clé : celle que citent les balises (décision R232 (3))
-  const motsCles = new Map(base.prepare('SELECT id, cle, libelle, description, icone FROM mot_cle').all().map((m) => [m.cle, m]));
+  const motsCles = new Map(base.prepare('SELECT id, cle, libelle, description, icone, url FROM mot_cle').all().map((m) => [m.cle, m]));
   let completes = 0;
   for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) {
     const m = main[pageDuPanneau(o.ancre)];
@@ -173,8 +173,9 @@ test('panneaux de règles : leurs balises du glossaire rendues (mode complet « 
       for (const [, id] of b.texte.matchAll(/\{\{([a-z0-9-]+):\}\}/g)) {
         const mc = motsCles.get(id);
         assert.ok(mc, `${o.ancre} : ${id} est un mot-clé`);
-        // le nom : le libellé, suivi de son icône (htmlDuNomDuMotCle, R235 (3))
-        const attendu = `<strong class="mot-cle-definition__nom">${htmlDuNomDuMotCle(mc)}</strong> : <span class="mot-cle-definition__texte">`;
+        // le nom : le libellé, suivi de son icône (htmlDuNomDuMotCle, R235 (3)) ; en gras, ou un lien s'il mène à une page (sa page de notion comprise, R309 (7))
+        const nom = mc.url ? ['a', ` href="${mc.url}"`] : ['strong', ''];
+        const attendu = `<${nom[0]} class="mot-cle-definition__nom"${nom[1]}>${htmlDuNomDuMotCle(mc)}</${nom[0]}> : <span class="mot-cle-definition__texte">`;
         assert.ok(m.includes(`data-mot-cle="${id}"`) && m.includes(attendu), `${o.ancre} : ${id} en mode complet`);
         completes += 1;
       }

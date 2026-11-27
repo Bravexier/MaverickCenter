@@ -411,7 +411,8 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   assert.match(html, /<div id="definitions-des-mots-cles" hidden>/);
   const definitions = html.slice(html.indexOf('<div id="definitions-des-mots-cles" hidden>'), html.indexOf('<section class="recherche-pages"'));
   assert.doesNotMatch(definitions.replace(/<[^>]+>/g, ''), /\{\{[^{}\n]+\}\}/, 'les balises des définitions rendues (le texte ; data-balise les garde)');
-  assert.match(definitions, /<strong class="mot-cle" data-mot-cle="[^"]+"/, 'un mot-clé cité dans une définition : en gras, comme partout');
+  // en gras, ou un lien quand le mot-clé mène à une page (sa page de notion comprise, R309 (7))
+  assert.match(definitions, /<(?:strong class="mot-cle"|a class="mot-cle" href="[^"]+") data-mot-cle="[^"]+"/, 'un mot-clé cité dans une définition : en gras, comme partout');
   assert.deepEqual(motsCles.map((m) => Number(m[1])).sort((x, y) => x - y), [...vocabulaire.keys()].sort((x, y) => x - y), 'tout le vocabulaire, rien d’autre');
   assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.length}\\)</small>`), 'le nombre de mots-clés');
   assert.match(html, /<p id="vue-du-mot-cle-definition" class="recherche-definition" hidden><\/p>/, 'la vue d’un mot-clé : sa définition');

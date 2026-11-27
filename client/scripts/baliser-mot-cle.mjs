@@ -19,7 +19,8 @@
 // tools/glossaire/corruption.json (2026-10-18, qui reprend Chakra et Barrière), tools/glossaire/sort-fer.json (2026-10-23, décision R164).
 // Étapes : la base de départ est une copie de l'extrait du jour du site de dev (`--base`, défaut var/extrait/maverick-dev.db : `npm run db:extrait`), ou, à
 // défaut (tests, `--rows`), la base des règles construite depuis un dossier de lignes dont on tire une base vivante ; le service du site de dev
-// (serveur/api.mjs, édition ouverte) y fait les modifications — les mots-clés créés (/recherche/), puis un lot par colonne (au plus LOT_MAX textes
+// (serveur/api.mjs, édition ouverte) y fait les modifications — les mots-clés créés (/recherche/ ; nus, sans page de notion, comme le lot proposé les
+// insère : « Préparer l'ancrage » leur donne ensuite leur page), puis un lot par colonne (au plus LOT_MAX textes
 // chacun) qui réécrit les textes ; tout ce qui en dépend (pages typées, colonnes tirées d'un texte) est refait par le service. Ce qui a changé, table de
 // contenu par table de contenu, devient un lot de changements (`--lot`, « maverick-lot/1 », serveur/epreuve-des-lots.mjs#lotDeLaDifference), contrôlé
 // comme au dépôt : il se PROPOSE au site de dev (`POST /api/edition/lots/`, skill modifier-une-page-wiki) et n'entre dans la base qu'au clic du
@@ -36,6 +37,7 @@ import { fileURLToPath } from 'node:url';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
+import { enregistrer as enregistrerSansRoute, ErreurEdition } from '../serveur/edition.mjs';
 import { copierLaBase } from '../serveur/epreuve-des-lots.mjs';
 import { controlerLaNature } from '../src/lib/lot-de-changements.mjs';
 import { TABLES, texteDePageModifiable } from '../src/lib/edition-modele.mjs';
@@ -50,6 +52,19 @@ const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 
 /** L'extrait du jour du site de dev (scripts/db-extrait.mjs : var/extrait/maverick-dev.db), la base de départ par défaut de la ligne de commande. */
 export const EXTRAIT_PAR_DEFAUT = join(RACINE, 'var', 'extrait', 'maverick-dev.db');
+
+/**
+ * Crée un mot-clé nu par le service d'édition appelé sans voie de route (serveur/edition.mjs#enregistrer) : ce que fera le lot proposé, qui l'insère sans page.
+ * Un refus devient une erreur, comme ceux de la route. Rend son id.
+ */
+function creerLeMotCleNu(db, corps) {
+  try {
+    return enregistrerSansRoute(db, corps).crees[0].id;
+  } catch (e) {
+    if (e instanceof ErreurEdition) throw new Error(`le service refuse un lot (${e.statut}) : ${e.message}`);
+    throw e;
+  }
+}
 
 /** Au plus tant de textes par lot (un lot par colonne, coupé au-delà). */
 export const LOT_MAX = 100;
@@ -255,8 +270,9 @@ export function baliser(mots, { rows = join(RACINE, 'data', 'rows'), base = null
         const existant = motCleDeLaRef(motsClesDeLaBase(db), m.libelle);
         let numero = existant?.id;
         if (!numero) {
-          const r = enregistrer({ page: 'recherche', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: m.libelle, description: m.description } }] });
-          numero = r.crees[0].id;
+          // un mot-clé NU, comme le créera le lot proposé (un lot ne crée jamais la page de notion d'un mot-clé qu'il insère : edition-chronologie.mjs, MOT_CLE.creer) :
+          // le service sans voie de route, qui créerait aussi la page de notion (docs/chantier-pages-de-notion.md, §4). « Préparer l'ancrage » la lui donne ensuite
+          numero = creerLeMotCleNu(db, { page: 'recherche', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: m.libelle, description: m.description } }] });
         }
         const { libelle, cle: id } = db.prepare('SELECT libelle, cle FROM mot_cle WHERE id = ?').get(numero);
         const mot = { id, libelle, motif: m.motif, casse: m.casse === true, noms: nomsAvecLeMot(db, m.motif, m.casse === true), exclus: exclusDe(m.exclus),

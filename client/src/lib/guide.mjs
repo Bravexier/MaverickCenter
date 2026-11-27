@@ -19,12 +19,18 @@ import { ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDeLaPageRet
  * « mode-hyper » : les deux tableaux du Mode Hyper (l'effet de chaque magie, mono et bi-magie, puis la capacité de chaque race ; lib/guide-db.mjs#chargerModeHyper),
  * dans « Le mode hyper », sous « Ce qu'il donne » (R187 (2) : « Dans le mode hyper rajoute un tableau qui liste les diffents bonus des magie et des races
  * en récupérant directement l'information depuis la DB »).
+ * « notion » : ce que la base sait du mot-clé qu'ancre la page qui le porte (définition, type, autres noms, sorts, pages ; lib/notion-db.mjs, R309 (7)).
+ * Aucune migration ne le pose : le service l'écrit, seul, dans le texte d'une page de notion (CORPS_D_UNE_PAGE_DE_NOTION).
  */
 export const BLOCS = [
-  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'relations-des-magies', 'mode-hyper',
+  'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'relations-des-magies', 'mode-hyper', 'notion',
   // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
   'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
 ];
+
+/** Le bloc d'une page de notion (R309 (7)) et le texte, seule ligne, de cette page : le service l'écrit à la création de la page. */
+export const BLOC_DE_NOTION = 'notion';
+export const CORPS_D_UNE_PAGE_DE_NOTION = `<!-- guide:${BLOC_DE_NOTION} -->\n`;
 
 const MARQUEUR = /^<!--\s*guide:([a-z-]+)\s*-->[ \t]*$/gm;
 

@@ -48,6 +48,9 @@ function nouvelle({ pageDeMagie = true } = {}) {
   const sorts = [0, 1].map((i) => poserSort(memoire, magie, nomInvente(`sort ${i}`)));
   const aReclasser = TYPE_UNIQUE['Équipement'].slice(0, 2);
   aReclasser.forEach((id, i) => poserMotCle(memoire, { id, libelle: nomInvente(`reclassé ${i}`), categories: ['Équipement', 'Combat'] }));
+  // la provenance et le type des pages (clés étrangères vers `famille` et `type_page`) : le lot des pages de notion, le dernier, crée des pages du guide
+  memoire.exec(`INSERT INTO famille (id, libelle, ordre) VALUES ('docs', 'Famille docs', 1); UPDATE page SET origine = 'docs';
+    INSERT INTO type_page (id, libelle, singulier, salon_discord, description, ordre) SELECT type, type, type, '', '', row_number() OVER (ORDER BY type) FROM (SELECT DISTINCT type FROM page)`);
   recalculerLesCles(memoire);
   const dossier = join(racine, `b${(n += 1)}`);
   mkdirSync(dossier, { recursive: true });
@@ -99,7 +102,7 @@ test('avec la clé de dépôt : les lots s’enchaînent, chaque élément est a
   assert.equal(r.arret, null, r.arret?.motif);
   assert.equal(r.suite, false);
   assert.deepEqual(r.lots.map((l) => l.etat), r.lots.map(() => 'applique'));
-  assert.equal(r.lots.length, 4, 'noms, sorts, pages, capacités');
+  assert.equal(r.lots.length, 5, 'noms, sorts, pages, capacités, pages de notion (les reclassés et le type de sort créé n’ont pas d’élément qui ait une page)');
   assert.ok(r.lots.every((l) => l.ecrites > 0));
   assert.ok(r.comptes.crees >= 4, JSON.stringify(r.comptes));
   for (const libelle of CATEGORIES_NOUVELLES) assert.ok(c.db.prepare('SELECT 1 FROM categorie_mot_cle WHERE libelle = ?').get(libelle), libelle);
@@ -153,7 +156,7 @@ test('un lot refusé n’écrit rien et arrête la suite, avec son motif : le pr
   assert.ok(!r.arret.motif.includes(sort1), 'un seul motif : le premier refus, sans la cascade');
   assert.doesNotMatch(r.arret.motif, /opération/, 'pas de jargon sur la page (skill zone-mise-a-jour-lots)');
   assert.match(r.arret.motif, /^ligne \d+ du lot : /);
-  assert.equal(r.suite, true);
+  assert.equal(r.suite, false, 'un lot refusé arrête la suite : relancer redéposerait le même refus');
   for (const id of [...m.monde.sorts, ...m.monde.capacites]) assert.equal(ancre(m, id.includes('#sort:') ? 'sort' : 'page', id), null, `${id} : rien du lot refusé, rien après lui`);
   const refuse = m.db.prepare("SELECT etat FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid DESC LIMIT 1").get();
   assert.equal(refuse.etat, 'refuse');

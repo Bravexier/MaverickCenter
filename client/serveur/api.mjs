@@ -651,7 +651,8 @@ function traiterEdition(requete, service, action, reste, permis, lecture = () =>
       return donnees ? json(200, donnees) : erreur(404, `Événement introuvable : ${valeur?.evenement}`);
     }
     const t0 = performance.now();
-    const resultat = enregistrer(db, valeur);
+    // une route du site : un mot-clé créé l'est avec sa page de notion (docs/chantier-pages-de-notion.md, §4)
+    const resultat = enregistrer(db, valeur, { voie: 'route' });
     // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);

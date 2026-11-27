@@ -24,10 +24,11 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import {
   categoriesDistinctes, ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
   erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDesListes, operationsDuVocabulaire, raisonSansForcage,
-  suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis, typeParDefaut,
+  suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis, typeParDefaut, CHAMPS_D_UNE_NOTION,
 } from '../src/lib/mots-cles-edition.mjs';
 import { htmlDePiece } from '../src/lib/monnaies.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 // GET /api/edition/mots-cles/ : { motsCles: [{ id (entier), libelle, cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories,
@@ -105,9 +106,14 @@ async function monter({ confirmations = [], service = null, vocabulaire = VIVANT
         cats = [...cats, { ...ligne, mots_cles: 0 }];
         return { lignes: [{ table: 'categorie_mot_cle', cle: { id: ligne.id }, ligne }] };
       }
-      const ligne = { id: 100 + vivant.length, libelle: op.valeurs.libelle, cle: normalize(op.valeurs.libelle), description: op.valeurs.description || null, url: null, couleur: null };
-      vivant = [...vivant, { ...ligne, pages: 0, verrou: 0, synonymes: op.valeurs.synonymes ?? [], categories: (op.valeurs.categories ?? []).map(Number) }];
-      return { lignes: [{ table: 'mot_cle', cle: { id: ligne.id }, ligne }] };
+      // comme le service par une route (docs/chantier-pages-de-notion.md, §4) : le mot-clé naît avec sa page de notion, qui l'ancre (`element`)
+      const cle = normalize(op.valeurs.libelle);
+      const page = { id: `guide/${cle}`, titre: op.valeurs.libelle, resume: null, mot_cle_id: 100 + vivant.length };
+      const ligne = { id: page.mot_cle_id, libelle: op.valeurs.libelle, cle, description: op.valeurs.description || null, url: `/regles/${cle}/`, couleur: null };
+      const element = { table: 'page', id: page.id, adresse: ligne.url, texte: null };
+      vivant = [...vivant, { ...ligne, pages: 0, verrou: 0, synonymes: [], categories: (op.valeurs.categories ?? []).map(Number), mentions: [], element }]
+        .sort((a, b) => a.cle.localeCompare(b.cle));
+      return { lignes: [{ table: 'page', cle: { id: page.id }, ligne: page }, { table: 'mot_cle', cle: { id: ligne.id }, ligne }] };
     },
     // comme editeur.mjs#monterChamps : une saisie sur chaque [data-ed] dont la ligne est chargée
     monterChamps(portee) {
@@ -236,25 +242,54 @@ test('au crayon : le tableau de gestion ; décisions R218, R219 (7) : un mot-cl�
   assert.equal(synonymes(magique).disabled, false, 'ses synonymes : modifiables');
   assert.ok(cases(magique).every((c) => !c.disabled), 'ses catégories : libres (R232 (11))');
   assert.equal(magique.querySelector('button'), null, 'verrouillé : ni « Supprimer » ni « Fusionner dans… »');
-  // création immédiate, à sa place dans le tableau, avec ses catégories (cases) et ses synonymes (un par ligne)
+  // création immédiate de la notion et de sa page (docs/chantier-pages-de-notion.md, §4) : son nom, son type, sa définition ; relue, sa ligne est celle
+  // d'un mot-clé relié à sa page, à sa place dans le tableau
   const ajouter = p.document.querySelector('.ed-outils-mots-cles').querySelector('button');
   assert.equal(ajouter.textContent, '+ Ajouter un mot-clé');
   cliquer(ajouter);
-  assert.deepEqual(p.formulaires[0].champs.map((c) => [c.nom, c.type]),
-    [['libelle', 'ligne'], ['description', 'texte'], ['url', 'adresse'], ['couleur', 'couleur'], ['icone', 'choix'], ['categories', 'categories'], ['synonymes', 'texte']],
-    'créé avec sa définition, son adresse et sa couleur (migration 0098), son icône (R235), ses catégories (R232) et ses synonymes (R233)');
-  assert.equal(p.formulaires[0].champs.find((c) => c.nom === 'icone').liste, 'icones', 'le choix lit la liste des icônes du site (ed.listes.icones)');
+  assert.deepEqual(p.formulaires[0].champs.map((c) => [c.nom, c.type]), [['libelle', 'ligne'], ['categories', 'categories'], ['description', 'texte']],
+    'le nom, le type et la définition (CHAMPS_D_UNE_NOTION) : ni adresse, ni couleur, ni icône, ni synonymes');
+  assert.deepEqual(p.formulaires[0].champs.map((c) => c.nom), [...CHAMPS_D_UNE_NOTION]);
+  assert.match(p.formulaires[0].aide, /page/, 'l’aide dit que sa page est créée avec lui');
   assert.deepEqual(p.formulaires[0].champs.find((c) => c.nom === 'categories').choix, CATEGORIES.map(({ id, libelle }) => ({ id, libelle })));
   assert.doesNotMatch(p.formulaires[0].champs.find((c) => c.nom === 'categories').vide, /chronologie/, 'sans catégorie : le texte renvoie au Glossaire');
-  await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '', categories: ['6', '1'], synonymes: 'Monstres\n\n  Créatures \nmonstres' });
+  const lectures = p.appels.filter(([, c]) => c === 'edition/mots-cles/').length;
+  await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '', categories: ['6'] });
   const envoi = p.appels.find(([m, c]) => m === 'POST' && c === 'edition/')[2];
-  assert.deepEqual(envoi, { page: 'regles/glossaire/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire', description: '', categories: ['6', '1'], synonymes: ['Monstres', 'Créatures'] } }] });
+  assert.deepEqual(envoi, { page: 'regles/glossaire/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Bestiaire', description: '', categories: ['6'] } }] });
+  assert.equal(p.appels.filter(([, c]) => c === 'edition/mots-cles/').length, lectures + 1, 'le vocabulaire est relu');
   assert.deepEqual(lignes(p.liste).map((t) => t.dataset.cle), ['aide', 'bestiaire', 'feu', 'guide', 'magique', 'peuple']);
   const cree = ligne(p.liste, 'bestiaire');
   assert.ok(cree.classList.contains('ed-nouveau'));
-  assert.equal(p.saisie('bestiaire').controle.value, 'Bestiaire');
-  assert.deepEqual(cases(cree).filter((c) => c.checked).map((c) => c.value), ['1', '6']);
-  assert.equal(synonymes(cree).value, 'Monstres\nCréatures');
+  assert.equal(cree.dataset.ancre, 'page', 'relié à sa page');
+  assert.equal(p.saisie('bestiaire'), undefined, 'ni saisie…');
+  assert.deepEqual(cases(cree), [], '…ni case');
+  assert.equal(cree.querySelector('button'), null, 'ni « Supprimer » ni « Fusionner dans… »');
+  const ouvrir = cree.querySelectorAll('.ed-mot-cle__ancre a').find((a) => a.textContent === 'Ouvrir');
+  assert.equal(ouvrir?.href, '/regles/bestiaire/', '« Ouvrir » mène à sa page');
+  assert.match(p.ed.annonces.at(-1)[0], /avec sa page/, 'le message annonce la page créée');
+});
+
+test('« + Ajouter » : créé, mais la liste ne se relit pas — l’annonce reste une erreur, dit la création et de recharger la page', async () => {
+  const p = await monter();
+  await p.motsCles.surcouche(p.ed, []);
+  p.ed.enEdition = true;
+  p.motsCles.debut(p.ed);
+  await attendre();
+  cliquer(p.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  const appel = p.ed.appel.bind(p.ed);
+  // la création passe ; la relecture qui suit échoue
+  p.ed.appel = async (methode, chemin, corps) => {
+    if (chemin === 'edition/mots-cles/') throw new Error('réseau coupé');
+    return appel(methode, chemin, corps);
+  };
+  await p.formulaires[0].valider({ libelle: 'Zéphyrion relu', description: '', categories: ['6'] });
+  const [message, genre] = p.ed.annonces.at(-1);
+  assert.equal(genre, 'erreur', 'l’échec de la relecture n’est pas effacé par une annonce de réussite');
+  assert.match(message, /Zéphyrion relu/, 'le mot-clé créé est nommé');
+  assert.match(message, /avec sa page/, 'sa page aussi');
+  assert.match(message, /recharge/i, 'il faut recharger la page pour le voir');
+  assert.equal(ligne(p.liste, normalize('Zéphyrion relu')), null, 'la ligne n’est pas montrée');
 });
 
 test('suppression et fusion en file, confirmées une fois avec ce qu’elles retirent ; un renommage vers l’écriture d’un autre, sans catégorie qui les distingue, devient une fusion', async () => {
@@ -492,7 +527,8 @@ async function surLeService(noms, options = {}) {
   const mots = {};
   for (const [cle, base] of Object.entries(noms)) {
     const libelle = libre(base);
-    const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'regles/glossaire/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }] }) }, service);
+    // nus, hors route : par la route du Glossaire, un mot-clé naît avec sa page de notion et ne se modifie plus ici (test/aide-mot-cle-nu.mjs)
+    const r = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }], 'regles/glossaire/');
     assert.equal(r.statut, 200, JSON.stringify(r.corps));
     mots[cle] = { id: r.corps.crees[0].id, libelle };
   }
@@ -542,6 +578,25 @@ test('service : rotation de noms (« A » prend un nom libre, « B » l’ancien
   assert.equal(r.refus, undefined, r.refus?.message);
   assert.deepEqual(s.motCle(s.mots.A.id), { id: s.mots.A.id, libelle: nouveau });
   assert.deepEqual(s.motCle(s.mots.B.id), { id: s.mots.B.id, libelle: s.mots.A.libelle });
+});
+
+test('service : « + Ajouter un mot-clé » crée la notion et sa page par la route du Glossaire ; relue, sa ligne est celle d’un mot-clé relié à sa page, « Ouvrir » y mène', async () => {
+  const s = await surLeService({});
+  const type = s.db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 1').get().id;
+  let libelle = `Essai notion du Glossaire ${process.pid}`;
+  for (let i = 2; s.db.prepare('SELECT 1 FROM cle_page WHERE cle = ? UNION ALL SELECT 1 FROM mot_cle WHERE cle = ?').get(normalize(libelle), normalize(libelle)); i += 1) {
+    libelle = `Essai notion du Glossaire ${process.pid} ${i}`;
+  }
+  cliquer(s.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
+  await s.formulaires.at(-1).valider({ libelle, categories: [String(type)], description: '' });
+  const m = s.db.prepare('SELECT id, url FROM mot_cle WHERE libelle = ?').get(libelle);
+  assert.ok(m, `créé : ${JSON.stringify(s.ed.annonces.at(-1))}`);
+  const page = s.db.prepare('SELECT id, titre, resume FROM page WHERE mot_cle_id = ?').get(m.id);
+  assert.deepEqual([page?.titre, page?.resume], [libelle, null], 'sa page de notion, sans résumé');
+  const cree = ligne(s.liste, m.id);
+  assert.equal(cree.dataset.ancre, 'page');
+  assert.equal(cree.querySelectorAll('.ed-mot-cle__ancre a').find((a) => a.textContent === 'Ouvrir')?.href, m.url, '« Ouvrir » mène à sa page');
+  assert.equal(s.saisie(m.id), undefined, 'aucune saisie : il ne se modifie plus au Glossaire');
 });
 
 test('service : renommages en chaîne (« A » prend le nom de « B », « B » celui de « C ») — « B » fusionné dans « C », puis « A » renommé', async () => {
@@ -865,13 +920,15 @@ test('décision R196 (2), au crayon : chaque mot-clé a le menu de ses mentions 
   boite.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
   assert.ok(aide.classList.contains('ed-fusionne'));
   assert.deepEqual(p.motsCles.operations(p.ed, []), [{ op: 'fusionner_mots_cles', mot_cle: I.aide, dans: I.feu }]);
-  // un mot-clé créé : non verrouillé (R219 (5)), rien ne le mentionne
+  // un mot-clé créé : non verrouillé (R219 (5)), rien ne le mentionne ; relié à sa page de notion (docs/chantier-pages-de-notion.md, §4), il ne se
+  // supprime ni ne se modifie au Glossaire
   cliquer(p.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
   await p.formulaires[0].valider({ libelle: 'Bestiaire', description: '' });
   const cree = ligne(p.liste, 'bestiaire');
   assert.equal(cree.hasAttribute('data-verrou'), false);
   assert.ok(cree.querySelector('.ed-mot-cle__mentions').hasAttribute('data-vide'));
-  assert.ok(bouton(cree, 'ed-mot-cle__supprimer') && !p.saisie('bestiaire').controle.disabled);
+  assert.equal(bouton(cree, 'ed-mot-cle__supprimer'), null);
+  assert.equal(p.saisie('bestiaire'), undefined);
 });
 
 test('décisions R218, R219 (4), contre le service : un mot-clé verrouillé (verrou = 1 dans la copie) garde ses champs modifiables sur la page (seule sa suppression est bloquée) et reçoit la fusion d’un autre', async () => {

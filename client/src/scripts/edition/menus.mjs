@@ -13,6 +13,9 @@
 //     et « Supprimer » (rien d'affiché pour une page PROTÉGÉE, `protection` du plan vivant ; une page citée le garde, son refus donne la liste des
 //     textes qui la citent : lib/ordre-des-menus.mjs#boutonSupprimer, décision du leader-technique) ; la suppression part
 //     avec « Enregistrer », après confirmation, puis on revient à l'onglet ; un refus (409) liste en liens les pages qui la citent, ou les raisons.
+//   - une page de notion (`data-ed-notion` sur le corps : une page des Règles hors du plan, sans menu latéral ; chantier 3 des mots-clés) : sous son titre,
+//     seulement « Supprimer » (pas de liste « Onglet » : elle n'est dans aucun onglet, et les onglets sont fixes) ; la même opération `supprimer`, les mêmes
+//     refus en liste, puis on revient au Glossaire.
 // Le titre d'une page se lit aussi dans le menu (demande du propriétaire : « Changer le titre avec l'édition devrai aussi changer le nom sur le menu
 // lattéral ») : une ligne `page` modifiée (en attente au chargement, enregistrée) change le libellé de son entrée et le résumé du menu replié ; pendant
 // la saisie du titre de la page affichée, ils le suivent (l'ancien revient si l'on abandonne).
@@ -21,6 +24,8 @@
 // le menu des races.
 // Le plan vivant (GET /api/edition/plan/) redessine les menus : au chargement quand des lignes du plan ont changé depuis la construction (surcouche),
 // en passant en mode modification (les identifiants que la page enverra sont ceux de la base), après l'enregistrement.
+import { cleDeLigne } from '../../lib/edition-modele.mjs';
+import { GLOSSAIRE } from '../../lib/livres.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import {
   adresseDeLaNouvellePage, adresseDeLaPageCreee, boutonSupprimer, chercherDansLePlan, elementsDuRefus, entreeDeLaPage, entreesDuPlanVivant, htmlDUneEntree,
@@ -39,10 +44,10 @@ const etat = {
   menus: [], // [{ liste, avant: [{ id, groupe }], initial: [li] }]
   replis: [], // [{ details, open }]
   ajouts: [], // éléments posés par l'extension, retirés à la fin
-  page: null, // la page des Règles affichée, d'après le plan : { id, titre, onglet, entree }
+  page: null, // la page des Règles affichée, d'après le plan : { id, titre, onglet, entree } ; une page de notion : { id, titre, notion: true }
   choix: null, // la liste « Onglet »
   supprimer: false,
-  envoi: null, // ce que le dernier lot a envoyé : { ordres: [{ liste, ordre }], retour (l'onglet où revenir après une suppression) }
+  envoi: null, // ce que le dernier lot a envoyé : { ordres: [{ liste, ordre }], retour (l'adresse, relative au site, où aller après une suppression) }
   titre: null, // { id, texte } : le titre de la page affichée au passage en mode modification (rendu au menu si l'on abandonne la saisie)
 };
 
@@ -290,23 +295,42 @@ function outilsDeLaPage(ed) {
   bloc.append(label);
   etat.choix = choix;
 
-  if (boutonSupprimer(entree)) {
-    const supprimer = document.createElement('button');
-    supprimer.type = 'button';
-    supprimer.className = 'ed-outil ed-outil--danger';
-    const montrer = () => {
-      supprimer.setAttribute('aria-pressed', String(etat.supprimer));
-      supprimer.textContent = etat.supprimer ? 'Supprimée à l’enregistrement (annuler)' : 'Supprimer la page';
-      bloc.classList.toggle('ed-supprime', etat.supprimer);
-    };
-    supprimer.addEventListener('click', () => {
-      etat.supprimer = !etat.supprimer;
-      montrer();
-      ed.marquerModifie();
-    }, { signal });
+  if (boutonSupprimer(entree)) ajouterLeBoutonSupprimer(ed, bloc);
+  (document.querySelector('.ed-resume-page') ?? titre).after(bloc);
+}
+
+/** « Supprimer la page » : un bouton à bascule, la suppression part avec « Enregistrer » (`operations`, après la confirmation de `verifier`). */
+function ajouterLeBoutonSupprimer(ed, bloc) {
+  const { signal } = etat.abandon;
+  const supprimer = document.createElement('button');
+  supprimer.type = 'button';
+  supprimer.className = 'ed-outil ed-outil--danger';
+  const montrer = () => {
+    supprimer.setAttribute('aria-pressed', String(etat.supprimer));
+    supprimer.textContent = etat.supprimer ? 'Supprimée à l’enregistrement (annuler)' : 'Supprimer la page';
+    bloc.classList.toggle('ed-supprime', etat.supprimer);
+  };
+  supprimer.addEventListener('click', () => {
+    etat.supprimer = !etat.supprimer;
     montrer();
-    bloc.append(supprimer);
-  }
+    ed.marquerModifie();
+  }, { signal });
+  montrer();
+  bloc.append(supprimer);
+}
+
+/**
+ * Sous le titre d'une page de notion : « Supprimer la page », seul geste de menu qu'elle admet (le plan ne la range nulle part : pas de liste « Onglet »).
+ * Le bouton est toujours là : le service tranche (une raison de protection, un texte qui cite son mot-clé, un mot-clé verrouillé : 409, `refusEnListe`).
+ */
+function outilsDUneNotion(ed) {
+  const id = pageCourante();
+  const titre = document.querySelector('#guide-titre');
+  if (!id || !titre) return;
+  etat.page = { id, titre: ed.lignes?.get(cleDeLigne('page', { id }))?.titre ?? '', notion: true };
+  const bloc = poser(document.createElement('div'));
+  bloc.className = 'ed-page-regles';
+  ajouterLeBoutonSupprimer(ed, bloc);
   (document.querySelector('.ed-resume-page') ?? titre).after(bloc);
 }
 
@@ -340,7 +364,7 @@ function refusEnListe(ed, e) {
 // --- Extension --------------------------------------------------------------------------------------------------------------------------------
 export const menus = {
   nom: 'menus',
-  actif: (doc) => Boolean(doc.querySelector('ol[data-ed-menu], .races-pastilles')),
+  actif: (doc) => Boolean(doc.querySelector('ol[data-ed-menu], .races-pastilles, [data-ed-notion]')),
 
   /** Des lignes du plan ont changé depuis la construction de la page : les menus redessinés d'après le plan vivant. */
   async surcouche(ed, lignes) {
@@ -363,8 +387,9 @@ export const menus = {
   },
 
   debut(ed) {
+    const notion = Boolean(document.querySelector('[data-ed-corps][data-ed-notion]'));
     // /races/ (la liste) : rien à modifier ici, seule la surcouche la réordonne
-    if (!listesDesMenus().length) return;
+    if (!listesDesMenus().length && !notion) return;
     const generation = ++etat.generation;
     etat.abandon = new AbortController();
     // le titre en cours de saisie de la page affichée : le menu le suit
@@ -373,6 +398,11 @@ export const menus = {
     if (saisie) {
       etat.titre = { id, texte: saisie.value };
       saisie.addEventListener('input', () => afficherLeTitre(ed, id, saisie.value.trim() || etat.titre.texte), { signal: etat.abandon.signal });
+    }
+    // une page de notion n'a ni menu ni plan à lire
+    if (notion) {
+      outilsDUneNotion(ed);
+      return;
     }
     // petit écran : le menu replié s'ouvre le temps du mode modification (MenuLateral.astro le replie au chargement)
     for (const details of document.querySelectorAll('[data-lateral-repli]')) {
@@ -393,18 +423,21 @@ export const menus = {
 
   verifier(ed) {
     if (!etat.supprimer || !etat.page) return null;
-    if (confirm(`Supprimer la page « ${etat.page.titre} » ? Son entrée quitte le menu et son adresse mènera à la page introuvable.`)) return null;
+    const quoi = etat.page.notion
+      ? 'Son mot-clé disparaît du Glossaire avec elle (sauf s’il désigne aussi un type de sort, une monnaie ou un type de dégâts) et son adresse mènera à la page introuvable.'
+      : 'Son entrée quitte le menu et son adresse mènera à la page introuvable.';
+    if (confirm(`Supprimer la page « ${etat.page.titre} » ? ${quoi}`)) return null;
     return 'Rien n’est enregistré : la page n’est pas supprimée (le bouton « Supprimée à l’enregistrement » annule la demande).';
   },
 
   operations(ed, operations) {
     etat.envoi = null;
-    if (!etat.plan) return operations;
+    if (!etat.plan && !etat.page?.notion) return operations;
     const ajout = operationsDOrdre(etat.menus.map(({ liste, avant }) => ({ menu: liste.dataset.edMenu, avant, apres: entreesDeLaListe(liste) })));
     const envoi = { ordres: ajout.length ? etat.menus.map(({ liste }) => ({ liste, ordre: [...liste.children] })) : [], retour: null };
     if (etat.page && etat.supprimer) {
       ajout.push({ op: 'supprimer', entite: 'page_des_regles', cle: { id: etat.page.id } });
-      envoi.retour = etat.page.onglet;
+      envoi.retour = etat.page.notion ? GLOSSAIRE.chemin : `regles/${etat.page.onglet}/`;
     } else if (etat.page && etat.choix && !etat.choix.disabled && etat.choix.value !== etat.page.onglet) {
       ajout.push({ op: 'modifier', table: 'regles_onglet_entree', cle: { id: etat.page.entree }, valeurs: { onglet_id: etat.choix.value }, avant: { onglet_id: etat.page.onglet } });
     }
@@ -438,9 +471,9 @@ export const menus = {
     const envoi = etat.envoi;
     etat.envoi = null;
     if (!envoi) return;
-    // la page supprimée : son onglet (son adresse mène maintenant à la page introuvable)
+    // la page supprimée : son onglet, ou le Glossaire pour une page de notion (son adresse mène maintenant à la page introuvable)
     if (envoi.retour) {
-      location.assign(`${ed.base}regles/${envoi.retour}/`);
+      location.assign(`${ed.base}${envoi.retour}`);
       return;
     }
     for (const { liste, ordre } of envoi.ordres) for (const li of ordre) liste.append(li);

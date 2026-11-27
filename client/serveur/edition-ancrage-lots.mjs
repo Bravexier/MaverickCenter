@@ -7,16 +7,24 @@
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { DECISION_DE_L_ANCRAGE, estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { planDeLAncrage } from '../src/lib/mots-cles-ancrage.mjs';
-import { ErreurEdition } from './edition.mjs';
+import { ErreurEdition, NOTIONS } from './edition.mjs';
 import { deposer, deposerEtAppliquer, motifsDeLEssai, netsDuLot } from './edition-lots.mjs';
 
 /** L'ordre chronologique des lots de l'action : la date de dépôt, puis `rowid` à égalité (relecture finale, Fable m2). */
 const ORDRE_DES_LOTS = 'ORDER BY depose_le, rowid';
 
-/** La clé du plan qu'écarte l'annulation de cette ligne de l'effet net, ou null : un mot-clé créé part avec son ancre, un texte ou une clé recalculés ne décident de rien. */
-function cleDuPlan(net, crees) {
+/**
+ * La clé du plan qu'écarte l'annulation de cette ligne de l'effet net, ou null : un mot-clé créé part avec son ancre, un texte ou une clé recalculés ne décident de
+ * rien. Une page de notion insérée (docs/chantier-pages-de-notion.md, §3) rend `notion:<mot_cle_id>` ; l'adresse de son mot-clé (`notions` : les mots-clés des
+ * pages de notion du lot), qui part avec elle, ne rend pas `nom:<id>`.
+ */
+function cleDuPlan(net, crees, notions) {
+  if (net.table === 'page' && net.genre === 'inserer' && net.fin?.mot_cle_id != null) return `notion:${net.fin.mot_cle_id}`;
   if (TABLES_ANCRABLES.includes(net.table)) return net.genre === 'modifier' && Object.hasOwn(net.fin, 'mot_cle_id') ? `${net.table}:${net.cle.id}` : null;
-  if (net.table === 'mot_cle') return net.genre === 'modifier' && (Object.hasOwn(net.fin, 'libelle') || Object.hasOwn(net.fin, 'url')) ? `nom:${net.cle.id}` : null;
+  if (net.table === 'mot_cle') {
+    if (notions.has(net.cle.id)) return null;
+    return net.genre === 'modifier' && (Object.hasOwn(net.fin, 'libelle') || Object.hasOwn(net.fin, 'url')) ? `nom:${net.cle.id}` : null;
+  }
   if (net.table === 'mot_cle_categorie') return crees.has(net.cle.mot_cle_id) ? null : `type:${net.cle.mot_cle_id}`;
   if (net.table === 'categorie_mot_cle' && net.genre === 'inserer') return `categorie:${net.fin.libelle}`;
   return null;
@@ -35,7 +43,7 @@ function rangsAnnules(lot, nets, bilan) {
 
 /**
  * Les clés du plan à ne pas refaire : ce que le propriétaire a annulé dans les lots R309 (`page:<id>`, `sort:<id>`, `type_sort:<id>`, `nom:<mot_cle_id>`,
- * `type:<mot_cle_id>`, et `categorie:<libellé>`, que le plan ne connaît pas : voir `prochainLot`). Les lots se lisent du plus ancien au plus récent : une ligne
+ * `type:<mot_cle_id>`, `notion:<mot_cle_id>`, et `categorie:<libellé>`, que le plan ne connaît pas : voir `prochainLot`). Les lots se lisent du plus ancien au plus récent : une ligne
  * annulée puis reprise par un lot suivant n'est plus écartée.
  * @param {import('node:sqlite').DatabaseSync} db
  * @returns {Set<string>}
@@ -48,9 +56,10 @@ export function lignesAnnuleesDeLAncrage(db) {
     const nets = netsDuLot(db, lot.lot_id);
     const annules = rangsAnnules(lot, nets, lot.bilan ? JSON.parse(lot.bilan) : null);
     const crees = new Set(nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer').map((n) => n.cle.id));
-    for (const n of nets) if (!annules.has(n.rang)) ecartees.delete(cleDuPlan(n, crees));
+    const notions = new Set(nets.filter((n) => n.table === 'page' && n.genre === 'inserer' && n.fin?.mot_cle_id != null).map((n) => n.fin.mot_cle_id));
+    for (const n of nets) if (!annules.has(n.rang)) ecartees.delete(cleDuPlan(n, crees, notions));
     for (const n of nets) {
-      const cle = annules.has(n.rang) ? cleDuPlan(n, crees) : null;
+      const cle = annules.has(n.rang) ? cleDuPlan(n, crees, notions) : null;
       if (cle) ecartees.add(cle);
     }
   }
@@ -71,6 +80,14 @@ function prochainLot(plan, ecartees, categories) {
     return false;
   });
   return operations.length ? { ...lot, operations } : null;
+}
+
+/** Le motif de l'arrêt sur des catégories annulées (`categorie:<libellé>`, retirées par prochainLot). */
+function motifDesCategoriesAnnulees(categories) {
+  const libelles = [...categories].map((c) => `« ${c.slice('categorie:'.length)} »`).sort();
+  const plusieurs = libelles.length > 1;
+  const sujet = plusieurs ? `les types ${libelles.join(', ')} ont été annulés` : `le type ${libelles[0]} a été annulé`;
+  return `${sujet} : tant qu’un type manque, ni les mots-clés à créer ni les pages de notion ne sont préparés. « Reprendre les lignes annulées » ${plusieurs ? 'les' : 'le'} recrée.`;
 }
 
 const resume = (lot) => ({ id: lot.id, titre: lot.titre, etat: lot.etat, operations: lot.operations, ecrites: lot.bilan?.ecrites ?? 0, verdict: lot.verdict ?? null });
@@ -98,7 +115,9 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
     const db = base();
     const ecartees = reprendre ? new Set() : lignesAnnuleesDeLAncrage(db);
     const categories = new Set();
-    let plan = planDeLAncrage(db, { ecartees });
+    // l'id d'une page de notion : celui que le service choisirait (journal, noms réservés, onglets compris)
+    const idDeNotion = (vivante) => (nom, pris) => NOTIONS.idDeNotion(vivante, nom, { pris });
+    let plan = planDeLAncrage(db, { ecartees, idDeNotion: idDeNotion(db) });
     const { comptes } = plan;
     const fin = (lots, arret, suite) => ({ lots, arret, suite, a_trancher: plan.a_trancher, ecartees: [...plan.ecartees, ...categories].sort(), comptes });
 
@@ -110,6 +129,8 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
     let precedent = null;
     for (;;) {
       const prochain = prochainLot(plan, ecartees, categories);
+      // le plan avait encore un lot, réduit à rien par une catégorie annulée : tant qu'elle manque, le plan ne rend ni les créations ni les pages de notion
+      if (!prochain && plan.lots.length) return fin(lots, { titre: plan.lots[0].titre, motif: motifDesCategoriesAnnulees(categories) }, false);
       if (!prochain) return fin(lots, null, false);
       const { famille, ...lot } = prochain; // `famille` sert au plan : elle n'est pas du format `maverick-lot/1`
       if (gelee?.()) return fin(lots, { titre: lot.titre, motif: MOTIF_DU_GEL }, true);
@@ -119,18 +140,20 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
       if (!par) {
         const propose = await deposer(base, lot, { enArrierePlan, dossier, ...options });
         const arret = VERDICTS_SANS_APPLICATION.has(propose.verdict) ? { titre: lot.titre, motif: motifLisible(motifsDeLEssai(propose.essai)[0] ?? 'l’essai à blanc le refuse.') } : null;
-        return fin([...lots, resume(propose)], arret, true);
+        // un lot refusé arrête la suite : relancer redéposerait le même refus
+        return fin([...lots, resume(propose)], arret, !arret);
       }
       try {
         lots.push(resume(await deposerEtAppliquer(base, lot, { par, enArrierePlan, dossier, ...options })));
       } catch (e) {
         if (!(e instanceof ErreurEdition) || ![400, 409].includes(e.statut)) throw e;
-        // à l'essai, un refus décale les ids et les créations suivantes sont refusées en cascade : seul le premier motif dit la cause
-        return fin(lots, { titre: lot.titre, motif: motifLisible(e.details?.motifs?.[0] ?? e.message) }, true);
+        // à l'essai, un refus décale les ids et les créations suivantes sont refusées en cascade : seul le premier motif dit la cause. Un lot refusé arrête la
+        // suite (`suite` faux) : relancer le redéposerait et le verrait refusé de nouveau, sans fin
+        return fin(lots, { titre: lot.titre, motif: motifLisible(e.details?.motifs?.[0] ?? e.message) }, false);
       }
       const vivante = base();
       if (!vivante) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');
-      plan = planDeLAncrage(vivante, { ecartees });
+      plan = planDeLAncrage(vivante, { ecartees, idDeNotion: idDeNotion(vivante) });
     }
   } finally {
     enCours = false;

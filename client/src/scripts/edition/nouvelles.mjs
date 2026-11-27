@@ -10,7 +10,9 @@
 //   - une page des Règles créée (lot de l'édition des menus : « + Ajouter une page », « Créer la page » d'une entrée « bientôt » ; edition/menus.mjs) :
 //     à son adresse /regles/<slug>/, sa page comme PageDuGuide.astro, à côté du menu latéral de son onglet (MenuLateral.astro, d'après le plan vivant,
 //     GET /api/edition/plan/) — fil d'Ariane, titre modifiable, son texte (un morceau, « À compléter. ») et un bandeau « Page créée sur le site de dev » ;
-//     l'extension `guide` prend ensuite le relais (titre, résumé, texte en place), `menus` le menu (ordre, onglet, suppression).
+//     l'extension `guide` prend ensuite le relais (titre, résumé, texte en place), `menus` le menu (ordre, onglet, suppression) ;
+//   - une page de notion créée (page des Règles que le plan vivant ne range dans aucun onglet : serveur/edition-notions.mjs, chantier 3 des mots-clés) :
+//     même adresse, sans menu latéral, fil d'Ariane vers le Glossaire (lib/page-de-notion-rendu.mjs) ; `guide` y pose son résumé facultatif, `menus` « Supprimer la page ».
 import menuLateralCss from '../../styles/guide/menu-lateral.css?raw';
 import guideBlocsCss from '../../styles/guide/blocs.css?raw';
 import raceBaseCss from '../../styles/race/base.css?raw';
@@ -27,6 +29,7 @@ import { entreesDuPlanVivant, htmlDUneEntree } from '../../lib/ordre-des-menus.m
 import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { adresseEncoreServie } from '../../lib/metiers.mjs';
 import { nomDuProtege } from '../../lib/mots-cles-proteges.mjs';
+import { htmlDeLaPageDeNotion, peutEtreUnePageDeNotion } from '../../lib/page-de-notion-rendu.mjs';
 import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
 
 // la page 404 d'une adresse que la base a déjà renommée (R316) renvoie vers l'adresse où le site construit sert encore la page (lib/metiers.mjs#adresseEncoreServie)
@@ -192,11 +195,13 @@ async function dessinerPage(ed, lignes) {
   const id = idDeLAdresse(ed.base);
   const type = id.split('/')[0];
   // une page des Règles créée : regles/<slug> est la page guide/<slug> (lib/livres.mjs#adresseDuGuide : adresses à plat)
-  const regle = type === 'regles' && /^regles\/[a-z0-9-]+$/.test(id)
+  // (hors Découvrir et Guide du MJ : lib/page-de-notion-rendu.mjs#peutEtreUnePageDeNotion)
+  const regle = type === 'regles' && /^regles\/[a-z0-9-]+$/.test(id) && peutEtreUnePageDeNotion(`guide/${id.slice('regles/'.length)}`)
     && lignes.find((l) => l.table === 'page' && l.cle.id === `guide/${id.slice('regles/'.length)}` && l.ligne);
   if (regle) {
-    const rendu = pageDesRegles(ed, regle, await ed.appel('GET', 'edition/plan/'));
-    if (!rendu) return false;
+    // une page des Règles que le plan vivant ne range dans aucun onglet est une page de notion (lib/livres.mjs#estHorsDuPlan) : sans menu latéral
+    const rendu = pageDesRegles(ed, regle, await ed.appel('GET', 'edition/plan/'))
+      ?? { css: guideBlocsCss, titre: regle.ligne.titre, html: htmlDeLaPageDeNotion({ id: regle.cle.id, titre: regle.ligne.titre, base: ed.base }) };
     poserLaPage(ed, rendu);
     ed.page = regle.cle.id;
     for (const l of lignes) if (l.ligne) ed.appliquerLigne(l.table, l.cle, l.ligne);

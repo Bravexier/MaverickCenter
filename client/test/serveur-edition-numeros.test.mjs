@@ -15,6 +15,7 @@ import { donnerUnNumero, plusHautNumero } from '../serveur/edition-journal.mjs';
 import { idSuivant } from '../serveur/edition-mots-cles.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition-numeros');
 let n = 0;
@@ -39,7 +40,12 @@ function retirerLeMotCle(db, id, { traces = false } = {}) {
   db.exec('PRAGMA foreign_keys = ON');
   if (traces) for (const t of ['modification', 'historique_modification']) db.prepare(`DELETE FROM ${t} WHERE table_nom = 'mot_cle' AND json_extract(cle, '$.id') = ?`).run(id);
 }
-const creerUnMotCle = (m, libelle) => m.lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }]).crees[0].id;
+// nu, hors route (par une route, il naîtrait avec sa page de notion : aide-mot-cle-nu.mjs)
+const creerUnMotCle = (m, libelle) => {
+  const r = lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }], 'regles/glossaire/');
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  return r.corps.crees[0].id;
+};
 
 test('idSuivant : un mot-clé créé prend 1 + le plus haut numéro connu, le plafond monte dans la même transaction', () => {
   const m = nouvelle();

@@ -9,12 +9,13 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
+import { categorieDuType, estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 import { idDEssai, MOTS_CLES_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-mots-cles-cles');
@@ -25,9 +26,13 @@ function base() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: regles.base, dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
+  // par la route du Glossaire : tout ce qui n'est pas la création d'un mot-clé d'essai
   const lot = (operations) => appel('POST', '/api/edition/', { page: 'regles/glossaire/', operations });
+  // hors route : un mot-clé d'essai y naît nu, comme avant les pages de notion (par une route, il naîtrait avec sa page et ne se modifierait plus au Glossaire :
+  // aide-mot-cle-nu.mjs) ; un refus lu ici est celui de la règle des clés du service, pas celui du site
+  const nu = (operations) => lotHorsRoute(db, operations, 'regles/glossaire/');
   const ligne = (sql, ...p) => db.prepare(sql).get(...p);
-  return { db, appel, lot, ligne, motCle: (id) => ligne('SELECT * FROM mot_cle WHERE id = ?', id) };
+  return { db, appel, lot, nu, ligne, motCle: (id) => ligne('SELECT * FROM mot_cle WHERE id = ?', id) };
 }
 const ok = (r) => assert.equal(r.statut, 200, JSON.stringify(r.corps));
 /** Le refus attendu : son statut et le champ que le détail nomme. */
@@ -56,18 +61,19 @@ const textesQuiCitent = (db, cle) => textesDeLaBase(db).flatMap(({ table, colonn
 const A = MOTS_CLES_D_ESSAI['essai-glossaire-a'];
 const C = MOTS_CLES_D_ESSAI['essai-glossaire-c'];
 
-test('R232 (9), (2), (3) : un homonyme sans catégorie distinctive est refusé ; accepté, il porte ses catégories et la clé de l’autre suit, réécrite partout', () => {
-  const { db, lot, motCle, ligne } = base();
+test('R232 (9), (2), (3) : le service refuse un homonyme créé sans catégorie distinctive (hors route ; par le site : un homonyme avec une catégorie que A n’a pas) ; accepté, il porte ses catégories et la clé de l’autre suit, réécrite partout', () => {
+  const { db, lot, nu, motCle, ligne } = base();
   const [c1, c2] = deuxCategories(db);
   // un texte qui cite A par sa clé (la définition de C)
   ok(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { description: `Voir {{${A.cle}}}.` } }]));
   assert.match(motCle(C.id).description, new RegExp(`\\{\\{${A.cle}\\|`));
-  // un homonyme sans catégorie, puis avec une catégorie alors que A n'en a aucune : refusés (409, champ categories), rien d'écrit
-  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle.toUpperCase() } }]), 409, null);
+  // un homonyme sans catégorie (la route en donne toujours une : hors route seulement), puis par le site avec une catégorie alors que A n'en a aucune :
+  // refusés (409, champ categories), rien d'écrit
+  refuse(nu([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle.toUpperCase() } }]), 409, null);
   refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c2] } }]), 409, 'categories');
   assert.equal(motCle(A.id).cle, A.cle);
-  // A reçoit une catégorie, l'homonyme une autre : accepté dans un même lot
-  const r = lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [c1] }, { op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c2] } }]);
+  // A reçoit une catégorie, l'homonyme d'essai une autre : accepté dans un même lot
+  const r = nu([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [c1] }, { op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c2] } }]);
   ok(r);
   const homonyme = r.corps.crees[0].id;
   assert.ok(Number.isInteger(homonyme) && homonyme > Math.max(...Object.values(MOTS_CLES_D_ESSAI).map((m) => m.id)), 'l’id suivant');
@@ -85,34 +91,34 @@ test('R232 (9), (2), (3) : un homonyme sans catégorie distinctive est refusé ;
   assert.ok(motCle(C.id).description.includes(`{{${A.cle}|`));
   verifierLaBase(db);
   // un id n'est jamais réutilisé
-  const r2 = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: `${A.libelle} bis zq` } }]);
+  const r2 = nu([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: `${A.libelle} bis zq` } }]);
   ok(r2);
   assert.ok(r2.corps.crees[0].id > homonyme);
 });
 
-test('R232 (9), (10) : catégories incluses refusées ; une clé déjà prise refusée (champ libelle)', () => {
-  const { db, lot, motCle } = base();
+test('R232 (9), (10) : le service refuse des catégories incluses (hors route : le site ne donne qu’un type) ; une clé déjà prise est refusée par le site (champ libelle)', () => {
+  const { db, lot, nu, motCle } = base();
   const [c1, c2] = deuxCategories(db);
   ok(lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [c1] }]));
-  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c1, c2] } }]), 409, 'categories');
-  ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c2] } }]));
+  refuse(nu([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c1, c2] } }]), 409, 'categories');
+  ok(nu([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c2] } }]));
   const prise = motCle(A.id).cle;
-  // un libellé dont le slug est la clé d'un homonyme : refusé, le premier garde sa clé
+  // un libellé dont le slug est la clé d'un homonyme : refusé par le site, à la création comme au renommage ; le premier garde sa clé
   const libelleQuiPrend = prise.split('-').join(' ');
-  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libelleQuiPrend } }]), 409, 'libelle');
+  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libelleQuiPrend, categories: [c1] } }]), 409, 'libelle');
   refuse(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { libelle: libelleQuiPrend } }]), 409, 'libelle');
   assert.equal(motCle(A.id).cle, prise);
   verifierLaBase(db);
 });
 
 test('R232 (5) : une catégorie renommée recalcule la clé des homonymes qui la portent et réécrit leurs balises ; ajout, doublon, suppression d’une catégorie vide seulement', () => {
-  const { db, lot, motCle, ligne } = base();
+  const { db, lot, nu, motCle, ligne } = base();
   const [c1, c2] = deuxCategories(db);
   ok(lot([{ op: 'creer', entite: 'categorie_mot_cle', valeurs: { libelle: 'Essai catégorie zq' } }]));
   const nouvelle = ligne("SELECT id FROM categorie_mot_cle WHERE libelle = 'Essai catégorie zq'").id;
   assert.ok(nouvelle > Math.max(c1, c2));
   refuse(lot([{ op: 'creer', entite: 'categorie_mot_cle', valeurs: { libelle: 'essai categorie ZQ' } }]), 409, 'libelle');
-  ok(lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [nouvelle] }, { op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c1] } }]));
+  ok(nu([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [nouvelle] }, { op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [c1] } }]));
   ok(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { description: `Voir {{${motCle(A.id).cle}}}.` } }]));
   const avant = motCle(A.id).cle;
   // la catégorie non vide ne se supprime pas
@@ -132,7 +138,7 @@ test('R232 (5) : une catégorie renommée recalcule la clé des homonymes qui la
 });
 
 test('R232 (11) : les catégories d’un mot-clé verrouillé se posent ; sa clé suit l’homonyme créé et les textes qui le citent sont réécrits', () => {
-  const { db, lot, motCle } = base();
+  const { db, lot, nu, motCle } = base();
   const [c1, c2] = deuxCategories(db);
   // un mot-clé verrouillé sans homonyme, cité par une balise quelque part (choisi dans la base). Le site de dev, source de ce qu'il modifie, a pu poser
   // des catégories à tous les verrouillés (2026-11) : le test retire alors, dans sa copie, celles du premier qui convient (skill tests-conventions :
@@ -148,7 +154,7 @@ test('R232 (11) : les catégories d’un mot-clé verrouillé se posent ; sa cl�
   assert.ok(cible, 'un mot-clé verrouillé sans catégorie');
   ok(lot([{ op: 'categories_mot_cle', mot_cle: cible.id, categories: [c1] }]));
   assert.deepEqual(motsClesDeLaBase(db).find((m) => m.id === cible.id).categories, [c1]);
-  ok(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: cible.libelle, categories: [c2] } }]));
+  ok(nu([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: cible.libelle, categories: [c2] } }]));
   assert.notEqual(motCle(cible.id).cle, cible.cle, 'la clé du verrouillé a suivi');
   assert.equal(motCle(cible.id).verrou, 1);
   assert.deepEqual(textesQuiCitent(db, cible.cle), [], 'plus aucune balise ne cite la clé quittée');
@@ -183,13 +189,60 @@ test('R233 (4), (6) : un synonyme en conflit est refusé (libellé, synonyme, cl
   // un libellé renommé ou créé ne prend pas le synonyme d'un autre
   ok(lot([{ op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: ['Zq synonyme'] }]));
   refuse(lot([{ op: 'modifier', table: 'mot_cle', cle: { id: C.id }, valeurs: { libelle: 'ZQ Synonyme' } }]), 409, 'libelle');
-  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'zq-synonyme' } }]), 409, 'libelle');
+  // par le site, un mot-clé créé a un type (sans lui, la catégorie Notion, absente de cette base)
+  refuse(lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'zq-synonyme', categories: [deuxCategories(db)[0]] } }]), 409, 'libelle');
   // ceux d'un mot-clé verrouillé, sans élément (R309) : modifiables, le verrou reste
   const verrouille = db.prepare('SELECT id FROM mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(db, m.id));
   ok(lot([{ op: 'synonymes_mot_cle', mot_cle: verrouille.id, synonymes: ['Zq synonyme verrouillé'] }]));
   assert.deepEqual(db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(verrouille.id).map((s) => s.libelle), ['Zq synonyme verrouillé']);
   assert.equal(motCle(verrouille.id).verrou, 1);
   verifierLaBase(db);
+});
+
+/** La catégorie « Notion » (retrouvée même renommée ; créée par le site si la base ne l'a pas encore) et une autre catégorie de la base, par id. */
+function notionEtAutre(db, lot) {
+  if (categorieDuType(db, 'Notion') === null) ok(lot([{ op: 'creer', entite: 'categorie_mot_cle', valeurs: { libelle: 'Notion' } }]));
+  const notion = categorieDuType(db, 'Notion');
+  assert.ok(Number.isInteger(notion), 'la base a la catégorie Notion');
+  const autre = categoriesDesMotsCles(db).map((c) => c.id).find((id) => id !== notion);
+  assert.ok(Number.isInteger(autre), 'et une autre catégorie');
+  return { notion, autre };
+}
+const compter = (db, table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
+
+test('R309 (8), R232 : par le site, une notion au nom d’un mot-clé existant d’un autre type, sans page de ce nom, est créée ; le type distingue les deux clés', () => {
+  const { db, lot, motCle } = base();
+  const { notion, autre } = notionEtAutre(db, lot);
+  ok(lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [autre] }]));
+  assert.equal(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(A.libelle)), undefined, 'aucune page ne porte ce nom');
+  const r = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: A.libelle, categories: [notion] } }]);
+  ok(r);
+  const cree = r.corps.crees[0].id;
+  const libelles = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
+  assert.equal(motCle(A.id).cle, `${A.cle}-${normalize(libelles.get(autre))}`);
+  assert.equal(motCle(cree).cle, `${A.cle}-${normalize(libelles.get(notion))}`);
+  assert.ok(db.prepare('SELECT 1 FROM page WHERE mot_cle_id = ?').get(cree), 'la notion naît avec sa page');
+  assert.equal(db.prepare('SELECT 1 FROM page WHERE mot_cle_id = ?').get(A.id), undefined, 'l’autre mot-clé reste sans page');
+  verifierLaBase(db);
+});
+
+test('par le site, une notion dont le nom est déjà le titre d’une page est refusée (409) : ni mot-clé ni page', () => {
+  const { db, lot } = base();
+  const { notion } = notionEtAutre(db, lot);
+  // une page dont le titre n'est le nom d'aucun mot-clé : le refus vient du titre, pas des homonymes. Sur un contenu ancré (R309), chaque page a son mot-clé
+  // à son nom : une page du Codex d'essai, au nom inventé, posée dans cette copie
+  const nomsDesMotsCles = new Set(motsClesDeLaBase(db).map((m) => normalize(m.libelle)));
+  let titre = 'Zephyrion, page d’essai';
+  for (let i = 2; nomsDesMotsCles.has(normalize(titre)) || db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(titre)); i += 1) titre = `Zephyrion, page d’essai ${i}`;
+  const page = { id: `lore/${normalize(titre)}`, titre };
+  db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, corps_md, statut, origine) VALUES (?, 'lore', ?, ?, ?, 'Texte.\n', 'draft', 'docs')")
+    .run(page.id, normalize(titre), titre, normalize(titre));
+  assert.ok(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(page.titre)), 'une page de la base, trouvée par son titre');
+  const [motsCles, pages] = [compter(db, 'mot_cle'), compter(db, 'page')];
+  const r = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: page.titre, categories: [notion] } }]);
+  refuse(r, 409, null);
+  assert.ok(r.corps.page, JSON.stringify(r.corps));
+  assert.deepEqual([compter(db, 'mot_cle'), compter(db, 'page')], [motsCles, pages]);
 });
 
 test('GET /api/edition/mots-cles/ : clé, synonymes, catégories, verrou et mentions de chaque mot-clé, et la liste des catégories', () => {

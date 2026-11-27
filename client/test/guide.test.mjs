@@ -8,7 +8,7 @@ import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import GithubSlugger from 'github-slugger';
 import { adresseDesAnciensLiens, avecPrefixe, BLOCS, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
-import { ACCUEIL_DU_GUIDE, DECOUVRIR, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, pagesDeLaRubrique } from '../src/lib/livres.mjs';
+import { ACCUEIL_DU_GUIDE, DECOUVRIR, estUnePageDeNotion, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, pagesDeLaRubrique } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import {
   chargerCompetences,
@@ -116,7 +116,8 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
   }
   // toutes les pages du guide (Découvrir, onglets, Guide du MJ) : un bloc est appelé une seule fois (un marqueur inconnu lève une erreur) ; le texte est
   // modifiable sur le site de dev, source de ce qu'il modifie : que chaque bloc déclaré soit appelé, et où, se lit dans l'état écrit par les migrations (ci-dessous)
-  const blocs = pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
+  // sauf le bloc `notion` d'une page de notion (hors de tout menu, pas d'exemple : R309 (7)) : il montre le mot-clé de sa page, chacune a le sien
+  const blocs = pagesDuGuide.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc && !(m.bloc === 'notion' && estUnePageDeNotion(p))).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
   // l'état écrit par les migrations (0091 : R184 ; 0095 : R187…) : seuls les lots rapatriés après la 0093 sont défaits (aucun entre la 0090 et la
   // 0093 ; test/aide-base-d-import.mjs, fixtures/lots-avant-0093.json)
@@ -124,7 +125,8 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
   const blocsDesMigrations = corpsDesMigrations.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   // Blocs déclarés mais appelés par aucune page : `niveaux`, dont la seule page (guide/la-montee-de-niveau) est supprimée par la migration 0122 (demande du
   // propriétaire du 2026-11-13 : « Supprime juste le doublon »). Il refait le tableau à la main sur le dev : le bloc reste déclaré dans BLOCS, ni retiré ni réécrit.
-  const NON_APPELES = ['niveaux'];
+  // `notion` : posé par le service dans le texte d'une page de notion (R309 (7)), jamais par une migration.
+  const NON_APPELES = ['niveaux', 'notion'];
   assert.ok(NON_APPELES.every((b) => BLOCS.includes(b)), 'un bloc non appelé reste déclaré (lib/guide.mjs#BLOCS)');
   assert.deepEqual([...blocsDesMigrations].sort(), BLOCS.filter((b) => !NON_APPELES.includes(b)).sort(),
     'chaque bloc déclaré est utilisé, une fois, sauf ceux de NON_APPELES (état des migrations)');

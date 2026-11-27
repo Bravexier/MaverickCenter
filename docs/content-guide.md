@@ -1341,6 +1341,15 @@ navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ;
 présentation du lien Discord de l'accueil (`LIENS_ET_RENCONTRE.liens[].presentation`, plus bas), écrite dans le plan, donc ni modifiable sur le site de
 dev (un commit la change) ni cherchée par la recherche.
 
+Une page des Règles peut aussi vivre **hors de tout menu** : c'est une **page de notion** (chantier 3 des mots-clés, R309 (7), `docs/chantier-pages-de-notion.md`),
+la page d'un mot-clé sans autre élément (un type de sort, une monnaie, un type de dégâts, une notion du Glossaire). Une page `guide/<slug>` que ni Découvrir, ni un
+onglet des Règles, ni le Guide du MJ ne range est admise par `lib/livres.mjs#verifierLePlan` (`estHorsDuPlan`, `estUnePageDeNotion` : pas une page d'exemple ; un nom
+réservé, ou l'id d'un onglet, arrête toujours le build) : elle est servie à `/regles/<slug>/` comme les autres, **sans menu latéral**, avec un fil d'Ariane
+« Accueil › Glossaire » (`filDAriane(id, { notion })`, `GLOSSAIRE` ; `placeDansLeGuide` la range sous la rubrique « Glossaire » pour les notes de version), et
+`PageDuGuide.astro` pose `data-ed-notion` sur son corps pour le mode modification. Aucun onglet n'est créé (R185 (7) : les onglets sont fixes). Elle n'a **pas de
+résumé** (facultatif pour une page hors plan, obligatoire dans un onglet) et son texte est la seule ligne `<!-- guide:notion -->` : rien à écrire ni à recopier,
+la recherche n'y lit aucun texte. Le service la crée (`serveur/edition-notions.mjs` : `docs/serveur.md`, ligne « Pages de notion » de l'édition des règles).
+
 - **Découvrir** (`/decouvrir/`, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
   même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu** (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/`,
   entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de sommaire) et « L'univers »
@@ -1533,7 +1542,12 @@ dev (un commit la change) ni cherchée par la recherche.
   effets sont tels quels : chaque ligne rendue comme une phrase de la base (`rendreLigne` : `[[liens]]`, typographie), les retours à la ligne gardés
   (`<br />`), les balises `{{…}}` rendues par le middleware… Plus de bloc `sommaire` (demande du propriétaire du 2026-10-18 :
   « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui quitte « L’univers » à sa refonte), ni `documents` (sa
-  page est supprimée, R184 (9)) : un marqueur inconnu arrête le rendu. Depuis R184, les blocs de la création sont dans la page de leur étape
+  page est supprimée, R184 (9)) : un marqueur inconnu arrête le rendu. Le bloc **`notion`** (chantier 3 des mots-clés, `lib/notion-db.mjs#chargerNotion`,
+  `components/guide/BlocNotion.astro`) fait exception à « une fois dans tout le guide » : il est le texte de chaque page de notion, et montre ce que la base sait du
+  mot-clé que la page ancre (`page.mot_cle_id`), chaque partie seulement quand elle a quelque chose à montrer, sans phrase de remplacement : sa définition (celle du
+  Glossaire, ses balises en liens), son type et ses autres noms (synonymes), les sorts liés (ceux qu'il étiquette et, pour un type de sort, ceux de ce type, groupés
+  par magie), les pages qui le portent en étiquette (par rubrique) et un lien vers la Recherche (`/recherche/?mot-cle=<clé>`), qui liste les pages qui le citent.
+  Il peut se poser dans le texte de toute page des Règles (la page Météo y gagnerait la liste de ses sorts). Depuis R184, les blocs de la création sont dans la page de leur étape
   (`fil-rouge-race` dans « Choisir sa race », `magie-bonus` et `fil-rouge-magie` dans « Choisir ses magies »…). Ne jamais
   recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
   couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
@@ -1697,6 +1711,14 @@ désigner une page et un type de sort (Météo). Les mots-clés sans élément (
 - **Quand la règle ne peut pas suivre** (même nom, même type, pas de parent ; clé déjà prise ; titre qui s'écrit comme le synonyme d'un autre mot-clé,
   R233 (4)), la création ou le renommage de l'élément passe quand même, sans toucher au mot-clé, et « Préparer l'ancrage » le liste « à trancher ». Il se règle
   en changeant le nom de l'élément, ou par un lot sur le type ou les synonymes.
+- **« Nouveau mot-clé » crée la notion et sa page** (chantier 3, `docs/chantier-pages-de-notion.md`, §4) : le formulaire du Glossaire demande le **nom**, le **type** (une
+  case exclusive, « Notion » présélectionné quand cette catégorie existe) et une **définition** facultative ; le service crée d'un même geste le mot-clé, sa **page de notion** (hors menu, sans résumé,
+  `<!-- guide:notion -->` pour texte, voir « Les pages du guide ») et l'ancre, ou rien (`serveur/edition-notions.mjs#creerLaNotion`, voie `route` de `docs/serveur.md`).
+  Le site ne crée plus de mot-clé nu ; l'adresse ne se saisit pas (elle est celle de la page). Une fois sa page créée, le mot-clé est ancré : le verrou ci-dessous
+  s'applique (ni nom, ni type, ni définition, ni fusion, ni suppression au Glossaire). On le **renomme** en renommant la page (le mot-clé, sa clé et l'adresse suivent),
+  on **corrige** son type, sa couleur, son icône, ses synonymes ou sa définition par un lot de l'équipe (R309 (17)), on le **supprime** en supprimant sa page (refusé si un
+  texte cite le mot-clé ; le mot-clé part avec elle, sauf s'il désigne aussi un type de sort, de dégâts ou une monnaie). « Préparer l'ancrage » donne leur page aux
+  mots-clés existants (cinquième lot, `docs/serveur.md`) ; ceux qui ont déjà une adresse, ou dont le nom est celui d'une autre page, restent « à trancher ».
 - **Le nom, l'adresse et la clé** d'un mot-clé ancré viennent de son élément : `mot_cle.libelle` et `mot_cle.url` en sont des **copies provisoires**, écrites
   seulement par ce module jusqu'au retrait des colonnes (chantier 4) ; l'adresse de la page, elle, suit son titre au renommage (R316, ci-dessous). Deux éléments de même nom se distinguent
   par leur type (`force-metier`) et, **à type égal, par leur parent** : la magie d'un sort (`contre-sort-arcane`, `contre-sort-corruption` ; `parent`, lu
@@ -1709,8 +1731,8 @@ désigner une page et un type de sort (Météo). Les mots-clés sans élément (
   de son élément** (`page.resume`, `sort.effets`), lu à l'affichage et jamais recopié (`lib/mots-cles-balises.mjs#definitionDuMotCle`, `element.texte`).
   Une définition écrite reste prioritaire jusqu'au chantier 4.
 - **« Préparer l'ancrage »** (page Mise à jour, à côté de « Tout recalculer » ; `POST /api/edition/lots/ancrage/`, `docs/serveur.md`) lit la base vivante,
-  calcule ce qui manque et dépose **quatre lots** de nature `decision` (R309), enchaînés par un seul lancement : les catégories, le type unique, les noms et
-  les pages déjà désignées ; les sorts et les types de sort ; les pages hors capacités ; les capacités. L'action est **rejouable** (elle ne prend que ce qui
+  calcule ce qui manque et dépose **cinq lots** de nature `decision` (R309), enchaînés par un seul lancement : les catégories, le type unique, les noms et
+  les pages déjà désignées ; les sorts et les types de sort ; les pages hors capacités ; les capacités ; les pages de notion. L'action est **rejouable** (elle ne prend que ce qui
   manque), ne devine rien (« à trancher »), arrête la suite au premier refus avec son motif, et **ne refait pas une ligne annulée** : seul « Reprendre les
   lignes annulées » les redépose. Une page dont un mot-clé a exactement l'adresse reprend ce mot-clé, comme les cinq noms que le propriétaire a déclarés identiques (Attributs, Initiative,
   Caractéristiques, Mode Hyper 100 %, et le type de sort Météo) : aucun nouveau mot-clé.

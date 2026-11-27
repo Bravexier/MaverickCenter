@@ -165,6 +165,12 @@ export const PAR_OU_COMMENCER = Object.freeze([...DECOUVRIR.groupes.flatMap((g) 
 export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees', 'glossaire']);
 
 /**
+ * Le Glossaire (pages/regles/glossaire.astro, entrée « Glossaire » du menu du site) : la rubrique où se rattache une page de notion (une page `guide/…`
+ * hors de tout menu ; R309 (7)), dans son fil d'Ariane et sa place.
+ */
+export const GLOSSAIRE = gele({ titre: 'Glossaire', chemin: 'regles/glossaire/' });
+
+/**
  * Les pages fusionnées dans une autre : page retirée → page qui l'absorbe. Elles ne sont plus dans la base ; leurs anciennes adresses mènent à la page
  * qui les absorbe, à l'endroit où se lit leur contenu s'il est nommé (ANCRES_DES_PAGES_ABSORBEES) — l'ancre et la requête d'origine gardées
  * (lib/metiers.mjs#renvoisDuGuide, page 404) —, comme un lien Markdown écrit vers elles (lib/guide.mjs#adresseDesAnciensLiens).
@@ -518,6 +524,15 @@ export function estDuGuideDuMj(id) {
 export const estDesOnglets = (id) => lePlan().places.has(id);
 
 /**
+ * Vrai si la page `guide/…` n'est dans aucun menu : ni Découvrir, ni un onglet des Règles, ni le Guide du MJ (le plan installé). Une page des Règles
+ * hors du plan est une page de notion (R309 (7)) : elle est à /regles/<slug>/, sans menu latéral, rattachée au Glossaire.
+ */
+export const estHorsDuPlan = (id) => id.startsWith('guide/') && !estDansDecouvrir(id) && !estDesOnglets(id) && !estDuGuideDuMj(id);
+
+/** Vrai si l'entrée (`{ id, data?: { status? } }`) est une page de notion : hors du plan et pas une page d'exemple (la fixture reste une fixture). */
+export const estUnePageDeNotion = (entry) => estHorsDuPlan(entry.id) && entry.data?.status !== 'example';
+
+/**
  * Les pages d'une rubrique écrite ici (Découvrir), dans l'ordre : [{ id, groupe, ordre }] (`ordre` : 0…M − 1 dans la rubrique). Lu par
  * scripts/mise-a-jour-simulation.mjs (les deux premières pages de Découvrir).
  */
@@ -539,15 +554,17 @@ export function partieDeLaPage(id) {
 /**
  * Où se range une page `guide/…`, pour la nommer et l'ordonner (notes de version, panneau de la ceinture) : { rubrique, rang, ordre } — Découvrir (rang
  * 0), un onglet des Règles (rang 1…N, `ordre` : sa place dans le menu latéral, 0…), le Guide du MJ (rang N + 1, `ordre` null). Une page qui n'est nulle
- * part (supprimée, la fixture) : { rubrique: null, rang: null, ordre: null }. Le plan installé.
+ * part (supprimée, la fixture) : { rubrique: null, rang: null, ordre: null } ; avec `notion`, une page de notion (hors plan, R309 (7)) est rangée au
+ * Glossaire, après le Guide du MJ : { rubrique: « Glossaire », rang: N + 2, ordre: null }. Le plan installé.
  */
-export function placeDansLeGuide(id) {
+export function placeDansLeGuide(id, { notion = false } = {}) {
   const { onglets, places } = lePlan();
   const decouvrir = pagesDeLaRubrique(DECOUVRIR).find((p) => p.id === id);
   if (decouvrir) return { rubrique: DECOUVRIR.titre, rang: 0, ordre: decouvrir.ordre };
   const place = places.get(id);
   if (place) return { rubrique: place.onglet.titre, rang: place.onglet.rang, ordre: place.ordre };
   if (estDuGuideDuMj(id)) return { rubrique: GUIDE_DU_MJ.titre, rang: onglets.length + 1, ordre: null };
+  if (notion) return { rubrique: GLOSSAIRE.titre, rang: onglets.length + 2, ordre: null };
   return { rubrique: null, rang: null, ordre: null };
 }
 
@@ -586,22 +603,23 @@ export function menuLateralDe(id, entries) {
 
 /**
  * Le fil d'Ariane d'une page `guide/…`, après « Accueil » : [{ titre, chemin }] (`chemin` relatif à la racine du site) — Découvrir, son onglet des
- * Règles (« Accueil › Les combats »), le Guide du MJ ; [] pour une page rangée nulle part (la fixture). Le gabarit marque le maillon qui mène à la page
- * elle-même (Bienvenue est servie à /decouvrir/). Le plan installé.
+ * Règles (« Accueil › Les combats »), le Guide du MJ ; pour une page rangée nulle part : [] (la fixture), ou, avec `notion` (une page de notion, hors
+ * plan : R309 (7)), le Glossaire. Le gabarit marque le maillon qui mène à la page elle-même (Bienvenue est servie à /decouvrir/). Le plan installé.
  */
-export function filDAriane(id) {
+export function filDAriane(id, { notion = false } = {}) {
   if (estDansDecouvrir(id)) return [{ titre: DECOUVRIR.titre, chemin: DECOUVRIR.chemin }];
   const onglet = ongletDe(id);
   if (onglet) return [{ titre: onglet.titre, chemin: onglet.chemin }];
   if (estDuGuideDuMj(id)) return [{ titre: GUIDE_DU_MJ.titre, chemin: GUIDE_DU_MJ.chemin }];
-  return [];
+  return notion ? [{ titre: GLOSSAIRE.titre, chemin: GLOSSAIRE.chemin }] : [];
 }
 
 /**
  * Contrôle du plan contre les pages chargées (`entries` : { id, data: { status } }), appelé au build par les routes (le plan installé). Arrête le build
  * (erreur qui nomme la page) plutôt que de montrer un plan faux :
  *   - chaque page nommée (Découvrir, les onglets, le Guide du MJ) existe, n'est pas une page d'exemple, est une page `guide/…`, n'est nommée qu'une fois ;
- *   - toute page `guide/…` chargée qui n'est pas d'exemple est rangée (Découvrir, un onglet, le Guide du MJ) : pas d'onglet « Autre » (R185, P7) ;
+ *   - une page `guide/…` chargée, pas d'exemple, hors de tout menu (Découvrir, un onglet, le Guide du MJ) est une page de notion (R309 (7)) :
+ *     elle est admise, sans onglet « Autre » (R185 (7)) — sauf si son segment d'adresse est un nom réservé ou l'id d'un onglet (nomsReserves) ;
  *   - aucune page des onglets ne prend un nom réservé (nomsReserves), aucune entrée lien ne mène sous /guide/ ;
  *   - aucune page ne prend l'adresse d'une page renommée (ADRESSES_RENOMMEES_DU_GUIDE : guide/mode-super cacherait guide/liste-des-effets-mode-super) ;
  *   - aucune page absorbée, retirée ou supprimée n'est revenue, et chaque page qui en absorbe une est rangée.
@@ -649,8 +667,9 @@ export function verifierLePlan(entries) {
     if (parId.has(autre)) throw new Error(`plan du guide : ${autre} prendrait l'adresse /${adresseDuGuide(id)}, celle de ${id} (ADRESSES_RENOMMEES_DU_GUIDE)`);
   }
   for (const e of entries) {
-    if (e.id.startsWith('guide/') && e.data?.status !== 'example' && !vues.has(e.id)) {
-      throw new Error(`plan du guide : ${e.id} n'est rangée nulle part (ni Découvrir, ni un onglet des Règles, ni le Guide du MJ) : l'ajouter au plan (table regles_onglet_entree)`);
+    // une page hors du plan est une page de notion (R309 (7)) : admise, mais son adresse /regles/<slug>/ ne cache ni une page Astro ni un onglet
+    if (e.id.startsWith('guide/') && e.data?.status !== 'example' && !vues.has(e.id) && reserves.includes(slugDAdresse(e.id))) {
+      throw new Error(`plan du guide : ${e.id} (page de notion, hors du plan) prend un nom réservé (${reserves.join(', ')})`);
     }
   }
   return entries;

@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import {
-  ETATS_D_UNE_OPERATION, FORMAT_DU_LOT, LOT_OUVERT_AUX_TABLES_HORS_EDITION, NATURES, NATURES_D_UN_LOT, OPERATIONS, comparerAvecLaBase, controlerLaNature,
+  COLONNES_D_UNE_PAGE_DE_NOTION, ETATS_D_UNE_OPERATION, FORMAT_DU_LOT, LOT_OUVERT_AUX_TABLES_HORS_EDITION, NATURES, NATURES_D_UN_LOT, OPERATIONS, comparerAvecLaBase, controlerLaNature,
   controlerLeLot, lireUnLot, tablesDeLEdition,
 } from '../src/lib/lot-de-changements.mjs';
 import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_DE_REGLES, TABLES_PROPRES_AU_SITE } from '../src/lib/tables-de-la-base.mjs';
@@ -198,6 +198,24 @@ test('supprimer : « avant » est la ligne entière, à la clé de l’opératio
   assert.match(messages(avecUneErreur({ ...supprimer(), avant: { [CLE_ED]: 3 } })), /en entier/);
   assert.match(messages(avecUneErreur({ ...supprimer(3), avant: ligneEntiere(EDITION, { [CLE_ED]: 4 }) })), /ne valent pas la clé/);
   assert.deepEqual(rangs(avecUneErreur({ ...supprimer(), avant: { [CLE_ED]: 3 } })), [2]);
+});
+
+test('ancrage : la page de notion (insertion de `page`, { notion: true }, apres : id, titre, mot_cle_id), refusée ailleurs ; chaque forme garde ses clés', () => {
+  const page = (apres = {}, plus = {}) => ({
+    table: 'page', cle: { id: 'guide/zephyrion-x' }, operation: 'inserer', apres: { id: 'guide/zephyrion-x', titre: 'Zephyrion X', mot_cle_id: 7, ...apres }, ancrage: { notion: true }, ...plus,
+  });
+  assert.deepEqual(COLONNES_D_UNE_PAGE_DE_NOTION, ['id', 'titre', 'mot_cle_id']);
+  assert.equal(avecUneErreur(page()).valide, true);
+  assert.deepEqual(rangs(avecUneErreur(page({ resume: 'Non.' }))), [2]);
+  assert.match(messages(avecUneErreur(page({ resume: 'Non.' }))), /ancrage : une page de notion n'écrit que « id », « titre », « mot_cle_id »/);
+  assert.match(messages(avecUneErreur(page({ mot_cle_id: null }))), /ancrage : « mot_cle_id »/);
+  assert.match(messages(avecUneErreur(page({}, { cle: { id: 'races/zephyrion-x' }, apres: { id: 'races/zephyrion-x', titre: 'Zephyrion X', mot_cle_id: 7 } }))), /ancrage : une page de notion est une page du guide/);
+  assert.match(messages(avecUneErreur({ table: 'page', cle: { id: 'guide/zephyrion-x' }, operation: 'modifier', avant: { titre: 'a' }, apres: { titre: 'b' }, ancrage: { notion: true } })), /ancrage : sur une page, seule l'insertion/);
+  // les clés de chaque forme : { notion } sur une page, { table, id, type } à la création d'un mot-clé, { aligner } sur sa modification
+  assert.match(messages(avecUneErreur(page({}, { ancrage: { notion: true, aligner: true } }))), /ancrage : sur une page, seul \{ "notion": true \}/);
+  const motCle = { table: 'mot_cle', cle: { id: { $numero: 'a' } }, operation: 'inserer', apres: { id: { $numero: 'a' }, libelle: 'X' }, ancrage: { notion: true } };
+  assert.match(messages(avecUneErreur(motCle)), /ancrage : « notion » inconnu \(attendu : « table », « id », « type »\)/);
+  assert.match(messages(avecUneErreur({ ...modifier(), ancrage: { notion: true } })), /ancrage : il ne se pose que sur l'insertion ou la modification d'un mot-clé, ou sur l'insertion d'une page de notion/);
 });
 
 test('jamais deux opérations sur la même ligne et colonne : une insertion ou une suppression touche toute la ligne, deux « modifier » de colonnes différentes passent', () => {

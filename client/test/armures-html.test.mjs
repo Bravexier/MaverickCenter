@@ -145,9 +145,11 @@ test('armures : les armures particulières en premier puis la liste par type, un
   const solidite = avecLesMotsCles('{{solidite}}', db).replace(/<[^>]+>/g, '');
   // le mot-clé « Solidité », par son id entier, figé (migration 0113) ; sa clé suit son libellé (R232)
   const idSolidite = idDuMotCleNomme('solidite');
-  const motSolidite = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(idSolidite);
+  const motSolidite = db.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idSolidite);
   if (motSolidite) {
-    assert.ok(listes.includes(`<th scope="col"><strong class="mot-cle" data-mot-cle="${motSolidite.cle}"`), 'la définition de la solidité en infobulle');
+    // en gras, ou un lien s'il mène à une page (sa page de notion comprise, R309 (7))
+    const ouverture = motSolidite.url ? `<a class="mot-cle" href="${motSolidite.url}"` : '<strong class="mot-cle"';
+    assert.ok(listes.includes(`<th scope="col">${ouverture} data-mot-cle="${motSolidite.cle}"`), 'la définition de la solidité en infobulle');
   } else {
     assert.ok(historiqueSite(db).supprimee('mot_cle', { id: idSolidite }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
   }

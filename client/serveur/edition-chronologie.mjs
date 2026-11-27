@@ -21,7 +21,7 @@ import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens } from '../src/l
 import { reciblerLeMotCle, synonymesPris } from '../src/lib/mots-cles-balises.mjs';
 import { mentionsDe, mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
-import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
+import { categorieDuType, estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
@@ -140,17 +140,38 @@ export function vocabulaireEtFeuille(db, options = {}) {
  * @param {{ refus: Function, ErreurEdition: Function, provenance: Function, idDejaEmploye: Function, rangLibre: Function, creerMotCle: Function,
  *   refuserLeLien: Function, refuserLaCouleur: Function, refuserLIcone: Function, reecrireLesBalises: Function, recalculerLesCles: Function, resumeDesCles: Function,
  *   definitionsVerrouilleesQuiCitent: Function, mentionsQueLeSiteNeReecritPas: Function, remplacerLesMentions: Function, vocabulaireVivant: Function,
- *   tableExiste: Function }} outils
+ *   tableExiste: Function, creerLaNotion: Function }} outils `creerLaNotion` : serveur/edition-notions.mjs (la notion et sa page, pour une route)
  */
 export function domainesDeLaChronologie({
   refus, ErreurEdition, provenance, idDejaEmploye, rangLibre, creerMotCle, refuserLeLien, refuserLaCouleur, refuserLIcone, reecrireLesBalises,
   definitionsVerrouilleesQuiCitent, mentionsQueLeSiteNeReecritPas, remplacerLesMentions, vocabulaireVivant, tableExiste, recalculerLesCles, resumeDesCles,
-  sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie, refusDesSynonymesTransmis,
+  sousLeVerrou, refusDuVerrou, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, creerLaNotion,
 }) {
   /** Refus d'une date que la table n'accepte pas, avec le message de lib/chronologie.mjs#erreurDeDate. */
   function verifierLaDate(e, quoi) {
     const erreur = erreurDeDate(e);
     if (erreur) throw refus(`${quoi} : ${erreur}.`);
+  }
+
+  /** Le sujet d'un refus de création par une route : le nom, sauf s'il s'écrit comme un numéro de décision (un refus qui en cite un deviendrait un verrou). */
+  const sujetDuRefus = (libelle) => (/\bR[0-9]+\b/.test(String(libelle)) ? 'Ce mot-clé' : `« ${libelle} »`);
+
+  /**
+   * Un mot-clé créé par une route du site (docs/chantier-pages-de-notion.md, §4) : la notion et sa page de notion, dans la même opération (creerLaNotion, qui
+   * refuse en entier un nom que la page ne peut pas prendre). Le type donné, ou « Notion » (lib/mots-cles-ancrage.mjs#categorieDuType, retrouvée même renommée) ;
+   * sans type donné et sans catégorie « Notion » (une base d'avant le premier lot d'ancrage), la notion est créée sans type, comme un mot-clé sans catégorie
+   * l'était avant : « Préparer l'ancrage » la liste ensuite « à trancher » pour son type. Rend { id (du mot-clé), resume }.
+   */
+  function creerParUneRoute(ctx, valeurs) {
+    const { libelle } = valeurs;
+    if (valeurs.url) {
+      throw new ErreurEdition(409, `${sujetDuRefus(libelle)} : l’adresse d’un mot-clé vient de sa page, créée avec lui ; elle ne se donne pas.`, { champ: 'url' });
+    }
+    const categorie = valeurs.categories?.length ? valeurs.categories[0] : categorieDuType(ctx.db, 'Notion');
+    const { id, page } = creerLaNotion(ctx, {
+      libelle, categorie, description: valeurs.description ?? null, synonymes: valeurs.synonymes ?? [], couleur: valeurs.couleur ?? null, icone: valeurs.icone ?? null,
+    });
+    return { id, resume: `Mot-clé créé avec sa page : ${libelle} (${page})` };
   }
 
   /** La page d'un lien : une page du wiki qui existe et n'est pas une page d'exemple (celles-ci ne sont pas sur le site livré). */
@@ -419,12 +440,17 @@ export function domainesDeLaChronologie({
      * (serveur/edition.mjs#creerMotCle) ; refusé pour un homonyme sans catégorie distinctive, une clé déjà prise (409), un synonyme, une adresse, une
      * couleur ou une icône qui ne conviennent pas. Il n'est pas
      * verrouillé, même avec une adresse (décision R219 (5) ; `verrou` n'est pas un champ de la création, ENTITES.mot_cle : 400).
+     * Par une route du site (`ctx.voie === 'route'`, serveur/edition.mjs#enregistrer ; docs/chantier-pages-de-notion.md, §4) : jamais de mot-clé nu. Le mot-clé
+     * naît avec sa page de notion, qui l'ancre (creerLaNotion), ou rien n'est écrit : une adresse donnée est refusée (409, `champ: 'url'` : elle vient de la
+     * page) ; sans type donné, celui de « Notion » (aucun type si cette catégorie n'existe pas encore). Sans voie (tests, rejeu) et par un
+     * lot de changements, la création reste celle d'un mot-clé nu.
      */
     creer(ctx, valeurs) {
       if (!normalize(valeurs.libelle)) throw refus(`« ${valeurs.libelle} » : un mot-clé contient au moins une lettre ou un chiffre.`, { champ: 'libelle' });
       // décision R309, qui remplace R232 (5) : un type unique ; un ancien lot rejoué garde les siennes
       const distinctes = new Set(valeurs.categories ?? []).size;
       if (distinctes > 1 && sousLeVerrou(ctx)) throw new ErreurEdition(409, refusDeLaSecondeCategorie(valeurs.libelle, distinctes), { champ: 'categories' });
+      if (ctx.voie === 'route') return creerParUneRoute(ctx, valeurs);
       const id = creerMotCle(ctx, valeurs.libelle, valeurs.description ?? null, {
         url: valeurs.url ?? null, couleur: valeurs.couleur ?? null, icone: valeurs.icone ?? null, categories: valeurs.categories ?? [], synonymes: valeurs.synonymes ?? [],
       });
