@@ -25,7 +25,8 @@ import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { creerAcces } from './acces.mjs';
-import { creerConnexion } from './discord.mjs';
+import { COOKIE_SESSION, creerConnexion } from './discord.mjs';
+import { discordIdDe, effacerLeCompte, mettreAJourLeNiveau } from './utilisateurs.mjs';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -678,15 +679,45 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut: 500, ...empreinteDePile(e) } });
       return { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
     };
-    req.on('end', () => {
-      if (trop) return;
-      if (mesure) mesure.tCorps = performance.now();
+    /**
+     * R314 : la revérification du niveau de la session par le bot de l'application (serveur/discord.mjs#reverifier). Rend null (rien à faire : le chemin reste synchrone),
+     * un résultat ou une promesse. Jamais sur /api/connexion/ ni /api/deconnexion/ (elles posent ou retirent le cookie) ; jamais sans base ni pendant un gel des écritures.
+     */
+    const reverifierLaSession = () => {
+      const chemin = String(req.url ?? '').split('?')[0];
+      if (!connexion?.reverifier || !chemin.startsWith('/api/') || chemin.startsWith('/api/connexion/') || chemin.startsWith('/api/deconnexion/')) return null;
+      const base = () => {
+        if (!etat.db) throw new Error('base absente');
+        return etat.db;
+      };
+      return connexion.reverifier(req.headers, {
+        permis: () => Boolean(etat.db) && !gel.refus('POST', '/api/connexion/discord/retour/', { sansGeste: true }),
+        discordIdDe: (u) => discordIdDe(base(), u),
+        mettreAJour: (u, niveau) => mettreAJourLeNiveau(base(), u, niveau),
+        effacer: (discordId) => effacerLeCompte(base(), discordId),
+      });
+    };
+    /** La requête avec le cookie réémis : le nouveau jeton de session remplace l'ancien dans les en-têtes (la porte et /api/moi/ l'appliquent dès cette requête). */
+    const entetesRevus = (revue) => {
+      if (!revue) return req.headers;
+      const jeton = revue.cookies[0].split(';')[0];
+      const autres = String(req.headers.cookie ?? '').split(';').map((m) => m.trim()).filter((m) => m && !m.startsWith(`${COOKIE_SESSION}=`));
+      return { ...req.headers, cookie: [...autres, jeton].join('; ') };
+    };
+    /** Le cookie réémis s'ajoute à ceux de la réponse, sauf si la réponse pose ou retire elle-même la session. */
+    const avecLeCookie = (reponse, revue) => {
+      if (!revue || !reponse || typeof reponse !== 'object') return reponse;
+      const poses = [].concat(reponse.entetes?.['Set-Cookie'] ?? []);
+      if (poses.some((c) => String(c).startsWith(`${COOKIE_SESSION}=`))) return reponse;
+      return { ...reponse, entetes: { ...reponse.entetes, 'Set-Cookie': [...poses, ...revue.cookies] } };
+    };
+    const repondre = (revue) => {
       let reponse;
       try {
         const url = new URL(req.url ?? '/', 'http://service');
         sql.debuter();
         try {
-          reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
+          reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: entetesRevus(revue), corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github, interrupteursGithub,
             maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, connexion, essaiDeStructure, atelier, source: estSource,
@@ -702,10 +733,29 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       // une promesse (POST /api/classeur/, GET /api/tipeee/ : les routes asynchrones ; la mesure SQL, synchrone, est déjà prise) : la réponse part
       // quand elle arrive
       if (typeof reponse?.then === 'function') {
-        reponse.then((r) => r, echec).then(envoyer).catch((e) => journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : envoi de la réponse : ${e?.message ?? e}`));
+        reponse.then((r) => r, echec).then((r) => envoyer(avecLeCookie(r, revue))).catch((e) => journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : envoi de la réponse : ${e?.message ?? e}`));
         return;
       }
-      envoyer(reponse);
+      envoyer(avecLeCookie(reponse, revue));
+    };
+    req.on('end', () => {
+      if (trop) return;
+      if (mesure) mesure.tCorps = performance.now();
+      let revue = null;
+      try {
+        revue = reverifierLaSession();
+      } catch (e) {
+        journal(`service des personnages : revérification du niveau en erreur (${e?.message ?? e}) : la requête continue avec la session telle quelle`);
+      }
+      // sans rien à revérifier, la requête reste synchrone ; sinon elle attend l'appel à Discord (délai borné), et une erreur ne la casse jamais
+      if (typeof revue?.then === 'function') {
+        revue.then((r) => r, (e) => {
+          journal(`service des personnages : revérification du niveau en erreur (${e?.message ?? e}) : la requête continue avec la session telle quelle`);
+          return null;
+        }).then(repondre).catch((e) => journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : ${e?.message ?? e}`));
+        return;
+      }
+      repondre(revue);
     });
   });
 

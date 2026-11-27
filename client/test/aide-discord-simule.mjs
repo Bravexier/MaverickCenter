@@ -7,8 +7,11 @@
 //   d.code       le code d'autorisation que Discord accepte (tout autre : 400 invalid_grant)
 //   d.jetons     les jetons qu'il a délivrés (pour vérifier qu'ils sont révoqués)
 //   d.revoques   les jetons dont la révocation a été demandée
+//   d.etat.bot   le bot (R314) : GET /guilds/<serveur>/members/<id> avec « Authorization: Bot <jeton> » ; `{ statut, corps, entetes, panne }` règle sa réponse (par défaut
+//                200 et le membre de `d.etat.membre`) ; `panne: 'reseau'` lève une erreur réseau ; `d.appelsDuBot()` liste ces appels
 import { ROLE_JOUEUR, SERVEUR_D_ESSAI } from './aide-acces-d-essai.mjs';
 
+export const JETON_DU_BOT_D_ESSAI = 'jeton-du-bot-d-essai-0123456789';
 export const IDENTIFIANT_D_ESSAI = '800000000000000001';
 export const UTILISATEUR_D_ESSAI = Object.freeze({ id: IDENTIFIANT_D_ESSAI, username: 'nom_de_compte', global_name: 'Nom Global', avatar: null, banner: null, bot: false });
 /** Un membre qui porte le rôle Joueur du réglage d'essai (R311 : sans rôle correspondant, il serait Observateur). */
@@ -26,12 +29,23 @@ export function discordSimule({ utilisateur = UTILISATEUR_D_ESSAI, membre = MEMB
   const jetons = [];
   const revoques = [];
   let n = 0;
-  const etat = { utilisateur, membre, statutMembre, statutUtilisateur, statutJeton, revocation, code, scope };
+  const etat = { utilisateur, membre, statutMembre, statutUtilisateur, statutJeton, revocation, code, scope, bot: { statut: 200, corps: undefined, entetes: {}, panne: null, jeton: JETON_DU_BOT_D_ESSAI } };
   async function simule(url, init = {}) {
     const adresse = String(url);
     const entetes = Object.fromEntries(Object.entries(init.headers ?? {}).map(([k, v]) => [k.toLowerCase(), String(v)]));
     const corps = init.body ? Object.fromEntries(new URLSearchParams(String(init.body))) : null;
     appels.push({ url: adresse, methode: init.method ?? 'GET', entetes, corps, signal: init.signal ?? null });
+    // le bot (R314) : l'API REST lit un membre par son identifiant ; un membre absent est « Unknown Member » (404, code 10007)
+    const membreDuBot = new RegExp(`^https://discord.com/api/v10/guilds/${serveur}/members/([0-9]+)$`).exec(adresse);
+    if (membreDuBot) {
+      if (entetes.authorization !== `Bot ${etat.bot.jeton}`) return reponse(401, { message: '401: Unauthorized', code: 0 });
+      if (etat.bot.panne === 'reseau') throw new TypeError('fetch failed');
+      const { statut, corps, entetes: plus } = etat.bot;
+      if (statut !== 200) return new Response(JSON.stringify(corps ?? { message: 'echec', code: 0 }), { status: statut, headers: { 'Content-Type': 'application/json', ...plus } });
+      if (corps !== undefined) return reponse(200, corps);
+      if (!etat.membre) return reponse(404, { message: 'Unknown Member', code: 10007 });
+      return reponse(200, { ...etat.membre, user: { id: membreDuBot[1] } });
+    }
     const bearer = /^Bearer (.+)$/.exec(entetes.authorization ?? '')?.[1] ?? null;
     if (adresse === 'https://discord.com/api/v10/oauth2/token') {
       if (etat.statutJeton !== 200) return reponse(etat.statutJeton, { error: 'echec' });
@@ -60,5 +74,6 @@ export function discordSimule({ utilisateur = UTILISATEUR_D_ESSAI, membre = MEMB
     fetch: simule, appels, jetons, revoques, etat,
     get code() { return etat.code; },
     appelsA: (fin) => appels.filter((a) => a.url.endsWith(fin)),
+    appelsDuBot: () => appels.filter((a) => a.entetes.authorization?.startsWith('Bot ')),
   };
 }

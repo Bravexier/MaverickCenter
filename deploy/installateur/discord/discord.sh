@@ -16,7 +16,13 @@
 #   --sans-role <id>       retire la correspondance de ce rôle
 #   --serveur <id>         change le serveur Discord (par défaut celui du jeu : sources/sources.json, discord.guildId)
 #   --nouvelle-session     change le secret des sessions : toutes les sessions ouvertes (de cette instance) tombent
-#   --etat                 dit ce qui est réglé (identifiant de l'application, serveur, adresse de retour, rôles) ; le secret n'est jamais montré
+#   --bot                  pose le jeton du BOT de l'application (R314) : saisi SANS écho (jamais en argument), il permet au service de revérifier le niveau de chaque
+#                          personne connectée, au plus toutes les 5 minutes, pendant sa session (rôle retiré ou donné, départ du serveur). Le bot se crée dans le portail développeur
+#                          Discord (la même application, onglet « Bot », « Reset Token » ; « Public Bot » décoché ; aucun intent privilégié requis) et se fait inviter sur le serveur
+#                          par son administrateur (https://discord.com/oauth2/authorize?client_id=<identifiant de l'application>&scope=bot&permissions=0). Sans bot posé, le niveau
+#                          est fixé à la connexion et les sessions gardent leur niveau jusqu'à leur fin
+#   --sans-bot             retire le jeton du bot : plus de revérification (le réglage de la connexion reste)
+#   --etat                 dit ce qui est réglé (identifiant de l'application, serveur, adresse de retour, rôles, bot posé ou non) ; aucun secret n'est montré
 #   --retirer              retire le réglage : la connexion devient indisponible (le site de dev est alors fermé à tous, hors clés)
 # Le secret est lu par la commande puis passé au service, dans son conteneur, par l'entrée standard (docker exec -i, jamais en argument) : le service ne fait que fabriquer le réglage, c'est l'hôte
 # qui écrit le fichier (root 600). Rien n'est exigé de l'hôte que bash et docker.
@@ -33,7 +39,7 @@ SECRETS=$INSTANCE/secrets
 FICHIER=$SECRETS/discord.json
 CADDY_ENV=${MAVERICK_DISCORD_CADDY:-/etc/caddy/maverick.env}
 CHEMIN_DE_RETOUR=/api/connexion/discord/retour/
-USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id>… joueur|mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --etat | --retirer"
+USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id>… joueur|mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --bot | --sans-bot | --etat | --retirer"
 
 ACTION=definir
 ADRESSE=''
@@ -52,6 +58,8 @@ while [ $# -gt 0 ]; do
     --sans-role) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=sans_role; ROLE_ID=$2; shift 2 ;;
     --serveur) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=serveur; SERVEUR=$2; shift 2 ;;
     --nouvelle-session) ACTION=nouvelle_session; shift ;;
+    --bot) ACTION=bot; shift ;;
+    --sans-bot) ACTION=sans_bot; shift ;;
     --etat) ACTION=etat; shift ;;
     --retirer) ACTION=retirer; shift ;;
     -h|--aide) echo "$USAGE"; exit 0 ;;
@@ -90,7 +98,8 @@ if [ "$ACTION" = etat ]; then
     n=$(printf '%s\n' "$roles" | sed -n "s/^\"\([0-9]*\)\":\"$1\"$/\1/p" | wc -l | tr -d ' ')
     printf '%s : %s (%s)' "$2" "${ids:-aucun}" "$n"
   }
-  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles par niveau — $(par_niveau joueur Joueur) ; $(par_niveau mj MJ) ; $(par_niveau createur Créateur). Un membre sans aucun de ces rôles est Observateur (R311)."
+  if grep -q '"jeton_du_bot"' "$FICHIER"; then bot='posé (jeton non montré) : le niveau des personnes connectées est revérifié toutes les 5 minutes (R314)'; else bot='non posé : le niveau est fixé à la connexion (--bot pour le revérifier pendant la session)'; fi
+  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles par niveau — $(par_niveau joueur Joueur) ; $(par_niveau mj MJ) ; $(par_niveau createur Créateur). Un membre sans aucun de ces rôles est Observateur (R311). Bot de revérification : $bot."
   exit 0
 fi
 if [ "$ACTION" = retirer ]; then
@@ -170,13 +179,13 @@ case "$ACTION" in
     sortie=$(appeler role $ROLE_IDS "$ROLE_NIVEAU" </dev/null) || die "le service a refusé : rien n'a été modifié"
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
-    echo "Les rôles$ROLE_IDS donnent le niveau « $ROLE_NIVEAU » (le plus haut niveau des rôles d'un membre l'emporte ; recalculé à chaque connexion : les sessions ouvertes gardent leur niveau jusqu'à leur fin, --nouvelle-session les ferme)."
+    echo "Les rôles$ROLE_IDS donnent le niveau « $ROLE_NIVEAU » (le plus haut niveau des rôles d'un membre l'emporte ; recalculé à chaque connexion, et pendant la session toutes les 5 minutes si le bot est posé (--bot, R314) ; sans bot, les sessions ouvertes gardent leur niveau jusqu'à leur fin, --nouvelle-session les ferme)."
     ;;
   sans_role)
     sortie=$(appeler sans-role "$ROLE_ID" </dev/null) || die "le service a refusé : rien n'a été modifié"
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
-    echo "Le rôle $ROLE_ID ne donne plus de niveau (les sessions ouvertes gardent leur niveau jusqu'à leur fin, --nouvelle-session les ferme)."
+    echo "Le rôle $ROLE_ID ne donne plus de niveau (les sessions ouvertes le perdent à la prochaine revérification si le bot est posé (--bot, R314), sinon à leur fin ; --nouvelle-session les ferme)."
     ;;
   serveur)
     sortie=$(appeler serveur "$SERVEUR" </dev/null) || die "le service a refusé : rien n'a été modifié"
@@ -189,5 +198,26 @@ case "$ACTION" in
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
     echo "Toutes les sessions de $INSTANCE_DIT sont fermées : chacun doit se reconnecter."
+    ;;
+  bot)
+    [ -t 0 ] || [ "$ESSAI" = 1 ] || die "la saisie du jeton demande un terminal : lancez la commande dans une session ssh ordinaire"
+    echo "Bot de $INSTANCE_DIT (R314). Portail développeur Discord : https://discord.com/developers/applications → votre application → « Bot » (« Reset Token » donne le jeton ; « Public Bot » décoché)."
+    IFS= read -r -s -p "Jeton du bot (n'est pas affiché) : " jeton || jeton=''
+    echo
+    [ -n "$jeton" ] || die "le jeton est vide : rien n'a été modifié"
+    sortie=$(printf '%s\n' "$jeton" | appeler bot) || die "le service a refusé ce jeton : rien n'a été modifié"
+    jeton=''
+    lire_la_sortie "$sortie"
+    ecrire_le_reglage "$REGLAGE"
+    echo "Bot posé sur $INSTANCE_DIT : le niveau des personnes connectées est revérifié toutes les 5 minutes, lors de leurs visites. Rien à redémarrer."
+    echo "À FAIRE (une fois) : l'administrateur du serveur Discord invite le bot, depuis le portail (« OAuth2 », « URL Generator », case « bot », aucune permission) ou par"
+    echo "      https://discord.com/oauth2/authorize?client_id=$(sed -n 's/.*"client_id":"\([^"]*\)".*/\1/p' "$FICHIER" | head -n 1)&scope=bot&permissions=0"
+    echo "Tant que le bot n'est pas dans le serveur, Discord refuse ses appels : les sessions gardent leur niveau, une ligne le dit au journal du service, aucun niveau n'est déduit de la panne."
+    ;;
+  sans_bot)
+    sortie=$(appeler sans-bot </dev/null) || die "le service a refusé : rien n'a été modifié"
+    lire_la_sortie "$sortie"
+    ecrire_le_reglage "$REGLAGE"
+    echo "Jeton du bot retiré de $INSTANCE_DIT : le niveau n'est plus revérifié pendant la session (il reste fixé à la connexion). Pensez à réinitialiser le jeton dans le portail Discord s'il a pu fuir."
     ;;
 esac

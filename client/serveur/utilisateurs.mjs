@@ -22,6 +22,19 @@ export function enregistrerLaConnexion(db, profil, { id = () => randomUUID() } =
   return ligne.id;
 }
 
+/** L'identifiant Discord du compte `id` (pour la revérification du niveau, R314 ; jamais renvoyé à un visiteur), ou null si le compte n'existe plus. */
+export function discordIdDe(db, id) {
+  return db.prepare('SELECT discord_id FROM utilisateur WHERE id = ?').get(String(id))?.discord_id ?? null;
+}
+
+/**
+ * R314 : écrit le niveau revérifié du compte `id`, et rien d'autre (ce n'est pas une connexion : `derniere_connexion_le`, le nom et les images ne bougent pas).
+ * @returns {boolean} vrai si la ligne existe
+ */
+export function mettreAJourLeNiveau(db, id, niveau) {
+  return db.prepare('UPDATE utilisateur SET niveau = ? WHERE id = ?').run(niveau, String(id)).changes > 0;
+}
+
 /** Le profil d'un utilisateur du site (ce que montre la page profil), ou null s'il n'existe pas : jamais l'identifiant Discord. */
 export function lireLeProfil(db, id) {
   const l = db.prepare('SELECT nom_affichage, avatar_url, banniere_url, niveau, serveur_rejoint_le FROM utilisateur WHERE id = ?').get(String(id));
