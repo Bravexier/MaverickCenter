@@ -138,7 +138,7 @@ son application sur `dev` et le jeton (écriture par un `git push --dry-run`, le
 ```
 sudo sh /srv/maverick-center-test/discord/discord.sh          # la connexion Discord du site de dev (identifiant et secret de l'application, adresse de retour)
 sudo sh /srv/maverick-center/discord/discord.sh               # celle de la production
-sudo sh /srv/maverick-center-test/discord/discord.sh --role <id du rôle Discord> mj|createur   # qui est MJ, qui est Créateur
+sudo sh /srv/maverick-center-test/discord/discord.sh --role <id>… joueur|mj|createur   # les rôles Discord de chaque niveau (R311) : sans rôle posé, un membre est Observateur
 sudo sh /srv/maverick-center-test/acces/acces.sh --cle        # la clé de lecture des sessions de Claude (affichée une seule fois)
 ```
 

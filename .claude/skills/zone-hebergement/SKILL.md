@@ -63,7 +63,7 @@ user-invocable: false
 ## Accès au site de dev et connexion Discord (`deploy/installateur/{acces,discord}/`, R275, R310)
 - `acces.sh` et `discord.sh` sont livrés dans `<instance>/acces/` et `<instance>/discord/` comme `sauvegarde/` (`DOSSIERS_DE_SCRIPTS`, remplacés à chaque installation ; `secrets/` n'est jamais touché).
 - `sudo sh /srv/maverick-center-test/acces/acces.sh` : seulement les clés (`--cle`, `--cle-de-depot`, `--sans-cle-de-depot`, `--etat` qui dit « Clé de dépôt : oui/non », `--retirer`) ; refuse la production ; pose `secrets/acces.json` en 600 ; une clé n'est jamais un argument ni un fichier en clair.
-- `sudo sh /srv/maverick-center-test/discord/discord.sh` (aussi pour la production) : la connexion Discord, `secrets/discord.json` en 600 ; le secret de l'application n'est jamais un argument. Détail : `docs/serveur.md`, « Accès au site de dev » et « Connexion par Discord » ; test `deploy-discord`.
+- `sudo sh /srv/maverick-center-test/discord/discord.sh` (aussi pour la production) : la connexion Discord, `secrets/discord.json` en 600 ; `--role <id>… joueur|mj|createur` accepte plusieurs identifiants d'un coup, `--etat` les montre par niveau ; le secret de l'application n'est jamais un argument. Détail : `docs/serveur.md`, « Accès au site de dev » et « Connexion par Discord » ; test `deploy-discord`.
 
 ## Essai de structure et contrôle des migrations (R274, R275)
 - `ci.yml` a un job `controle-des-migrations` : checkout `fetch-depth: 0`, sans `npm ci`, parallèle, hors du job `client` dont les commandes sont épinglées. Vers `master`, il ne contrôle que les règles (`--sans-essai`). Règles : `docs/flux-git.md`, « Règles des migrations ». Toute nouvelle commande du job `client` entre aussi dans `scripts/mise-a-jour-github.mjs#CONTROLES`.

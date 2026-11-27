@@ -1882,8 +1882,8 @@ sans connexion et sans le niveau 3 minimum. » Le site de dev est **fermé** : u
 de la session, la commande des clés), `serveur/acces-routes.mjs` (le classement des routes), la porte unique au début de `traiter` (`serveur/api.mjs`). Tests : `serveur-acces`, `serveur-acces-routes`, `serveur-connexion`,
 `deploy-acces`. Chantier d'origine : [`chantier-base-de-dev.md`](chantier-base-de-dev.md), lot 4.
 
-**Quatre niveaux** (R310 (2), recalculés à chaque connexion ; tableau complet dans « Connexion par Discord ») : Observateur (non connecté, ou connecté mais non membre du serveur Discord, adhésion en attente,
-exclusion temporaire en cours), Joueur (membre du serveur), MJ et Créateur (d'après les rôles Discord de la configuration de l'instance). **Sur le site de dev** : rien sans MJ au moins ; le **MJ lit seulement** ; le **Créateur** écrit
+**Quatre niveaux** (R310 (2), amendée par R311 ; recalculés à chaque connexion ; tableau complet dans « Connexion par Discord ») : Observateur (non connecté, ou connecté mais non membre du serveur Discord, adhésion en attente,
+exclusion temporaire en cours, **ou membre sans aucun rôle de la correspondance**), Joueur, MJ et Créateur (tous trois d'après les rôles Discord de la configuration de l'instance, le plus haut l'emporte). **Sur le site de dev** : rien sans MJ au moins ; le **MJ lit seulement** ; le **Créateur** écrit
 (édition, application d'un lot, « Effectuer la mise à jour »). **Sur la production** : aucune restriction nouvelle (R307) ; la connexion et le profil seulement.
 
 **Fermé par défaut.** C'est `serveur/index.mjs` (le vrai lancement) qui pose la porte sur le site de dev, **fichier de clés ou non** et connexion Discord réglée ou non : sans réglage Discord (`secrets/discord.json`), la
@@ -1959,13 +1959,15 @@ la révocation échoue). **Aucun jeton Discord n'est conservé.** Code : `serveu
 les routes dans `serveur/api.mjs`. Tests : `serveur-discord` (niveau, nom, images, réglage, session, flux avec un Discord simulé, commande), `serveur-connexion` (le service HTTP réel), `deploy-discord` (la commande de l'hôte).
 Disponible sur **les deux instances** ; chacune a son réglage.
 
-**Le niveau** (R310 (2), recalculé à chaque connexion, `discord.mjs#niveauDuMembre`) :
+**Le niveau** (R310 (2), amendée par R311 : Joueur se donne aussi par rôle ; recalculé à chaque connexion, `discord.mjs#niveauDuMembre`) :
 
 | Niveau | Quand |
 | --- | --- |
-| observateur | l'appel membre répond 404 ou 403 (non membre), `pending` vrai (adhésion en attente), `communication_disabled_until` dans le futur (exclusion temporaire en cours ; une date illisible compte comme une exclusion) |
-| joueur | membre du serveur |
-| mj, createur | membre portant un rôle de la correspondance « identifiant de rôle Discord → niveau » du réglage de l'instance ; **le plus haut l'emporte** ; sans effet pour un membre en attente ou exclu |
+| observateur | l'appel membre répond 404 ou 403 (non membre), `pending` vrai (adhésion en attente), `communication_disabled_until` dans le futur (exclusion temporaire en cours ; une date illisible compte comme une exclusion), **ou membre sans aucun rôle de la correspondance** (R311 ; sans correspondance posée, personne n'est Joueur) |
+| joueur, mj, createur | membre portant un rôle de la correspondance « identifiant de rôle Discord → niveau » (`joueur`, `mj`, `createur`) du réglage de l'instance ; **le plus haut des niveaux de ses rôles l'emporte** ; sans effet pour un membre en attente ou exclu |
+
+**Rôles à poser (R311, correspondance donnée par le propriétaire ; les identifiants se relèvent sur le serveur Discord : clic droit sur le rôle, « Copier l'identifiant du rôle ») :** neuf rôles **Joueur** (Vétéran de la chance, Arpenteur du Destin, Ennemi(e) de l'Aléa, Explorateur du Risque, Aventurier du Hasard, Amateur(e) de Dés, Vagabond(e) de Fortune, Visiteur Intermittent, Futur Chanceux), deux rôles **MJ** (Maître du Jeu, Aspirant MJ), un rôle **Créateur** (Dieu Créateur seul « pour le moment » ; un second est demandé : il s'ajoutera au réglage). Sur chaque instance :
+`sudo sh …/discord/discord.sh --role <id1> <id2> … <id9> joueur`, puis `--role <idMJ1> <idMJ2> mj`, puis `--role <idCréateur> createur` ; `--etat` les montre par niveau. Les noms de rôles ne sont que dans cette doc, jamais dans le code ni dans le réglage.
 
 Un compte `bot` ou `system` est refusé (`403` `{ acces: 'bot' }`, rien d'écrit) : un compte bot ne peut de toute façon pas suivre ce flux. Une panne de Discord (hors 404 et 403 de l'appel membre : 5xx, délai, limite d'appels, jeton refusé)
 arrête la connexion (`/connexion/?erreur=discord`) : jamais un niveau déduit d'une panne, jamais une ligne écrite d'après elle.
@@ -1977,7 +1979,7 @@ les connexions, ni les rôles bruts, ni un jeton. L'écriture ne passe ni par le
 
 **Le réglage** est le fichier `secrets/discord.json` de **chaque instance** (dev et production), à côté d'`acces.json` (`MAVERICK_DISCORD_FICHIER` en dit un autre ; relu quand il change, rien à redémarrer) : `client_id` et `client_secret` de
 l'application Discord, `serveur` (défaut `374464159254839298`, `sources/sources.json`, `discord.guildId`), `adresse_de_retour` (complète, **HTTPS**, sans identifiants, ni `?`, ni `#` : elle change avec l'hébergement, feuille de route),
-`roles` (`{ "<id de rôle>": "mj" | "createur" }` : **jamais dans le code**), `secret_de_session` (aléatoire, posé par la commande). Le secret de l'application est en clair dans ce fichier (le service en a besoin) : root 600, dossier 700, monté
+`roles` (`{ "<id de rôle>": "joueur" | "mj" | "createur" }` : **jamais dans le code**), `secret_de_session` (aléatoire, posé par la commande). Le secret de l'application est en clair dans ce fichier (le service en a besoin) : root 600, dossier 700, monté
 en lecture seule dans le conteneur, jamais au journal ni dans l'état. Absent ou invalide : la connexion est indisponible (ligne au journal), le site de dev est fermé à tous (clés exceptées), la production inchangée.
 
 **Les routes** (toutes ouvertes ; classées dans `acces-routes.mjs`) :
@@ -1998,8 +2000,8 @@ Le secret de signature est `secret_de_session` : le changer (`discord.sh --nouve
 **Le geste de l'hôte** : `sudo sh /srv/maverick-center-test/discord/discord.sh` (site de dev) ou `sudo sh /srv/maverick-center/discord/discord.sh` (production) ; livré par l'installateur comme `acces.sh`, `secrets/` jamais touché.
 Sans option : l'identifiant de l'application, son secret (**saisi sans écho, jamais en argument**, lu sur un terminal), l'adresse de retour (proposée d'après le domaine : `MAVERICK_ADRESSE_PUBLIQUE` du `.env` de l'instance, sinon
 `MAVERICK_DOMAINE` de `/etc/caddy/maverick.env` : `https://<domaine>` pour la production, `https://dev.<domaine>` pour le site de dev, plus `/api/connexion/discord/retour/` ; Entrée l'accepte) ; la commande redit l'adresse à déclarer
-dans le portail développeur Discord (« OAuth2 », « Redirects »). Options : `--adresse <url>` (sans question), **`--role <id> mj|createur`** (la correspondance), **`--sans-role <id>`**, `--serveur <id>`, **`--nouvelle-session`**, `--etat`
-(sans secret), `--retirer`. Le service, dans son conteneur (`docker exec -i … node`, `discord.mjs#lancerLaCommande`), ne fait que fabriquer le réglage (le secret lui arrive par l'entrée standard, il le rend sur la sortie) ; c'est l'hôte (`discord.sh`) qui écrit le fichier, en 600.
+dans le portail développeur Discord (« OAuth2 », « Redirects »). Options : `--adresse <url>` (sans question), **`--role <id>… joueur|mj|createur`** (la correspondance ; plusieurs identifiants d'un coup, le niveau en dernier), **`--sans-role <id>`**, `--serveur <id>`, **`--nouvelle-session`**, `--etat`
+(sans secret, rôles par niveau), `--retirer`. Le service, dans son conteneur (`docker exec -i … node`, `discord.mjs#lancerLaCommande`), ne fait que fabriquer le réglage (le secret lui arrive par l'entrée standard, il le rend sur la sortie) ; c'est l'hôte (`discord.sh`) qui écrit le fichier, en 600.
 
 **Confidentialité** : la connexion collecte l'identifiant Discord, le nom, l'avatar, la bannière, la date d'arrivée sur le serveur et le niveau, et pose deux cookies ; la page `confidentialite.astro` le dit (tech-front, même lot).
 

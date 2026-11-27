@@ -7,11 +7,12 @@
 //   d.code       le code d'autorisation que Discord accepte (tout autre : 400 invalid_grant)
 //   d.jetons     les jetons qu'il a délivrés (pour vérifier qu'ils sont révoqués)
 //   d.revoques   les jetons dont la révocation a été demandée
-import { SERVEUR_D_ESSAI } from './aide-acces-d-essai.mjs';
+import { ROLE_JOUEUR, SERVEUR_D_ESSAI } from './aide-acces-d-essai.mjs';
 
 export const IDENTIFIANT_D_ESSAI = '800000000000000001';
 export const UTILISATEUR_D_ESSAI = Object.freeze({ id: IDENTIFIANT_D_ESSAI, username: 'nom_de_compte', global_name: 'Nom Global', avatar: null, banner: null, bot: false });
-export const MEMBRE_D_ESSAI = Object.freeze({ nick: null, roles: [], pending: false, communication_disabled_until: null, joined_at: '2024-03-05T10:20:30.123000+00:00', avatar: null, banner: null });
+/** Un membre qui porte le rôle Joueur du réglage d'essai (R311 : sans rôle correspondant, il serait Observateur). */
+export const MEMBRE_D_ESSAI = Object.freeze({ nick: null, roles: [ROLE_JOUEUR], pending: false, communication_disabled_until: null, joined_at: '2024-03-05T10:20:30.123000+00:00', avatar: null, banner: null });
 
 const reponse = (statut, corps) => new Response(corps === undefined ? '' : JSON.stringify(corps), { status: statut, headers: { 'Content-Type': 'application/json' } });
 

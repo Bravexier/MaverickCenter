@@ -14,11 +14,12 @@ export const CLIENT_D_ESSAI = '999000111222333444';
 export const SECRET_D_ESSAI = 'secret-d-essai-de-l-application';
 export const ADRESSE_DE_RETOUR_D_ESSAI = 'https://dev.exemple.test/api/connexion/discord/retour/';
 export const SERVEUR_D_ESSAI = '374464159254839298';
+export const ROLE_JOUEUR = '555000000000000003';
 export const ROLE_MJ = '555000000000000001';
 export const ROLE_CREATEUR = '555000000000000002';
 
 /** Le réglage Discord d'essai (la forme du fichier secrets/discord.json). */
-export function reglageDiscordDEssai({ roles = { [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' }, serveur = SERVEUR_D_ESSAI } = {}) {
+export function reglageDiscordDEssai({ roles = { [ROLE_JOUEUR]: 'joueur', [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' }, serveur = SERVEUR_D_ESSAI } = {}) {
   let reglage = reglageDiscord({ definir: { clientId: CLIENT_D_ESSAI, clientSecret: SECRET_D_ESSAI, adresseDeRetour: ADRESSE_DE_RETOUR_D_ESSAI, serveur } });
   for (const [id, niveau] of Object.entries(roles)) reglage = reglageDiscord({ ancien: reglage, role: { id, niveau } });
   return reglage;

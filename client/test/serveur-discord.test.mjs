@@ -10,7 +10,7 @@ import {
   lireJetonDeSession, lireSigne, niveauDuMembre, nomAffiche, resumeDuReglage, retourValide, reglageApres, signer, validerReglage,
 } from '../serveur/discord.mjs';
 import {
-  ADRESSE_DE_RETOUR_D_ESSAI, CLIENT_D_ESSAI, ROLE_CREATEUR, ROLE_MJ, SECRET_D_ESSAI, SERVEUR_D_ESSAI, poserLAcces, reglageDiscordDEssai,
+  ADRESSE_DE_RETOUR_D_ESSAI, CLIENT_D_ESSAI, ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SECRET_D_ESSAI, SERVEUR_D_ESSAI, poserLAcces, reglageDiscordDEssai,
 } from './aide-acces-d-essai.mjs';
 import { IDENTIFIANT_D_ESSAI, MEMBRE_D_ESSAI, UTILISATEUR_D_ESSAI, discordSimule } from './aide-discord-simule.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -23,26 +23,32 @@ const HASH2 = 'b1'.repeat(16);
 // Fonctions pures
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-test('R310 (2) : le niveau se recalcule du membre — non membre, adhésion en attente, exclusion en cours : observateur ; membre : joueur ; rôles MJ et Créateur, le plus haut l’emporte', () => {
-  const roles = { [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' };
+test('R310 (2), R311 : le niveau se recalcule du membre — non membre, adhésion en attente, exclusion en cours : observateur ; membre sans rôle correspondant : observateur ; rôles Joueur, MJ, Créateur : le plus haut l’emporte', () => {
+  const roles = { [ROLE_JOUEUR]: 'joueur', [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' };
   const niveau = (membre, plus = {}) => niveauDuMembre({ membre, roles, maintenant: MAINTENANT, ...plus });
   assert.equal(niveau(null), 'observateur', 'l’appel membre a échoué : non membre');
   assert.equal(niveau(undefined), 'observateur');
-  assert.equal(niveau({ roles: [] }), 'joueur');
-  assert.equal(niveau({ roles: [], pending: true }), 'observateur', 'adhésion en attente');
-  assert.equal(niveau({ roles: [ROLE_CREATEUR], pending: true }), 'observateur', 'un rôle ne vaut rien tant que l’adhésion est en attente');
-  assert.equal(niveau({ roles: [], communication_disabled_until: '2026-11-27T12:00:01Z' }), 'observateur', 'exclusion temporaire dans le futur');
-  assert.equal(niveau({ roles: [ROLE_MJ], communication_disabled_until: '2026-12-31T00:00:00+00:00' }), 'observateur');
-  assert.equal(niveau({ roles: [], communication_disabled_until: '2026-11-27T11:59:59Z' }), 'joueur', 'exclusion échue');
-  assert.equal(niveau({ roles: [], communication_disabled_until: null }), 'joueur');
-  assert.equal(niveau({ roles: [], communication_disabled_until: 'pas une date' }), 'observateur', 'une date illisible ne donne aucun droit de plus');
+  assert.equal(niveau({ roles: [] }), 'observateur', 'R311 : un membre sans rôle correspondant est Observateur');
+  assert.equal(niveau({}), 'observateur');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR] }), 'joueur', 'un rôle Joueur seul');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR, ROLE_MJ] }), 'mj', 'Joueur et MJ : MJ');
+  assert.equal(niveau({ roles: [ROLE_MJ, ROLE_JOUEUR] }), 'mj', 'l’ordre des rôles ne compte pas');
+  assert.equal(niveau({ roles: [ROLE_MJ, ROLE_CREATEUR] }), 'createur', 'MJ et Créateur : Créateur');
+  assert.equal(niveau({ roles: [ROLE_CREATEUR, ROLE_MJ, ROLE_JOUEUR] }), 'createur');
   assert.equal(niveau({ roles: ['1', ROLE_MJ, '2'] }), 'mj');
-  assert.equal(niveau({ roles: [ROLE_MJ, ROLE_CREATEUR] }), 'createur');
-  assert.equal(niveau({ roles: [ROLE_CREATEUR, ROLE_MJ] }), 'createur', 'l’ordre des rôles ne compte pas');
-  assert.equal(niveau({ roles: ['123'] }), 'joueur', 'un rôle sans correspondance ne donne rien');
-  assert.equal(niveau({ roles: [ROLE_MJ] }, { roles: {} }), 'joueur', 'sans correspondance posée, tout membre est joueur');
-  assert.equal(niveau({ roles: ['constructor', '__proto__', 'toString'] }, { roles: {} }), 'joueur');
-  assert.equal(niveau({ roles: [Number(ROLE_MJ)] }, { roles: { [ROLE_MJ]: 'mj' } }), 'joueur', 'un rôle qui n’est pas un identifiant en texte ne correspond pas par accident');
+  assert.equal(niveau({ roles: ['123'] }), 'observateur', 'un rôle inconnu de la correspondance ne donne rien');
+  assert.equal(niveau({ roles: ['123', ROLE_JOUEUR] }), 'joueur');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR], pending: true }), 'observateur', 'adhésion en attente');
+  assert.equal(niveau({ roles: [ROLE_CREATEUR], pending: true }), 'observateur', 'un rôle ne vaut rien tant que l’adhésion est en attente');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR], communication_disabled_until: '2026-11-27T12:00:01Z' }), 'observateur', 'exclusion temporaire dans le futur');
+  assert.equal(niveau({ roles: [ROLE_MJ], communication_disabled_until: '2026-12-31T00:00:00+00:00' }), 'observateur');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR], communication_disabled_until: '2026-11-27T11:59:59Z' }), 'joueur', 'exclusion échue');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR], communication_disabled_until: null }), 'joueur');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR], communication_disabled_until: 'pas une date' }), 'observateur', 'une date illisible ne donne aucun droit de plus');
+  assert.equal(niveau({ roles: [ROLE_MJ] }, { roles: {} }), 'observateur', 'sans correspondance posée, personne n’est joueur : la correspondance vient du réglage, jamais du code');
+  assert.equal(niveau({ roles: ['constructor', '__proto__', 'toString'] }, { roles: {} }), 'observateur');
+  assert.equal(niveau({ roles: [Number(ROLE_MJ)] }, { roles: { [ROLE_MJ]: 'mj' } }), 'observateur', 'un rôle qui n’est pas un identifiant en texte ne correspond pas par accident');
+  assert.equal(niveau({ roles: [ROLE_JOUEUR] }, { roles: { [ROLE_JOUEUR]: 'observateur' } }), 'observateur', 'une valeur de correspondance hors joueur, mj, createur ne donne rien');
   for (const n of ['observateur', 'joueur', 'mj', 'createur']) assert.ok(NIVEAUX.includes(n));
 });
 
@@ -124,12 +130,14 @@ test('le réglage : adresse de retour en HTTPS sans identifiants ni fragment ; c
   casse({ serveur: 'x' }, /serveur/);
   casse({ adresse_de_retour: 'http://exemple.test/' }, /adresse de retour/);
   casse({ roles: { 123456: 'admin' } }, /niveau de rôle/);
+  casse({ roles: { 123456: 'observateur' } }, /niveau de rôle/);
+  assert.deepEqual(validerReglage({ ...bon, roles: { 123456: 'joueur' } }).roles, { 123456: 'joueur' }, 'R311 : joueur est une valeur de la correspondance');
   casse({ roles: { pas_un_id: 'mj' } }, /identifiant de rôle/);
   casse({ roles: [] }, /correspondance/);
   casse({ secret_de_session: 'court' }, /secret de session/);
   assert.throws(() => validerReglage(null), /illisible/);
   assert.throws(() => validerReglage([]), /illisible/);
-  // « roles » absent : aucune correspondance (tout membre est joueur)
+  // « roles » absent : aucune correspondance (tout membre est observateur, R311)
   const { roles, ...sansRoles } = bon;
   assert.deepEqual(validerReglage(sansRoles).roles, {});
   assert.ok(roles);
@@ -156,8 +164,13 @@ test('le réglage d’une commande de l’hôte : poser l’application garde r�
   assert.deepEqual(reglageApres({ ancien: deux, sansRole: ROLE_MJ }).roles, { [ROLE_CREATEUR]: 'createur' });
   assert.throws(() => reglageApres({ ancien: deux, sansRole: '999' }), /aucun niveau/);
   assert.throws(() => reglageApres({ ancien: deux, role: { id: 'x', niveau: 'mj' } }), /identifiant de rôle/);
-  assert.throws(() => reglageApres({ ancien: deux, role: { id: ROLE_MJ, niveau: 'joueur' } }), /niveau inconnu/);
+  assert.deepEqual(reglageApres({ ancien: deux, role: { id: ROLE_JOUEUR, niveau: 'joueur' } }).roles[ROLE_JOUEUR], 'joueur');
+  const plusieurs = reglageApres({ ancien: premier, role: { ids: ['600000000000000001', '600000000000000002', '600000000000000003'], niveau: 'joueur' } });
+  assert.deepEqual(Object.values(plusieurs.roles), ['joueur', 'joueur', 'joueur'], 'plusieurs rôles d’un coup');
+  assert.throws(() => reglageApres({ ancien: premier, role: { ids: ['600000000000000001', 'x'], niveau: 'joueur' } }), /identifiant de rôle/);
+  assert.throws(() => reglageApres({ ancien: premier, role: { ids: [], niveau: 'joueur' } }), /aucun identifiant/);
   assert.throws(() => reglageApres({ ancien: deux, role: { id: ROLE_MJ, niveau: 'observateur' } }), /niveau inconnu/);
+  assert.throws(() => reglageApres({ ancien: deux, role: { id: ROLE_MJ, niveau: 'dieu' } }), /niveau inconnu/);
   // l'application change : rôles, serveur et sessions gardés
   const autre = reglageApres({ ancien: deux, definir: { clientId: '111111111111111111', clientSecret: 'un-autre-secret-valable', adresseDeRetour: 'https://exemple.test/api/connexion/discord/retour/' } });
   assert.deepEqual([autre.client_id, autre.roles, autre.secret_de_session], ['111111111111111111', deux.roles, deux.secret_de_session]);
@@ -321,9 +334,12 @@ test('R310 (2) : MJ et Créateur d’après les rôles du réglage (le plus haut
   assert.deepEqual(await essai([ROLE_MJ]), { niveau: 'mj', session: 'mj' });
   assert.deepEqual(await essai([ROLE_CREATEUR]), { niveau: 'createur', session: 'createur' });
   assert.deepEqual(await essai([ROLE_MJ, ROLE_CREATEUR, '1']), { niveau: 'createur', session: 'createur' });
-  assert.deepEqual(await essai(['777']), { niveau: 'joueur', session: 'joueur' });
-  assert.deepEqual(await essai([ROLE_CREATEUR], { roles: {} }), { niveau: 'joueur', session: 'joueur' }, 'la correspondance vient du réglage de l’instance, jamais du code');
-  assert.deepEqual(await essai([ROLE_CREATEUR], { roles: { 7777777: 'createur' } }), { niveau: 'joueur', session: 'joueur' });
+  assert.deepEqual(await essai([ROLE_JOUEUR]), { niveau: 'joueur', session: 'joueur' });
+  assert.deepEqual(await essai([ROLE_JOUEUR, ROLE_MJ]), { niveau: 'mj', session: 'mj' });
+  assert.deepEqual(await essai(['777']), { niveau: 'observateur', session: 'observateur' }, 'R311 : membre sans rôle correspondant');
+  assert.deepEqual(await essai([]), { niveau: 'observateur', session: 'observateur' });
+  assert.deepEqual(await essai([ROLE_CREATEUR], { roles: {} }), { niveau: 'observateur', session: 'observateur' }, 'la correspondance vient du réglage de l’instance, jamais du code');
+  assert.deepEqual(await essai([ROLE_CREATEUR], { roles: { 7777777: 'createur' } }), { niveau: 'observateur', session: 'observateur' });
 });
 
 test('R310 (2) : non membre (l’appel membre répond 404 ou 403), adhésion en attente, exclusion temporaire : observateur, connecté mais sans droit', async () => {

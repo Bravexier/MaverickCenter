@@ -11,7 +11,7 @@ import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur
 import { COOKIE_ETAT, COOKIE_SESSION, reglageApres } from '../serveur/discord.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { enregistrerLaConnexion, lireLeProfil } from '../serveur/utilisateurs.mjs';
-import { ROLE_CREATEUR, ROLE_MJ, SERVEUR_D_ESSAI, poserLAcces } from './aide-acces-d-essai.mjs';
+import { ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SERVEUR_D_ESSAI, poserLAcces } from './aide-acces-d-essai.mjs';
 import { poserUnCompte } from './aide-compte-d-essai.mjs';
 import { IDENTIFIANT_D_ESSAI, MEMBRE_D_ESSAI, UTILISATEUR_D_ESSAI, discordSimule } from './aide-discord-simule.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -107,7 +107,7 @@ async function seConnecter(m, { retour = '/regles/', entetes = {} } = {}) {
 }
 
 test('R310 : de bout en bout sur le service HTTP — 302 vers Discord, retour, ligne écrite, cookie de session, /api/moi/ ; une seconde connexion met la même ligne à jour (niveau recalculé)', async () => {
-  const m = await service({ simule: { utilisateur: { ...UTILISATEUR_D_ESSAI, avatar: HASH }, membre: { ...MEMBRE_D_ESSAI, nick: 'Le Surnom', roles: [] } } });
+  const m = await service({ simule: { utilisateur: { ...UTILISATEUR_D_ESSAI, avatar: HASH }, membre: { ...MEMBRE_D_ESSAI, nick: 'Le Surnom' } } });
   try {
     assert.deepEqual(await (await m.appel('GET', '/api/moi/')).json(), { connexion_disponible: true, connecte: false, utilisateur: null });
     const c = await seConnecter(m, { retour: '/regles/classes/', entetes: { 'x-forwarded-host': 'dev.exemple.test' } });
@@ -173,7 +173,7 @@ test('un retour avec un caractère hors latin-1 donne un en-tête Location valid
 });
 
 test('R310 (3) : sur le site de dev, la porte suit le niveau du cookie de la connexion — Joueur et Observateur n’entrent pas, MJ lit, Créateur écrit — et les clés gardent leur comportement', async () => {
-  for (const [roles, niveau, lecture, ecriture] of [[[], 'joueur', 403, 403], [[ROLE_MJ], 'mj', 200, 403], [[ROLE_CREATEUR], 'createur', 200, 400]]) {
+  for (const [roles, niveau, lecture, ecriture] of [[[ROLE_JOUEUR], 'joueur', 403, 403], [[], 'observateur', 403, 403], [[ROLE_MJ], 'mj', 200, 403], [[ROLE_CREATEUR], 'createur', 200, 400]]) {
     const m = await service({ simule: { membre: { ...MEMBRE_D_ESSAI, roles } } });
     try {
       const { session } = await seConnecter(m);

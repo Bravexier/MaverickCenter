@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import { creerConnexion, validerReglage } from '../serveur/discord.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
 import { SEUL_LINUX } from './aide-plateforme.mjs';
-import { CLIENT_D_ESSAI, ROLE_CREATEUR, ROLE_MJ, SECRET_D_ESSAI } from './aide-acces-d-essai.mjs';
+import { CLIENT_D_ESSAI, ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SECRET_D_ESSAI } from './aide-acces-d-essai.mjs';
 
 const SCRIPT_DISCORD = fileURLToPath(new URL('../../deploy/installateur/discord/discord.sh', import.meta.url));
 const SERVEUR = fileURLToPath(new URL('../serveur', import.meta.url));
@@ -140,11 +140,11 @@ test('refus sans rien modifier : identifiant qui n’est pas un nombre, secret v
   assert.equal(arrete.code, 1);
   assert.match(arrete.out, /ne tourne pas/);
   assert.ok(!existsSync(i.fichier), 'rien n’est écrit');
-  for (const args of [['--inconnue'], ['--role'], ['--role', ROLE_MJ], ['--role', 'pas-un-id', 'mj'], ['--role', ROLE_MJ, 'dieu'], ['--role', ROLE_MJ, 'joueur'], ['--sans-role'], ['--serveur', 'x'], ['--adresse']]) {
+  for (const args of [['--inconnue'], ['--role'], ['--role', ROLE_MJ], ['--role', 'pas-un-id', 'mj'], ['--role', ROLE_MJ, 'dieu'], ['--role', ROLE_MJ, 'observateur'], ['--role', ROLE_MJ, 'x', 'joueur'], ['--role', 'joueur'], ['--sans-role'], ['--serveur', 'x'], ['--adresse']]) {
     assert.equal(i.lancer(args).code, 2, args.join(' '));
   }
   // rien à modifier sans application posée
-  for (const args of [['--role', ROLE_MJ, 'mj'], ['--sans-role', ROLE_MJ], ['--serveur', '123456789012345678'], ['--nouvelle-session']]) {
+  for (const args of [['--role', ROLE_MJ, 'mj'], ['--role', ROLE_JOUEUR, ROLE_MJ, 'joueur'], ['--sans-role', ROLE_MJ], ['--serveur', '123456789012345678'], ['--nouvelle-session']]) {
     const r = i.lancer(args);
     assert.equal(r.code, 1, args.join(' '));
     assert.match(r.out, /aucune application/);
@@ -152,29 +152,44 @@ test('refus sans rien modifier : identifiant qui n’est pas un nombre, secret v
   assert.ok(!existsSync(i.fichier));
 });
 
-test('R310 (2) : --role pose la correspondance « rôle Discord -> niveau » dans le réglage de l’instance (jamais dans le code), --sans-role la retire, --serveur change le serveur, --nouvelle-session ferme les sessions', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
+test('R310 (2), R311 : --role pose la correspondance « rôle Discord -> niveau » (joueur, mj, createur ; un ou plusieurs rôles à la fois) dans le réglage de l’instance (jamais dans le code), --sans-role la retire, --serveur change le serveur, --nouvelle-session ferme les sessions', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
-  i.lancer([], { input: saisie() });
+  const pose = i.lancer([], { input: saisie() });
+  assert.doesNotMatch(pose.out, /tout membre du serveur est Joueur/, 'R311 : un membre sans rôle est Observateur');
+  assert.match(pose.out, /R311/);
   const base = i.reglage();
   assert.deepEqual(base.roles, {});
   assert.equal(i.lancer(['--role', ROLE_MJ, 'mj']).code, 0);
   const r = i.lancer(['--role', ROLE_CREATEUR, 'createur']);
   assert.equal(r.code, 0, r.out);
   assert.deepEqual(i.reglage().roles, { [ROLE_MJ]: 'mj', [ROLE_CREATEUR]: 'createur' });
+  // plusieurs identifiants d'un coup (les neuf rôles Joueur du propriétaire, R311)
+  const neuf = Array.from({ length: 9 }, (_, n) => `70000000000000000${n}`);
+  const joueurs = i.lancer(['--role', ...neuf, 'joueur']);
+  assert.equal(joueurs.code, 0, joueurs.out);
+  for (const id of neuf) assert.equal(i.reglage().roles[id], 'joueur', id);
+  assert.equal(Object.keys(i.reglage().roles).length, 11);
   assert.equal(i.reglage().secret_de_session, base.secret_de_session, 'poser un rôle ne ferme aucune session');
   assert.equal(mode(i.fichier), 0o600);
+  // un niveau change : le même rôle repasse de joueur à mj
+  assert.equal(i.lancer(['--role', neuf[0], 'mj']).code, 0);
+  assert.equal(i.reglage().roles[neuf[0]], 'mj');
   assert.equal(i.lancer(['--sans-role', ROLE_MJ]).code, 0);
-  assert.deepEqual(i.reglage().roles, { [ROLE_CREATEUR]: 'createur' });
+  assert.equal(i.reglage().roles[ROLE_MJ], undefined);
   assert.match(i.lancer(['--sans-role', ROLE_MJ]).out, /aucun niveau/);
   assert.equal(i.lancer(['--serveur', '123456789012345678']).code, 0);
   assert.equal(i.reglage().serveur, '123456789012345678');
   const session = i.lancer(['--nouvelle-session']);
   assert.equal(session.code, 0, session.out);
   assert.notEqual(i.reglage().secret_de_session, base.secret_de_session);
-  assert.deepEqual(i.reglage().roles, { [ROLE_CREATEUR]: 'createur' });
+  assert.equal(i.reglage().roles[ROLE_CREATEUR], 'createur');
   assert.match(session.out, /sessions .* fermées/);
-  // aucun identifiant de rôle ni secret en argument qui ne soit pas un identifiant public ; le secret n'a pas bougé
   assert.ok(!i.appels().includes(SECRET_D_ESSAI));
+  // un identifiant refusé par le service ne pose aucun des autres (« 12 » n'est pas un identifiant de rôle)
+  const avant = JSON.stringify(i.reglage());
+  const refuse = i.lancer(['--role', '700000000000000099', '12', 'joueur']);
+  assert.equal(refuse.code, 1, refuse.out);
+  assert.equal(JSON.stringify(i.reglage()), avant, 'rien n’est posé');
 });
 
 test('--etat dit ce qui est réglé sans jamais montrer le secret ni celui des sessions ; --retirer retire le réglage (connexion indisponible) ; sur la production comme sur le site de dev', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
@@ -189,7 +204,11 @@ test('--etat dit ce qui est réglé sans jamais montrer le secret ni celui des s
     assert.equal(etat.code, 0);
     assert.ok(etat.out.includes(`Application : ${CLIENT_D_ESSAI}`), etat.out);
     assert.ok(etat.out.includes('374464159254839298') && etat.out.includes(RETOUR), etat.out);
-    assert.ok(etat.out.includes(`${ROLE_MJ} -> mj`), etat.out);
+    assert.ok(etat.out.includes(`MJ : ${ROLE_MJ} (1)`), etat.out);
+    assert.ok(etat.out.includes('Joueur : aucun (0)') && etat.out.includes('Créateur : aucun (0)'), etat.out);
+    assert.match(etat.out, /sans aucun de ces rôles est Observateur \(R311\)/);
+    i.lancer(['--role', ROLE_JOUEUR, '700000000000000001', 'joueur']);
+    assert.ok(i.lancer(['--etat']).out.includes(`Joueur : ${ROLE_JOUEUR} 700000000000000001 (2)`), i.lancer(['--etat']).out);
     assert.ok(!etat.out.includes(SECRET_D_ESSAI) && !etat.out.includes(i.reglage().secret_de_session), 'aucun secret dans l’état');
     assert.match(etat.out, edition ? /le site de dev/ : /la production/);
     const retire = i.lancer(['--retirer']);

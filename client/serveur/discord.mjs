@@ -26,8 +26,8 @@ export const SERVEUR_PAR_DEFAUT = '374464159254839298';
 export const API_DISCORD = 'https://discord.com/api/v10';
 export const CDN_DISCORD = 'https://cdn.discordapp.com';
 export const NIVEAUX = Object.freeze(['observateur', 'joueur', 'mj', 'createur']);
-/** Les niveaux qu'une correspondance de rôle peut donner (les deux autres viennent de l'appartenance au serveur). */
-export const NIVEAUX_DES_ROLES = Object.freeze(['mj', 'createur']);
+/** Les niveaux qu'une correspondance de rôle peut donner (R311) ; l'Observateur ne se donne pas : c'est ce qu'est un membre sans rôle correspondant. */
+export const NIVEAUX_DES_ROLES = Object.freeze(['joueur', 'mj', 'createur']);
 export const DUREE_SESSION_DEV_S = 12 * 3600;
 export const DUREE_SESSION_PROD_S = 7 * 24 * 3600;
 export const DUREE_DE_L_ETAT_S = 600;
@@ -49,9 +49,9 @@ const SNOWFLAKE = /^[0-9]{5,25}$/;
 const HASH_D_IMAGE = /^(a_)?[0-9a-f]{32}$/;
 
 /**
- * Le niveau d'un compte (R310 (2)). `membre` : l'objet « membre du serveur » de Discord, ou null quand l'appel a échoué (non membre) ; `roles` : la
- * correspondance « identifiant de rôle Discord -> niveau » de l'instance. Observateur : non membre, adhésion en attente (`pending`), exclusion
- * temporaire en cours (`communication_disabled_until` dans le futur) ; sinon joueur ; MJ ou Créateur d'après les rôles du membre, le plus haut l'emporte.
+ * Le niveau d'un compte (R310 (2), amendée par R311). `membre` : l'objet « membre du serveur » de Discord, ou null quand l'appel a échoué (non membre) ; `roles` :
+ * la correspondance « identifiant de rôle Discord -> niveau » (joueur, mj, createur) de l'instance. Observateur : non membre, adhésion en attente (`pending`), exclusion
+ * temporaire en cours (`communication_disabled_until` dans le futur), et **tout membre sans rôle correspondant** ; sinon le plus haut des niveaux que donnent ses rôles.
  * @param {{ membre: object|null, roles?: Record<string, string>, maintenant?: number }} o `maintenant` en ms
  */
 export function niveauDuMembre({ membre, roles = {}, maintenant = Date.now() }) {
@@ -62,7 +62,7 @@ export function niveauDuMembre({ membre, roles = {}, maintenant = Date.now() }) 
     const t = Date.parse(jusqua);
     if (!Number.isFinite(t) || t > maintenant) return 'observateur'; // une date illisible compte comme une exclusion : le doute profite au moins de droits
   }
-  let niveau = 'joueur';
+  let niveau = 'observateur';
   for (const role of Array.isArray(membre.roles) ? membre.roles : []) {
     const donne = Object.hasOwn(roles, String(role)) ? roles[String(role)] : null;
     if (NIVEAUX_DES_ROLES.includes(donne) && rangDuNiveau(donne) > rangDuNiveau(niveau)) niveau = donne;
@@ -206,7 +206,7 @@ export function validerReglage(brut) {
   if (o.roles !== undefined && (!o.roles || typeof o.roles !== 'object' || Array.isArray(o.roles))) throw new Error('correspondance des rôles invalide');
   for (const [id, niveau] of Object.entries(o.roles ?? {})) {
     if (!SNOWFLAKE.test(id)) throw new Error(`identifiant de rôle invalide (${JSON.stringify(id.slice(0, 30))})`);
-    if (!NIVEAUX_DES_ROLES.includes(niveau)) throw new Error(`niveau de rôle inconnu pour ${id} (mj ou createur)`);
+    if (!NIVEAUX_DES_ROLES.includes(niveau)) throw new Error(`niveau de rôle inconnu pour ${id} (joueur, mj ou createur)`);
     roles[id] = niveau;
   }
   if (!HEX64.test(o.secret_de_session ?? '')) throw new Error('secret de session invalide');
@@ -225,7 +225,7 @@ export function validerReglage(brut) {
 /**
  * Le réglage qui suit une commande de l'hôte. `definir` (identifiant, secret, adresse de retour, serveur) pose ou change l'application et garde les rôles et
  * les sessions ; `role` / `sansRole` changent la correspondance ; `serveur` en change l'identifiant ; `nouvelleSession` renouvelle le secret des sessions.
- * @param {{ ancien?: object|null, definir?: { clientId: string, clientSecret: string, adresseDeRetour: string, serveur?: string }, role?: { id: string, niveau: string },
+ * @param {{ ancien?: object|null, definir?: { clientId: string, clientSecret: string, adresseDeRetour: string, serveur?: string }, role?: { id?: string, ids?: string[], niveau: string },
  *   sansRole?: string, serveur?: string, nouvelleSession?: boolean, maintenant?: Date }} o
  */
 export function reglageApres({ ancien = null, definir = null, role = null, sansRole = null, serveur = null, nouvelleSession = false, maintenant = new Date() }) {
@@ -241,9 +241,11 @@ export function reglageApres({ ancien = null, definir = null, role = null, sansR
   }
   if (serveur !== null) suivant.serveur = String(serveur).trim();
   if (role) {
-    if (!SNOWFLAKE.test(String(role.id))) throw new Error('identifiant de rôle invalide (des chiffres : Discord, clic droit sur le rôle, « Copier l’identifiant »)');
-    if (!NIVEAUX_DES_ROLES.includes(role.niveau)) throw new Error('niveau inconnu (mj ou createur)');
-    suivant.roles[String(role.id)] = role.niveau;
+    const ids = (role.ids ?? [role.id]).map(String);
+    if (!ids.length) throw new Error('aucun identifiant de rôle');
+    if (!ids.every((id) => SNOWFLAKE.test(id))) throw new Error('identifiant de rôle invalide (des chiffres : Discord, clic droit sur le rôle, « Copier l’identifiant »)');
+    if (!NIVEAUX_DES_ROLES.includes(role.niveau)) throw new Error('niveau inconnu (joueur, mj ou createur)');
+    for (const id of ids) suivant.roles[id] = role.niveau;
   }
   if (sansRole !== null) {
     if (!Object.hasOwn(suivant.roles, String(sansRole))) throw new Error(`le rôle ${String(sansRole).slice(0, 30)} n’a aucun niveau posé`);
@@ -491,7 +493,7 @@ async function lireEntree(entree) {
 }
 
 /**
- * @param {string[]} argv `definir <identifiant> <adresse de retour> [<serveur>]` (le secret sur l'entrée) | `role <identifiant de rôle> mj|createur` | `sans-role <identifiant>`
+ * @param {string[]} argv `definir <identifiant> <adresse de retour> [<serveur>]` (le secret sur l'entrée) | `role <identifiant de rôle>… joueur|mj|createur` (un ou plusieurs rôles, le niveau en dernier) | `sans-role <identifiant>`
  *   | `serveur <identifiant>` | `nouvelle-session`
  * @param {{ entree?: AsyncIterable<Buffer>, sortie?: (ligne: string) => void, erreur?: (ligne: string) => void, fichier?: string, maintenant?: Date }} [o]
  * @returns {Promise<number>} le code de sortie
@@ -519,7 +521,7 @@ export async function commandeDiscord(argv, { entree = process.stdin, sortie = (
       const secret = (await lireEntree(entree)).split('\n')[0].replace(/\r$/, '');
       demande = { ancien: intact, definir: { clientId, clientSecret: secret, adresseDeRetour, serveur: serveur || undefined } };
     } else if (action === 'role') {
-      demande = { ancien: intact, role: { id: options[0], niveau: options[1] } };
+      demande = { ancien: intact, role: { ids: options.slice(0, -1), niveau: options.at(-1) } };
     } else if (action === 'sans-role') {
       demande = { ancien: intact, sansRole: options[0] ?? '' };
     } else if (action === 'serveur') {

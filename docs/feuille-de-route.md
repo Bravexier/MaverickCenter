@@ -73,7 +73,7 @@ propriétaire.
 | V0.3 | Galerie humaine / IA (E1), page du Bestiaire des invocations (E2), annonce des versions sur Discord par webhook (E10) |
 | V0.4 | Refonte visuelle de l'équipement et de son intégration à la fiche (E3), générateur d'accessoires magiques (E4) |
 | V0.5 | Codex, selon l'arrivée des sources : chronologie (E5), carte et lieux (E6), monstres du « Bestiaire 2.0 » (E2) |
-| V0.6 | Connexion par Discord : Observateur sans connexion, Joueur pour les membres du serveur, MJ et Créateur d'après les rôles (E7, R310), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
+| V0.6 | Connexion par Discord : Observateur sans connexion ou sans rôle, Joueur, MJ et Créateur d'après les rôles Discord (E7, R310, R311), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
 | V1.0 | La connexion par Discord est éprouvée et testée : ouverture à tout le Discord |
 | V1.1 | Boîte à idées, tickets et rapports de bugs (E11) |
 | V1.2 | Groupes one-shot (OS), hors campagne (HC) et campagne, planning des parties (E9) |
@@ -181,11 +181,10 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 
 - **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site de dev est retiré (R310 (1)).
 - **Quatre niveaux** (R310 (2), qui applique et précise la réponse du 2026-10-11 : « touriste » devient **Observateur**), recalculés à chaque connexion : **Observateur** (non connecté, ou connecté sans être membre du serveur Discord,
-  adhésion en attente, exclusion temporaire en cours) ; **Joueur** (membre du serveur) ; **MJ** (lecture du site de dev ; campagnes et scénarios à venir, E9) ; **Créateur** (modifie les règles : édition et mise à jour du site de dev).
+  adhésion en attente, exclusion temporaire en cours, ou membre sans rôle correspondant : R311) ; **Joueur** (membre du serveur portant un rôle Joueur, R311) ; **MJ** (lecture du site de dev ; campagnes et scénarios à venir, E9) ; **Créateur** (modifie les règles : édition et mise à jour du site de dev).
   À chaque connexion, le service lit l'appartenance au serveur (portée OAuth `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions. À terme, l'Observateur ne verra que les rubriques Règles et Personnage du menu
   (réponse du 2026-10-29), sur la production.
-- **MJ et Créateur d'après les rôles Discord** : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; les rôles
-  restent à choisir par le propriétaire. Le lien avec `utilisateur_role` (visibilité des fiches, `v_personnage_visible`) reste à faire avec E8.
+- **Joueur, MJ et Créateur d'après les rôles Discord** (R311) : une correspondance « identifiant de rôle Discord → niveau » dans le réglage de chaque instance (`secrets/discord.json`, commande `discord.sh --role`), jamais dans le code ; la correspondance du propriétaire (neuf rôles Joueur, deux MJ, un Créateur) est dans `serveur.md`, « Connexion par Discord ». Le lien avec `utilisateur_role` (visibilité des fiches, `v_personnage_visible`) reste à faire avec E8.
 - **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, la production reste ouverte (R307) et le site de dev reste fermé (les clés de lecture et de dépôt restent, R275, R291) ; le compte local que prévoyait la
   table `utilisateur` (`discord_id` NULL) est retiré (migration 0132).
 - **Ce que les niveaux ouvrent** : sur le site de dev, plus rien sans MJ au moins ; l'édition des règles et le bouton « Effectuer la mise à jour » demandent le niveau Créateur. L'auteur de chaque modification dans l'historique
@@ -255,7 +254,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 1. **« HC »** = « hors campagne » : plus court qu'une campagne, plus long qu'un one-shot, comme un chapitre indépendant ou un OAV (E9).
 2. **Pas de connexion de secours** : si Discord est en panne, on est déjà en difficulté ; le mode dégradé est l'accès sans connexion, en lecture seule (E7).
 3. **Statuts** : touriste si l'on n'est pas connecté ou pas membre du serveur Discord (lecture seule en surface), joueur si l'on en est membre ; les
-   autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7). *Précisé par R310 : le touriste devient l'Observateur, et les quatre niveaux sont Observateur, Joueur, MJ, Créateur.*
+   autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7). *Précisé par R310 : le touriste devient l'Observateur, et les quatre niveaux sont Observateur, Joueur, MJ, Créateur ; amendé par R311 : Joueur se donne par rôle Discord, un membre sans rôle correspondant est Observateur.*
 4. **Équipement** : une refonte visuelle et de l'intégration à la fiche, où il y a aujourd'hui des ratés ; les règles ne changent pas (E3).
 5. **Sources** (salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E5, E6). Le « CODEX Maverick » et le
    « Bestiaire 2.0 » sont arrivés le 2026-10-11 (copies du propriétaire : [`codex.md`](codex.md), [`bestiaire.md`](bestiaire.md)).
@@ -397,7 +396,7 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 - **Ce qu'on garde** : l'identifiant Discord de l'utilisateur (immuable) et son nom d'affichage ; aucun mot de passe, aucun jeton Discord conservé au-delà de la connexion
   (le jeton ne sert qu'à lire l'identité et, au besoin, les rôles sur le serveur). Les modifications de contenu s'attribuent à cet identifiant (historique).
-- **Statuts et rôles** (R310 : quatre niveaux, voir E7) : **Observateur** (ex-touriste : pas connecté, ou pas membre du serveur : lecture seule en surface), **Joueur** (membre du serveur), **MJ** (le « groupe
+- **Statuts et rôles** (R310 : quatre niveaux, voir E7) : **Observateur** (ex-touriste : pas connecté, ou pas membre du serveur : lecture seule en surface), **Joueur** (membre du serveur portant un rôle Joueur, R311), **MJ** (le « groupe
   MJ » à qui un joueur peut ouvrir ses fiches), **Créateur** (modifie les règles), d'après des rôles Discord choisis plus tard ; un utilisateur peut cumuler ces rôles
   (table `utilisateur_role`) ; la correspondance rôle Discord → rôle du site est une configuration, pas du code. Quelqu'un qui quitte le serveur redevient
   Observateur. **Pas de connexion de secours** (décision du propriétaire, 2026-10-11) : Discord en panne, la production reste lisible en Observateur (« Prochaines évolutions », E7).

@@ -10,8 +10,9 @@
 # l'identique dans le portail (« OAuth2 », « Redirects »). Le réglage est le fichier secrets/discord.json de l'instance (root 600) ; le service le relit dès qu'il
 # change : rien à redémarrer.
 #   --adresse <url>        l'adresse de retour (https://…/api/connexion/discord/retour/), sans la proposition ni la question (avec la commande sans option)
-#   --role <id> mj|createur   le rôle Discord <id> (clic droit sur le rôle, « Copier l'identifiant des rôles ») donne ce niveau ; le niveau le plus haut des rôles
-#                          d'un membre l'emporte. La correspondance est dans le réglage de l'instance, jamais dans le code
+#   --role <id>… joueur|mj|createur   les rôles Discord <id> (clic droit sur le rôle, « Copier l'identifiant du rôle ») donnent ce niveau ; un ou plusieurs identifiants, le
+#                          niveau en dernier (R311). Le niveau le plus haut des rôles d'un membre l'emporte ; un membre sans aucun rôle de la correspondance est Observateur.
+#                          La correspondance est dans le réglage de l'instance, jamais dans le code
 #   --sans-role <id>       retire la correspondance de ce rôle
 #   --serveur <id>         change le serveur Discord (par défaut celui du jeu : sources/sources.json, discord.guildId)
 #   --nouvelle-session     change le secret des sessions : toutes les sessions ouvertes (de cette instance) tombent
@@ -32,17 +33,22 @@ SECRETS=$INSTANCE/secrets
 FICHIER=$SECRETS/discord.json
 CADDY_ENV=${MAVERICK_DISCORD_CADDY:-/etc/caddy/maverick.env}
 CHEMIN_DE_RETOUR=/api/connexion/discord/retour/
-USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id> mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --etat | --retirer"
+USAGE="Usage : sudo sh $0 [--adresse <url>] | --role <id>… joueur|mj|createur | --sans-role <id> | --serveur <id> | --nouvelle-session | --etat | --retirer"
 
 ACTION=definir
 ADRESSE=''
+ROLE_IDS=''
 ROLE_ID=''
 ROLE_NIVEAU=''
 SERVEUR=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --adresse) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ADRESSE=$2; shift 2 ;;
-    --role) [ $# -ge 3 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=role; ROLE_ID=$2; ROLE_NIVEAU=$3; shift 3 ;;
+    --role)
+      ACTION=role; shift
+      while [ $# -gt 0 ]; do case "$1" in *[!0-9]*) break ;; *) ROLE_IDS="$ROLE_IDS $1"; shift ;; esac; done
+      [ -n "$ROLE_IDS" ] && [ $# -ge 1 ] || { echo "$USAGE" >&2; exit 2; }
+      ROLE_NIVEAU=$1; shift ;;
     --sans-role) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=sans_role; ROLE_ID=$2; shift 2 ;;
     --serveur) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=serveur; SERVEUR=$2; shift 2 ;;
     --nouvelle-session) ACTION=nouvelle_session; shift ;;
@@ -54,7 +60,7 @@ while [ $# -gt 0 ]; do
 done
 case "$ROLE_ID" in *[!0-9]*) echo "--role / --sans-role : l'identifiant d'un rôle Discord (des chiffres)" >&2; exit 2 ;; esac
 case "$SERVEUR" in *[!0-9]*) echo "--serveur : l'identifiant d'un serveur Discord (des chiffres)" >&2; exit 2 ;; esac
-case "$ROLE_NIVEAU" in ''|mj|createur) ;; *) echo "--role : le niveau est « mj » ou « createur »" >&2; exit 2 ;; esac
+case "$ROLE_NIVEAU" in ''|joueur|mj|createur) ;; *) echo "--role : le niveau est « joueur », « mj » ou « createur »" >&2; exit 2 ;; esac
 
 die() { echo "ERREUR : $*" >&2; exit 1; }
 [ "$ESSAI" = 1 ] || [ "$(id -u)" -eq 0 ] || die "à lancer en root : sudo sh $0"
@@ -78,8 +84,13 @@ if [ "$ACTION" = etat ]; then
   fi
   # seuls des champs précis sont lus : le secret de l'application et celui des sessions ne sont jamais extraits
   champ() { sed -n "s/.*\"$1\":\"\([^\"]*\)\".*/\1/p" "$FICHIER" | head -n 1; }
-  roles=$(sed -n 's/.*"roles":{\([^}]*\)}.*/\1/p' "$FICHIER" | head -n 1 | sed 's/"//g; s/:/ -> /g; s/,/ ; /g')
-  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles : ${roles:-aucun (tout membre est Joueur)}."
+  roles=$(sed -n 's/.*"roles":{\([^}]*\)}.*/\1/p' "$FICHIER" | head -n 1 | tr ',' '\n')
+  par_niveau() { # niveau libellé : « Joueur : id id (n) »
+    ids=$(printf '%s\n' "$roles" | sed -n "s/^\"\([0-9]*\)\":\"$1\"$/\1/p" | tr '\n' ' ' | sed 's/ $//')
+    n=$(printf '%s\n' "$roles" | sed -n "s/^\"\([0-9]*\)\":\"$1\"$/\1/p" | wc -l | tr -d ' ')
+    printf '%s : %s (%s)' "$2" "${ids:-aucun}" "$n"
+  }
+  echo "Connexion Discord : réglée sur $INSTANCE_DIT. Application : $(champ client_id) (secret posé, non montré). Serveur : $(champ serveur). Adresse de retour : $(champ adresse_de_retour). Rôles par niveau — $(par_niveau joueur Joueur) ; $(par_niveau mj MJ) ; $(par_niveau createur Créateur). Un membre sans aucun de ces rôles est Observateur (R311)."
   exit 0
 fi
 if [ "$ACTION" = retirer ]; then
@@ -152,13 +163,14 @@ case "$ACTION" in
     echo
     echo "      $ADRESSE"
     echo
-    echo "Niveaux : tout membre du serveur est Joueur ; MJ et Créateur se donnent par un rôle Discord : sudo sh $0 --role <id du rôle> mj|createur"
+    echo "Niveaux (R311) : Joueur, MJ et Créateur se donnent tous par rôle Discord ; un membre sans aucun rôle de la correspondance est Observateur. Poser les rôles : sudo sh $0 --role <id>… joueur|mj|createur"
     ;;
   role)
-    sortie=$(appeler role "$ROLE_ID" "$ROLE_NIVEAU" </dev/null) || die "le service a refusé : rien n'a été modifié"
+    # shellcheck disable=SC2086
+    sortie=$(appeler role $ROLE_IDS "$ROLE_NIVEAU" </dev/null) || die "le service a refusé : rien n'a été modifié"
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
-    echo "Le rôle $ROLE_ID donne le niveau « $ROLE_NIVEAU » (recalculé à chaque connexion : les sessions ouvertes gardent leur niveau jusqu'à leur fin, --nouvelle-session les ferme)."
+    echo "Les rôles$ROLE_IDS donnent le niveau « $ROLE_NIVEAU » (le plus haut niveau des rôles d'un membre l'emporte ; recalculé à chaque connexion : les sessions ouvertes gardent leur niveau jusqu'à leur fin, --nouvelle-session les ferme)."
     ;;
   sans_role)
     sortie=$(appeler sans-role "$ROLE_ID" </dev/null) || die "le service a refusé : rien n'a été modifié"
