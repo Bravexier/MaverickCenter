@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 311 décisions, de R1 à R311, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 313 décisions, de R1 à R313, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
 
 | Réf. | Sujet |
 | --- | --- |
@@ -317,3 +317,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R309 | Les mots-clés au centre : ancrage, verrou, type unique… |
 | R310 | Connexion par Discord, quatre niveaux d'accès, retrait… |
 | R311 | Le niveau Joueur se donne par rôle Discord (2026-11-27… |
+| R312 | Suites de la connexion Discord (2026-11-27, après la P… |
+| R313 | Le non-membre averti ; les fiches d'un joueur qui quit… |

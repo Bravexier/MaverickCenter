@@ -9,7 +9,7 @@
 // Les images (avatar, bannière) sont chargées depuis cdn.discordapp.com par le navigateur (R310 (5)), jamais copiées. La logique (choix du menu, `retour`
 // filtré, messages, dates) est dans lib/compte.mjs, que ce script est seul à importer (skill site-version-portable). Absent de la version portable (le
 // composant n'est pas posé) et de la page de maintenance.
-import { adresseDeConnexion, choixDuMenu, etatDuCompte, messageDErreur, profilAAfficher, retourDeLaPage } from '../lib/compte.mjs';
+import { MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, choixDuMenu, etatDuCompte, messageDErreur, profilAAfficher, retourDeLaPage } from '../lib/compte.mjs';
 
 const zone = document.querySelector('[data-compte]');
 
@@ -79,10 +79,13 @@ function afficherLeProfil(page, moi, config) {
   const etat = etatDuCompte(moi);
   montrer('connecte', etat === 'connecte');
   montrer('invite', etat === 'deconnecte');
+  const nonMembre = montrer('non-membre', etat === 'non_membre');
+  if (nonMembre) nonMembre.querySelector('[data-message-non-membre]').textContent = MESSAGE_DU_NON_MEMBRE;
   montrer('indisponible', etat === 'indisponible');
   const lien = page.querySelector('[data-lien-connexion]');
   if (lien) lien.setAttribute('href', adresseDeConnexion(config.api, retourDeLaPage({ chemin: location.pathname, recherche: location.search ?? '', pageConnexion: config.pageConnexion })));
   const dire = (texte) => { const e = montrer('erreur', true); if (e) e.textContent = texte; };
+  if (etat === 'non_membre') brancherLaDeconnexion(page, config, dire);
   if (etat !== 'connecte') return;
   const profil = profilAAfficher(moi.utilisateur);
   page.querySelector('[data-profil-nom]').textContent = profil.nom;
@@ -113,6 +116,12 @@ function afficherLaConnexion(page, moi, config) {
   }
   const indisponible = page.querySelector('[data-connexion-indisponible]');
   if (indisponible) indisponible.hidden = !nonReglee;
+  const nonMembre = page.querySelector('[data-connexion-non-membre]');
+  if (nonMembre && etat === 'non_membre') {
+    nonMembre.querySelector('[data-message-non-membre]').textContent = MESSAGE_DU_NON_MEMBRE;
+    nonMembre.hidden = false;
+    brancherLaDeconnexion(page, config, (texte) => { const e = page.querySelector('[data-connexion-erreur]'); if (e) { e.textContent = texte; e.hidden = false; } });
+  }
   const connecte = page.querySelector('[data-connexion-connecte]');
   if (connecte && etat === 'connecte') {
     const profil = profilAAfficher(moi.utilisateur);

@@ -231,16 +231,24 @@ function monde({ edition = true, simule = {}, ...options } = {}) {
     ecrits.push(profil);
     return `u-${ecrits.length}`;
   };
+  /** R312 : les comptes que la connexion a demandé d'effacer (le non-membre) ; `etatDeLEffacement` dit ce que l'effacement répond. */
+  const effaces = [];
+  const etatDeLEffacement = { reponse: { id: 'u-ancien', efface: true, bloque: [] }, panne: null };
+  const effacer = (discordId) => {
+    effaces.push(discordId);
+    if (etatDeLEffacement.panne) throw new Error(etatDeLEffacement.panne);
+    return etatDeLEffacement.reponse;
+  };
   /** commencer puis terminer : { debut, reponse, ecrits } ; `retour` : le chemin demandé ; `changer` : modifie ce qui revient de Discord (état, code, cookie…). */
   async function connecter({ retour, changer = {}, entetes = {} } = {}) {
     const debut = connexion.commencer({ retour, entetes });
     const adresse = debut.location ? new URL(debut.location) : null;
     const cookieEtat = debut.cookies?.[0]?.split(';')[0] ?? '';
     const retourDeDiscord = { code: d.code, etat: adresse?.searchParams.get('state'), erreur: null, entetes: { cookie: cookieEtat, ...entetes }, ...changer };
-    const reponse = await connexion.terminer({ ...retourDeDiscord, enregistrer });
+    const reponse = await connexion.terminer({ ...retourDeDiscord, enregistrer, effacer });
     return { debut, adresse, reponse };
   }
-  return { ...a, d, connexion, horloge, journal, ecrits, enregistrer, connecter };
+  return { ...a, d, connexion, horloge, journal, ecrits, effaces, etatDeLEffacement, enregistrer, connecter };
 }
 const cookieDe = (reponse, nom) => reponse.cookies.find((c) => c.startsWith(`${nom}=`));
 const jetonDe = (reponse) => cookieDe(reponse, COOKIE_SESSION)?.split(';')[0].split('=')[1];
@@ -342,26 +350,99 @@ test('R310 (2) : MJ et Créateur d’après les rôles du réglage (le plus haut
   assert.deepEqual(await essai([ROLE_CREATEUR], { roles: { 7777777: 'createur' } }), { niveau: 'observateur', session: 'observateur' });
 });
 
-test('R310 (2) : non membre (l’appel membre répond 404 ou 403), adhésion en attente, exclusion temporaire : observateur, connecté mais sans droit', async () => {
+test('R310 (2), R312 : adhésion en attente, exclusion temporaire, membre sans rôle : Observateur, le compte reste (écrit, jamais effacé)', async () => {
   for (const [nom, simule, rejoint] of [
-    ['non membre (404)', { membre: null, statutMembre: 404 }, null],
-    ['non membre (403)', { membre: null, statutMembre: 403 }, null],
     ['adhésion en attente', { membre: { ...MEMBRE_D_ESSAI, pending: true, roles: [ROLE_CREATEUR] } }, '2024-03-05T10:20:30Z'],
     ['exclusion en cours', { membre: { ...MEMBRE_D_ESSAI, communication_disabled_until: '2026-11-28T00:00:00.000000+00:00', roles: [ROLE_MJ] } }, '2024-03-05T10:20:30Z'],
+    ['membre sans rôle correspondant', { membre: { ...MEMBRE_D_ESSAI, roles: ['1'] } }, '2024-03-05T10:20:30Z'],
   ]) {
     const m = monde({ simule });
     const { reponse } = await m.connecter();
     assert.equal(reponse.location, RETOUR_PAR_DEFAUT, nom);
     assert.equal(m.ecrits.length, 1, nom);
+    assert.deepEqual(m.effaces, [], `${nom} : il reste membre, son compte aussi`);
     assert.equal(m.ecrits[0].niveau, 'observateur', nom);
     assert.equal(m.ecrits[0].serveur_rejoint_le, rejoint, nom);
-    assert.equal(m.connexion.session({ cookie: `${COOKIE_SESSION}=${jetonDe(reponse)}` }).n, 'observateur', nom);
+    assert.deepEqual(m.connexion.session({ cookie: `${COOKIE_SESSION}=${jetonDe(reponse)}` }), { u: 'u-1', n: 'observateur', exp: MAINTENANT / 1000 + DUREE_SESSION_DEV_S }, nom);
     assert.equal(m.ecrits[0].nom_affichage, 'Nom Global', nom);
   }
   // l'exclusion échue ne retire rien
   const m = monde({ simule: { membre: { ...MEMBRE_D_ESSAI, communication_disabled_until: '2026-11-27T11:00:00Z' } } });
   await m.connecter();
   assert.equal(m.ecrits[0].niveau, 'joueur');
+});
+
+test('R312 : le compte d’un non-membre (l’appel membre répond 404 ou 403) est effacé s’il existe et jamais créé ; sa session est Observateur, sans compte (`u` null) ; le jeton est révoqué', async () => {
+  for (const statutMembre of [404, 403]) {
+    const m = monde({ simule: { membre: null, statutMembre } });
+    const { reponse } = await m.connecter({ retour: '/regles/' });
+    assert.equal(reponse.location, '/regles/', `${statutMembre} : la connexion aboutit`);
+    assert.deepEqual(m.ecrits, [], `${statutMembre} : aucun compte créé ni mis à jour`);
+    assert.deepEqual(m.effaces, [IDENTIFIANT_D_ESSAI], `${statutMembre} : l’effacement est demandé pour ce compte Discord`);
+    assert.deepEqual(m.connexion.session({ cookie: `${COOKIE_SESSION}=${jetonDe(reponse)}` }), { u: null, n: 'observateur', exp: MAINTENANT / 1000 + DUREE_SESSION_DEV_S }, `${statutMembre}`);
+    assert.deepEqual([...m.d.revoques].sort(), [...m.d.jetons].sort(), `${statutMembre} : jeton révoqué`);
+    const journal = m.journal.join('\n');
+    assert.match(journal, /non-membre, compte u-ancien effacé \(R312\)/);
+    assert.ok(!journal.includes(IDENTIFIANT_D_ESSAI), 'jamais l’identifiant Discord au journal');
+  }
+  // aucun compte à effacer : rien à dire, la connexion aboutit quand même
+  const sans = monde({ simule: { membre: null } });
+  sans.etatDeLEffacement.reponse = { id: null, efface: false, bloque: [] };
+  assert.equal((await sans.connecter()).reponse.location, RETOUR_PAR_DEFAUT);
+  assert.ok(!sans.journal.some((l) => /effacé/.test(l)));
+  // une référence bloquante : rien n'est effacé, une ligne au journal (identifiant du site seulement), la connexion continue en Observateur
+  const bloque = monde({ simule: { membre: null } });
+  bloque.etatDeLEffacement.reponse = { id: 'u-ancien', efface: false, bloque: ['personnage.proprietaire_id (2)'] };
+  const r = await bloque.connecter();
+  assert.equal(r.reponse.location, RETOUR_PAR_DEFAUT);
+  assert.equal(bloque.connexion.session({ cookie: `${COOKIE_SESSION}=${jetonDe(r.reponse)}` }).n, 'observateur');
+  assert.ok(bloque.journal.some((l) => /compte u-ancien NON effacé : référencé par personnage\.proprietaire_id \(2\)/.test(l)), bloque.journal.join('\n'));
+  // un effacement en échec ne bloque pas la connexion
+  const panne = monde({ simule: { membre: null } });
+  panne.etatDeLEffacement.panne = 'base verrouillée';
+  assert.equal((await panne.connecter()).reponse.location, RETOUR_PAR_DEFAUT);
+  assert.ok(panne.journal.some((l) => /effacement du compte impossible \(base verrouillée\)/.test(l)));
+});
+
+test('R312 : une panne de Discord ou un 5xx de l’appel membre arrête la connexion sans rien effacer', async () => {
+  for (const statutMembre of [500, 502, 429]) {
+    const m = monde({ simule: { membre: null, statutMembre } });
+    const { reponse } = await m.connecter();
+    assert.equal(reponse.location, '/connexion/?erreur=discord', `${statutMembre}`);
+    assert.deepEqual(m.effaces, [], `${statutMembre} : jamais d’effacement sur une panne`);
+    assert.deepEqual(m.ecrits, []);
+  }
+  const reseau = monde({ simule: { statutUtilisateur: 500 } });
+  await reseau.connecter();
+  assert.deepEqual(reseau.effaces, []);
+  const bot = monde({ simule: { utilisateur: { ...UTILISATEUR_D_ESSAI, bot: true }, membre: null } });
+  await bot.connecter();
+  assert.deepEqual(bot.effaces, [], 'un bot : 403, rien d’effacé ni d’écrit');
+});
+
+test('R312 : sans la portée guilds.members.read (scope absent, vide ou sans elle), le 403 de l’appel membre ne prouve rien : connexion arrêtée (erreur=discord), l’appel membre n’est pas fait, rien d’effacé ni d’écrit, jetons révoqués', async () => {
+  for (const scope of ['identify', '', null, 'identify guilds', 'guilds.members.read.x']) {
+    const m = monde({ simule: { membre: null, statutMembre: 403, scope } });
+    const { reponse } = await m.connecter();
+    assert.equal(reponse.location, '/connexion/?erreur=discord', JSON.stringify(scope));
+    assert.deepEqual(m.effaces, [], JSON.stringify(scope));
+    assert.deepEqual(m.ecrits, []);
+    assert.equal(cookieDe(reponse, COOKIE_SESSION), undefined);
+    assert.equal(m.d.appelsA('/member').length, 0, 'l’appartenance n’est même pas demandée');
+    assert.deepEqual([...m.d.revoques].sort(), [...m.d.jetons].sort());
+    assert.ok(m.journal.some((l) => /portée guilds\.members\.read n’a pas été accordée/.test(l)));
+  }
+  // la portée accordée avec d'autres, dans l'ordre que Discord veut : la connexion se poursuit
+  const bon = monde({ simule: { membre: null, scope: 'guilds.members.read identify' } });
+  assert.equal((await bon.connecter()).reponse.location, RETOUR_PAR_DEFAUT);
+  assert.deepEqual(bon.effaces, [IDENTIFIANT_D_ESSAI]);
+});
+
+test('R312 : un jeton de session sans compte (`u` null) est valide ; un `u` vide ou qui n’est ni null ni un texte est refusé', () => {
+  const secret = 'a'.repeat(64);
+  const exp = 2_000_000_000;
+  assert.deepEqual(lireJetonDeSession(secret, creerJetonDeSession(secret, { u: null, n: 'observateur', exp }), exp - 1), { u: null, n: 'observateur', exp });
+  for (const u of ['', 7, undefined, false, {}]) assert.equal(lireJetonDeSession(secret, signer(secret, 'session', { u, n: 'observateur', exp }), exp - 1), null, JSON.stringify(u));
 });
 
 test('R310 (2) : un compte bot ou système est refusé (403) : rien n’est écrit, aucune session, jeton révoqué', async () => {

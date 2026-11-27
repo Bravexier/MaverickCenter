@@ -28,6 +28,10 @@ import { url } from '../lib/wiki';
       <p>Vous n’êtes pas connecté. Connectez-vous avec votre compte Discord pour retrouver votre profil.</p>
       <p><a class="bouton-connexion" data-lien-connexion href={url('api/connexion/discord/')}>Connexion via Discord</a></p>
     </div>
+    <div data-profil-non-membre hidden>
+      <p data-message-non-membre></p>
+      <p><button type="button" data-deconnexion>Se déconnecter</button></p>
+    </div>
     <p data-profil-indisponible hidden>La connexion par Discord n’est pas disponible sur ce serveur pour le moment.</p>
     <p class="profil__erreur" role="alert" data-profil-erreur hidden></p>
     <p><a href={url('confidentialite/')}>Ce que le site garde de votre connexion</a></p>

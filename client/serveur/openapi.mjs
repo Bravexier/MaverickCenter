@@ -694,7 +694,7 @@ function cheminsDuService() {
     '/moi/': {
       get: {
         operationId: 'mon_profil', tags: [SERVICE], summary: 'Le profil de la session (connexion par Discord)',
-        description: 'Toujours ouverte, sur les deux instances. { connexion_disponible (la connexion par Discord est réglée sur cette instance), connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null } (R310). Jamais l’identifiant Discord, l’e-mail ni un jeton.',
+        description: 'Toujours ouverte, sur les deux instances. { connexion_disponible (la connexion par Discord est réglée sur cette instance), connecte, utilisateur: { nom, avatar_url, banniere_url, niveau, serveur_rejoint_le } | null } (R310) ; la session d’un non-membre du serveur (connectée, sans compte ni niveau : R312) porte en plus `non_membre: true` (R313), champ absent sinon, sans nom ni rien de lui. Jamais l’identifiant Discord, l’e-mail ni un jeton.',
         responses: { 200: reponse('Le profil, ou « non connecté ».', objet) },
       },
     },

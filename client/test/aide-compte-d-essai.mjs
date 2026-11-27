@@ -2,7 +2,7 @@
 // avatar et dates obligatoires. Les tests qui posent un compte passent par ici : la forme de la table ne se recopie pas test par test.
 //
 //   compteDEssai(id, nom, instant?)        la ligne (objet) : identifiant Discord tiré d'un compteur (unique dans le processus), niveau 'joueur'
-//   poserUnCompte(db, id, nom, instant?)   l'écrit dans `db` (requête préparée)
+//   poserUnCompte(db, id, nom, instant?, plus?)   l'écrit dans `db` (requête préparée) ; `plus` remplace des colonnes (par exemple `{ discord_id }` : le compte d'un Discord simulé)
 //   sqlDUnCompte(id, nom, instant?)        la même ligne en une instruction SQL (pour un test qui passe du SQL à un outil)
 
 const INSTANT = '2026-10-10T00:00:00Z';
@@ -15,14 +15,14 @@ let suivant = 0;
 const discordDEssai = () => String(100000000000000000n + BigInt((suivant += 1)));
 
 /** La ligne d'un compte d'essai. */
-export const compteDEssai = (id, nom, instant = INSTANT) => ({
+export const compteDEssai = (id, nom, instant = INSTANT, plus = {}) => ({
   id, discord_id: discordDEssai(), nom_affichage: nom, cree_le: instant, niveau: 'joueur',
-  avatar_url: 'https://cdn.discordapp.com/embed/avatars/0.png', banniere_url: null, serveur_rejoint_le: instant, derniere_connexion_le: instant,
+  avatar_url: 'https://cdn.discordapp.com/embed/avatars/0.png', banniere_url: null, serveur_rejoint_le: instant, derniere_connexion_le: instant, ...plus,
 });
 
 /** Écrit un compte d'essai dans `db` ; rend la ligne écrite. */
-export function poserUnCompte(db, id, nom, instant = INSTANT) {
-  const ligne = compteDEssai(id, nom, instant);
+export function poserUnCompte(db, id, nom, instant = INSTANT, plus = {}) {
+  const ligne = compteDEssai(id, nom, instant, plus);
   db.prepare(`INSERT INTO utilisateur (${COLONNES_DU_COMPTE.join(', ')}) VALUES (${COLONNES_DU_COMPTE.map(() => '?').join(', ')})`)
     .run(...COLONNES_DU_COMPTE.map((c) => ligne[c]));
   return ligne;

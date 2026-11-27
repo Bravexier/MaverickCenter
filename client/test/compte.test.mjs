@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { CODES_D_ERREUR, NIVEAUX, RETOUR_PAR_DEFAUT, retourValide as retourDuService } from '../serveur/discord.mjs';
 import {
-  LIBELLES_DES_NIVEAUX, MESSAGES_DES_ERREURS, adresseDeConnexion, adresseDImage, choixDuMenu, dateFrancaise, etatDuCompte, libelleDuNiveau, messageDErreur,
+  LIBELLES_DES_NIVEAUX, MESSAGES_DES_ERREURS, MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, adresseDImage, choixDuMenu, dateFrancaise, etatDuCompte, libelleDuNiveau, messageDErreur,
   profilAAfficher, retourDeLaPage, retourValide,
 } from '../src/lib/compte.mjs';
 import { attendre, cliquer, el, fauxDocument } from './aide-faux-dom.mjs';
@@ -93,6 +93,17 @@ test('l’état du compte : indisponible (échec ou connexion non réglée), dé
   assert.equal(etatDuCompte(deconnecte), 'deconnecte');
   assert.equal(etatDuCompte(connecte()), 'connecte');
   assert.equal(etatDuCompte({ connexion_disponible: true, connecte: true, utilisateur: null }), 'deconnecte', 'connecté sans profil lisible : on propose de se connecter');
+});
+
+const nonMembre = { connexion_disponible: true, connecte: false, utilisateur: null, non_membre: true };
+
+test('R313 : un non-membre (`non_membre: true`) est un état à part ; `non_membre` autre que true, ou une connexion non réglée, n’en est pas un ; le menu garde le bouton de connexion', () => {
+  assert.equal(etatDuCompte(nonMembre), 'non_membre');
+  for (const valeur of [false, 'true', 1, null, undefined]) assert.equal(etatDuCompte({ ...nonMembre, non_membre: valeur }), 'deconnecte', String(valeur));
+  assert.equal(etatDuCompte({ ...nonMembre, connexion_disponible: false }), 'indisponible');
+  assert.equal(etatDuCompte({ ...connecte(), non_membre: true }), 'connecte', 'un profil lisible l’emporte');
+  assert.ok(MESSAGE_DU_NON_MEMBRE.trim());
+  assert.equal(choixDuMenu(nonMembre, lieu()).type, 'connexion');
 });
 
 test('le menu : le compte (avatar, nom, lien vers le profil), sinon le bouton de connexion avec la page courante, sinon rien (pas de bouton mort)', () => {
@@ -286,6 +297,27 @@ test('/connexion/ : connecté (niveau trop bas), on peut se déconnecter ; conne
   assert.equal(sans.document.querySelector('[data-connexion-indisponible]').hidden, false);
   const echec = await ouvrir({ moi: new Error('réseau'), chemin: '/connexion/', contenu });
   assert.equal(echec.document.querySelector('[data-lien-connexion]').hidden, false, 'service muet : le bouton reste (le lien suffit)');
+});
+
+test('/profil/ et /connexion/ non-membre : le message (celui de lib/compte.mjs), « Se déconnecter » qui poste puis retourne à l’accueil ; une seule demande', async () => {
+  for (const [fichier, chemin, bloc] of [['../src/pages/profil.astro', '/profil/', 'profil'], ['../src/pages/connexion.astro', '/connexion/', 'connexion']]) {
+    const p = await ouvrir({ moi: [200, nonMembre], chemin, contenu: balisesDeLaPage(fichier) });
+    const zone = p.document.querySelector(`[data-${bloc}-non-membre]`);
+    assert.equal(zone.hidden, false, bloc);
+    assert.equal(zone.querySelector('[data-message-non-membre]').textContent, MESSAGE_DU_NON_MEMBRE);
+    if (bloc === 'profil') {
+      assert.equal(p.document.querySelector('[data-profil-connecte]').hidden, true);
+      assert.equal(p.document.querySelector('[data-profil-invite]').hidden, true, 'pas d’invitation : il est déjà connecté');
+    } else assert.equal(p.document.querySelector('[data-connexion-connecte]').hidden, true);
+    assert.equal(p.appels.filter((a) => a.adresse === '/api/moi/').length, 1);
+    cliquer(zone.querySelector('[data-deconnexion]'));
+    await attendre();
+    await attendre();
+    assert.equal(p.appels.find((a) => a.adresse === '/api/deconnexion/').methode, 'POST', bloc);
+    assert.deepEqual(p.allers, ['/'], bloc);
+  }
+  const autre = await ouvrir({ moi: [200, deconnecte], chemin: '/profil/', contenu: balisesDeLaPage('../src/pages/profil.astro') });
+  assert.equal(autre.document.querySelector('[data-profil-non-membre]').hidden, true, 'caché pour qui n’est pas connecté');
 });
 
 // --- Câblage ---------------------------------------------------------------------------------------------------------------------------------

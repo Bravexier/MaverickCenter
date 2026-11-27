@@ -27,3 +27,35 @@ export function lireLeProfil(db, id) {
   const l = db.prepare('SELECT nom_affichage, avatar_url, banniere_url, niveau, serveur_rejoint_le FROM utilisateur WHERE id = ?').get(String(id));
   return l ? { nom: l.nom_affichage, avatar_url: l.avatar_url, banniere_url: l.banniere_url, niveau: l.niveau, serveur_rejoint_le: l.serveur_rejoint_le } : null;
 }
+
+/**
+ * Efface le compte du titulaire Discord `discordId` s'il existe (R312 : le compte d'un non-membre du serveur ne se garde pas). Les comptes en `ON DELETE CASCADE`
+ * (`utilisateur_role`, `personnage_partage`, `groupe_membre`) partent avec lui ; une référence SANS cascade (`personnage.proprietaire_id`, `modification_lot.auteur_id`)
+ * l'en empêche : rien n'est effacé, et la réponse dit lesquelles (état provisoire, R313 : jusqu'à E8, où les fiches resteront, détachées, sans propriétaire). Jamais de requête hors de la base vivante ouverte avec
+ * `foreign_keys = ON` (refusé sinon : l'effacement laisserait des références rompues).
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {string} discordId
+ * @returns {{ id: string|null, efface: boolean, bloque: string[] }} `id` : l'identifiant du site du compte trouvé (null : aucun compte) ; `bloque` : « table.colonne (n) » des références qui l'empêchent
+ */
+export function effacerLeCompte(db, discordId) {
+  if (db.prepare('PRAGMA foreign_keys').get().foreign_keys !== 1) throw new Error('clés étrangères inactives : effacement refusé');
+  const compte = db.prepare('SELECT id FROM utilisateur WHERE discord_id = ?').get(String(discordId));
+  if (!compte) return { id: null, efface: false, bloque: [] };
+  const bloque = referencesBloquantes(db, compte.id);
+  if (bloque.length) return { id: compte.id, efface: false, bloque };
+  db.prepare('DELETE FROM utilisateur WHERE id = ?').run(compte.id);
+  return { id: compte.id, efface: true, bloque: [] };
+}
+
+/** Les références vers `utilisateur(id)` sans `ON DELETE CASCADE` ni `SET NULL` qui portent encore ce compte : « table.colonne (n) ». Lues dans la structure de la base, jamais une liste figée. */
+function referencesBloquantes(db, id) {
+  const bloque = [];
+  for (const { name: table } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\'").all()) {
+    for (const f of db.prepare(`PRAGMA foreign_key_list("${table.replaceAll('"', '""')}")`).all()) {
+      if (f.table !== 'utilisateur' || ['CASCADE', 'SET NULL', 'SET DEFAULT'].includes(f.on_delete)) continue;
+      const n = db.prepare(`SELECT count(*) AS n FROM "${table.replaceAll('"', '""')}" WHERE "${String(f.from).replaceAll('"', '""')}" = ?`).get(id).n;
+      if (n > 0) bloque.push(`${table}.${f.from} (${n})`);
+    }
+  }
+  return bloque;
+}
