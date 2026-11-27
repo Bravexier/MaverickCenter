@@ -178,7 +178,7 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
     ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /la \*\*sienne, que l'installateur ne remplace jamais\*\*/, /R274/, /ne part jamais en production/]],
     ['docs/feuille-de-route.md, réponses', reponses, [/\*\*Serveur de dev\*\* : il reste/, /« Le serveur dev restera\./, /ne part pas en production/]],
     ['docs/feuille-de-route.md, questions', questions, [/\*\*Copie de la production vers le dev après la mise en production\*\*/, /MAVERICK_BASE_TEST=conservee/]],
-    ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /le serveur de dev reste ouvert à ceux qui y auront accès/]],
+    ['docs/serveur.md', serveur, [/jamais pour un appelant sans session/, /le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises/, /le serveur de dev reste ouvert à ceux qui y auront accès/]],
   ]) for (const motif of motifs) assert.match(texte, motif, ou);
 });
 

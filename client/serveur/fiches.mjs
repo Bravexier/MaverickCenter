@@ -1,5 +1,5 @@
 // Fiches de personnages dans la base vivante, au format de src/lib/fiche-format.mjs (docs/serveur.md, « Une fiche en JSON »).
-// Deux natures (décision R317, étape E8) : le PRÉTIRÉ, qui n'est à personne et que tout visiteur voit et écrit comme avant (R307 ; la porte du site de dev
+// Deux natures (décision R318, étape E8) : le PRÉTIRÉ, qui n'est à personne et que tout visiteur voit et écrit comme avant (R307 ; la porte du site de dev
 // reste celle des écritures), et la fiche d'un JOUEUR, rangée à un compte (`proprietaire_id`) et vue de qui `v_personnage_visible` l'ouvre (d'après
 // `utilisateur.niveau` et la visibilité « Visible par » : tous, mj, privée). L'appelant est la session de la requête (`appelantDe`) ; sans session
 // (SANS_SESSION : clé de lecture, visiteur de la production), il ne voit et n'écrit que les prétirés, exactement comme avant. Une fiche de joueur qu'il
@@ -112,7 +112,7 @@ function versionDe(fiche) {
   return empreinteCourte(JSON.stringify(contenu));
 }
 
-/** Les visibilités d'une fiche de joueur (menu « Visible par », R317) : tous (Joueurs et +), mj (MJ et Créateur), privée (le propriétaire et les Créateurs). */
+/** Les visibilités d'une fiche de joueur (menu « Visible par », R318) : tous (Joueurs et +), mj (MJ et Créateur), privée (le propriétaire et les Créateurs). */
 export const VISIBILITES = Object.freeze(['tous', 'mj', 'privee']);
 
 /** Qui appelle : le compte de la session (identifiant de `utilisateur`, ou null) et le niveau de sa session (le cookie : celui que la porte applique). */
@@ -126,7 +126,7 @@ export function appelantDe(session) {
 /**
  * Ce que `appelant` peut faire de la fiche `id`, ou null (fiche absente, ou fiche de joueur qu'il ne voit pas : pour lui, elle n'existe pas) :
  * `{ nature, proprietaire_id, visibilite, a_moi, peut_ecrire }`. Un prétiré se voit de tous et s'écrit comme avant (la porte du site de dev décide) ; une
- * fiche de joueur se voit si `v_personnage_visible` l'ouvre à son compte (R317), et s'écrit de son propriétaire ou d'une session de niveau Créateur.
+ * fiche de joueur se voit si `v_personnage_visible` l'ouvre à son compte (R318), et s'écrit de son propriétaire ou d'une session de niveau Créateur.
  */
 export function droitsSurLaFiche(db, id, appelant = SANS_SESSION) {
   const f = db.prepare('SELECT nature, proprietaire_id, visibilite FROM personnage WHERE id = ?').get(id);
@@ -173,7 +173,7 @@ function ficheAEcrire(db, id, appelant) {
 /**
  * Supprime la fiche `id` (demande du propriétaire) et toutes ses lignes : les tables de la fiche sont en ON DELETE CASCADE, une inscription dans un
  * groupe passe à NULL (groupe_membre). Exige la `version` lue, comme une modification : si la fiche a changé depuis, rien n'est supprimé (409). Un
- * prétiré s'efface de tous ; la fiche d'un joueur, de son propriétaire ou d'un Créateur (R317).
+ * prétiré s'efface de tous ; la fiche d'un joueur, de son propriétaire ou d'un Créateur (R318).
  * Erreurs : ErreurFiche (403, 404, 409).
  */
 export function supprimerFiche(db, id, version, appelant = SANS_SESSION) {
@@ -193,7 +193,7 @@ export function supprimerFiche(db, id, version, appelant = SANS_SESSION) {
 }
 
 /**
- * Range la fiche `id` au compte `utilisateurId` (décision R317 : « Assigne-les à mon profil ») : elle devient une fiche de joueur (nature `joueur`) de ce
+ * Range la fiche `id` au compte `utilisateurId` (décision R318 : « Assigne-les à mon profil ») : elle devient une fiche de joueur (nature `joueur`) de ce
  * compte, qu'elle fût un prétiré ou la fiche d'un autre ; sa visibilité ne change pas. La session de niveau Créateur est exigée par la route, pas ici.
  * Erreurs : ErreurFiche (400 compte inconnu, 404 fiche inconnue).
  * @returns {{ id: string, nature: string, proprietaire: { id: string, nom_affichage: string }, visibilite: string }}
@@ -215,7 +215,7 @@ export function transfererFiche(db, id, utilisateurId) {
 }
 
 /**
- * Règle le menu « Visible par » de la fiche de joueur `id` (décision R317 : Tous, MJ, Privé). Pour le propriétaire de la fiche ou une session de niveau
+ * Règle le menu « Visible par » de la fiche de joueur `id` (décision R318 : Tous, MJ, Privé). Pour le propriétaire de la fiche ou une session de niveau
  * Créateur. « MJ » n'est accepté que d'une session de niveau MJ ou Créateur (« option accessible que pour les MJ ») : un Joueur qui la demande est refusé.
  * Un prétiré n'a pas de menu (toujours visible de tous : CHECK de la base).
  * Erreurs : ErreurFiche (400 valeur ou prétiré, 403, 404).
@@ -288,7 +288,7 @@ function portraitDansLaListe(db, ligne) {
 
 /**
  * Résumé de chaque fiche que `appelant` voit, pour la recherche : tous les prétirés, plus les fiches de joueur que `v_personnage_visible` ouvre à son
- * compte (R317 ; sans compte, les prétirés seuls). Identité, `nature`, `proprietaire` (`{ id, nom_affichage }` ou null), `visibilite`, `a_moi` (la fiche est
+ * compte (R318 ; sans compte, les prétirés seuls). Identité, `nature`, `proprietaire` (`{ id, nom_affichage }` ou null), `visibilite`, `a_moi` (la fiche est
  * à l'appelant), portrait (portraitDansLaListe : l'image elle-même se lit par portraitDeFiche), race, magies, classes, niveau, nombre de règles enfreintes.
  */
 export function listerFiches(db, appelant = SANS_SESSION) {
@@ -449,7 +449,7 @@ function verifierForme(db, entree, problemes) {
 
 /**
  * Crée (sans `id`) un prétiré, ou modifie (avec `id`) la fiche `id` — un prétiré, ou la fiche d'un joueur que `appelant` écrit (son propriétaire ou un
- * Créateur, R317 ; sans lui, un prétiré seulement) — à partir du JSON `entree`. La nature, le propriétaire et la visibilité ne changent jamais ici : ils ont
+ * Créateur, R318 ; sans lui, un prétiré seulement) — à partir du JSON `entree`. La nature, le propriétaire et la visibilité ne changent jamais ici : ils ont
  * leurs routes (transfererFiche, reglerLaVisibilite). Une colonne absente du JSON garde sa valeur (création : celle
  * d'une fiche vide) ; une liste présente remplace toute la liste, une liste absente ne change pas. Modifier exige la `version` lue : si la fiche a
  * changé depuis, rien n'est écrit (409). Rend { personnage, controles, niveau }. Erreurs : ErreurFiche (400 forme ou contrainte, 403, 404, 409).

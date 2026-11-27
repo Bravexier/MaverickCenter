@@ -46,7 +46,7 @@ export function lireLeProfil(db, id) {
 }
 
 /**
- * Les comptes du site pour le menu de transfert d'une fiche (R317) : `{ id, nom_affichage, niveau }`, dans l'ordre alphabétique des noms. Jamais l'identifiant
+ * Les comptes du site pour le menu de transfert d'une fiche (R318) : `{ id, nom_affichage, niveau }`, dans l'ordre alphabétique des noms. Jamais l'identifiant
  * Discord, ni les images ni les dates : la route (GET /api/utilisateurs/) n'est ouverte qu'à une session de niveau Créateur.
  */
 export function listerLesComptes(db) {

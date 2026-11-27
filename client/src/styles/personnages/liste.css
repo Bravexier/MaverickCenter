@@ -126,3 +126,15 @@
   .perso .col--classes { grid-column: 2; grid-row: 4; font-size: var(--fs-md); }
   .perso .col--niveau { grid-column: 3; grid-row: 1 / span 4; }
 }
+
+/* R318 : les sections (Mes personnages, Prétirés, Fiches des joueurs) et, sous la ligne d'une fiche, ses réglages (propriétaire, « Visible par »,
+   « Ranger au compte ») : hors du lien, qui est la ligne entière (un menu ne se met pas dans un lien). */
+.personnages-section { display: grid; gap: 0.45rem; scroll-margin-top: 1rem; }
+.personnages-section[hidden] { display: none; }
+.personnages-section h2 { margin: 0.8rem 0 0; font-size: 1.2rem; }
+.personnages-avis { margin: 0; padding: 0.5rem 0.8rem; border-radius: var(--radius); border: 1px solid color-mix(in srgb, var(--vert) 40%, var(--border)); background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
+.personnages-section .personnages-vide { padding: 0.4rem 0.2rem; }
+.perso-reglages { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 1.2rem; padding: 0.25rem calc(var(--marge) + var(--bord)) 0; font-size: var(--fs-md); color: var(--muted); }
+.perso-reglages__proprietaire { font-weight: 600; }
+.perso-reglages__champ { display: flex; align-items: center; gap: 0.4rem; }
+.perso-reglages select { max-width: 16rem; color: var(--text); }

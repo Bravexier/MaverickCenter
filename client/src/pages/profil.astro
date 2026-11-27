@@ -4,7 +4,8 @@ import { url } from '../lib/wiki';
 
 // Le profil (R310 (7) : « Page profil : avatar, bannière, nom, niveau, date d'arrivée sur le serveur, "Se déconnecter". »). Le lien du menu (à droite de
 // l'en-tête, components/Compte.astro) y mène. La page est vide à la construction : src/scripts/compte.mjs (le même que celui du menu : un seul
-// `GET /api/moi/` par page) y met ce que le service dit de la session, ou l'invitation à se connecter. Les images viennent de cdn.discordapp.com (R310 (5)).
+// `GET /api/moi/` par page) y met ce que le service dit de la session, ou l'invitation à se connecter. Une personne connectée y trouve le lien vers ses
+// fiches (R318, E8 : la section « Mes personnages » de /personnages/). Les images viennent de cdn.discordapp.com (R310 (5)).
 // Hors de tout menu ; absente de la version portable (pas de service : tools/build-artifact.mjs).
 ---
 
@@ -22,6 +23,7 @@ import { url } from '../lib/wiki';
         <div><dt>Niveau</dt><dd data-profil-niveau></dd></div>
         <div data-profil-ligne-arrivee><dt>Sur le serveur depuis</dt><dd data-profil-arrivee></dd></div>
       </dl>
+      <p><a data-profil-personnages href={url('personnages/#mes-personnages')}>Mes personnages</a></p>
       <p><button type="button" data-deconnexion>Se déconnecter</button></p>
     </div>
     <div data-profil-invite hidden>

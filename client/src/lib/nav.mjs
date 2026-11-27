@@ -92,6 +92,8 @@ export const NAV = [
     items: [
       { label: 'Fiche de personnage', path: 'fiche/' },
       { label: 'Personnages', path: 'personnages/' },
+      // R318 (étape E8) : la section « Mes personnages » de /personnages/ (les fiches rangées au compte de la session)
+      { label: 'Mes personnages', path: 'personnages/#mes-personnages' },
       { label: 'Groupes d’aventures' },
       { label: 'Table de jeu' },
       { label: 'Chroniques' },

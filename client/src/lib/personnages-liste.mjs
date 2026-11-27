@@ -128,3 +128,99 @@ export function adresseDesFiltres(filtres) {
   const texte = params.toString();
   return texte ? `?${texte}` : '';
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Fiches de joueur rangées à un compte (R318, étape E8 de docs/feuille-de-route.md ; service : client/serveur/fiches.mjs, docs/serveur.md « Fiches de joueur »).
+// « Les fiches de personnages actuellement sur le site ne sont pas des prétirés, mais sont les miens. Assigne les à mon profil pour qu'ils soient correctement
+// rangés. » ; menu « Visible par : Tous (Joueurs et +) / MJ (MJ et Créateur) (option accessible que pour les MJ) / Privé (Utilisateur et Créateur) ».
+// Le module reste pur (le DOM est dans scripts/personnages.mjs) et n'importe pas lib/compte.mjs, que seul scripts/compte.mjs importe (skill site-version-portable).
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les niveaux de la session (R310 (2)), du plus bas au plus haut, et leur libellé (recopié de lib/compte.mjs : `test/personnages-fiches-de-joueur.test.mjs` vérifie l'accord). */
+export const LIBELLES_DE_NIVEAU = Object.freeze({ observateur: 'Observateur', joueur: 'Joueur', mj: 'MJ', createur: 'Créateur' });
+
+/** Les trois visibilités d'une fiche de joueur (R318 (2)), dans l'ordre du menu, avec les libellés du propriétaire. */
+export const VISIBILITES = Object.freeze([
+  Object.freeze({ valeur: 'tous', libelle: 'Tous (Joueurs et +)' }),
+  Object.freeze({ valeur: 'mj', libelle: 'MJ (MJ et Créateur)' }),
+  Object.freeze({ valeur: 'privee', libelle: 'Privé (Utilisateur et Créateur)' }),
+]);
+
+/**
+ * Le niveau de la session d'après la réponse de `GET /api/moi/` : 'observateur', 'joueur', 'mj' ou 'createur' ; null sans session lisible
+ * (déconnecté, non-membre, service qui ne répond pas : la page ne montre alors aucun réglage).
+ */
+export function niveauDeLaSession(moi) {
+  if (!moi || typeof moi !== 'object' || moi.connecte !== true) return null;
+  const niveau = moi.utilisateur?.niveau;
+  return typeof niveau === 'string' && Object.hasOwn(LIBELLES_DE_NIVEAU, niveau) ? niveau : null;
+}
+
+/**
+ * La session peut-elle régler cette fiche (visibilité) ? Une fiche de joueur seulement (R318 : le service refuse un prétiré), à elle (`a_moi`) ou en
+ * Créateur. Le service reste juge : `GET /api/personnages/` ne dit pas `peut_ecrire`, que seule la fiche porte.
+ */
+export function peutRegler(p, niveau) {
+  return p?.nature === 'joueur' && (p.a_moi === true || niveau === 'createur');
+}
+
+/** Peut-on ranger une fiche au compte de quelqu'un ? Une session de niveau Créateur seulement (R318 (4) ; `GET /api/utilisateurs/` et la route propriétaire). */
+export const peutRanger = (niveau) => niveau === 'createur';
+
+/**
+ * Les options du menu « Visible par » d'une fiche de joueur pour cette session (R318 (2)) : les trois, dans l'ordre, avec `choisissable`. « MJ » n'est
+ * choisissable que d'une session de niveau MJ ou Créateur (le service refuse sinon, 403) ; une fiche déjà en « mj » l'affiche quand même (non choisissable
+ * pour qui ne le peut pas), pour que le menu dise la vérité. Sans « MJ » à montrer, l'option n'est pas proposée. `selectionnee` : la visibilité en place.
+ * @returns {{ valeur: string, libelle: string, choisissable: boolean, selectionnee: boolean }[]}
+ */
+export function optionsDeVisibilite(p, niveau) {
+  const peutMJ = niveau === 'mj' || niveau === 'createur';
+  return VISIBILITES
+    .filter((v) => v.valeur !== 'mj' || peutMJ || p?.visibilite === 'mj')
+    .map((v) => ({ ...v, choisissable: v.valeur !== 'mj' || peutMJ, selectionnee: v.valeur === p?.visibilite }));
+}
+
+/**
+ * Les comptes où l'on peut ranger une fiche (R318 : `GET /api/utilisateurs/` → `{ id, nom_affichage, niveau }`) : sans son propriétaire actuel, triés par nom
+ * d'affichage (sans tenir compte de la casse), puis par identifiant ; `libelle` ajoute le niveau, pour distinguer deux comptes de même nom.
+ * @returns {{ id: string, nom: string, libelle: string }[]}
+ */
+export function comptesRangeables(utilisateurs, p) {
+  return (Array.isArray(utilisateurs) ? utilisateurs : [])
+    .filter((u) => u && typeof u.id === 'string' && u.id !== p?.proprietaire?.id)
+    .map((u) => ({ id: u.id, nom: String(u.nom_affichage ?? u.id), libelle: `${u.nom_affichage ?? u.id} · ${LIBELLES_DE_NIVEAU[u.niveau] ?? u.niveau ?? ''}`.replace(/ · $/, '') }))
+    .sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+}
+
+/**
+ * Les sections de la page (R318 ; feuille de route : « /personnages/ ne liste que les fiches visibles ») : « Mes personnages » (les fiches `a_moi`), les
+ * prétirés, puis les autres fiches de joueur visibles (avec le nom de leur propriétaire). L'ordre de la liste reçue (le tri choisi) est gardé dans chaque section.
+ */
+export function sectionsDeLaListe(personnages) {
+  const sections = { mes: [], pretires: [], autres: [] };
+  for (const p of personnages) {
+    if (p.a_moi === true) sections.mes.push(p);
+    else if (p.nature === 'joueur') sections.autres.push(p);
+    else sections.pretires.push(p);
+  }
+  return sections;
+}
+
+/**
+ * Le message d'un réglage qui n'a pas abouti. `statut` : le code HTTP (null si le service n'a pas répondu), `corps` : la réponse JSON (`erreur`, `acces`),
+ * `action` : 'visibilite' ou 'proprietaire'. Dit toujours que rien n'a été changé.
+ */
+export function messageDEchec(action, statut, corps = null) {
+  const debut = action === 'proprietaire' ? 'La fiche n’a pas été rangée' : 'La visibilité n’a pas été changée';
+  const service = typeof corps?.erreur === 'string' && corps.erreur ? ` (${corps.erreur})` : '';
+  if (statut === null || statut === undefined) return `${debut} : le service ne répond pas.`;
+  if (statut === 401) return `${debut} : votre session a expiré, reconnectez-vous.`;
+  if (statut === 403) {
+    return corps?.acces === 'niveau'
+      ? `${debut} : sur ce site, seul le niveau Créateur peut écrire.`
+      : `${debut} : votre compte n’a pas le droit de faire ce changement${service}.`;
+  }
+  if (statut === 404) return `${debut} : la fiche n’existe plus ou n’est plus visible pour vous. La liste est rechargée.`;
+  if (statut === 400) return `${debut} : demande refusée${service}.`;
+  return `${debut} : le service a répondu ${statut}${service}.`;
+}

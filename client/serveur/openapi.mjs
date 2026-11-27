@@ -429,7 +429,7 @@ function cheminsDuService() {
     '/maintenance/lever/': ecritureDuService('lever_la_maintenance', 'Lever la maintenance', `Lève la maintenance des deux serveurs pour ce lot.${SITE_DE_DEV}`, { lot: '<identifiant du lot>' }),
     '/personnages/': {
       get: {
-        operationId: 'lister_personnages', tags: [SERVICE], summary: 'Lister les fiches', description: 'Le résumé de chaque prétiré et des fiches de joueur que la session voit (R317 ; sans session, les prétirés seuls) : nature, proprietaire, visibilite, a_moi (du portrait : son empreinte et son cadrage).',
+        operationId: 'lister_personnages', tags: [SERVICE], summary: 'Lister les fiches', description: 'Le résumé de chaque prétiré et des fiches de joueur que la session voit (R318 ; sans session, les prétirés seuls) : nature, proprietaire, visibilite, a_moi (du portrait : son empreinte et son cadrage).',
         responses: { 200: reponse('Les prétirés.', objet), 503: ref('responses', 'Indisponible') },
       },
       post: {
@@ -465,7 +465,7 @@ function cheminsDuService() {
     '/personnages/{id}/proprietaire/': {
       parameters: [idFiche],
       put: {
-        operationId: 'ranger_personnage', tags: [SERVICE], summary: 'Ranger une fiche à un compte', description: 'Décision R317 : la fiche devient celle du compte `utilisateur_id` (nature « joueur »), sa visibilité ne change pas. Une session de niveau Créateur seulement (403 sinon) ; 400 si le compte n’existe pas.',
+        operationId: 'ranger_personnage', tags: [SERVICE], summary: 'Ranger une fiche à un compte', description: 'Décision R318 : la fiche devient celle du compte `utilisateur_id` (nature « joueur »), sa visibilité ne change pas. Une session de niveau Créateur seulement (403 sinon) ; 400 si le compte n’existe pas.',
         requestBody: { required: true, ...json(objet, { example: { utilisateur_id: '<identifiant d’un compte>' } }) },
         responses: { 200: reponse('Rangée : { id, nature, proprietaire: { id, nom_affichage }, visibilite }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 415: ref('responses', 'TypeDeCorps') },
       },
@@ -473,12 +473,12 @@ function cheminsDuService() {
     '/personnages/{id}/visibilite/': {
       parameters: [idFiche],
       put: {
-        operationId: 'regler_la_visibilite_du_personnage', tags: [SERVICE], summary: 'Régler « Visible par » d’une fiche de joueur', description: 'Décision R317 : `visibilite` vaut « tous », « mj » ou « privee ». Son propriétaire ou une session de niveau Créateur ; « mj » seulement d’une session de niveau MJ ou Créateur ; 400 pour un prétiré.',
+        operationId: 'regler_la_visibilite_du_personnage', tags: [SERVICE], summary: 'Régler « Visible par » d’une fiche de joueur', description: 'Décision R318 : `visibilite` vaut « tous », « mj » ou « privee ». Son propriétaire ou une session de niveau Créateur ; « mj » seulement d’une session de niveau MJ ou Créateur ; 400 pour un prétiré.',
         requestBody: { required: true, ...json(objet, { example: { visibilite: 'tous' } }) },
         responses: { 200: reponse('Réglée : { id, visibilite }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 415: ref('responses', 'TypeDeCorps') },
       },
     },
-    '/utilisateurs/': lectureDuService('lister_les_comptes', 'Lister les comptes', 'Décision R317 : { utilisateurs: [{ id, nom_affichage, niveau }] }, pour le menu de transfert d’une fiche. Une session de niveau Créateur seulement (403 sinon, une clé comprise).'),
+    '/utilisateurs/': lectureDuService('lister_les_comptes', 'Lister les comptes', 'Décision R318 : { utilisateurs: [{ id, nom_affichage, niveau }] }, pour le menu de transfert d’une fiche. Une session de niveau Créateur seulement (403 sinon, une clé comprise).'),
     '/edition/en-attente/': lectureDuService('edition_en_attente', 'Lignes modifiées depuis la construction', `Ce que les pages statiques doivent montrer à la place de leur contenu construit, sans le vocabulaire des mots-clés (lu en direct) ni les pages, sorts et types de sort dont seul mot_cle_id a changé (R309).${SITE_DE_DEV}`),
     '/edition/lignes/': ecritureDuService('edition_lignes', 'Lire des lignes (mode modification)', `{ lignes: [{ table, cle }] } → la ligne actuelle de chacune (images résumées).${SITE_DE_DEV}`, { lignes: [{ table: 'metier', cle: { id: '<identifiant>' } }] }),
     '/edition/listes/': lectureDuService('edition_listes', 'Listes des formulaires', `Compétences, catégories de classe, races hybrides, espèces de monstres…${SITE_DE_DEV}`),

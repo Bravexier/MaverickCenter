@@ -5,7 +5,7 @@
 //   GET  /api/etat/                 état du service et de la base vivante
 //   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
 //   POST /api/maintenance/lever/    { lot } → lève la maintenance des deux serveurs (site de dev seulement : il tient le lancement)
-//   GET  /api/personnages/          résumé de chaque prétiré et des fiches de joueur que la session voit (R317 ; nature, proprietaire, visibilite, a_moi ; du portrait,
+//   GET  /api/personnages/          résumé de chaque prétiré et des fiches de joueur que la session voit (R318 ; nature, proprietaire, visibilite, a_moi ; du portrait,
 //                                   son empreinte et son cadrage seulement) : sans session (clé de lecture comprise), les prétirés seuls
 //   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire }
 //   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire } ; 404 pour une fiche de joueur que la session ne voit pas
@@ -13,9 +13,9 @@
 //                                   fiche de joueur : son propriétaire ou une session Créateur, sinon 403 (404 si elle n'est pas vue) ; ni nature, ni propriétaire, ni visibilité
 //   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps ; mêmes droits qu'un PUT
 //   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag) ; 404 si la fiche n'est pas vue
-//   PUT  /api/personnages/<id>/proprietaire/   { utilisateur_id } → { id, nature: 'joueur', proprietaire: { id, nom_affichage }, visibilite } : range la fiche au compte (R317) ;
+//   PUT  /api/personnages/<id>/proprietaire/   { utilisateur_id } → { id, nature: 'joueur', proprietaire: { id, nom_affichage }, visibilite } : range la fiche au compte (R318) ;
 //                                   session Créateur seulement (403 sinon) ; 400 si le compte n'existe pas, 404 si la fiche n'existe pas ; la visibilité ne change pas
-//   PUT  /api/personnages/<id>/visibilite/   { visibilite: 'tous' | 'mj' | 'privee' } → { id, visibilite } : le menu « Visible par » d'une fiche de joueur (R317) ; son propriétaire ou
+//   PUT  /api/personnages/<id>/visibilite/   { visibilite: 'tous' | 'mj' | 'privee' } → { id, visibilite } : le menu « Visible par » d'une fiche de joueur (R318) ; son propriétaire ou
 //                                   une session Créateur (403 sinon, 404 si elle n'est pas vue) ; 'mj' seulement d'une session de niveau MJ ou Créateur ; 400 pour un prétiré
 //   GET  /api/utilisateurs/         { utilisateurs: [{ id, nom_affichage, niveau }] } : les comptes, pour le menu de transfert ; session Créateur seulement (403 sinon, clé comprise)
 //   POST /api/classeur/             { url } → les octets .xlsx d'une feuille Google Sheets partagée par lien (« Importer (en ligne) » de /fiche/ ;
@@ -328,7 +328,7 @@ export function traiter(requete, service) {
   const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
 
-  // R317 : qui appelle (la session du cookie ; sans session, y compris avec la clé de lecture, les prétirés seulement)
+  // R318 : qui appelle (la session du cookie ; sans session, y compris avec la clé de lecture, les prétirés seulement)
   const appelant = appelantDeLaRequete(service, entetes);
   // la fiche et ce que l'appelant en fait (le propriétaire, « à moi », « je peux l'écrire »), pour les pages
   const avecLesDroits = (corps, ficheId) => {
@@ -347,7 +347,7 @@ export function traiter(requete, service) {
   if (interdit) return interdit;
   return repondre(ErreurFiche, () => {
     const t0 = performance.now();
-    // le journal dit la nature (R317), jamais le nom d'un joueur ; « fiches : » le range avec les fiches (journal-du-service.mjs)
+    // le journal dit la nature (R318), jamais le nom d'un joueur ; « fiches : » le range avec les fiches (journal-du-service.mjs)
     const nom = (action, ficheId) => (droitsSurLaFiche(db, ficheId, appelant)?.nature === 'joueur' ? `fiches : ${action} de la fiche de joueur ${ficheId}` : `${action} du prétiré ${ficheId}`);
     if (methode === 'DELETE') {
       const message = nom('suppression', id);
@@ -372,7 +372,7 @@ const appelantDeLaRequete = (service, entetes) => appelantDe(service.connexion?.
 const estCreateur = (service, entetes) => (service.connexion?.session(entetes) ?? null)?.n === 'createur';
 
 /**
- * GET /api/utilisateurs/ : { utilisateurs: [{ id, nom_affichage, niveau }] }, les comptes du site pour le menu de transfert d'une fiche (R317). Une session
+ * GET /api/utilisateurs/ : { utilisateurs: [{ id, nom_affichage, niveau }] }, les comptes du site pour le menu de transfert d'une fiche (R318). Une session
  * de niveau Créateur seulement : 403 pour tout autre appelant, une clé comprise (la porte du site de dev la classe `lecture` ; le service est plus strict).
  */
 function traiterComptes(requete, service, permis) {
@@ -385,7 +385,7 @@ function traiterComptes(requete, service, permis) {
 }
 
 /**
- * PUT /api/personnages/<id>/proprietaire/ { utilisateur_id } : range la fiche au compte (R317 : « Assigne-les à mon profil »). Une session de niveau Créateur
+ * PUT /api/personnages/<id>/proprietaire/ { utilisateur_id } : range la fiche au compte (R318 : « Assigne-les à mon profil »). Une session de niveau Créateur
  * seulement, sur les deux sites (403 sinon). Rend { id, nature, proprietaire, visibilite } ; 400 si le compte n'existe pas, 404 si la fiche n'existe pas.
  */
 function traiterProprietaire(requete, service, brut, permis) {
@@ -409,7 +409,7 @@ function traiterProprietaire(requete, service, brut, permis) {
 }
 
 /**
- * PUT /api/personnages/<id>/visibilite/ { visibilite: 'tous' | 'mj' | 'privee' } : le menu « Visible par » d'une fiche de joueur (R317). Son propriétaire ou une
+ * PUT /api/personnages/<id>/visibilite/ { visibilite: 'tous' | 'mj' | 'privee' } : le menu « Visible par » d'une fiche de joueur (R318). Son propriétaire ou une
  * session de niveau Créateur ; « mj » seulement d'une session de niveau MJ ou Créateur. Rend { id, visibilite } ; 400 valeur inconnue ou prétiré, 403, 404.
  */
 function traiterVisibilite(requete, service, brut, permis) {
@@ -434,7 +434,7 @@ function traiterVisibilite(requete, service, brut, permis) {
 /**
  * GET /api/personnages/<id>/portrait/ : l'image du portrait d'une fiche, telle quelle (la liste des personnages n'en reçoit que l'empreinte). Le
  * navigateur la garde et la redemande avec son empreinte (ETag, If-None-Match) : 304 tant qu'elle n'a pas changé. 404 sans fiche, sans portrait, ou pour une
- * fiche de joueur que la session ne voit pas (R317).
+ * fiche de joueur que la session ne voit pas (R318).
  */
 function traiterPortrait(requete, service, brut, permis) {
   const refus = permis('GET');

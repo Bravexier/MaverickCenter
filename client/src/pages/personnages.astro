@@ -6,7 +6,9 @@ import { ouvrirBase } from '../lib/donnees.mjs';
 import { classesDeDeuxMagies } from '../lib/palette-css.mjs';
 import { url } from '../lib/wiki';
 
-// Recherche des personnages (demande du propriétaire) : tous les prétirés, avec des filtres, en une liste triée par la colonne choisie ; chaque ligne
+// Recherche des personnages (demande du propriétaire) : les personnages que la session voit, avec des filtres, en une liste triée par la colonne choisie,
+// rangée en trois sections (R318, étape E8 : « Mes personnages », les prétirés, les fiches des autres joueurs ; réglage « Visible par » et « Ranger au compte » :
+// src/scripts/personnages.mjs) ; chaque ligne
 // (portrait, nom, race, magies, classes avec leur spécialité, niveau, rien d'autre) est tout entière le lien vers la fiche, bordée de la couleur de la magie innée, en dégradé vers
 // l'acquise en bi-magie. Les données viennent du service des personnages (GET /api/personnages/, docs/serveur.md) ; les couleurs des magies, de la
 // base au build : les classes de la palette de chaque magie (celles des pages de magie, lib/palette-css.mjs) ; filtres et tri : lib/personnages-liste.mjs ;
@@ -15,7 +17,7 @@ import { url } from '../lib/wiki';
 const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM magie ORDER BY ordre').all().map((m) => [m.id, classesDeDeuxMagies(String(m.nom))]));
 ---
 
-<Base title="Personnages" description="Rechercher les personnages prétirés : filtres et tri par colonne">
+<Base title="Personnages" description="Rechercher les personnages : mes personnages, prétirés et fiches des joueurs visibles, avec filtres et tri par colonne">
   <style is:inline set:html={listeCss}></style>
   <div class="personnages" id="personnages" data-api={url('api/')} data-fiche={url('fiche/')} data-logo={url('logo.webp')} data-couleurs={JSON.stringify(couleurs)}>
     <h1>Personnages</h1>
@@ -43,6 +45,8 @@ const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM ma
 
     <p class="personnages-compte" id="compte" aria-live="polite">Chargement…</p>
     <p class="banner" id="indisponible" hidden></p>
+    <p class="banner" id="reglage-erreur" role="alert" hidden></p>
+    <p class="personnages-avis" id="reglage-ok" role="status" hidden></p>
     <noscript><p class="banner">Cette page a besoin de JavaScript pour interroger le service des personnages.</p></noscript>
 
     <div class="personnages-liste">
@@ -51,7 +55,19 @@ const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM ma
           ? <button type="button" class={`col col--${c.cle}`} data-cle={c.cle}>{c.titre}<span class="fleche" aria-hidden="true">↕</span></button>
           : <span class={`col col--${c.cle}`}>{c.titre}</span>))}
       </div>
-      <ol class="personnages-lignes" id="lignes" aria-label="Personnages"></ol>
+      <section class="personnages-section" id="mes-personnages" aria-labelledby="titre-mes-personnages" hidden>
+        <h2 id="titre-mes-personnages">Mes personnages</h2>
+        <ol class="personnages-lignes" id="lignes-mes" aria-labelledby="titre-mes-personnages"></ol>
+      </section>
+      <section class="personnages-section" id="pretires" aria-labelledby="titre-pretires" hidden>
+        <h2 id="titre-pretires">Prétirés</h2>
+        <ol class="personnages-lignes" id="lignes-pretires" aria-labelledby="titre-pretires"></ol>
+      </section>
+      <section class="personnages-section" id="fiches-des-joueurs" aria-labelledby="titre-fiches-des-joueurs" hidden>
+        <h2 id="titre-fiches-des-joueurs">Fiches des joueurs</h2>
+        <ol class="personnages-lignes" id="lignes-autres" aria-labelledby="titre-fiches-des-joueurs"></ol>
+      </section>
+      <p class="personnages-vide" id="vide" hidden>Aucun personnage ne correspond à ces filtres.</p>
     </div>
   </div>
 </Base>

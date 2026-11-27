@@ -27,13 +27,13 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
     // les onglets (pluriel) », puis Livres & Parchemins (l'Artisanat est dans l'onglet Exploration des Règles depuis R184) ; plus d'entrée Pièces
     // élémentaires ; « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du 2026-10-29) : Autres, en dernier
     'Équipement : Armes, Armures, Boucliers, Ceinture, Accessoires, Livres & Parchemins, Autres',
-    'Espace joueur : Fiche de personnage, Personnages, Groupes d’aventures (bientôt), Table de jeu (bientôt), Chroniques (bientôt)',
+    'Espace joueur : Fiche de personnage, Personnages, Mes personnages, Groupes d’aventures (bientôt), Table de jeu (bientôt), Chroniques (bientôt)',
     'Espace MJ : Guide du MJ, Fiches de PNJ et scénarios (bientôt), Groupes de jeu (bientôt)',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives, Debug (site de dev)',
   ]);
   assert.deepEqual(NAV.map((g) => g.key), ['regles', 'personnage', 'equipement', 'joueur', 'mj', 'codex', 'outils']);
-  assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
+  assert.deepEqual(NAV.find((g) => g.key === 'joueur').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/', 'personnages/#mes-personnages'], 'la fiche, la liste des personnages, puis sa section « Mes personnages » (R318)');
   assert.deepEqual(NAV.find((g) => g.key === 'regles').items.map((i) => i.path), [
     'decouvrir/', 'decouvrir/l-univers/', 'regles/fiche-de-personnage/', 'regles/mecaniques-generales/', 'regles/combats/', 'regles/exploration/',
     'regles/glossaire/',
@@ -43,7 +43,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
     'ressources/armes/', 'ressources/armures/', 'ressources/bouclier/', 'ressources/objets-a-la-ceinture/', 'ressources/accessoires/',
     'ressources/livre-parchemin/', 'ressources/',
   ], 'les adresses d’avant la page « Équipement » (identifiants figés), puis la liste des pages de ressources (Autres)');
-  assert.ok(!navPaths().some((p) => p.includes('#') || p.startsWith('ressources/equipement')), 'plus d’entrée vers l’ancienne page « Équipement » ni ses onglets');
+  assert.ok(!navPaths().some((p) => (p.includes('#') && p.startsWith('ressources/')) || p.startsWith('ressources/equipement')), 'plus d’entrée vers l’ancienne page « Équipement » ni ses onglets');
   assert.ok(!navPaths().includes('ressources/pieces-elementaires/'), 'plus d’entrée Pièces élémentaires (2026-10-29)');
   assert.ok(!navPaths().includes('guide/') && !navPaths().includes('ressources/composants/'), 'plus d’entrée Guide ; Composants est sous Artisanat');
   assert.ok(!navPaths().includes('regles/artisanat/'), 'plus d’entrée Artisanat (R184 : dans le menu latéral de l’onglet Exploration)');

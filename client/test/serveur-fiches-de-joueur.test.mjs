@@ -1,4 +1,4 @@
-// Les fiches de joueur dans le service (client/serveur/fiches.mjs, api.mjs, utilisateurs.mjs ; décision R317, étape E8 ; docs/serveur.md, « Fiches de joueur ») :
+// Les fiches de joueur dans le service (client/serveur/fiches.mjs, api.mjs, utilisateurs.mjs ; décision R318, étape E8 ; docs/serveur.md, « Fiches de joueur ») :
 // le service lit et écrit une fiche de joueur selon son propriétaire et sa visibilité (v_personnage_visible, d'après `utilisateur.niveau`), le Créateur la range à un
 // compte, le menu « Visible par » (tous, mj, privée) ; et le prétiré reste ouvert à tout visiteur, sans session (R307). Les sessions sont des cookies signés d'essai
 // (test/aide-acces-d-essai.mjs), les comptes de la table `utilisateur` (test/aide-compte-d-essai.mjs) : aucun appel réseau.
@@ -43,7 +43,7 @@ function monde(t, { edition = false } = {}) {
   const appel = (methode, chemin_, { de = 'rien', corps, entetes = {} } = {}) => traiter({
     methode, chemin: chemin_, entetes: { ...JSON_, ...qui[de], ...entetes }, corps: corps === undefined ? undefined : JSON.stringify(corps),
   }, service);
-  // une fiche : un prétiré enregistré par le service, puis donné à un compte avec sa visibilité (la forme que R317 permet)
+  // une fiche : un prétiré enregistré par le service, puis donné à un compte avec sa visibilité (la forme que R318 permet)
   const fiche = (nom, proprietaire = null, visibilite = 'tous') => {
     const id = enregistrerFiche(db, { nom }).personnage.id;
     if (proprietaire) db.prepare("UPDATE personnage SET nature = 'joueur', proprietaire_id = ?, visibilite = ? WHERE id = ?").run(proprietaire, visibilite, id);
@@ -62,7 +62,7 @@ function monde(t, { edition = false } = {}) {
 }
 const tri = (...ids) => ids.sort();
 
-test('R317 : la liste montre les prétirés, plus ce que v_personnage_visible ouvre au niveau du compte de la session (tous : Joueur et +, mj : MJ et Créateur, privée : le propriétaire et le Créateur) ; sans session, les prétirés seuls', (t) => {
+test('R318 : la liste montre les prétirés, plus ce que v_personnage_visible ouvre au niveau du compte de la session (tous : Joueur et +, mj : MJ et Créateur, privée : le propriétaire et le Créateur) ; sans session, les prétirés seuls', (t) => {
   const m = monde(t);
   const { pretire, at, ap, am, bt, bp } = m.f;
   assert.deepEqual(m.liste('rien'), tri(pretire), 'sans session : le prétiré seulement (R307)');
@@ -104,7 +104,7 @@ test('R307 : sans session le prétiré se lit et s’écrit comme avant (product
   assert.equal(dev.appel('GET', `${ADRESSE}${dev.f.pretire}/`, { de: 'cle' }).statut, 200);
 });
 
-test('R317 : une fiche de joueur non vue répond 404 comme une fiche inconnue (fiche et portrait), sans dire qu’elle existe ; vue, elle porte son propriétaire, « à moi » et « je peux l’écrire »', (t) => {
+test('R318 : une fiche de joueur non vue répond 404 comme une fiche inconnue (fiche et portrait), sans dire qu’elle existe ; vue, elle porte son propriétaire, « à moi » et « je peux l’écrire »', (t) => {
   const m = monde(t);
   const { ap, at } = m.f;
   m.db.prepare('UPDATE personnage SET portrait = ? WHERE id = ?').run(IMAGES.webp, ap);
@@ -130,7 +130,7 @@ test('R317 : une fiche de joueur non vue répond 404 comme une fiche inconnue (f
   assert.equal(m.appel('GET', `${ADRESSE}${at}/`, { de: 'rien' }).statut, 404);
 });
 
-test('R317 : écrire une fiche de joueur (PUT, DELETE) demande son propriétaire ou un Créateur — 403 si elle se voit sans être à soi, 404 si elle n’est pas vue — ; un PUT ne change ni nature, ni propriétaire, ni visibilité', (t) => {
+test('R318 : écrire une fiche de joueur (PUT, DELETE) demande son propriétaire ou un Créateur — 403 si elle se voit sans être à soi, 404 si elle n’est pas vue — ; un PUT ne change ni nature, ni propriétaire, ni visibilité', (t) => {
   const m = monde(t);
   const { at, ap, bt } = m.f;
   const modifier = (de, id, extra = {}) => m.appel('PUT', `${ADRESSE}${id}/`, { de, corps: { version: m.version(id), nom: `Par ${de}`, ...extra } });
@@ -169,7 +169,7 @@ test('R317 : écrire une fiche de joueur (PUT, DELETE) demande son propriétaire
   assert.ok(!m.journal.some((l) => /Alice|Bob/.test(l)));
 });
 
-test('R317 : POST crée toujours un prétiré (à personne, visible de tous), même d’une session et avec une nature, un propriétaire ou une visibilité dans le corps', (t) => {
+test('R318 : POST crée toujours un prétiré (à personne, visible de tous), même d’une session et avec une nature, un propriétaire ou une visibilité dans le corps', (t) => {
   const m = monde(t);
   for (const de of ['a', 'createur']) {
     const r = m.appel('POST', ADRESSE, { de, corps: { nom: `Neuf ${de}`, nature: 'joueur', proprietaire_id: 'u-a', visibilite: 'privee' } });
@@ -179,7 +179,7 @@ test('R317 : POST crée toujours un prétiré (à personne, visible de tous), m�
   }
 });
 
-test('R317 : le Créateur range une fiche à un compte (PUT …/proprietaire/) : elle devient une fiche de joueur, sa visibilité ne change pas ; compte inconnu 400, fiche inconnue 404 ; tout autre appelant 403', (t) => {
+test('R318 : le Créateur range une fiche à un compte (PUT …/proprietaire/) : elle devient une fiche de joueur, sa visibilité ne change pas ; compte inconnu 400, fiche inconnue 404 ; tout autre appelant 403', (t) => {
   const m = monde(t);
   const { pretire, ap } = m.f;
   const ranger = (de, id, corps) => m.appel('PUT', `${ADRESSE}${id}/proprietaire/`, { de, corps });
@@ -212,7 +212,7 @@ test('R317 : le Créateur range une fiche à un compte (PUT …/proprietaire/) :
   assert.ok(!m.journal.some((l) => /Alice|Bob/.test(l)));
 });
 
-test('R317 : « Visible par » — le propriétaire ou un Créateur règle tous, mj, privée ; « MJ » n’est accessible qu’aux MJ (niveau MJ ou Créateur) ; refus d’une valeur inconnue et d’un prétiré', (t) => {
+test('R318 : « Visible par » — le propriétaire ou un Créateur règle tous, mj, privée ; « MJ » n’est accessible qu’aux MJ (niveau MJ ou Créateur) ; refus d’une valeur inconnue et d’un prétiré', (t) => {
   const m = monde(t);
   const { pretire, at, ap, am, bt } = m.f;
   const regler = (de, id, visibilite) => m.appel('PUT', `${ADRESSE}${id}/visibilite/`, { de, corps: { visibilite } });
@@ -258,7 +258,7 @@ test('R317 : « Visible par » — le propriétaire ou un Créateur règle tous,
   assert.equal(m.appel('PUT', `${ADRESSE}${pretire}/autre/`, { de: 'createur', corps: {} }).statut, 404);
 });
 
-test('R317 : GET /api/utilisateurs/ liste les comptes (id, nom_affichage, niveau) pour le menu de transfert, à une session de niveau Créateur seulement — 403 sinon, la clé de lecture comprise', (t) => {
+test('R318 : GET /api/utilisateurs/ liste les comptes (id, nom_affichage, niveau) pour le menu de transfert, à une session de niveau Créateur seulement — 403 sinon, la clé de lecture comprise', (t) => {
   const m = monde(t);
   for (const de of ['rien', 'obs', 'a', 'mj']) {
     const r = m.appel('GET', '/api/utilisateurs/', { de });
@@ -275,7 +275,7 @@ test('R317 : GET /api/utilisateurs/ liste les comptes (id, nom_affichage, niveau
   assert.equal(m.appel('GET', '/api/utilisateurs/x/', { de: 'createur' }).statut, 404);
 });
 
-test('R317 : sur le site de dev, la porte reste celle d’avant (lecture : MJ ou clé ; écriture : Créateur) et les routes nouvelles sont classées ; la clé de lecture n’est jamais une session de Créateur', (t) => {
+test('R318 : sur le site de dev, la porte reste celle d’avant (lecture : MJ ou clé ; écriture : Créateur) et les routes nouvelles sont classées ; la clé de lecture n’est jamais une session de Créateur', (t) => {
   const m = monde(t, { edition: true });
   const { pretire, at } = m.f;
   // la liste des comptes : la porte laisse passer la lecture (MJ, clé) et le service exige le Créateur
