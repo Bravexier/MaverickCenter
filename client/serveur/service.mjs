@@ -700,6 +700,18 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         enregistrer: (profil) => enregistrerLaConnexion(base(), profil),
       });
     };
+    /**
+     * R314, site de dev : une ligne par requête qui a attendu le bot (résultat ou non). Le plus souvent, c'est la relève de l'état de maintenance qui revérifie
+     * (GET /api/maintenance/, chaque page ouverte toutes les 30 s), et une relève n'a pas de ligne de requête (journal-du-service.mjs#estUneReleve) : sans
+     * celle-ci, la revérification ne laissait aucune trace. La ligne commence par la requête (catégorie « http ») sans son statut juste après l'adresse : ce
+     * n'est donc pas une relève. Jamais en production (son journal ne note que les échecs) ; ni l'identifiant du compte ni le cookie.
+     */
+    const noterLAppelAuBot = (r) => {
+      if (!edition) return;
+      const duree = `${Math.round(performance.now() - debut)} ms`;
+      journal(`${req.method} ${adresseDeJournal(req.url)} : ${r ? `niveau revérifié par le bot (${r.session.n}, ${duree})` : `revérification du niveau sans résultat, niveau de la session gardé (${duree})`}`,
+        { categorie: 'http' });
+    };
     /** La requête avec le cookie réémis : le nouveau jeton de session remplace l'ancien dans les en-têtes (la porte et /api/moi/ l'appliquent dès cette requête). */
     const entetesRevus = (revue) => {
       if (!revue) return req.headers;
@@ -755,6 +767,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         revue.then((r) => r, (e) => {
           journal(`service des personnages : revérification du niveau en erreur (${e?.message ?? e}) : la requête continue avec la session telle quelle`);
           return null;
+        }).then((r) => {
+          sansEchec(() => noterLAppelAuBot(r));
+          return r;
         }).then(repondre).catch((e) => journal(`ERREUR ${req.method} ${adresseDeJournal(req.url)} : ${e?.message ?? e}`));
         return;
       }

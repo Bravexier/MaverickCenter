@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { COOKIE_ETAT, COOKIE_SESSION, INTERVALLE_DE_REVERIFICATION_S, lireJetonDeSession, reglageApres } from '../serveur/discord.mjs';
+import { categorieDuMessage, estUneReleve, niveauDuMessage } from '../serveur/journal-du-service.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { effacerLeCompte, enregistrerLaConnexion, lireLeProfil } from '../serveur/utilisateurs.mjs';
 import { ROLE_CREATEUR, ROLE_JOUEUR, ROLE_MJ, SERVEUR_D_ESSAI, poserLAcces } from './aide-acces-d-essai.mjs';
@@ -669,6 +670,33 @@ test('R314 : sans jeton de bot, rien ne change — aucun appel, aucun cookie ré
     assert.equal(m.d.appelsDuBot().length, 0);
   } finally {
     await m.fin();
+  }
+});
+
+test('R314 : la revérification faite par la relève de l’état de maintenance (GET /api/maintenance/, chaque page toutes les 30 s), qui n’a pas de ligne de requête, laisse une ligne au journal du site de dev ; aucune en production', async () => {
+  for (const edition of [true, false]) {
+    const m = await serviceDuBot({ edition, simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+    try {
+      m.depuis(INTERVALLE_DE_REVERIFICATION_S - 1);
+      assert.equal((await m.appel('GET', '/api/maintenance/', { entetes: m.c.session })).status, 200);
+      assert.equal(m.d.appelsDuBot().length, 0, `${edition} : moins de 5 minutes, aucun appel`);
+      m.depuis(1);
+      const releve = await m.appel('GET', '/api/maintenance/', { entetes: m.c.session });
+      assert.equal(releve.status, 200);
+      assert.deepEqual([m.d.appelsDuBot().length, sessionsPosees(releve).length], [1, 1], `${edition} : la relève revérifie et réémet le cookie`);
+      // la relève elle-même reste hors du journal (journal-du-service.mjs#estUneReleve) ; l'appel au bot, lui, s'y voit sur le site de dev
+      assert.ok(!m.lignes.some((l) => /^GET \/api\/maintenance\/ \d{3}\b/.test(l)), `${edition} : aucune ligne de relève`);
+      const lignes = m.lignes.filter((l) => /niveau revérifié|revérification du niveau/.test(l));
+      if (edition) {
+        assert.match(lignes.join('\n'), /^GET \/api\/maintenance\/ : niveau revérifié par le bot \(mj, \d+ ms\)$/);
+        // une ligne de requête (« http ») qui n'est pas une relève : ni filtrée, ni rangée dans « service »
+        assert.deepEqual([estUneReleve(lignes[0]), categorieDuMessage(lignes[0]), niveauDuMessage(lignes[0])], [false, 'http', 'info']);
+      }
+      else assert.deepEqual(lignes, [], 'la production ne note que ses échecs');
+      assert.equal(lignes.length, edition ? 1 : 0);
+    } finally {
+      await m.fin();
+    }
   }
 });
 

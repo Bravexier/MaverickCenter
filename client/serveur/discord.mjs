@@ -650,8 +650,9 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
       return echecDeLaVerification(qui, 'reseau', e instanceof ErreurDeConnexion ? e.message : 'appel à Discord impossible');
     }
     // Codes d'erreur JSON de Discord : https://discord.com/developers/docs/topics/opcodes-and-status-codes#json
-    //   10007 Unknown Member (la personne a quitté le serveur : le seul constat de départ), 10004 Unknown Guild (serveur mal réglé), 10013 Unknown User,
-    //   50001 Missing Access (le bot n'est pas dans le serveur) ; 401 jeton du bot refusé ; 429 limite d'appels (`retry_after` en secondes).
+    //   10007 Unknown Member (la personne a quitté le serveur : le seul constat de départ), 10004 Unknown Guild (serveur inconnu du bot : identifiant faux, ou
+    //   bot pas encore invité, ce que Discord a répondu le 2026-11-27 sur le site de dev), 10013 Unknown User, 50001 Missing Access (bot absent du serveur) ;
+    //   401 jeton du bot refusé ; 429 limite d'appels (`retry_after` en secondes).
     const code = rep.corps && typeof rep.corps === 'object' ? rep.corps.code : null;
     if (rep.statut === 200 && rep.corps && typeof rep.corps === 'object' && !Array.isArray(rep.corps) && (rep.corps.user?.id === undefined || String(rep.corps.user.id) === String(discordId))) {
       if (dernierEchec) journal?.('connexion : revérification du niveau rétablie');
@@ -664,6 +665,7 @@ export function creerConnexion({ fichier, fetch: appelHttp = globalThis.fetch, h
     }
     if (rep.statut === 401) return echecDeLaVerification(qui, '401', 'jeton du bot refusé par Discord (401)');
     if (rep.statut === 403) return echecDeLaVerification(qui, `403:${code}`, `accès refusé (403, code ${code ?? '?'} : le bot est-il dans le serveur ?)`);
+    if (rep.statut === 404 && code === 10004) return echecDeLaVerification(qui, '404:10004', 'serveur inconnu du bot (404, code 10004 : le bot est-il invité dans le serveur, et l’identifiant du serveur est-il le bon ?)');
     if (rep.statut === 404) return echecDeLaVerification(qui, `404:${code}`, `réponse 404 sans départ constaté (code ${code ?? '?'})`);
     if (rep.statut === 429) {
       const attente = Math.ceil(Number(rep.corps?.retry_after ?? rep.retryApres));
