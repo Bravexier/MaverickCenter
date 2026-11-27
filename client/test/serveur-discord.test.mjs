@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   CODES_D_ERREUR, COOKIE_ETAT, COOKIE_SESSION, INTERVALLE_DE_REVERIFICATION_S, PAUSE_MAX_S, DUREE_SESSION_DEV_S, DUREE_SESSION_PROD_S, NIVEAUX, PORTEES_OAUTH, RETOUR_PAR_DEFAUT, SERVEUR_PAR_DEFAUT,
-  adresseDAvatar, adresseDeBanniere, adresseDeRetourValide, avatarParDefaut, commandeDiscord, creerConnexion, creerJetonDeSession, instantDeDiscord,
+  adresseDAvatar, adresseDeBanniere, adresseDeRetourValide, avatarParDefaut, commandeDiscord, cookiesDeSession, creerConnexion, creerJetonDeSession, instantDeDiscord,
   lireJetonDeSession, lireSigne, niveauDuMembre, nomAffiche, resumeDuReglage, retourValide, reglageApres, signer, validerReglage,
 } from '../serveur/discord.mjs';
 import {
@@ -924,4 +924,183 @@ test('R314 : à la connexion, la session porte `v` (le niveau vient d’être v�
   assert.equal(m.lire(jeton).v, S);
   assert.equal(m.reverifier({ cookie: `${COOKIE_SESSION}=${jeton}` }), null);
   assert.equal(m.d.appelsDuBot().length, 0);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// R315 : une connexion commune au site de dev et à la production
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+const DOMAINE_D_ESSAI = 'exemple.test';
+const SECRET_COMMUN = 'c0'.repeat(32);
+const RETIRE_DE_L_HOTE = `${COOKIE_SESSION}=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; HttpOnly; SameSite=Lax; Secure`;
+
+/** Le site de dev d'essai, la connexion commune posée (le bot, le domaine, le secret partagé) ; `prod()` : la production, même Discord, même heure, ses propres rôles. */
+function mondeCommun({ roles, rolesProd = { [ROLE_MJ]: 'joueur' }, ...options } = {}) {
+  const m = mondeDuBot({ domaineCommun: DOMAINE_D_ESSAI, secretDeSession: SECRET_COMMUN, ...(roles ? { roles } : {}), ...options });
+  const rappels = { ...m.rappels, enregistrer: m.enregistrer };
+  /** La session ouverte sur l'autre site (la production), signée avec le secret commun. */
+  const venue = (niveau, { u = 'u-prod', exp = S + DUREE_SESSION_PROD_S - 2 * 86400, v = S - 60, d = IDENTIFIANT_D_ESSAI, i = 'prod' } = {}) => ({
+    cookie: `${COOKIE_SESSION}=${creerJetonDeSession(SECRET_COMMUN, { u, n: niveau, exp, v, d, i })}`,
+  });
+  function prod() {
+    const fichier = fichierTemporaire('discord.json', 'discord-prod');
+    writeFileSync(fichier, JSON.stringify(reglageDiscordDEssai({ roles: rolesProd, jetonDuBot: JETON_DU_BOT_D_ESSAI, domaineCommun: DOMAINE_D_ESSAI, secretDeSession: SECRET_COMMUN })));
+    const ecrits = [];
+    const connexion = creerConnexion({ fichier, fetch: m.d.fetch, horloge: () => m.horloge.t, edition: false, journal: (l) => m.journal.push(l) });
+    const rappelsProd = {
+      discordIdDe: (u) => (u === 'u-prod' ? IDENTIFIANT_D_ESSAI : null), mettreAJour: () => {}, effacer: () => ({ id: null, efface: false, bloque: [] }),
+      enregistrer: (profil) => { ecrits.push(profil); return 'u-prod'; },
+    };
+    return { connexion, ecrits, reverifier: (entetes) => connexion.reverifier(entetes, rappelsProd) };
+  }
+  return { ...m, rappels, venue, prod, convertir: (entetes, r = rappels) => m.connexion.reverifier(entetes, r) };
+}
+
+test('R315 : la connexion commune dans le réglage — facultative, un domaine en minuscules, le bot exigé, l’adresse de retour dans le domaine ; posée par la commande avec le secret de session de l’autre site (sur l’entrée, jamais en argument), gardée par les autres commandes, retirée par sans-commune', async () => {
+  const sans = reglageDiscordDEssai({ jetonDuBot: JETON_DU_BOT_D_ESSAI });
+  assert.ok(!Object.hasOwn(sans, 'domaine_commun'), 'sans connexion commune, le fichier reste tel qu’avant');
+  assert.ok(!Object.hasOwn(resumeDuReglage(sans), 'domaine_commun'));
+  const avec = validerReglage({ ...sans, domaine_commun: DOMAINE_D_ESSAI });
+  assert.equal(avec.domaine_commun, DOMAINE_D_ESSAI);
+  assert.equal(resumeDuReglage(avec).domaine_commun, DOMAINE_D_ESSAI);
+  assert.ok(!JSON.stringify(resumeDuReglage(avec)).includes(avec.secret_de_session));
+  for (const mauvais of ['Exemple.test', '.exemple.test', 'exemple', 'exemple..test', 'exemple.test.', '-exemple.test', 'exemple.test/x', 42, null]) {
+    assert.throws(() => validerReglage({ ...sans, domaine_commun: mauvais }), /domaine commun invalide/, String(mauvais));
+  }
+  assert.throws(() => validerReglage({ ...reglageDiscordDEssai(), domaine_commun: DOMAINE_D_ESSAI }), /demande le bot/, 'chaque site recalcule le niveau : le bot est exigé');
+  for (const ailleurs of ['ailleurs.test', 'mple.test']) assert.throws(() => validerReglage({ ...sans, domaine_commun: ailleurs }), /n’est pas dans le domaine commun/, ailleurs);
+  // la commande : `commune <domaine>`, le secret de session de l'autre site sur l'entrée standard (première ligne)
+  const fichier = fichierTemporaire('discord.json', 'discord-commune');
+  writeFileSync(fichier, JSON.stringify(sans));
+  const autre = reglageDiscordDEssai({ jetonDuBot: JETON_DU_BOT_D_ESSAI, roles: { [ROLE_MJ]: 'createur' } });
+  assert.notEqual(autre.secret_de_session, sans.secret_de_session);
+  const pose = await commande(['commune', DOMAINE_D_ESSAI], { entree: `${autre.secret_de_session}\nignoré\n`, fichier });
+  assert.equal(pose.code, 0, pose.erreurs.join());
+  assert.deepEqual([pose.reglage.domaine_commun, pose.reglage.secret_de_session], [DOMAINE_D_ESSAI, autre.secret_de_session]);
+  assert.deepEqual([pose.reglage.roles, pose.reglage.jeton_du_bot, pose.reglage.client_id], [sans.roles, sans.jeton_du_bot, sans.client_id], 'chaque site garde ses rôles (R315 (2)), son bot, son application');
+  writeFileSync(fichier, JSON.stringify(pose.reglage));
+  for (const argv of [['role', ROLE_MJ, 'createur'], ['serveur', '123456789012345678']]) assert.equal((await commande(argv, { fichier })).reglage.domaine_commun, DOMAINE_D_ESSAI, argv.join(' '));
+  assert.match((await commande(['sans-bot'], { fichier })).erreurs.join(), /demande le bot/, 'le bot ne se retire pas sous une connexion commune');
+  const secretDeLAutre = `${autre.secret_de_session}\n`;
+  for (const [argv, entree, motif] of [
+    [['commune', DOMAINE_D_ESSAI], '', /secret de session invalide/], [['commune', DOMAINE_D_ESSAI], 'court\n', /secret de session invalide/],
+    [['commune', DOMAINE_D_ESSAI], `${'C0'.repeat(32)}\n`, /secret de session invalide/],
+    [['commune', 'ailleurs.test'], secretDeLAutre, /pas dans le domaine commun/], [['commune'], secretDeLAutre, /domaine commun invalide/],
+  ]) {
+    const r = await commande(argv, { fichier, entree });
+    assert.deepEqual([r.code, r.reglage], [1, null], `${argv.join(' ')} ${entree.slice(0, 12)}`);
+    assert.match(r.erreurs.join(), motif, argv.join(' '));
+    assert.ok(!r.erreurs.join().includes(autre.secret_de_session), 'jamais le secret dans un message');
+  }
+  const retire = await commande(['sans-commune'], { fichier });
+  assert.equal(retire.code, 0, retire.erreurs.join());
+  assert.ok(!Object.hasOwn(retire.reglage, 'domaine_commun'));
+  writeFileSync(fichier, JSON.stringify(retire.reglage));
+  assert.match((await commande(['sans-commune'], { fichier })).erreurs.join(), /aucune connexion commune/);
+});
+
+test('R315 : le cookie commun — posé sur le domaine (Domain=) avec le retrait de l’ancien cookie propre à l’hôte ; sans domaine, rien ne change ; le jeton porte `d` et `i` (un `i` inconnu ou un `d` invalide sont ignorés)', () => {
+  assert.deepEqual(cookiesDeSession('v1.a.b', { securise: true, dureeS: 60 }), [`${COOKIE_SESSION}=v1.a.b; Path=/; HttpOnly; SameSite=Lax; Max-Age=60; Secure`]);
+  assert.deepEqual(cookiesDeSession('v1.a.b', { securise: true, dureeS: 60, domaine: DOMAINE_D_ESSAI }), [
+    `${COOKIE_SESSION}=v1.a.b; Path=/; Domain=exemple.test; HttpOnly; SameSite=Lax; Max-Age=60; Secure`, RETIRE_DE_L_HOTE,
+  ]);
+  const secret = 'a'.repeat(64);
+  const complet = { u: 'u-1', n: 'mj', exp: EXP, v: S, d: IDENTIFIANT_D_ESSAI, i: 'prod' };
+  assert.deepEqual(lireJetonDeSession(secret, creerJetonDeSession(secret, complet), S), complet);
+  assert.deepEqual(lireJetonDeSession(secret, signer(secret, 'session', { ...complet, d: 'abc', i: 'test' }), S), { u: 'u-1', n: 'mj', exp: EXP, v: S });
+  assert.deepEqual(lireJetonDeSession(secret, creerJetonDeSession(secret, { ...complet, d: null, i: 'autre' }), S), { u: 'u-1', n: 'mj', exp: EXP, v: S }, 'rien d’inconnu n’est signé');
+});
+
+test('R315 : à la connexion, avec la connexion commune, le cookie vaut pour les deux sites (Domain=, `i` le site, `d` l’identifiant Discord du membre) et l’ancien cookie de l’hôte est retiré ; sans elle, rien ne change ; la déconnexion retire les deux', async () => {
+  const m = mondeCommun();
+  const { reponse } = await m.connecter({ retour: '/regles/' });
+  const pose = cookieDe(reponse, COOKIE_SESSION);
+  assert.match(pose, /^maverick_session=v1\.[^;]+; Path=\/; Domain=exemple\.test; HttpOnly; SameSite=Lax; Max-Age=43200; Secure$/);
+  assert.ok(reponse.cookies.includes(RETIRE_DE_L_HOTE), 'l’ancien cookie propre à l’hôte est retiré');
+  assert.deepEqual(m.lire(jetonDe(reponse)), { u: 'u-1', n: 'joueur', exp: EXP, v: S, d: IDENTIFIANT_D_ESSAI, i: 'dev' });
+  assert.deepEqual(m.connexion.cookiesDeDeconnexion({}), [RETIRE_DE_L_HOTE, `${COOKIE_SESSION}=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=exemple.test; HttpOnly; SameSite=Lax; Secure`]);
+  // sans connexion commune : un seul cookie, propre à l'hôte, sans `d` ni `i`
+  const seul = monde();
+  const { reponse: r2 } = await seul.connecter({ retour: '/regles/' });
+  assert.doesNotMatch(cookieDe(r2, COOKIE_SESSION), /Domain=/);
+  assert.equal(r2.cookies.filter((c) => c.startsWith(`${COOKIE_SESSION}=`)).length, 1);
+  assert.deepEqual(Object.keys(lireJetonDeSession(seul.reglage.secret_de_session, jetonDe(r2), S)).sort(), ['exp', 'n', 'u', 'v']);
+  assert.deepEqual(seul.connexion.cookiesDeDeconnexion({}), [RETIRE_DE_L_HOTE]);
+});
+
+test('R315 : la session d’un membre ouverte par l’autre site ne vaut rien ici telle quelle ; la revérification la convertit — le bot relit le membre, le compte est retrouvé ou créé, le niveau vient des rôles de CE site, l’expiration ne s’allonge jamais — et l’aller-retour ne demande jamais de se reconnecter', async () => {
+  const m = mondeCommun({ simule: { membre: { ...MEMBRE_D_ESSAI, roles: [ROLE_MJ] } } });
+  const prod = m.prod();
+  const venue = m.venue('joueur');
+  assert.equal(prod.connexion.session(venue).u, 'u-prod', 'la production lit sa session');
+  assert.equal(m.connexion.session(venue), null, 'le site de dev ne croit pas un niveau calculé par la production');
+  const revue = await m.convertir(venue);
+  assert.equal(m.d.appelsDuBot().length, 1);
+  assert.deepEqual(m.ecrits, [{
+    discord_id: IDENTIFIANT_D_ESSAI, nom_affichage: 'Nom Global', niveau: 'mj', avatar_url: avatarParDefaut(IDENTIFIANT_D_ESSAI), banniere_url: null,
+    serveur_rejoint_le: '2024-03-05T10:20:30Z', instant: '2026-11-27T12:00:00Z',
+  }], 'le compte du site de dev est retrouvé ou créé comme au retour de Discord');
+  assert.deepEqual(revue.session, { u: 'u-1', n: 'mj', exp: S + DUREE_SESSION_DEV_S, v: S, d: IDENTIFIANT_D_ESSAI, i: 'dev' }, 'MJ d’après les rôles du site de dev ; 12 h au plus');
+  assert.match(revue.cookies[0], /^maverick_session=v1\.[^;]+; Path=\/; Domain=exemple\.test; HttpOnly; SameSite=Lax; Max-Age=43200; Secure$/);
+  assert.equal(revue.cookies[1], RETIRE_DE_L_HOTE);
+  const surDev = { cookie: revue.cookies[0].split(';')[0] };
+  assert.equal(m.connexion.session(surDev).n, 'mj');
+  assert.equal(m.convertir(surDev), null, 'convertie, elle vient d’être vérifiée : rien avant 5 minutes');
+  // une requête partie avec le cookie de la production reçoit le même résultat, sans nouvel appel
+  const encore = m.convertir(venue);
+  assert.deepEqual([encore.session, m.d.appelsDuBot().length], [revue.session, 1]);
+  // le retour en production : à son tour elle ne croit pas le niveau du site de dev, et convertit avec SES rôles (MJ y donne Joueur) ; l'expiration reste celle de 12 h
+  assert.equal(prod.connexion.session(surDev), null);
+  const retour = await prod.reverifier(surDev);
+  assert.deepEqual(retour.session, { u: 'u-prod', n: 'joueur', exp: S + DUREE_SESSION_DEV_S, v: S, d: IDENTIFIANT_D_ESSAI, i: 'prod' });
+  assert.deepEqual([prod.ecrits.length, prod.ecrits[0].niveau, m.d.appelsDuBot().length], [1, 'joueur', 2]);
+  // des requêtes simultanées n'appellent Discord qu'une fois
+  m.avancer(INTERVALLE_DE_REVERIFICATION_S);
+  const autreVenue = m.venue('createur', { v: S + 1 });
+  const [a, b] = await Promise.all([m.convertir(autreVenue), m.convertir(autreVenue)]);
+  assert.deepEqual([a.session.n, b.session.n, m.d.appelsDuBot().length], ['mj', 'mj', 3]);
+  // la session de dev la plus récemment vérifiée l'emporte (l'ancien cookie de l'hôte et le cookie commun peuvent coexister) ; une session de ce site passe avant celle de l'autre
+  const ancien = creerJetonDeSession(SECRET_COMMUN, { u: 'u-1', n: 'joueur', exp: EXP, v: S - 600 });
+  const recent = creerJetonDeSession(SECRET_COMMUN, { u: 'u-1', n: 'mj', exp: EXP, v: S - 10, d: IDENTIFIANT_D_ESSAI, i: 'dev' });
+  for (const ordre of [[ancien, recent], [recent, ancien]]) assert.equal(m.connexion.session({ cookie: ordre.map((j) => `${COOKIE_SESSION}=${j}`).join('; ') }).n, 'mj');
+  assert.equal(m.connexion.session({ cookie: `${venue.cookie}; ${COOKIE_SESSION}=${ancien}` }).n, 'joueur');
+  // rien au journal qui soit secret
+  const journal = m.journal.join('\n');
+  for (const secret of [IDENTIFIANT_D_ESSAI, JETON_DU_BOT_D_ESSAI, SECRET_COMMUN]) assert.ok(!journal.includes(secret), `« ${secret.slice(0, 10)}… » au journal`);
+});
+
+test('R315 : la conversion — un départ constaté efface le compte de ce site (R312) et donne une session Observateur sans compte ; une panne : la session de l’autre site ne vaut rien ici (rien d’écrit, pause) ; un compte bot n’est jamais écrit ; un non-membre vaut pour les deux sites ; sans connexion commune, base absente ou gelée : rien', async () => {
+  const depart = mondeCommun();
+  depart.d.etat.membre = null;
+  const parti = await depart.convertir(depart.venue('joueur'));
+  assert.deepEqual(parti.session, { u: null, n: 'observateur', exp: S + DUREE_SESSION_DEV_S, v: S, i: 'dev' });
+  assert.deepEqual([depart.effaces, depart.ecrits], [[IDENTIFIANT_D_ESSAI], []]);
+  // une panne de Discord : rien d'écrit ni d'effacé, aucun cookie, pas de nouvel appel pendant la pause, une ligne au journal
+  const panne = mondeCommun();
+  panne.d.etat.bot.statut = 503;
+  assert.equal(await panne.convertir(panne.venue('joueur')), null);
+  assert.equal(panne.convertir(panne.venue('joueur')), null, 'pendant la pause, aucun nouvel appel');
+  assert.deepEqual([panne.d.appelsDuBot().length, panne.ecrits, panne.effaces], [1, [], []]);
+  assert.equal(panne.connexion.session(panne.venue('joueur')), null);
+  assert.match(panne.journal.join('\n'), /revérification du niveau impossible \(Discord indisponible \(503\), session venue de l’autre site\)/);
+  // un compte bot ou système (R310 (2)) : jamais écrit
+  const robot = mondeCommun();
+  robot.d.etat.utilisateur = { ...UTILISATEUR_D_ESSAI, bot: true };
+  assert.equal(await robot.convertir(robot.venue('joueur')), null);
+  assert.deepEqual(robot.ecrits, []);
+  // un non-membre (sans compte) est Observateur sur les deux sites : sa session vaut telle quelle, sans appel
+  const nonMembre = mondeCommun();
+  const observateur = nonMembre.venue('observateur', { u: null, d: null });
+  assert.deepEqual(nonMembre.connexion.session(observateur)?.n, 'observateur');
+  assert.equal(nonMembre.convertir(observateur), null);
+  // la base absente ou gelée, des rappels sans `enregistrer` : rien
+  assert.equal(nonMembre.convertir(nonMembre.venue('joueur'), { ...nonMembre.rappels, permis: () => false }), null);
+  assert.equal(nonMembre.convertir(nonMembre.venue('joueur'), { ...nonMembre.rappels, enregistrer: undefined }), null);
+  assert.equal(nonMembre.d.appelsDuBot().length, 0);
+  // sans connexion commune (même secret) : la session de l'autre site est ignorée, jamais convertie
+  const seul = mondeDuBot({ secretDeSession: SECRET_COMMUN });
+  const venue = { cookie: nonMembre.venue('joueur').cookie };
+  assert.equal(seul.connexion.session(venue), null);
+  assert.equal(seul.reverifier(venue, { ...seul.rappels, enregistrer: seul.enregistrer }), null);
+  assert.equal(seul.d.appelsDuBot().length, 0);
 });

@@ -44,7 +44,8 @@ export function discordSimule({ utilisateur = UTILISATEUR_D_ESSAI, membre = MEMB
       if (statut !== 200) return new Response(JSON.stringify(corps ?? { message: 'echec', code: 0 }), { status: statut, headers: { 'Content-Type': 'application/json', ...plus } });
       if (corps !== undefined) return reponse(200, corps);
       if (!etat.membre) return reponse(404, { message: 'Unknown Member', code: 10007 });
-      return reponse(200, { ...etat.membre, user: { id: membreDuBot[1] } });
+      // l'objet membre de l'API REST porte le compte entier (nom, avatar) : la connexion commune (R315) en tire le profil
+      return reponse(200, { ...etat.membre, user: { ...etat.utilisateur, id: membreDuBot[1] } });
     }
     const bearer = /^Bearer (.+)$/.exec(entetes.authorization ?? '')?.[1] ?? null;
     if (adresse === 'https://discord.com/api/v10/oauth2/token') {
