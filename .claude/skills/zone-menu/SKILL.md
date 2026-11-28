@@ -35,7 +35,7 @@ user-invocable: false
 ## Résolution d'une entrée
 
 Un seul endroit : `lib/menu-db.mjs#menuDuSite(entrées)`, appelé par `Base.astro` (une fois par rubrique) et `MenuDuProfil.astro`. Contrat d'une entrée : `motCle` (id entier), `libelleArbo`, `onglet` (id de `regles_onglet`), `path` (repli), `enfants`.
-- Adresse : celle de l'onglet, puis l'`url` du mot-clé, puis `path`.
+- Adresse : celle de l'onglet, puis l'`url` du mot-clé (l'adresse de son élément, lue par `lib/mots-cles-db.mjs#motsClesDeLaBase` : `menu-db.mjs#donneesDuMenu`), puis `path`.
 - Libellé : `libelleArbo` (dix entrées gardent le nom de l'arborescence, R319 (4)), puis le titre de l'onglet, puis le libellé du mot-clé, puis `label`.
 - Le lien est rendu comme la balise d'un mot-clé d'un texte (`htmlDeLEntree` : couleur, icône, infobulle sur le côté `data-placement="cote"`). Un mot-clé ou un onglet absent ne lève rien.
 - `adresseDeLOnglet` est le seul endroit qui compose `regles/<id>/` : l'adresse ne suit pas encore le titre (un lot à part).
