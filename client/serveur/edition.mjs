@@ -3694,6 +3694,9 @@ const OPERATIONS_DU_LOT = {
     const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (gelee) throw new ErreurEdition(409, gelee);
     ctx.w.modifier(op.table, op.cle, op.valeurs);
+    // le titre de la page d'une race ou d'une classe suit son nom s'il le portait encore (R316 (6)) ; l'adresse suit en fin de lot (edition-adresses.mjs). Ici et
+    // non en fin de lot : l'annulation repasse par cette opération pour le nom, et le titre revient avec lui
+    if ((op.table === 'race' || op.table === 'classe') && Object.hasOwn(op.valeurs, 'nom')) suivrePage(ctx, avant.id, { titre: [avant.nom, op.valeurs.nom] });
     return `${op.table} ${Object.keys(op.valeurs).join(', ')}`;
   },
   ecrire_inserer(ctx, op) {
