@@ -1,7 +1,7 @@
 ---
 name: zone-personnages-liste
 description: "Recherche des personnages (/personnages/, entrée « Personnages prétirés » du Jeu, ancre `#pretires`) : filtres, liste à 6 colonnes triable en trois sections, ligne entière en lien vers la fiche, bordure aux couleurs des magies, réglages « Visible par » et « Ranger au compte ». À charger avant de lire, modifier ou relire cette page, son script, son module ou ses tests."
-paths: ["client/src/pages/personnages.astro", "client/src/scripts/personnages.mjs", "client/src/lib/personnages-liste.mjs", "client/src/styles/personnages/**", "client/test/personnages-liste.test.mjs", "client/test/personnages-fiches-de-joueur.test.mjs", "client/test/copie-du-pretire.test.mjs"]
+paths: ["client/src/pages/personnages.astro", "client/src/scripts/personnages.mjs", "client/src/lib/personnages-liste.mjs", "client/src/styles/personnages/**", "client/test/personnages-liste.test.mjs", "client/test/personnages-fiches-de-joueur.test.mjs", "client/test/copie-du-pretire.test.mjs", "client/test/nouvelle-fiche-de-joueur.test.mjs"]
 user-invocable: false
 ---
 # Recherche des personnages (`/personnages/`)
@@ -25,7 +25,7 @@ user-invocable: false
 - Trois sections (R318) : « Mes personnages » (les fiches `a_moi`, ancre `#mes-personnages`), Prétirés, Fiches des joueurs (celles des autres, avec le nom de leur propriétaire) : `sectionsDeLaListe`. Le tri et les filtres valent dans chaque section.
 - Le portrait vient de `GET /api/personnages/<id>/portrait/`.
 - Filtres et tri dans l'adresse.
-- Ni phrase d'introduction ni bouton de création : « Copier le prétiré » (R320) est un réglage de ligne, ci-dessous.
+- Pas de phrase d'introduction ; seul bouton de création : le + de « Mes personnages » (R322), lien `#nouvelle-fiche` vers `/fiche/?nouvelle=joueur`. Il suit `lib/personnages-liste.mjs#peutCreerUneFiche`, qui lit `NIVEAUX_QUI_COPIENT` comme `peutCopier` (accord épinglé par `nouvelle-fiche-de-joueur.test.mjs`). Caché tant que le niveau est inconnu ; visible d'un Joueur ou d'un MJ sur le site de dev, comme « Copier » (la porte y refuse l'écriture). « Copier le prétiré » (R320) est un réglage de ligne, ci-dessous.
 - Les réglages sont sous la ligne, jamais dans le lien (un menu ne se met pas dans un lien) ; le service reste juge de chaque droit (R318) :
   - « Visible par » (`VISIBILITES` : Tous (Joueurs et +), MJ (MJ et Créateur), Privé (Utilisateur et Créateur)) : sur une fiche de joueur seulement, à soi ou en Créateur (`peutRegler`). `optionsDeVisibilite` : « MJ » n'est choisissable que d'une session MJ ou Créateur, mais une fiche déjà en « mj » l'affiche.
   - « Copier le prétiré » (R320), sous chaque prétiré : le bouton suit `peutCopier` (Joueur et plus), sans tenir compte du site de dev, comme les autres réglages (au dev, un MJ le voit et reçoit le refus de la porte) ; `POST /api/personnages/<id>/copie/` puis redirection vers `/fiche/?id=<copie>` (`adresseDeLaCopie`). Grisé pendant l'appel, même si la liste est redessinée ; un refus le dit, rien n'est copié. Le service reste juge (403, 400). Le 403 de la porte nomme le niveau lu dans `niveau_requis` de la réponse (`phraseDeLaPorte`, identique dans `lib/personnages-liste.mjs` et `lib/fiche-copie.mjs` ; accord épinglé par `copie-du-pretire.test.mjs`).
@@ -36,4 +36,4 @@ user-invocable: false
 
 ## Tests
 
-- `test/personnages-liste.test.mjs` ; `test/personnages-fiches-de-joueur.test.mjs` (R318 : sections, réglages, messages) ; `test/copie-du-pretire.test.mjs` (R320 : bouton, règle, accord avec la fiche).
+- `test/personnages-liste.test.mjs` ; `test/personnages-fiches-de-joueur.test.mjs` (R318 : sections, réglages, messages) ; `test/copie-du-pretire.test.mjs` (R320 : bouton, règle, accord avec la fiche) ; `test/nouvelle-fiche-de-joueur.test.mjs` (R322 : le +, `peutCreerUneFiche`).

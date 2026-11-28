@@ -182,6 +182,16 @@ export const peutCopier = (niveau, fiche) => fiche?.nature === 'pretire' && NIVE
 export const adresseDeLaCopie = (adresseFiche, copie) => (typeof copie?.id === 'string' && copie.id ? `${adresseFiche}?id=${encodeURIComponent(copie.id)}` : null);
 
 /**
+ * Le « + » de « Mes personnages » est-il proposé (R322) ? Aux mêmes niveaux que « Copier le prétiré » (`NIVEAUX_QUI_COPIENT` : Joueur, MJ, Créateur), jamais à un
+ * Observateur, à un visiteur ni tant que le niveau n'est pas connu (`niveau` : `niveauDeLaSession`, null sans session lisible). Le service reste juge (403 ; au site
+ * de dev, la porte ne laisse créer qu'un Créateur). Absent de la version portable, qui n'a pas de compte : le niveau n'y arrive jamais.
+ */
+export const peutCreerUneFiche = (niveau) => NIVEAUX_QUI_COPIENT.includes(niveau);
+
+/** L'adresse du générateur vierge d'une fiche de joueur (R322 : `/fiche/?nouvelle=joueur`), `adresseFiche` étant celle de `/fiche/`. La fiche n'existe qu'au premier « Enregistrer ». */
+export const adresseDeLaNouvelleFiche = (adresseFiche) => `${adresseFiche}?nouvelle=joueur`;
+
+/**
  * Les options du menu « Visible par » d'une fiche de joueur pour cette session (R318 (2)) : les trois, dans l'ordre, avec `choisissable`. « MJ » n'est
  * choisissable que d'une session de niveau MJ ou Créateur (le service refuse sinon, 403) ; une fiche déjà en « mj » l'affiche quand même (non choisissable
  * pour qui ne le peut pas), pour que le menu dise la vérité. Sans « MJ » à montrer, l'option n'est pas proposée. `selectionnee` : la visibilité en place.

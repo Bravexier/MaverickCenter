@@ -14,7 +14,7 @@
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { controlesParGravite, libelleDuControle } from '../lib/fiche-controles.mjs';
-import { adresseDeLaCopie, messageDeCopie, niveauDeLaSession, peutCopier } from '../lib/fiche-copie.mjs';
+import { adresseDeLaCopie, avisDeNouvelleFiche, messageDeCopie, messageDeNouvelleFiche, niveauDeLaSession, modeDeLaFicheVierge, adresseDeLaFicheVierge, libelleDuChoixCreer, suiteDeLImport, nouvelleFicheDemandee, peutCopier, requeteDEnregistrement } from '../lib/fiche-copie.mjs';
 import {
   CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, ligneDeRetrait, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees,
 } from '../lib/fiche-format.mjs';
@@ -71,6 +71,8 @@ let serviceJoignable = true;
 let niveauDeSession = null;
 /** Une copie du prétiré (R320) en cours : « Copier le prétiré » attend. */
 let copieEnCours = false;
+/** Le mode « nouvelle fiche de joueur » (R322, `/fiche/?nouvelle=joueur`) : 'joueur' tant que la fiche n'est pas enregistrée, sinon null ; le premier « Enregistrer » crée la fiche au compte. */
+let nouvelleFiche = null;
 /**
  * Le service a refusé le dernier enregistrement de la fiche à l'écran (toute réponse non OK : version changée entre-temps 409, requête trop volumineuse
  * 413, fiche refusée 400…) : Télécharger et Exporter redeviennent actifs pour ne rien perdre (etatDesBoutons). Oublié quand une autre fiche est à
@@ -4156,12 +4158,13 @@ async function enregistrer() {
   arreterLeChoix();
   message('Enregistrement…', 'attente');
   try {
-    const adresse = id ? `${API}personnages/${encodeURIComponent(id)}/` : `${API}personnages/`;
-    const reponse = await fetch(adresse, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...aEnvoyer(), [CHAMP_VERSION]: version }) });
+    const { methode, adresse } = requeteDEnregistrement(API, id, nouvelleFiche);
+    const reponse = await fetch(adresse, { method: methode, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...aEnvoyer(), [CHAMP_VERSION]: version }) });
     const donnees = await reponse.json().catch(() => ({}));
     if (reponse.ok) {
       serviceJoignable = true;   // il répond de nouveau : Télécharger suit de nouveau l'enregistrement
       appliquer(donnees);
+      nouvelleFiche = null;   // R322 : la fiche existe au compte, les enregistrements suivants sont des PUT sur ?id=
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
       // les erreurs seules sont « à revoir » ; un avertissement (décision R170) est dit à part
       const g = controlesParGravite(controles);
@@ -4177,6 +4180,9 @@ async function enregistrer() {
       const avertissement = n ? `Les règles ont changé : ${n} élément(s) retiré(s) de cette fiche depuis son ouverture (voir les notes après rechargement). ` : '';
       message(`${avertissement}${donnees.erreur} `, 'erreur');
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
+    } else if (nouvelleFiche && messageDeNouvelleFiche(reponse.status, donnees)) {
+      // R322 : la porte ou le droit refuse la création ; la saisie reste à l'écran
+      message(messageDeNouvelleFiche(reponse.status, donnees), 'erreur');
     } else if (donnees.erreur) {
       message(`${donnees.erreur}${donnees.problemes ? ` ${donnees.problemes.map(avecNoms).join(' ; ')}` : ''}`, 'erreur');
     } else if (reponse.status === 413) {
@@ -4282,13 +4288,20 @@ async function copier() {
 
 /** Le niveau de la session, lu dans la réponse de `compte.mjs` (`window.maverickMoi`, ou l'événement `maverick:moi` s'il n'est pas encore arrivé) ; sans compte, il ne vient jamais. */
 function lireLeNiveau() {
-  const prendre = (moi) => { niveauDeSession = niveauDeLaSession(moi ?? null); etatDesBoutons(); };
+  const prendre = (moi) => {
+    niveauDeSession = niveauDeLaSession(moi ?? null);
+    etatDesBoutons();
+    // R322 : un niveau qui ne peut pas créer de fiche le sait dès l'ouverture de ?nouvelle=joueur (le service reste juge au premier « Enregistrer »)
+    const avis = nouvelleFiche && !id && !modifie ? avisDeNouvelleFiche(niveauDeSession) : null;
+    if (avis) message(avis, 'erreur');
+  };
   if (window.maverickMoi !== undefined) prendre(window.maverickMoi);
   else document.addEventListener('maverick:moi', (e) => prendre(e.detail), { once: true });
 }
 
 function nouvelle() {
   if (modifie && !confirm('Abandonner les modifications non enregistrées ?')) return;
+  nouvelleFiche = modeDeLaFicheVierge(nouvelleFiche, fiche);   // R322 : un joueur parti du « + » (ou sur une fiche de joueur) reste en mode fiche de joueur, jamais un prétiré par mégarde
   fiche = ficheVide('');
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   id = null;
@@ -4297,7 +4310,7 @@ function nouvelle() {
   modifie = false;
   enregistrementRefuse = false;
   armureEnSuspens = null;
-  history.replaceState(null, '', racine.dataset.fiche);
+  history.replaceState(null, '', adresseDeLaFicheVierge(racine.dataset.fiche, nouvelleFiche));
   rafraichir();
   message('', '');
 }
@@ -4518,6 +4531,7 @@ function cibleDeLImport() {
   const d = $('import-cible');
   $('import-cible-maj').textContent = `Mettre à jour « ${fiche.nom || 'ce prétiré'} »`;
   $('import-cible-perte').hidden = !modifie;
+  $('import-cible-creer').textContent = libelleDuChoixCreer(modeDeLaFicheVierge(nouvelleFiche, fiche));   // R322 : une fiche de joueur n'en crée pas un prétiré
   return new Promise((ok) => {
     d.addEventListener('close', () => ok(['mettre-a-jour', 'creer'].includes(d.returnValue) ? d.returnValue : null), { once: true });
     d.returnValue = '';
@@ -4529,6 +4543,7 @@ function cibleDeLImport() {
 function remplacerLaFiche(nouvelle, cible) {
   // une `progression` d'un fichier d'avant : ses gains en deux totaux (R73) ; une armure par emplacement : l'armure de la fiche, les autres pièces notées
   // (R95) ; des matériaux de bouclier, des accessoires Ceinture ou Autre, un nom ou un effet hors table : notés (R96, R97)
+  if (cible === 'creer') nouvelleFiche = modeDeLaFicheVierge(nouvelleFiche, fiche);   // R322, comme « Nouveau » : lu avant que la fiche soit remplacée
   fiche = { ...ficheVide(''), ...sansPartiesRetirees(nouvelle, { instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), noms: nomsDesRetraits() }) };
   versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
@@ -4537,13 +4552,10 @@ function remplacerLaFiche(nouvelle, cible) {
     id = null;
     version = null;
     enregistrementRefuse = false;   // un autre prétiré, jamais envoyé (une mise à jour du prétiré ouvert garde son identifiant et sa version : le refus reste noté)
-    history.replaceState(null, '', racine.dataset.fiche);
+    history.replaceState(null, '', adresseDeLaFicheVierge(racine.dataset.fiche, nouvelleFiche));
   }
   changer();
 }
-
-/** « Enregistrez pour mettre à jour « X » » ou « … pour créer le prétiré ». */
-const suiteDeLImport = (cible, nom) => `Enregistrez pour ${cible === 'creer' ? 'créer le prétiré' : `mettre à jour « ${nom} »`}.`;
 
 /**
  * Un classeur (.xlsx ; la lecture sait aussi les .ods et .csv) au modèle V15.2.2, ordinateur ou auto (lib/tableur-lecture.mjs, lib/fiche-tableur-import.mjs) : l'onglet « Personnage »,
@@ -4592,7 +4604,7 @@ async function importerClasseur(octets, nomFichier) {
   if (lignes.length) nouvelle.notes = ajouterAuxNotes(nouvelle.notes, [`[${date}] Import du classeur « ${nomFichier} » :`, ...lignes]);
   remplacerLaFiche(nouvelle, cible);
   const debut = messageDImport({ disposition: lu.disposition, format: classeur.format, onglet: feuille.nom, nonRepris: nonRepris.length, remarques: lu.remarques.length });
-  message(`${debut} ${suiteDeLImport(cible, nom)}`, 'attente');
+  message(`${debut} ${suiteDeLImport(cible, nom, nouvelleFiche)}`, 'attente');
 }
 
 /** Un fichier choisi par « Importer (PC) » : un classeur (un ancien export .json ne s'importe plus : le message le dit). */
@@ -4752,6 +4764,7 @@ async function demarrer() {
   preparerImportEnLigne();
   $('fiche-supprimer').addEventListener('click', supprimer);
   $('fiche-copier').addEventListener('click', copier);
+  nouvelleFiche = nouvelleFicheDemandee(location.search);   // avant lireLeNiveau : le niveau peut déjà être là
   lireLeNiveau();
   const fichier = $('fiche-importer');
   fichier.addEventListener('change', () => {
@@ -4844,7 +4857,14 @@ async function demarrer() {
   const demande = new URLSearchParams(location.search).get('id');
   await verifierService();
   if (demande) await charger(demande);
-  else rafraichir();
+  else {
+    rafraichir();
+    // R322 : le générateur est vierge ; la fiche n'existe au compte qu'au premier « Enregistrer »
+    if (nouvelleFiche) {
+      const avis = avisDeNouvelleFiche(niveauDeSession);
+      message(avis ?? 'Nouvelle fiche de joueur : elle sera créée à votre compte, en privé, au premier « Enregistrer ».', avis ? 'erreur' : 'attente');
+    }
+  }
 }
 
 demarrer();

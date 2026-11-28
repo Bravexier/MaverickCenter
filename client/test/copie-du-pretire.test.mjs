@@ -101,7 +101,8 @@ test('R320 : sur /fiche/, le bouton n’est montré que pour un prétiré enregi
   const page = lire('../src/pages/fiche/index.astro');
   assert.match(page, /<button type="button" id="fiche-copier" hidden>/, 'caché au départ');
   const code = sansCommentaires(lire('../src/scripts/fiche.mjs'));
-  assert.match(code, /import \{ adresseDeLaCopie, messageDeCopie, niveauDeLaSession, peutCopier \} from '\.\.\/lib\/fiche-copie\.mjs'/);
+  const importes = code.match(/import \{([^}]*)\} from '\.\.\/lib\/fiche-copie\.mjs'/)?.[1] ?? '';
+  for (const nom of ['adresseDeLaCopie', 'messageDeCopie', 'niveauDeLaSession', 'peutCopier']) assert.match(importes, new RegExp(`\\b${nom}\\b`), nom);
   assert.match(code, /boutonCopier\.hidden = !peutCopier\(niveauDeSession, id === null \? null : fiche\)/);
   assert.match(code, /boutonCopier\.disabled = copieEnCours \|\| modifie/, 'grisé pendant l’appel, et tant que la fiche à l’écran n’est pas enregistrée');
   const copier = code.slice(code.indexOf('async function copier()'), code.indexOf('function lireLeNiveau()'));

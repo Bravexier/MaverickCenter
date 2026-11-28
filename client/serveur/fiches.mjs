@@ -218,6 +218,28 @@ export function transfererFiche(db, id, utilisateurId) {
 export const NIVEAUX_QUI_COPIENT = Object.freeze(['joueur', 'mj', 'createur']);
 
 /**
+ * Vrai si `appelant` peut posséder une fiche neuve : une session (un compte) d'un niveau de NIVEAUX_QUI_COPIENT — jamais une clé, un visiteur ni un
+ * Observateur. Ne lit pas la base : la route s'en sert pour refuser (403) avant toute lecture du corps ; `rattachementAuCompte` la reprend.
+ */
+export const peutSeRattacher = (appelant) => Boolean(appelant?.utilisateur) && NIVEAUX_QUI_COPIENT.includes(appelant.niveau);
+
+/** Le refus de la création d'une fiche vide au compte (R322), dit par la route comme par `enregistrerFiche`. */
+export const MESSAGE_CREATION_AU_COMPTE = 'Créer une fiche de joueur demande une session de niveau Joueur, MJ ou Créateur.';
+
+/**
+ * Le rattachement d'une fiche neuve au compte connecté, UN SEUL pour « Copier le prétiré » (R320) et la création d'une fiche vide (R322) : la nature
+ * `joueur`, le compte de la session, la visibilité PRIVÉE (visible du joueur et d'un Créateur, jusqu'à ce qu'il l'ouvre aux autres). Les niveaux sont ceux de
+ * NIVEAUX_QUI_COPIENT (Joueur, MJ, Créateur). À appeler DANS la transaction d'écriture : le compte est relu dans la base au moment d'écrire.
+ * Erreurs : ErreurFiche 403 (`message403` sans session de ces niveaux ; « Ce compte n’existe pas. » si le compte a disparu).
+ * @returns {{ nature: 'joueur', proprietaire_id: string, visibilite: 'privee' }}
+ */
+export function rattachementAuCompte(db, appelant, message403) {
+  if (!peutSeRattacher(appelant)) throw new ErreurFiche(403, message403);
+  if (!db.prepare('SELECT 1 FROM utilisateur WHERE id = ?').get(appelant.utilisateur)) throw new ErreurFiche(403, 'Ce compte n’existe pas.');
+  return { nature: 'joueur', proprietaire_id: appelant.utilisateur, visibilite: 'privee' };
+}
+
+/**
  * « Copier le prétiré » (décision R320) : crée une fiche de joueur au compte de `appelant`, copie complète du prétiré `id` — la ligne `personnage` (portrait
  * et cadrage compris) et toutes ses parties (PARTIES_DE_FICHE) —, sous un nouvel identifiant. La copie est de nature `joueur`, rangée à l'appelant, PRIVÉE
  * (R320 (3) : visible de lui et d'un Créateur jusqu'à ce qu'il la change), son nom reste celui du prétiré ; `cree_le` et `modifie_le` sont l'instant de
@@ -227,31 +249,28 @@ export const NIVEAUX_QUI_COPIENT = Object.freeze(['joueur', 'mj', 'createur']);
  * @returns {{ id: string, nature: 'joueur', proprietaire: { id: string, nom_affichage: string }, visibilite: 'privee', copie_de: string }}
  */
 export function copierUnPretire(db, id, appelant = SANS_SESSION, { maintenant = new Date() } = {}) {
-  if (!appelant.utilisateur || !NIVEAUX_QUI_COPIENT.includes(appelant.niveau)) {
-    throw new ErreurFiche(403, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
-  }
   db.exec('BEGIN IMMEDIATE');
   try {
-    if (!db.prepare('SELECT 1 FROM utilisateur WHERE id = ?').get(appelant.utilisateur)) throw new ErreurFiche(403, 'Ce compte n’existe pas.');
+    // le rattachement au compte (R322 : le même que la création d'une fiche vide) : 403 sans session de niveau Joueur ou plus, ou sans compte
+    const rattachement = rattachementAuCompte(db, appelant, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
     const droits = droitsSurLaFiche(db, id, appelant);
     if (!droits) throw new ErreurFiche(404, 'Fiche introuvable.');
     if (droits.nature !== 'pretire') throw new ErreurFiche(400, 'Seul un prétiré se copie : cette fiche est celle d’un joueur.');
     const nouvelle = randomUUID();
     const t = instant(maintenant);
     // la ligne : les colonnes du service reçoivent leur valeur, les autres sont recopiées telles quelles (noms lus par PRAGMA table_info)
-    const service = { id: '?', nature: "'joueur'", proprietaire_id: '?', visibilite: "'privee'", cree_le: '?', modifie_le: '?' };
     const colonnes = colonnesDe(db, 'personnage');
-    const valeursDuService = { id: nouvelle, proprietaire_id: appelant.utilisateur, cree_le: t, modifie_le: t };
+    const valeursDuService = { id: nouvelle, ...rattachement, cree_le: t, modifie_le: t };
     const jetons = colonnes.filter((c) => c in valeursDuService).map((c) => valeursDuService[c]);
     db.exec('PRAGMA defer_foreign_keys = ON'); // les parties se posent après la ligne, et se relisent ensemble à la fin
-    db.prepare(`INSERT INTO personnage (${colonnes.map((c) => `"${c}"`).join(', ')}) SELECT ${colonnes.map((c) => service[c] ?? `"${c}"`).join(', ')} FROM personnage WHERE id = ?`)
+    db.prepare(`INSERT INTO personnage (${colonnes.map((c) => `"${c}"`).join(', ')}) SELECT ${colonnes.map((c) => (c in valeursDuService ? '?' : `"${c}"`)).join(', ')} FROM personnage WHERE id = ?`)
       .run(...jetons, id);
     for (const [, table] of partiesDeLaBase(db)) {
       const cols = colonnesDeDetail(db, table).map((c) => `"${c}"`).join(', ');
       db.prepare(`INSERT INTO "${table}" (personnage_id${cols ? `, ${cols}` : ''}) SELECT ?${cols ? `, ${cols}` : ''} FROM "${table}" WHERE personnage_id = ?`).run(nouvelle, id);
     }
     db.exec('COMMIT');
-    return { id: nouvelle, nature: 'joueur', proprietaire: proprietaireDe(db, nouvelle), visibilite: 'privee', copie_de: id };
+    return { id: nouvelle, nature: rattachement.nature, proprietaire: proprietaireDe(db, nouvelle), visibilite: rattachement.visibilite, copie_de: id };
   } catch (e) {
     annuler(db);
     throw e;
@@ -519,9 +538,15 @@ function verifierForme(db, entree, problemes) {
  * (7) : le calcul du moteur de la fiche sur la fiche enregistrée, lib/poids-portable-db.mjs#poidsPortableDeLaBase) ne sont jamais enregistrées : retirées
  * et notées, datées (serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle). `poidsPortable` ((db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
  * null : pas d'étape du poids.
+ * `auCompte` (R322, création seulement ; sans effet sur une modification) : la fiche neuve n'est pas un prétiré mais une fiche de joueur privée du compte
+ * de `appelant` (rattachementAuCompte, comme « Copier le prétiré ») ; 403 sans session de niveau Joueur, MJ ou Créateur, avant toute validation.
  */
-export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined, appelant = SANS_SESSION } = {}) {
+export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined, appelant = SANS_SESSION, auCompte = false } = {}) {
   const problemes = [];
+  // R322 : `auCompte` (création seulement) range la fiche neuve au compte de `appelant` (rattachementAuCompte : nature joueur, privée) au lieu d'un prétiré ;
+  // refusée (403) avant toute validation d'une session qui ne peut pas posséder de fiche
+  const rattacher = auCompte && id === null;
+  if (rattacher && !peutSeRattacher(appelant)) throw new ErreurFiche(403, MESSAGE_CREATION_AU_COMPTE);
   if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
     || maitrisesAvecChoix(recue) || livresAvecLivresDesSorts(recue)) {
     throw new ErreurFiche(409, PAGE_D_AVANT);
@@ -579,7 +604,8 @@ export function enregistrerFiche(db, recue, { id = null, maintenant = new Date()
       id = randomUUID();
       const depart = { ...ficheVide(), ...Object.fromEntries(COLONNES_RETIREES.personnage.map((c) => [c, DEPART_DES_COLONNES_RETIREES[c] ?? null])) };
       const complete = { ...Object.fromEntries(modifiables.filter((c) => c in depart).map((c) => [c, valeurDeCellule(depart[c], c, problemes)])), ...ligne };
-      const valeurs = { id, nature: 'pretire', proprietaire_id: null, visibilite: 'tous', cree_le: t, modifie_le: t, ...complete };
+      const rattachement = rattacher ? rattachementAuCompte(db, appelant, MESSAGE_CREATION_AU_COMPTE) : { nature: 'pretire', proprietaire_id: null, visibilite: 'tous' };
+      const valeurs = { id, ...rattachement, cree_le: t, modifie_le: t, ...complete };
       const cols = Object.keys(valeurs);
       try {
         db.prepare(`INSERT INTO personnage (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(valeurs));

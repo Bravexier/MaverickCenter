@@ -11,13 +11,15 @@
 // (`detail` : la réponse, ou null) ; ici, on lit la propriété si l'événement a déjà eu lieu, sinon on l'attend, et on ne fait jamais la requête soi-même.
 // R320 : sous chaque prétiré, pour une session Joueur, MJ ou Créateur, « Copier le prétiré » (POST /api/personnages/<id>/copie/ : une fiche de joueur privée au compte,
 // puis /fiche/?id=<copie>) ; c'est un réglage de la ligne, sous elle comme les menus, pas un bouton de création de la page.
+// R322 : en bas de « Mes personnages », un « + » (lien vers /fiche/?nouvelle=joueur : le générateur vierge, la fiche n'existe qu'au premier « Enregistrer ») pour une session
+// Joueur, MJ ou Créateur, par la règle de « Copier le prétiré » (`peutCreerUneFiche`) ; caché tant que le niveau n'est pas connu, et jamais montré dans la version portable.
 // La liste s'affiche sans l'attendre, les réglages et « Mes personnages » viennent avec elle. Les
 // contrôles sont sous la ligne, pas dedans : toute la ligne est un lien, et un menu ne se met pas dans un lien. Le service reste juge de chaque droit.
 // Script de page (navigateur) : il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé ; il n'importe pas
 // lib/compte.mjs, que seul scripts/compte.mjs importe).
 import {
   COLONNES, FILTRES_PAR_DEFAUT, adresseDeLaCopie, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, classesDeBordure, comptesRangeables, filtrer, filtresDepuisAdresse,
-  messageDEchec, niveauDeLaSession, optionsDeVisibilite, peutCopier, peutRanger, peutRegler, sectionsDeLaListe, trier,
+  adresseDeLaNouvelleFiche, messageDEchec, niveauDeLaSession, optionsDeVisibilite, peutCopier, peutCreerUneFiche, peutRanger, peutRegler, sectionsDeLaListe, trier,
 } from '../lib/personnages-liste.mjs';
 
 const racine = document.getElementById('personnages');
@@ -228,6 +230,9 @@ function afficher() {
   if (!rangees.mes.length && niveau !== null) {
     pasDeFiche(personnages.some((p) => p.a_moi) ? 'Aucune de vos fiches ne correspond à ces filtres.' : 'Aucune fiche n’est rangée à votre compte.');
   }
+  const nouvelle = document.getElementById('nouvelle-fiche');
+  nouvelle.href = adresseDeLaNouvelleFiche(racine.dataset.fiche);
+  nouvelle.hidden = !peutCreerUneFiche(niveau);
   document.getElementById('vide').hidden = !(personnages.length && !liste.length);
   for (const bouton of racine.querySelectorAll('#tete button[data-cle]')) {
     const actif = bouton.dataset.cle === filtres.tri;
