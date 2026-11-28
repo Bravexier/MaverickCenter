@@ -12,7 +12,9 @@
 //                            la migration n'y a remplacé que des fragments de son registre `textes` (data/migrations/NNNN.json, comme la 0122 qui
 //                            recible une balise) présents aussi dans la valeur « avant » : celle-ci est remise, avec le même remplacement. Les lots
 //                            défaits quittent l'historique de la copie (historiqueSite y voit l'état d'import comme courant). Seules les traces de nature
-//                            `saisie` et `decision` sont défaites (R275 : une source, une migration ou un recalcul du code font partie de l'import). `base.ecarts` : ce
+//                            `saisie` et `decision` sont défaites (R275 : une source, une migration ou un recalcul du code font partie de l'import). Depuis la
+//                            0136, l'insertion défaite du repère d'un mot-clé de l'import sans page ni sort garde le repère (C0 : il porte ses colonnes
+//                            d'import, comme celui du lot des repères appliqué avant la 0136) ; sa trace part avec son lot. `base.ecarts` : ce
 //                            qui n'a pas pu être défait (vide d'ordinaire). Une copie par processus et par options, supprimée à sa sortie.
 //     { garder: lotsAvant('0093') }
 //                            l'état d'après une migration : ne défait que les lots rapatriés après elle (liste figée test/fixtures/lots-avant-NNNN.json,
@@ -226,6 +228,9 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
   const ecarts = [];
   const aDesReperes = Boolean(colonnesDe(db, 'repere')) && !colonnesDe(db, 'mot_cle')?.has('libelle');
   const suivi = { propres: new Map(), provisoires: new Set() };
+  // les mots-clés que des lots défaits ont créés : leur repère part avec eux
+  const creesParLeSite = new Set(entrees.filter((e) => e.table === 'mot_cle' && e.operation === 'inserer' && colonnesDe(db, 'mot_cle'))
+    .map((e) => String(cleDeLigne(db, 'mot_cle', e.cle).id)));
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('BEGIN');
   db.exec('PRAGMA defer_foreign_keys = ON'); // l'ordre inverse des opérations d'un lot peut passer par un état transitoire
@@ -240,6 +245,11 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
       try {
         const ancres = aDesReperes ? motsClesAncres(e, actuelle).map((id) => [id, ancrageDe(db, id)]) : [];
         if (e.operation === 'inserer') {
+          if (actuelle && aDesReperes && e.table === 'repere' && !creesParLeSite.has(String(cle.mot_cle_id)) && !ancrageDe(db, cle.mot_cle_id)) {
+            // un repère posé par le site à un mot-clé de l'import qui n'a ni page ni sort (le lot des repères, R309, appliqué avant la 0136) : il
+            // recopiait les colonnes d'import du mot-clé, que la 0136 a retirées ; il en est la forme à l'import (C0), et reste
+            continue;
+          }
           if (actuelle) oublierLesReferencesDesMigrations(db, e.table, cle);
           if (actuelle) db.prepare(`DELETE FROM "${e.table}" WHERE ${ou}`).run(...Object.values(cle));
         } else if (e.operation === 'supprimer') {

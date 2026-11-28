@@ -237,6 +237,33 @@ test('defaireLeSite, migration 0136 : un ancrage défait rend aussitôt son rep�
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
+test('defaireLeSite, migration 0136 : le lot des repères (R309) appliqué avant la 0136 — le repère d’un mot-clé de l’import sans page ni sort reste (C0), les lots plus anciens et plus récents s’y défont ; celui d’un mot-clé créé par le site part avec lui', (t) => {
+  const db = copieDImport(t);
+  const [r] = reperesDecrits(db, 1);
+  const origine = ligne(db, 'SELECT * FROM repere WHERE mot_cle_id = ?', r.id);
+  assert.equal(ligne(db, 'SELECT 1 AS n FROM page WHERE mot_cle_id = ? UNION SELECT 1 FROM sort WHERE mot_cle_id = ?', r.id, r.id), undefined, `${r.id} : ni page ni sort`);
+  // lot 1 (avant la 0135, sur l'ancienne structure) : le nom et la définition du mot-clé réécrits
+  tracer(db, { lot: '2026-11-01T10:00:00.000Z-reperes-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: r.id }, operation: 'modifier',
+    avant: { libelle: origine.nom, description: origine.definition }, apres: { libelle: 'Essai renommé', description: 'Plif.' } });
+  // lot 2 (structure 0135, nature decision) : le lot des repères recopie les colonnes du mot-clé ; il pose aussi celui d'un mot-clé créé par le site
+  const lot2 = { lot: '2026-11-02T10:00:00.000Z-reperes-2', faitLe: '2026-11-02T10:00:00Z', nature: 'decision', decision: 'R309' };
+  const pose = { ...origine, nom: 'Essai renommé', definition: 'Plif.' };
+  tracer(db, { ...lot2, rang: 1, table: 'repere', cle: { mot_cle_id: r.id }, operation: 'inserer', apres: pose });
+  const [creation, repereCree] = motCleCree(9006, 'Essai repère');
+  noter(db, { lot: '2026-11-01T12:00:00.000Z-reperes-cree', rang: 1, faitLe: '2026-11-01T12:00:00Z', ...creation });
+  noter(db, { ...lot2, rang: 2, ...repereCree });
+  // la 0136 a retiré les colonnes du mot-clé : la base porte le repère posé ; lot 3 (après la 0136) : sa définition réécrite
+  db.prepare('UPDATE repere SET nom = ?, definition = ? WHERE mot_cle_id = ?').run(pose.nom, pose.definition, r.id);
+  noter(db, { lot: '2026-11-03T10:00:00.000Z-reperes-3', rang: 1, faitLe: '2026-11-03T10:00:00Z', ...definitionModifiee(r, 'Plif.', 'Plouf.') });
+
+  assert.deepEqual(defaireLeSite(db), []);
+  assert.deepEqual(ligne(db, 'SELECT * FROM repere WHERE mot_cle_id = ?', r.id), origine, 'le repère reste, avec le nom et la définition d’import');
+  assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9006'), undefined, 'le mot-clé créé par le site est retiré');
+  assert.equal(ligne(db, 'SELECT nom FROM repere WHERE mot_cle_id = 9006'), undefined, 'son repère aussi');
+  assert.deepEqual(lotsDuTest(db), [], 'les lots défaits quittent l’historique, celui des repères compris');
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+});
+
 test('base d’import de la base construite : historique vide, rien d’écarté ; chaque cellule modifiée par le site y a sa valeur d’import (historiqueSite)', () => {
   const imp = baseDImport();
   assert.deepEqual(imp.ecarts, []);
