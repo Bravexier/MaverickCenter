@@ -10,13 +10,15 @@ import { fileURLToPath } from 'node:url';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 import { assemblerClasse } from '../src/lib/classe-assemblage.mjs';
+import { ancresAplaties, ancresDeLaClasse } from '../src/lib/classe-ancres.mjs';
 import {
-  doitRedessiner, empreinteDeStructure, htmlDeChoix, htmlDeDon, htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation, htmlDuRepereMagique, idDuTitre,
+  ancresDesSpecialites, doitRedessiner, empreinteDeStructure, htmlDeChoix, htmlDeDon, htmlDesDons, htmlDesSpecialites, htmlDuRepereMagique, idDuTitre,
   lienDesSpecialites, regleDesSpecialites,
 } from '../src/lib/classe-dons-rendu.mjs';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { menuLateral } from './aide-menu-html.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 
@@ -83,7 +85,7 @@ test('la section des dons : plateau dans l’ordre des lignes, spécialités en 
   assert.equal(htmlDesDons(assemblerClasse({ ...LIGNES, dons: [] })), '', 'sans don : pas de section');
 });
 
-test('la section des spécialités : un article par spécialité qui a des dons, caché sans description ni remarque ; la navigation', () => {
+test('la section des spécialités : un article par spécialité qui a des dons, caché sans description ni remarque ; les ancres du menu', () => {
   const classe = assemblerClasse(LIGNES);
   const html = htmlDesSpecialites(classe);
   assert.match(html, /^<section class="classe-section" id="specialites" aria-labelledby="specialites-titre" data-ed-cadre="\.classe-prose, \.classe-remarque__texte"><h2/);
@@ -93,7 +95,7 @@ test('la section des spécialités : un article par spécialité qui a des dons,
   const sansTexte = assemblerClasse({ ...LIGNES, specialites: LIGNES.specialites.map((s) => ({ ...s, description: null })) });
   assert.match(htmlDesSpecialites(sansTexte), /^<section [^>]* hidden>/, 'aucun article montré : la section est cachée');
   assert.equal(htmlDesSpecialites(assemblerClasse({ ...LIGNES, dons: LIGNES.dons.filter((d) => !d.specialite_id) })), '');
-  assert.equal(htmlDuGroupeDeNavigation(classe), '<span class="classe-nav__specialites" role="group" aria-label="Dons par spécialité"><a href="#specialite-lame">lame</a><a href="#specialite-arc">arc</a></span>');
+  assert.deepEqual(ancresDesSpecialites(classe), [{ ancre: '#specialite-lame', libelle: 'lame' }, { ancre: '#specialite-arc', libelle: 'arc' }], 'R321 (6) : une ancre par spécialité, sous la classe dans le menu du site');
 });
 
 test('identifiants : deux spécialités « LAME » et « LAME TITRE » ne donnent aucun id en double (titre d’un panneau : titre-<ancre>)', () => {
@@ -104,9 +106,10 @@ test('identifiants : deux spécialités « LAME » et « LAME TITRE » ne donnen
     dons: [ligne('lame', { specialite_id: S1, niveau: 10, nature: 'specialite', ligne: 22 }), ligne('lame-titre', { specialite_id: `${C}#specialite:lame-titre`, niveau: 10, nature: 'specialite', ligne: 22 })],
   };
   const classe = assemblerClasse(lignes);
-  const html = htmlDesDons(classe) + htmlDesSpecialites(classe) + htmlDuGroupeDeNavigation(classe);
+  const html = htmlDesDons(classe) + htmlDesSpecialites(classe);
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids.filter((id, i) => ids.indexOf(id) !== i), [], 'aucun id en double');
+  assert.ok(ancresDesSpecialites(classe).every((a) => ids.includes(a.ancre.slice(1))), 'chaque ancre du menu vise un panneau de la page (R321 (6))');
   assert.ok(ids.includes('specialite-lame-titre') && ids.includes('titre-specialite-lame') && ids.includes('titre-specialite-lame-titre'));
   assert.equal(idDuTitre(classe.specialites[0]), 'titre-specialite-lame');
 });
@@ -190,8 +193,11 @@ test('site construit : #dons et #specialites de chaque page de classe = le rendu
     const attendu = htmlDuRepereMagique(classe, { classeId: classe.id, amBase: classe.categorie?.amBase ?? null, amMagique: classe.amMagique, note: classe.categorie?.note ?? null });
     assert.equal(repere ? normal(repere) : null, commeLaPage(attendu), `${classe.id} : repère « Classe magique »`);
     const html = readFileSync(fichier, 'utf8');
-    const nav = html.slice(html.indexOf('class="classe-nav'), html.indexOf('</nav>', html.indexOf('class="classe-nav')));
-    if (html.includes('class="classe-nav')) assert.equal(nav.includes('<a href="#specialites">Spécialités</a>'), lienDesSpecialites(classe), `${classe.id} : lien « Spécialités »`);
+    // R321 (6) : plus de barre de sections ; ses ancres sont sous la classe affichée dans le menu du site (lib/classe-ancres.mjs), « Spécialités » seulement si une spécialité a un texte
+    assert.doesNotMatch(html, /class="classe-nav/, `${classe.id} : plus de barre de sections`);
+    const ancres = [...menuLateral(html).matchAll(/<a class="menu-site__lien menu-site__lien--ancre" href="(#[^"]+)">/g)].map((m) => m[1]);
+    assert.equal(ancres.includes('#specialites'), lienDesSpecialites(classe) && ancres.length > 0, `${classe.id} : ancre « Spécialités »`);
+    assert.deepEqual(ancres, ancresAplaties(ancresDeLaClasse(classe)).map((a) => a.ancre), `${classe.id} : les ancres du menu sont celles de la classe`);
     assert.ok(html.includes(`data-ed-structure="${empreinteDeStructure(classe)}"`), `${classe.id} : data-ed-structure`);
     comparees += 1;
   }

@@ -17,6 +17,7 @@ import { npmMaxDuPotentiel, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illi
 import { ancreDeSpecialisation, phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { menuLateral } from './aide-menu-html.mjs';
 import { texteAffiche } from './aide-texte-affiche.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
@@ -533,10 +534,13 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
     assert.equal(large, html.includes('<div class="specialisations">'), `${slug} : page large si et seulement si elle a des spécialisations`);
     if (slug === 'potentiel-illimite') assert.ok(large, 'le Potentiel Illimité est large (R249)');
   }
-  // le panneau latéral reste dans sa colonne, collé en haut, à gauche de la page
+  // R321 (6) : plus de panneau latéral à côté de la page (les magies et les sections sont des sous-entrées du menu du site) : le cadre ne porte plus de grille à deux colonnes,
+  // la page seule, qui peut rétrécir
   const pageCss = readFileSync(new URL('../src/styles/magie/page.css', import.meta.url), 'utf8');
-  assert.match(pageCss.match(/\.magie-cadre \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(10rem, 12rem\) minmax\(0, 1fr\)/);
-  assert.match(pageCss.match(/\.magies-panneau \{[^}]*\}/)?.[0] ?? '', /position: sticky/);
+  assert.doesNotMatch(pageCss, /\.magies-panneau|magie-nav|magies-repli|grid-template-columns: minmax\(10rem, 12rem\)/, 'plus de panneau ni de colonne pour lui');
+  assert.doesNotMatch(pageCss.match(/\.magie-cadre \{[^}]*\}/)?.[0] ?? '', /grid-template-columns/, 'le cadre n’est plus une grille');
+  assert.match(pageCss.match(/\.magie-cadre > \.magie \{[^}]*\}/)?.[0] ?? '', /min-width: 0/, 'la page peut rétrécir');
+  for (const { slug, html } of pages) assert.doesNotMatch(html, /magies-panneau|magie-nav|magies-repli/, `${slug} : aucun panneau à côté de la page`);
   // le Potentiel Illimité n'a pas de spécialisation à lui (R236 (1))
   assert.equal(toutes.get(POTENTIEL_ILLIMITE).specialisations.length, 0);
 });
@@ -615,7 +619,9 @@ test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du cl
   const attendus = [...toutes.values()].filter((x) => x.id !== POTENTIEL_ILLIMITE).flatMap((x) => x.sorts.filter((s) => s.niveau <= plafondDeLaBase)).length;
   assert.ok(sorts.includes(`<h2 id="sorts-titre">Sorts des autres magies <span class="count">${attendus}</span></h2>`));
   assert.ok(sorts.includes('<div class="autres-magies" data-onglets="Magies">'));
-  assert.match(potentiel, /<a href="#sorts">Sorts<\/a>/);
+  // la navigation de la page est une ancre du menu du site, sous la magie courante (R321 : lib/magie-ancres.mjs), qui mène à cette section ; plus de barre dans la page
+  assert.match(potentiel, /<a class="menu-site__lien menu-site__lien--ancre" href="#sorts">Sorts<\/a>/);
+  assert.doesNotMatch(potentiel, /<a href="#sorts">Sorts<\/a>|class="magie-nav/);
   assert.doesNotMatch(potentiel, /role="tab(list|panel)?"/);
 });
 
@@ -764,29 +770,32 @@ test('altération d’état liée : un encart après la présentation (et l’ex
   assert.match(texteDe(arcane), /^Altération d’état Surcharge Magique Mental Aussi liée à Corruption Stade 1/, 'altération partagée : l’autre magie est nommée');
 });
 
-// Panneau latéral des pages de magie (demande du propriétaire du 2026-11-05) : le bouton « Toutes » vers /magies/, puis une pastille par magie dans
-// l'ordre du classeur, de la couleur de sa magie (la classe de la palette, comme la carte de /magies/), la magie affichée marquée ; ouvert sans JavaScript.
-test('pages de magie : panneau latéral des 15 magies, bouton « Toutes », pastilles de la couleur de chaque magie', options, () => {
+// Panneau latéral des pages de magie (demande du propriétaire du 2026-11-05 : « un panneau latéral qui liste toutes les magies […] les mêmes pastilles de couleur »),
+// devenu au lot 2 du menu (R321, étape 3) les sous-entrées de « Les magies » du menu latéral du site : une par magie dans l'ordre du classeur, de la couleur de
+// sa magie (un point, la classe de la palette), la magie affichée marquée ; ses sections sont des ancres sous elle, sur sa page seulement (plus de barre de sections).
+test('pages de magie : « Les magies » du menu du site porte les 15 magies (point de leur couleur), la page affichée marquée et ses sections en ancres ; plus de panneau ni de barre de sections', options, () => {
   const magies = [...chargerMagies(ouvrirBase()).magies.values()].sort((a, b) => a.ordre - b.ordre);
   assert.equal(magies.length, 15);
   for (const { slug, html } of pages) {
-    const debut = html.indexOf('<nav class="magies-panneau');
-    assert.ok(debut >= 0, `${slug} : panneau latéral`);
-    const nav = contenu(html, debut, 'nav');
-    assert.match(nav, /<details class="magies-panneau__repli" open data-magies-repli>/, `${slug} : ouvert sans JavaScript`);
-    const toutes = nav.match(/<a class="magies-panneau__toutes" href="([^"]+)">Toutes<\/a>/);
-    assert.ok(toutes && /\/magies\/$/.test(toutes[1]), `${slug} : bouton « Toutes » vers /magies/`);
-    const liens = [...nav.matchAll(/<a class="magies-panneau__lien ([^"]+)" href="([^"]+)"( aria-current="page")?>[\s\S]*?<span class="magies-panneau__nom">([^<]+)<\/span>/g)]
-      .map((m) => ({ classe: m[1], href: m[2], courant: Boolean(m[3]), nom: m[4] }));
-    assert.deepEqual(liens.map((l) => l.nom), magies.map((m) => m.nom), `${slug} : toutes les magies, dans l'ordre du classeur`);
+    assert.doesNotMatch(html, /magies-panneau|data-magies-repli|class="magie-nav/, `${slug} : plus de panneau ni de barre de sections`);
+    const menu = menuLateral(html);
+    const debut = menu.indexOf('<li class="menu-site__groupe" data-cle="jeu/magies"');
+    assert.ok(debut >= 0, `${slug} : l'entrée « Les magies » et ses sous-entrées`);
+    const groupe = contenu(menu, debut, 'li');
+    assert.match(groupe, /^<li class="menu-site__groupe" data-cle="jeu\/magies" data-contient-la-page data-ferme-au-depart>/, `${slug} : ouverte d'office`);
+    const liens = [...groupe.matchAll(/<a class="menu-site__lien menu-site__lien--point ([^"]+)" href="([^"]+)"( aria-current="page")?><span class="menu-site__point" aria-hidden="true"><\/span><span>([^<]+)<\/span><\/a>/g)]
+      .map((x) => ({ classe: x[1], href: x[2], courant: Boolean(x[3]), nom: x[4] }));
+    assert.deepEqual(liens.map((l) => l.nom), magies.map((x) => x.nom), `${slug} : toutes les magies, dans l'ordre du classeur`);
     for (const [i, l] of liens.entries()) {
-      assert.equal(l.classe, classeDeMagie(magies[i].nom), `${slug} : pastille ${l.nom} dans la couleur de sa magie`);
+      assert.equal(l.classe, classeDeMagie(magies[i].nom), `${slug} : le point de ${l.nom} dans la couleur de sa magie`);
       assert.ok(l.href.endsWith(`/${magies[i].id}/`), `${slug} : ${l.nom} mène à sa page`);
     }
     assert.deepEqual(liens.filter((l) => l.courant).map((l) => l.href.split('/').at(-2)), [slug], `${slug} : seule la magie affichée est marquée`);
-    assert.ok(html.indexOf('<nav class="magies-panneau') < html.indexOf('<div class="magie '), `${slug} : le panneau avant la page`);
+    // ses sections : des ancres, sur sa page seulement, et chacune vise un id de la page
+    const ancres = [...menu.matchAll(/<a class="menu-site__lien menu-site__lien--ancre" href="#([^"]+)">/g)].map((x) => x[1]);
+    for (const id of ancres) assert.ok(html.includes(`id="${id}"`), `${slug} : #${id} existe sur la page`);
+    assert.ok(ancres.includes('affinites'), `${slug} : ses sections`);
   }
-  // la même pastille que la carte de /magies/ : le dessin commun (styles/global/pastille.css) et la classe de la magie
-  const pastille = readFileSync(new URL('../src/styles/global/pastille.css', import.meta.url), 'utf8');
-  assert.match(pastille, /^\.classe-pastille, \.race-pastille, \.magies-orbite__noeud, \.magies-panneau__lien \{$/m);
+  // les ancres n'apparaissent que sur leur page : pas sur la liste des magies
+  assert.doesNotMatch(menuLateral(indexMagies), /menu-site__lien--ancre/);
 });

@@ -7,18 +7,19 @@ import MagiesDeRace from '../../components/magie/MagiesDeRace.astro';
 import RacesDeMagie from '../../components/magie/RacesDeMagie.astro';
 import MagiePage from '../../components/magie/MagiePage.astro';
 import RacePage from '../../components/race/RacePage.astro';
-import MenuDesRaces from '../../components/race/MenuDesRaces.astro';
 import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import { TYPES } from '../../lib/types.mjs';
-import { classCategory, groupClasses } from '../../lib/class-groups.mjs';
+import { classCategory } from '../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
 import { loadMagies } from '../../lib/magies';
 import { loadRaces } from '../../lib/races';
+import { ancresDeLaMagie } from '../../lib/magie-ancres.mjs';
+import { ancresDeLaClasse } from '../../lib/classe-ancres.mjs';
 import { loadClasses } from '../../lib/classes';
 import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
 import { estServieASonId } from '../../lib/metiers.mjs';
-import { entriesOfType, entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
+import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
 
 export async function getStaticPaths() {
@@ -53,6 +54,10 @@ const race = races?.races.get(entry.id) ?? null;
 const classes = typeOf(entry) === 'classes' ? loadClasses() : null;
 const classe = classes?.classes.get(entry.id) ?? null;
 const gabarit = Boolean(magie || race || classe);
+// Les sections d'une page de magie : des ancres sous l'entrée de la magie dans le menu latéral du site, sur sa page seulement (R321 (2) ; lib/magie-ancres.mjs)
+// et celles d'une page de classe (R321 (6) : lib/classe-ancres.mjs )
+const ancres = magie && magies ? { page: entry.id, entrees: ancresDeLaMagie({ entry, entries, magie, magies }) }
+  : classe ? { page: entry.id, entrees: ancresDeLaClasse(classe) } : undefined;
 const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races et des classes ne rendent pas le Markdown
 // Seules les pages d'exemple ont un bandeau : plus de bandeau « brouillon » sur les pages `draft` (demande du propriétaire).
 const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
@@ -65,9 +70,8 @@ const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeO
 const texteModifiable = modifiable && pageDeTexte;
 ---
 
-<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined} couleurPropre={gabarit}>
-  {/* une page de race tirée de la base : à droite du menu latéral de toutes les races (components/race/MenuDesRaces.astro) ; les autres pages seules */}
-  <MenuDesRaces actif={Boolean(race && races)} entry={entry} entries={entries}>
+<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined} couleurPropre={gabarit} ancres={ancres}>
+  {/* les races sont les sous-entrées de « Les races » du menu latéral du site (R321 ; lib/menu-sous-entrees-site.ts) : la page seule */}
   <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
     typeOf(entry) === 'capacites' && classOfAbility && (
       <>
@@ -97,7 +101,7 @@ const texteModifiable = modifiable && pageDeTexte;
     ) : race && races ? (
       <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : classe ? (
-      <ClassePage entry={entry} classe={classe} groupes={groupClasses(entriesOfType(entries, 'classes'))} statusNote={statusNote} />
+      <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
     ) : (
       <>
         <h1>
@@ -133,5 +137,4 @@ const texteModifiable = modifiable && pageDeTexte;
 
   {/* plus de sources sous une page (réponse du propriétaire du 2026-10-22) : seulement sur /archives/ */}
   <PiedDePage entry={entry} />
-  </MenuDesRaces>
 </Base>

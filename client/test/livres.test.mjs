@@ -290,7 +290,7 @@ test('le menu latéral d’un onglet : ses entrées dans l’ordre du plan (page
   assert.ok(exploration.some((e) => e.adresse === 'regles/artisanat/'));
   assert.deepEqual(entreesDuMenuLateral(ongletDe('guide/meteo'), pagesDuGuide.filter((p) => p.id !== 'guide/meteo')).map((p) => p.id).includes('guide/meteo'), false,
     'une page absente est sautée');
-  // une entrée « bientôt » (aucune aujourd'hui) passe telle quelle : le menu la grise, sans lien (components/guide/MenuLateral.astro)
+  // une entrée « bientôt » (aucune aujourd'hui) passe telle quelle : le menu la grise, sans lien (sous-entrées du menu du site, lib/menu-sous-entrees.mjs)
   try {
     installerLePlan(PLAN.map((o) => (o.id === 'exploration' ? { ...o, entrees: [...o.entrees, { bientot: 'Les donjons' }] } : o)));
     assert.deepEqual(menuLateralDe('guide/les-pieges', pagesDuGuide).pages.at(-1), { bientot: 'Les donjons' });

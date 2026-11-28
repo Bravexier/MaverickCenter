@@ -1,17 +1,16 @@
 ---
 import Base from '../../layouts/Base.astro';
-import MenuLateral from '../../components/guide/MenuLateral.astro';
 import Sommaire from '../../components/guide/Sommaire.astro';
-import { ARTISANAT, editionDuMenuLateral, entreesDuMenuLateral, ongletDuLien } from '../../lib/livres.mjs';
+import { ARTISANAT, ongletDuLien } from '../../lib/livres.mjs';
 import { DESCRIPTION_DES_COMPOSANTS, PAGE_DES_COMPOSANTS, TITRE_DES_COMPOSANTS } from '../../lib/composants-db.mjs';
 import { entryHref, loadWiki, url } from '../../lib/wiki';
 
 // L'Artisanat (réponse du propriétaire du 2026-10-18 : « Composants en Artisanat ok ») : le titre et le résumé de chaque page (lib/livres.mjs#ARTISANAT),
 // liés, tels que la base les écrit ; la page Composants, sans ligne `page`, par son titre et sa description (lib/composants-db.mjs). Rien d'autre.
-// Une entrée lien du menu latéral de l'onglet Exploration des Règles (R184 ; dans la rubrique Équipement du menu du 2026-10-29 à R184, puis dans la rubrique Ressources : R319) : la page est à
-// côté de ce menu, son entrée marquée, et l'onglet marqué dans le menu du site (`entree`), comme une page de l'onglet. Si le plan de la base ne la
-// range plus dans aucun onglet, le sommaire seul. Le mode modification du site de dev (lot de l'édition des menus) : le menu latéral de l'onglet (son ordre,
-// « + Ajouter une page » : src/scripts/edition/menus.mjs) ; le sommaire lui-même ne se modifie pas ici (ARTISANAT est écrit dans lib/livres.mjs).
+// Une entrée lien du menu de l'onglet Exploration des Règles (R184 ; dans la rubrique Équipement du menu du 2026-10-29 à R184, puis dans la rubrique Ressources : R319) :
+// sa sous-entrée dans le menu latéral du site (R321, lib/menu-sous-entrees-site.ts), marquée quand on est ici, et l'onglet marqué dans le menu du site (`entree`),
+// comme une page de l'onglet. Le mode modification du site de dev (lot de l'édition des menus) : les sous-entrées de l'onglet (leur ordre, « + Ajouter une page » :
+// src/scripts/edition/menus.mjs) ; le sommaire lui-même ne se modifie pas ici (ARTISANAT est écrit dans lib/livres.mjs).
 const { entries } = await loadWiki();
 const parId = new Map(entries.map((e) => [e.id, e]));
 const elements = ARTISANAT.pages.map((id) => {
@@ -21,22 +20,11 @@ const elements = ARTISANAT.pages.map((id) => {
   return { href: entryHref(e), titre: e.data.title, resume: e.data.summary };
 });
 const onglet = ongletDuLien(ARTISANAT.chemin);
-// l'entrée lien du menu est marquée quand elle mène ici : son adresse est l'id passé suivi de « / » (components/guide/MenuLateral.astro)
+// la page d'édition : l'adresse sans barre finale, dont l'entrée lien de l'onglet est la sous-entrée
 const ici = { id: ARTISANAT.chemin.replace(/\/$/, ''), data: { title: ARTISANAT.titre } };
 ---
 
 <Base title={ARTISANAT.titre} entree={onglet?.chemin} edition={onglet ? ici.id : undefined}>
-  {
-    onglet ? (
-      <MenuLateral rubrique={onglet} pages={entreesDuMenuLateral(onglet, entries)} entry={ici} edition={editionDuMenuLateral(onglet, entries)}>
-        <h1>{ARTISANAT.titre}</h1>
-        <Sommaire groupes={[{ elements }]} />
-      </MenuLateral>
-    ) : (
-      <>
-        <h1>{ARTISANAT.titre}</h1>
-        <Sommaire groupes={[{ elements }]} />
-      </>
-    )
-  }
+  <h1>{ARTISANAT.titre}</h1>
+  <Sommaire groupes={[{ elements }]} />
 </Base>

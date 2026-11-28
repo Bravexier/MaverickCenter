@@ -10,6 +10,8 @@ import GithubSlugger from 'github-slugger';
 import { adresseDesAnciensLiens, avecPrefixe, BLOCS, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
 import { ACCUEIL_DU_GUIDE, DECOUVRIR, estUnePageDeNotion, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, pagesDeLaRubrique } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
+import { htmlDesEntrees } from '../src/lib/menu-rendu.mjs';
+import { sousEntreesDesPages } from '../src/lib/menu-sous-entrees.mjs';
 import {
   chargerCompetences,
   chargerEntrainement,
@@ -371,14 +373,9 @@ test('décision R149 (G40) : le plafond de maîtrise d’arme, 4 points, donc 5 
   }
 });
 
-test('R184 (1) : le menu latéral d’un onglet rend une entrée « bientôt » grisée, sans lien, et une entrée lien par son libellé (aucune « bientôt » aujourd’hui : lu dans le composant)', () => {
-  const menu = readFileSync(new URL('../src/components/guide/MenuLateral.astro', import.meta.url), 'utf8');
-  // une entrée « bientôt » : la classe du menu du site (.nav-soon, grisée), « (bientôt) » comme au menu du site, jamais un <a>
-  // (chaque entrée porte en plus les attributs du mode modification, `ed(i)` : lot de l'édition des menus)
-  assert.match(menu, /'bientot' in p \? \(\s*<li \{\.\.\.ed\(i\)\}><span class="lateral-menu__bientot nav-soon">\{p\.bientot\} <small>\(bientôt\)<\/small><\/span><\/li>/);
-  // un lien : son adresse relative à la racine (url), marqué quand il mène à la page affichée
-  assert.match(menu, /<a class="lateral-menu__lien" href=\{url\(p\.adresse\)\} aria-current=\{p\.adresse === `\$\{entry\.id\}\/` \? 'page' : undefined\}>\{p\.libelle\}<\/a>/);
-  // les props des pages de race ne changent pas (components/race/MenuDesRaces.astro : rubrique, pages, entry), plus `edition`, facultative
-  assert.match(readFileSync(new URL('../src/components/race/MenuDesRaces.astro', import.meta.url), 'utf8'), /<MenuLateral rubrique=\{rubrique\} pages=\{races\} entry=\{entry\} edition=\{edition\}>/);
-  assert.match(menu, /edition\?: \{ menu: string; entrees: EntreeModifiable\[\] \};/, '`edition` facultative : les appelants sans elle ne changent pas');
+test('R184 (1), R321 : une entrée « bientôt » d’un onglet est grisée, sans lien (nav-soon), une entrée lien rendue par son libellé : dans les sous-entrées du menu du site', () => {
+  const html = htmlDesEntrees(sousEntreesDesPages([{ bientot: 'Plus tard' }, { libelle: 'Un lien', adresse: 'regles/artisanat/' }]),
+    { rubrique: 'regles', adresse: (r) => `/${r}`, base: '/', ici: '/regles/artisanat/', entree: undefined });
+  assert.ok(html.includes('<li><span class="nav-soon">Plus tard <small>(bientôt)</small></span></li>'), 'grisée, sans <a>');
+  assert.ok(html.includes('<li><a class="menu-site__lien" href="/regles/artisanat/" aria-current="page">Un lien</a></li>'), 'un lien : son adresse, marqué quand il mène à la page affichée');
 });

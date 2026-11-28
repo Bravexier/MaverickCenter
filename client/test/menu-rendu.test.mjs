@@ -99,6 +99,17 @@ test('R319 (3) : une entrée à niveau porte data-niveau-menu et hidden (le menu
   assert.deepEqual(entreesDeLaListe(html).map((e) => e.libelle).slice(0, 2), ['Simple', 'Royaume']);
 });
 
+test('R319 (3) + R321 (1) : le niveau d’un groupe à lien et chevron est porté par son `<li>` (les sous-entrées en héritent, cachées avec lui) ; une sous-entrée modifiable à niveau garde ses deux jeux d’attributs ; `accordeon` et le niveau se cumulent', () => {
+  const resolues = resoudreLesEntrees([
+    { cle: 'g', label: 'Groupe', path: 'groupe/', niveau: 'mj', enfants: [{ label: 'Fille', path: 'groupe/fille/', niveau: 'joueur', edition: { id: 'e1', rang: 2, groupe: 'a' } }] },
+    { cle: 'c', label: 'Catégorie', accordeon: 'classes', niveau: 'joueur', enfants: [{ label: 'Fille', path: 'c/fille/' }] },
+  ], { motsCles });
+  const html = htmlDesEntrees(resolues, { rubrique: 'x', adresse: (r) => `/${r}`, base: '/', ici: '/', entree: undefined });
+  assert.match(html, /<li class="menu-site__groupe" data-cle="x\/g" data-ferme-au-depart data-niveau-menu="mj" hidden><div class="menu-site__ligne"><a /);
+  assert.match(html, /<li data-niveau-menu="joueur" hidden data-ed-entree="e1" data-ed-rang="2" data-ed-groupe="a"><a /);
+  assert.match(html, /<li class="menu-site__groupe" data-cle="x\/c" data-accordeon="classes" data-niveau-menu="joueur" hidden><button/);
+});
+
 test('les entrées du site de dev seulement sont retirées avant le rendu ([Dev] ; ni le niveau ni la production ne retirent une entrée au build : le niveau s’applique dans le navigateur)', () => {
   const resolues = resoudreLesEntrees([
     { label: 'Debug', path: 'debug/', devSeulement: true },
@@ -142,4 +153,84 @@ test('R319 (1) : le menu du profil, en blocs ; seules les entrées du public son
   assert.equal(portable.match(/<div class="site-compte__bloc"/g).length, 1);
   assert.ok(!portable.includes('hidden') && !portable.includes('data-deconnexion'));
   assert.ok(!portable.includes('data-niveau-menu') && !portable.includes('<select'), 'la version portable, sans service : le menu d’un Observateur, aucune entrée à niveau');
+});
+
+// R321 (1) et (2) : une entrée qui a sa page ET des sous-entrées garde son lien ; un chevron, bouton seul, déplie et replie ; repliée au départ sauf si la page courante y est.
+const sousEntrees = [
+  { motCle: null, enfants: [], href: 'regles/combat/une-page/', bientot: false, libelle: 'Une page <b>', edition: { id: 'page:guide/une-page', rang: 3 } },
+  { motCle: null, enfants: [], href: null, bientot: true, libelle: 'Pas encore', edition: { id: 'bientot:x', rang: 4 } },
+  { motCle: null, enfants: [], href: 'regles/artisanat/', bientot: false, libelle: 'Un lien', edition: { id: 'regles_onglet_entree:7', rang: 5, groupe: 'pures' } },
+  { motCle: null, enfants: [], href: 'regles/combat/sans-edition/', bientot: false, libelle: 'Sans ligne' },
+];
+const avecSous = (avec = {}) => resoudreLesEntrees([
+  { cle: 'intro', label: 'Introduction', enfants: [{ label: 'Premier', path: 'premier/' }] },
+  { label: 'Combat', onglet: 'combat', path: 'regles/combat/', ...avec },
+  { label: 'Le royaume', motCle: 9001, libelleArbo: true, path: 'royaume/', ...avec },
+], { motsCles, onglets }).map((e, i) => (i === 0 ? e : { ...e, enfants: sousEntrees, sousMenu: 'onglet:combat' }));
+const rendreAvecSous = (contexte = {}) => htmlDesEntrees(avecSous(), { rubrique: 'regles', adresse: (r) => `/base/${r}`, base: '/base/', ici: undefined, entree: undefined, ...contexte });
+
+test('R321 (1) : une entrée à adresse et à sous-entrées garde son lien (de mot-clé : couleur, bulle) et un chevron seul, bouton nommé, avec aria-expanded et aria-controls', () => {
+  const html = rendreAvecSous();
+  // le lien d'un onglet : comme une entrée simple, hors du bouton
+  assert.match(html, /<li class="menu-site__groupe" data-cle="regles\/combat" data-ferme-au-depart><div class="menu-site__ligne"><a class="menu-site__lien" href="\/base\/regles\/combat\/">Combat d’essai<\/a><button type="button" class="menu-site__replier menu-site__replier--chevron" aria-expanded="true" aria-controls="menu-du-site-regles-combat" data-menu-replier="regles\/combat" aria-label="[^"]+"><span class="menu-site__chevron" aria-hidden="true"><\/span><\/button><\/div><div class="menu-site__sous" id="menu-du-site-regles-combat">/);
+  // le lien d'un mot-clé : le même que dans une entrée simple (classe, bulle, infobulle sur le côté), puis le bouton
+  assert.match(html, /<div class="menu-site__ligne"><a data-placement="cote" class="mot-cle" href="\/base\/royaume\/" data-mot-cle="royaume" data-bulle="mot-cle-royaume"[^>]*>Le royaume<\/a><button type="button" class="menu-site__replier menu-site__replier--chevron"/);
+  // le bouton ne porte pas le libellé (aucun texte visible) et son nom dit ce qu'il déplie
+  const boutons = [...html.matchAll(/<button type="button" class="menu-site__replier menu-site__replier--chevron"[^>]*aria-label="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
+  assert.equal(boutons.length, 2);
+  for (const [, nom, contenu] of boutons) assert.ok(nom.length > 0 && !/<\/?(?!span\b)[a-z]/i.test(contenu) && !/[A-Za-zÀ-ÿ]/.test(contenu.replace(/<[^>]*>/g, '')), 'un nom, aucun texte dans le bouton');
+  assert.match(boutons[0][1], /Combat d’essai/, 'le nom du bouton nomme l’entrée');
+  // un identifiant par groupe, nommé par son bouton ; Introduction (sans adresse) garde sa forme : le bouton porte son libellé, ouverte au départ
+  assert.match(html, /<li class="menu-site__groupe" data-cle="regles\/intro"><button type="button" class="menu-site__replier" aria-expanded="true"/);
+  assert.equal(html.match(/data-ferme-au-depart/g).length, 2, 'seules les entrées à lien sont repliées au départ');
+  for (const id of ['menu-du-site-regles-combat', 'menu-du-site-regles-royaume']) assert.equal(html.match(new RegExp(`id="${id}"`, 'g')).length, 1, id);
+});
+
+test('R321 (2) : les sous-entrées d’une entrée sont repliées au départ, ouvertes d’office quand la page courante y est (sous-entrée ou entrée elle-même), l’ancre et aria-current sont gardés', () => {
+  assert.doesNotMatch(rendreAvecSous(), /data-contient-la-page/, 'une page hors du menu : tout est replié (hors Introduction, que le script laisse ouverte)');
+  const dedans = rendreAvecSous({ ici: '/base/regles/combat/une-page/' });
+  assert.match(dedans, /<li class="menu-site__groupe" data-cle="regles\/combat" data-contient-la-page data-ferme-au-depart>/);
+  assert.equal(dedans.match(/data-contient-la-page/g).length, 2, 'les deux entrées portent les mêmes sous-entrées : les deux contiennent la page');
+  assert.match(dedans, /<a class="menu-site__lien" href="\/base\/regles\/combat\/une-page\/" aria-current="page">Une page &lt;b&gt;<\/a>/, 'la sous-entrée courante : aria-current="page", libellé échappé');
+  // l'entrée elle-même courante : son lien est marqué, son groupe ouvert d'office
+  const elle = rendreAvecSous({ ici: '/base/regles/combat/' });
+  assert.match(elle, /<a class="menu-site__lien" href="\/base\/regles\/combat\/" aria-current="page">/);
+  assert.match(elle, /data-cle="regles\/combat" data-contient-la-page/);
+  // l'onglet du plan d'une page hors du menu : le lien est « true », le groupe ouvert
+  const onglet = rendreAvecSous({ ici: '/base/une-autre/', entree: 'regles/combat/' });
+  assert.match(onglet, /<a class="menu-site__lien" href="\/base\/regles\/combat\/" aria-current="true">/);
+  assert.match(onglet, /data-cle="regles\/combat" data-contient-la-page/);
+  assert.equal(contientLaPage(avecSous()[1], { ici: '/base/regles/combat/une-page/', adresse: (r) => `/base/${r}` }), true);
+});
+
+test('R321 (2) : la page d’ouverture d’un onglet, affichée à l’adresse de l’onglet (`affichee`), marque sa sous-entrée aria-current="page", comme sur sa propre adresse', () => {
+  // /regles/combat/ montre « Une page » (à regles/combat/une-page/) : son entrée est la page courante, l'onglet aussi (c'est l'adresse), ouverts d'office ; sans `affichee`, aucune sous-entrée
+  const ouverture = rendreAvecSous({ ici: '/base/regles/combat/', affichee: 'regles/combat/une-page/' });
+  assert.match(ouverture, /<a class="menu-site__lien" href="\/base\/regles\/combat\/une-page\/" aria-current="page">Une page &lt;b&gt;<\/a>/, 'la sous-entrée de la page affichée');
+  assert.match(ouverture, /<a class="menu-site__lien" href="\/base\/regles\/combat\/" aria-current="page">/, 'l’onglet, à son adresse');
+  assert.equal(courantDe({ href: 'regles/combat/une-page/' }, { ici: '/base/regles/combat/', affichee: 'regles/combat/une-page/', adresse: (r) => `/base/${r}` }), 'page');
+  assert.equal(courantDe({ href: 'regles/combat/une-page/' }, { ici: '/base/regles/combat/', adresse: (r) => `/base/${r}` }), null, 'sans `affichee` : l’adresse seule');
+  assert.equal(courantDe({ href: 'regles/combat/autre/' }, { ici: '/base/regles/combat/', affichee: 'regles/combat/une-page/', adresse: (r) => `/base/${r}` }), null, 'une autre page de l’onglet : pas courante');
+  assert.equal(courantDe({ href: null }, { affichee: null, adresse: (r) => r }), null, 'une entrée sans adresse : jamais');
+  assert.match(ouverture, /data-cle="regles\/combat" data-contient-la-page/);
+});
+
+test('R321 (6) : une entrée sans lien qui demande `repliee` (Introduction) est repliée au départ comme les autres, ouverte d’office quand la page courante est dans ses sous-pages ; sans `repliee`, elle reste ouverte', () => {
+  const intro = (repliee) => resoudreLesEntrees([{ cle: 'introduction', label: 'Introduction', ...(repliee ? { repliee: true } : {}), enfants: [{ label: 'Premier', path: 'premier/' }, { label: 'Second', path: 'second/' }] }], { motsCles, onglets });
+  const rendreIntro = (repliee, ici) => htmlDesEntrees(intro(repliee), { rubrique: 'jeu', adresse: (r) => `/base/${r}`, base: '/base/', ici, entree: undefined });
+  assert.match(rendreIntro(true), /^<li class="menu-site__groupe" data-cle="jeu\/introduction" data-ferme-au-depart><button type="button" class="menu-site__replier" aria-expanded="true"/, 'repliée au départ, toujours un bouton qui porte son libellé');
+  assert.doesNotMatch(rendreIntro(true), /data-contient-la-page/, 'une autre page : aucune ouverture d’office');
+  assert.match(rendreIntro(true, '/base/second/'), /^<li class="menu-site__groupe" data-cle="jeu\/introduction" data-contient-la-page data-ferme-au-depart>/, 'sur une de ses sous-pages : ouverte d’office (le script ouvre ce qui contient la page)');
+  assert.doesNotMatch(rendreIntro(false), /data-ferme-au-depart/, 'sans `repliee`, le rendu ne replie pas');
+});
+
+test('R321 (3) : la liste d’une entrée porte son menu modifiable (data-ed-menu), chaque sous-entrée l’id, le rang et le groupe de sa ligne ; une entrée « bientôt » les porte aussi ; sans ligne, aucun attribut', () => {
+  const html = rendreAvecSous();
+  assert.equal(html.match(/<ul class="menu-site__sous-liste" data-ed-menu="onglet:combat">/g).length, 2);
+  assert.match(html, /<li data-ed-entree="page:guide\/une-page" data-ed-rang="3"><a class="menu-site__lien" href="\/base\/regles\/combat\/une-page\/">/);
+  assert.match(html, /<li data-ed-entree="bientot:x" data-ed-rang="4"><span class="nav-soon">Pas encore <small>\(bientôt\)<\/small><\/span><\/li>/, 'sans lien, grisée');
+  assert.match(html, /<li data-ed-entree="regles_onglet_entree:7" data-ed-rang="5" data-ed-groupe="pures"><a class="menu-site__lien" href="\/base\/regles\/artisanat\/">Un lien<\/a><\/li>/);
+  assert.match(html, /<li><a class="menu-site__lien" href="\/base\/regles\/combat\/sans-edition\/">Sans ligne<\/a><\/li>/);
+  // Introduction n'est pas un menu modifiable
+  assert.doesNotMatch(html.slice(0, html.indexOf('data-cle="regles/combat"')), /data-ed-/);
 });

@@ -33,19 +33,44 @@ export function listeDeLaRubrique(html, cle) {
 }
 
 /**
- * Les entrées d'une liste, sous-pages comprises, dans l'ordre : { href (null si « bientôt »), libelle (le texte, sans balise), courant ('page' | 'true' | null),
- * motCle (la clé du mot-clé, ou null : le lien est celui d'un mot-clé d'un texte), bientot, niveau (le `data-niveau-menu` de l'entrée, caché au build, ou null) }.
+ * Les entrées d'une liste, sous-pages d'Introduction comprises, dans l'ordre : { href (null si « bientôt »), libelle (le texte, sans balise), courant ('page' | 'true' | null),
+ * motCle (la clé du mot-clé, ou null : le lien est celui d'un mot-clé d'un texte), bientot, niveau (le `data-niveau-menu` de l'entrée, caché au build, ou null) }. Une entrée à lien et
+ * à chevron (R321 : un onglet des Règles, « Les races ») est comptée par son lien, son niveau celui de son groupe. Les sous-entrées modifiables (celles d'un onglet, des races :
+ * `<li data-ed-entree…>`, R321) se lisent à part : `sousEntreesDeLaListe`.
  */
 export function entreesDeLaListe(liste) {
   const texte = (h) => h.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  return [...liste.matchAll(/<li(?: data-niveau-menu="([a-z]+)" hidden)?>(?:<a ([^>]*)>([\s\S]*?)<\/a>|<span class="nav-soon">([^<]*)<small>)/g)].map((m) => (m[2] === undefined
-    ? { href: null, libelle: m[4].trim(), courant: null, motCle: null, bientot: true, niveau: m[1] ?? null }
+  return [...liste.matchAll(/(?:<li class="menu-site__groupe"[^>]*?(?: data-niveau-menu="([a-z]+)" hidden)?><div class="menu-site__ligne">|<li(?: data-niveau-menu="([a-z]+)" hidden)?>)(?:<a ([^>]*)>([\s\S]*?)<\/a>|<span class="nav-soon">([^<]*)<small>)/g)].map((m) => (m[3] === undefined
+    ? { href: null, libelle: m[5].trim(), courant: null, motCle: null, bientot: true, niveau: m[2] ?? null }
     : {
-      href: m[2].match(/href="([^"]*)"/)?.[1] ?? null,
-      libelle: texte(m[3]),
-      courant: m[2].match(/aria-current="([^"]*)"/)?.[1] ?? null,
-      motCle: m[2].match(/data-mot-cle="([^"]*)"/)?.[1] ?? null,
+      href: m[3].match(/href="([^"]*)"/)?.[1] ?? null,
+      libelle: texte(m[4]),
+      courant: m[3].match(/aria-current="([^"]*)"/)?.[1] ?? null,
+      motCle: m[3].match(/data-mot-cle="([^"]*)"/)?.[1] ?? null,
       bientot: false,
-      niveau: m[1] ?? null,
+      niveau: m[1] ?? m[2] ?? null,
     }));
+}
+
+/**
+ * Les listes de sous-entrées modifiables d'une liste du menu (R321 (3) : `<ul class="menu-site__sous-liste" data-ed-menu="…">`), dans l'ordre : [{ menu (data-ed-menu), cle (data-cle
+ * de l'entrée qui la porte, « rubrique/clé »), contientLaPage, entrees: [{ id (data-ed-entree), rang (nombre ou null), groupe (ou null), href (null si « bientôt »), libelle,
+ * courant, bientot }] }].
+ */
+export function sousEntreesDeLaListe(liste) {
+  const texte = (h) => h.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  return [...liste.matchAll(/<li class="menu-site__groupe" data-cle="([^"]+)"([^>]*)>(?:(?!<li class="menu-site__groupe")[\s\S])*?<ul class="menu-site__sous-liste" data-ed-menu="([^"]+)">([\s\S]*?)<\/ul>/g)].map((g) => ({
+    menu: g[3],
+    cle: g[1],
+    contientLaPage: g[2].includes('data-contient-la-page'),
+    entrees: [...g[4].matchAll(/<li data-ed-entree="([^"]*)"((?: data-ed-[a-z]+="[^"]*")*)>(?:<a ([^>]*)>([\s\S]*?)<\/a>|<span class="nav-soon">([^<]*)<small>)/g)].map((m) => ({
+      id: m[1],
+      rang: m[2].match(/data-ed-rang="(\d+)"/) ? Number(m[2].match(/data-ed-rang="(\d+)"/)[1]) : null,
+      groupe: m[2].match(/data-ed-groupe="([^"]*)"/)?.[1] ?? null,
+      href: m[3] === undefined ? null : m[3].match(/href="([^"]*)"/)?.[1] ?? null,
+      libelle: m[3] === undefined ? m[5].trim() : texte(m[4]),
+      courant: m[3] === undefined ? null : m[3].match(/aria-current="([^"]*)"/)?.[1] ?? null,
+      bientot: m[3] === undefined,
+    })),
+  }));
 }

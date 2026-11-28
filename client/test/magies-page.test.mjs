@@ -288,12 +288,14 @@ test('ancre d’une spécialisation : un renommage (nom et nom_cle recalculés) 
   } finally {
     supprimerDossierTemporaire(dossier);
   }
-  // aucun composant ne bâtit l'ancre sur la clé ni sur le nom
-  for (const f of ['SortsDeSpecialisation', 'MagiePage']) {
-    const source = readFileSync(new URL(`../src/components/magie/${f}.astro`, import.meta.url), 'utf8');
+  // aucun composant ni module ne bâtit l'ancre sur la clé ni sur le nom : la section de la page (SortsDeSpecialisation) et sa sous-entrée du menu du site (lib/magie-ancres.mjs,
+  // R321 : la barre de la page est devenue des ancres sous la magie courante) la tirent de l'id
+  for (const f of ['components/magie/SortsDeSpecialisation.astro', 'lib/magie-ancres.mjs']) {
+    const source = readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
     assert.match(source, /ancreDeSpecialisation\(/, `${f} : ancre par ancreDeSpecialisation`);
-    assert.doesNotMatch(source, /specialisation\.cle|\bsp\.cle|\bs\.specialisation\.nom_cle/, `${f} : jamais la clé du nom`);
+    assert.doesNotMatch(source, /specialisation\.cle|\bsp\.cle|\bs\.specialisation\.nom_cle|specialisation\.nom_cle/, `${f} : jamais la clé du nom`);
   }
+  assert.doesNotMatch(readFileSync(new URL('../src/components/magie/MagiePage.astro', import.meta.url), 'utf8'), /ancreDeSpecialisation|specialisation\.cle|nom_cle/, 'MagiePage : aucune ancre bâtie sur la clé ni le nom');
 });
 
 // R245 (1) (MAJ-A5, MAJ-A6) : de « CHOSES A SAVOIR », seules les puces sur la Super-magie et sur le choix des bi-magie, découpées sans être réécrites.

@@ -27,8 +27,7 @@
   .specialisations { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
 /* Zone élargie (R247 (3), R249 : page d'une magie et chaque onglet du Potentiel Illimité). Le propriétaire veut remplir les espaces vides « sur les côtés » : une
-   page qui a des spécialisations (`.magie-cadre--large`, posé par MagiePage.astro) occupe toute la largeur de la fenêtre (limite : --max-magie-large), panneau latéral
-   compris, au lieu de rester centrée ; le panneau reste à gauche dans sa colonne, non recouvert. Les autres pages du site, et les magies sans spécialisation, ne
+   page qui a des spécialisations (`.magie-cadre--large`, posé par MagiePage.astro) occupe toute la largeur de la fenêtre (limite : --max-magie-large), au lieu de rester centrée ; les autres pages du site, et les magies sans spécialisation, ne
    changent pas. Sous 72rem, ou à l'impression : la mise en page d'avant (une colonne). */
 @media screen and (min-width: 72rem) {
   main:has(> .magie-cadre--large) { max-width: var(--max-magie-large, 120rem); }

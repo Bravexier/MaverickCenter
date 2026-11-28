@@ -7,7 +7,7 @@
 //     entrée « Découvrir ») et L'univers (/decouvrir/l-univers/). La page « Rejoindre une partie » est supprimée (demande du propriétaire du 2026-11-05 :
 //     « Efface la page "Rejoindre une partie" et son lien. ») ; son ancienne adresse n'est renvoyée nulle part (réponse « Page 404 (Recommandé) »).
 //   - Les onglets des Règles (décisions R184 et R185, migration 0091) : « Fiche de personnage », « Mécaniques générales », « Les combats »,
-//     « Exploration », chacun un menu latéral (components/guide/MenuLateral.astro) ouvert sur sa page d'ouverture. Leur plan est une donnée de la
+//     « Exploration », chacun un menu latéral (lib/menu-sous-entrees-site.ts, sous-entrées du menu du site (R321)) ouvert sur sa page d'ouverture. Leur plan est une donnée de la
 //     base (tables regles_onglet et regles_onglet_entree), jamais écrit ici : lib/plan-des-regles-db.mjs#chargerPlanDesRegles le lit, et celui qui
 //     charge les pages l'installe ici (installerLePlan : lib/wiki.ts au build, le service à son démarrage). Une fonction qui a besoin du plan sans qu'il
 //     soit installé lève une erreur. Chaque page d'un onglet est à /regles/<slug>/ (« adresses à plat ») ; /regles/<onglet>/ montre la page
@@ -569,7 +569,7 @@ export function placeDansLeGuide(id, { notion = false } = {}) {
 }
 
 /**
- * Le menu latéral d'un onglet (components/guide/MenuLateral.astro), ses entrées dans l'ordre du plan : la page chargée pour une entrée page (`entries` :
+ * Le menu latéral d'un onglet (lib/menu-sous-entrees-site.ts, sous-entrées du menu du site (R321)), ses entrées dans l'ordre du plan : la page chargée pour une entrée page (`entries` :
  * { id, data: { title } } ; une page absente est sautée, verifierLePlan la signale), un lien ({ libelle, adresse }) ou une entrée « bientôt »
  * ({ bientot }).
  */
@@ -580,7 +580,7 @@ export function entreesDuMenuLateral(onglet, entries) {
 }
 
 /**
- * Ce que le menu latéral d'un onglet pose pour le mode modification du site de dev (components/guide/MenuLateral.astro, prop `edition` ;
+ * Ce que le menu latéral d'un onglet pose pour le mode modification du site de dev (lib/menu-sous-entrees-site.ts, sous-entrées du menu du site (R321), prop `edition` ;
  * scripts/edition/menus.mjs) : { menu: `onglet:<id>` (data-ed-menu), entrees: [{ id, rang }] (data-ed-entree, data-ed-rang : l'id et le rang de la ligne
  * de regles_onglet_entree, null sans eux), une par entrée de entreesDuMenuLateral, dans le même ordre (une page absente est sautée de même) }.
  */

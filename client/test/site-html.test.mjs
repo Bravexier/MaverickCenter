@@ -19,13 +19,13 @@ import {
   ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pageDuGuideALAdresse, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
 } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
-import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles, cssDuMenu } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
-import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesAuNiveau, rubriquesDeLEntete } from './aide-menu-html.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesAuNiveau, rubriquesDeLEntete, sousEntreesDeLaListe } from './aide-menu-html.mjs';
 import { MENU_DU_PROFIL, NAV, entreesAPlat } from '../src/lib/nav.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
@@ -232,7 +232,7 @@ test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique
   assert.ok(entreesDeLaListe(listeDeLaRubrique(html, 'taverne')).some((e) => e.bientot && e.href === null));
   // les entrées à sous-pages : un bouton qui déplie, les sous-pages dans un bloc nommé par lui
   const jeu = listeDeLaRubrique(html, 'jeu');
-  assert.match(jeu, /<li class="menu-site__groupe" data-cle="jeu\/introduction"[^>]*><button type="button" class="menu-site__replier" aria-expanded="true" aria-controls="(menu-du-site-jeu-introduction)" data-menu-replier="jeu\/introduction">/);
+  assert.match(jeu, /<li class="menu-site__groupe" data-cle="jeu\/introduction"( data-contient-la-page)? data-ferme-au-depart><button type="button" class="menu-site__replier" aria-expanded="true" aria-controls="(menu-du-site-jeu-introduction)" data-menu-replier="jeu\/introduction">/);
   assert.ok(jeu.includes('<div class="menu-site__sous" id="menu-du-site-jeu-introduction">'));
   assert.ok(entreesDeLaListe(jeu).slice(0, 2).every((e) => e.href && e.motCle), 'Découvrir et L’univers : des liens de mot-clé, sous Introduction');
   // un lien de mot-clé (R319 (4)) : la balise d'un texte, l'infobulle sur le côté ; un lien simple pour une entrée sans mot-clé
@@ -259,6 +259,29 @@ test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique
   assert.deepEqual(rubriquesDeLEntete(artisanat).filter((r) => r.courante).map((r) => r.cle), ['ressources']);
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(artisanat, 'ressources')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/artisanat/', 'page']]);
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(artisanat, 'regles')).filter((e) => e.courant).map((e) => e.courant), ['true'], 'l’onglet Exploration, qui y mène');
+});
+
+test('R321 : sur toutes les pages, les entrées d’onglet des Règles et « Les races » portent leurs sous-entrées, repliées (chevron) sauf celle qui contient la page ; la chronologie garde son menu propre', options, () => {
+  const sous = (rel) => sousEntreesDeLaListe(menuLateral(lire(rel)));
+  const accueil = sous('index.html');
+  // les listes sont les mêmes sur toutes les pages, une par onglet des Règles et une pour les races ; l'accueil n'en ouvre aucune
+  const menus = (listes) => listes.map((g) => g.menu);
+  assert.equal(accueil.length, ouvrirBase().prepare('SELECT COUNT(*) AS n FROM regles_onglet').get().n + 1);
+  assert.ok(menus(accueil).includes('races') && menus(accueil).filter((m) => m.startsWith('onglet:')).length === accueil.length - 1);
+  assert.deepEqual(accueil.filter((g) => g.contientLaPage), [], 'aucune sous-entrée courante sur l’accueil');
+  for (const rel of ['regles/glossaire/index.html', 'chronologie/index.html', 'magies/index.html']) assert.deepEqual(menus(sous(rel)), menus(accueil), `${rel} : les mêmes listes`);
+  // chaque entrée qui les porte garde son lien et un chevron : un bouton par liste, lien d'abord
+  const html = menuLateral(lire('index.html'));
+  // les onglets et les races (listes modifiables), plus « Les magies » et « Les classes » (étapes 3 et 4 : leurs sous-entrées ne se réordonnent pas)
+  assert.equal((html.match(/menu-site__replier--chevron/g) ?? []).length, accueil.length + 2);
+  assert.equal((html.match(/<li class="menu-site__groupe"[^>]* data-ferme-au-depart><div class="menu-site__ligne">/g) ?? []).length, accueil.length + 2, 'repliées au départ');
+  // les catégories de classes : des sous-groupes sans lien, repliés eux aussi, en accordéon (R321 (6) : une seule ouverte à la fois, `data-accordeon`, script de MenuDuSite.astro)
+  const categories = html.match(/<li class="menu-site__groupe" data-cle="jeu\/classes-[a-z]+" data-ferme-au-depart data-accordeon="classes"><button/g) ?? [];
+  assert.ok(categories.length >= 1, 'les catégories de classes, repliées, en accordéon');
+  assert.equal((html.match(/data-accordeon="/g) ?? []).length, categories.length, 'l’accordéon : les catégories de classes seules');
+  // la chronologie : sa frise et son tiroir, hors du lot (R321 (4)) ; plus aucun ancien menu de page ailleurs
+  assert.match(lire('chronologie/index.html'), /<div class="chrono\b/);
+  for (const rel of ['regles/creer-son-personnage/index.html', 'races/index.html']) assert.doesNotMatch(lire(rel), /lateral-menu|data-lateral-repli/, rel);
 });
 
 test('R184, R319 (5) : les onglets des Règles (Fiche de personnage au Jeu, les autres aux Règles), lus dans la table : leurs pages ouvrent leur rubrique et marquent l’entrée de leur onglet, tirée du plan', options, () => {
@@ -829,27 +852,42 @@ const ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES = new Set(['classe', 'classes-groupe'
 const CLASSE_DU_LOT_DES_CLASSES_ET_RACES = /^couleur-(?:classe|race|palier|mode|neutre)-/;
 
 test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper et neutre : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
+  // `parPage` : les classes que la page pose hors du menu latéral ; `duMenu` : celles du menu latéral (R321 : le point des catégories de classes sous « Les classes »,
+  // sur chaque page qui a le menu, leur feuille étant celle du menu, cssDuMenu)
   const parPage = new Map();
+  const duMenu = new Map();
+  const feuilleDuMenu = `<style>${cssDuMenu()}</style>`;
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
     const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
+    const menu = menuLateral(html);
     // les variables de ces couleurs ne sont plus posées en style, nulle part
     assert.doesNotMatch(html, /style="[^"]*(?:--couleur-classe|--couleur-texte-classe|--couleur-race|--cla:|--rac:|--r:)/, `${rel} : une variable de couleur du lot en style`);
-    for (const [balise, classe] of html.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
-      const jetons = classe.split(/\s+/);
-      if (!jetons.some((c) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) || ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES.has(c))) continue;
-      assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
-      for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(x))) {
-        assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
-        parPage.set(rel, [...(parPage.get(rel) ?? []), c]);
+    for (const [morceau, recueil] of [[html.replace(menu, ''), parPage], [menu, duMenu]]) {
+      for (const [balise, classe] of morceau.matchAll(/<[a-z][a-z0-9]*\b[^>]*\bclass="([^"]*)"[^>]*>/g)) {
+        const jetons = classe.split(/\s+/);
+        if (!jetons.some((c) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(c) || ELEMENTS_DU_LOT_DES_CLASSES_ET_RACES.has(c))) continue;
+        assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément du lot : ${balise}`);
+        for (const c of jetons.filter((x) => CLASSE_DU_LOT_DES_CLASSES_ET_RACES.test(x))) {
+          assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
+          recueil.set(rel, [...(recueil.get(rel) ?? []), c]);
+        }
       }
     }
+    // le menu pose les catégories de classes avec leur feuille, la sienne, dans le menu lui-même (palette-css.mjs#FAMILLES_DU_MENU), une fois
+    if (duMenu.has(rel)) {
+      for (const c of duMenu.get(rel)) assert.ok(cssDuMenu().includes(`.${c}{`), `${rel} : ${c}, dans le menu, est de la feuille du menu`);
+      assert.equal(menu.split(feuilleDuMenu).length - 1, 1, `${rel} : la feuille du menu, dans le menu, une fois`);
+    }
   }
+  // le menu latéral, sur chaque page qui l'a : les cinq catégories de classes (R321)
+  assert.deepEqual([...new Set(duMenu.get('index.html'))], ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'], 'le menu : les cinq catégories');
+  for (const rel of ['races/index.html', 'archives/index.html']) assert.deepEqual(duMenu.get(rel), duMenu.get('index.html'), `${rel} : le même menu`);
   // chaque zone du lot pose bien ses classes
   const zones = {
     'classes/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
-    // la page d'une classe : celle de sa catégorie, et celles des cinq types de son menu latéral (components/classes/ClassePage.astro)
-    'classes/guerrier/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
+    // la page d'une classe, hors du menu latéral (R321 : son ancien menu des cinq types est celui du site, compté à part) : celle de sa catégorie
+    'classes/guerrier/index.html': ['couleur-classe-melee'],
     'races/index.html': ['couleur-race-pure', 'couleur-race-hybride'],
     'races/humain/index.html': ['couleur-race-pure'],
   };
@@ -1056,12 +1094,15 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
     // combinaison de potion, ni événement de la chronologie
     const classes = [...html.matchAll(/\.(couleur-[a-z0-9-]+)\{/g)].map((m) => m[1]);
     assert.ok(classes.length > 30, `${rel} : ${classes.length} classes`);
-    for (const c of classes) assert.ok(palette.includes(`.${c}{`) || motsCles.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
+    // (et la feuille du menu latéral, posée dans le menu de chaque page : les catégories de classes, palette-css.mjs#FAMILLES_DU_MENU, R321)
+    const menu = cssDuMenu();
+    assert.equal(html.split(`<style>${menu}</style>`).length - 1, 1, `${rel} : la feuille du menu latéral, une fois`);
+    for (const c of classes) assert.ok(palette.includes(`.${c}{`) || motsCles.includes(`.${c}{`) || menu.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
     assert.doesNotMatch(html, /data-couleurs-chronologie/, rel);
     // la feuille de la page, insérée telle quelle : sans hex ni fonction de couleur écrite (le voile : noir de mélange)
     const feuille = readFileSync(new URL(`../src/styles/${source}`, import.meta.url), 'utf8');
     assert.ok(html.includes(feuille.trim()), `${rel} : la feuille ${source} insérée`);
-    const autres = [...html.matchAll(/<style>([^<]*)<\/style>/g)].map((m) => m[1]).filter((css) => css !== palette && css !== cssDesAttributs());
+    const autres = [...html.matchAll(/<style>([^<]*)<\/style>/g)].map((m) => m[1]).filter((css) => css !== palette && css !== cssDesAttributs() && css !== menu);
     assert.ok(autres.length >= 1, rel);
     for (const css of autres) {
       const sansMelange = css.replace(/color-mix\(in srgb, #000 \d+%, transparent\)/g, '');

@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 320 décisions, de R1 à R320, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 321 décisions, de R1 à R321, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
 
 | Réf. | Sujet |
 | --- | --- |
@@ -326,3 +326,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R318 | Les fiches du site sont celles du propriétaire ; « Vis… |
 | R319 | Menu en cinq rubriques et menu latéral (refonte du men… |
 | R320 | Personnages prétirés et « Copier le prétiré » (refonte… |
+| R321 | Menus de page imbriqués dans le menu latéral du site (… |

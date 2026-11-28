@@ -141,7 +141,7 @@ export function htmlDesSpecialites(classe) {
 /** Les colonnes du plateau : une par spécialité qui a des dons ({ specialite, cartouche, choix }). */
 const colonnesDeSpecialites = (classe) => classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
 
-/** Le lien « Spécialités » de la navigation de la page (ClassePage.astro) : quand une spécialité qui a des dons a une description. */
+/** L'ancre « Spécialités » de la page (lib/classe-ancres.mjs) : quand une spécialité qui a des dons a une description. */
 export const lienDesSpecialites = (classe) => colonnesDeSpecialites(classe).some((c) => c.specialite.description.length > 0);
 
 /**
@@ -164,7 +164,7 @@ export function htmlDuRepereMagique(classe, { classeId, amBase = null, amMagique
 }
 
 /**
- * Ce que le mode modification redessine d'une page de classe (dons, spécialités, navigation, repère « Classe magique ») tient dans une empreinte : la
+ * Ce que le mode modification redessine d'une page de classe (dons, spécialités, ancres du menu, repère « Classe magique ») tient dans une empreinte : la
  * disposition des dons (étages, ancres, niveaux, choix), les spécialités (ancre, don de spécialité, son nom, « classe magique », description présente).
  * La page construite la porte (`data-ed-structure` de ClassePage.astro) ; l'éditeur ne redessine que si celle de l'état vivant diffère : une simple
  * modification de champ (effet, remarque, type…) ne change rien ici, elle est appliquée en place, et l'onglet ouvert reste ouvert.
@@ -194,10 +194,8 @@ export function empreinteDeStructure(classe) {
  */
 export const doitRedessiner = (construite, classe) => !construite || construite !== empreinteDeStructure(classe);
 
-/** Les liens « Dons par spécialité » de la navigation de la page (ClassePage.astro). */
-export function htmlDuGroupeDeNavigation(classe) {
-  const colonnes = colonnesDeSpecialites(classe);
-  if (!colonnes.length) return '';
-  return `<span class="classe-nav__specialites" role="group" aria-label="Dons par spécialité">${colonnes
-    .map((c) => `<a href="#${echapperHtml(c.specialite.ancre)}">${echapperHtml(c.cartouche?.nom ?? c.specialite.nom)}</a>`).join('')}</span>`;
-}
+/**
+ * Les ancres « Dons par spécialité » de la page (R321 (6) : sous la classe courante du menu du site, lib/classe-ancres.mjs ; avant, le groupe de liens de la barre de sections) :
+ * une par spécialité qui a des dons, vers son panneau, au nom de son cartouche ou de la spécialité. [{ ancre: '#specialite-lame', libelle }]
+ */
+export const ancresDesSpecialites = (classe) => colonnesDeSpecialites(classe).map((c) => ({ ancre: `#${c.specialite.ancre}`, libelle: c.cartouche?.nom ?? c.specialite.nom }));

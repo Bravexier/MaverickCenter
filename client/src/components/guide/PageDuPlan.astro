@@ -1,6 +1,5 @@
 ---
 import Base from '../../layouts/Base.astro';
-import MenuLateral from './MenuLateral.astro';
 import PageDuGuide from './PageDuGuide.astro';
 import { estUnePageDeNotion, GLOSSAIRE, menuLateralDe, verifierLePlan } from '../../lib/livres.mjs';
 import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
@@ -9,15 +8,16 @@ import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 
 // Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
 // (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés ; les sources ne s'affichent que sur /archives/), quelle que soit sa rubrique ; une
-// page d'un onglet des Règles à côté du menu latéral de son onglet (MenuLateral, sur le modèle de la chronologie : lib/livres.mjs#menuLateralDe, le plan
-// de la base, R184 ; l'entrée de l'onglet du menu du site marquée, `entree`, d'après le plan et non l'adresse). Le plan est contrôlé contre les pages
+// page d'un onglet des Règles dans le menu latéral du site, sous l'entrée de son onglet (R321 : ses pages sont les sous-entrées de l'onglet,
+// lib/menu-sous-entrees-site.ts d'après lib/livres.mjs#menuLateralDe, le plan de la base, R184 ; l'onglet du menu du site est marqué, `entree`, d'après le plan et non
+// l'adresse). Le plan est contrôlé contre les pages
 // chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, absorbée par une autre et toujours là, ou hors du plan sous un nom
 // réservé). Une page hors du plan est une page de notion (R309 (7)) : sans menu latéral, rattachée au Glossaire (fil d'Ariane et entrée du menu du site).
 // `ouverture` : l'adresse d'un onglet (/regles/<onglet>/) ou des Règles (/regles/ : le premier onglet ; pages/regles/[...page].astro,
 // pages/regles/index.astro), qui montre la page d'ouverture de l'onglet ; pour ne pas faire deux pages du même texte aux yeux des moteurs de
 // recherche, elle désigne l'adresse propre de cette page comme canonique (<link rel="canonical">). Son titre est celui de l'onglet.
 // Mode modification du site de dev (demande du propriétaire) : titre, résumé et texte modifiables (src/scripts/edition/guide.mjs), adresses des onglets
-// comprises ; le menu latéral (ordre, onglet de la page, ajout et suppression d'une page : src/scripts/edition/menus.mjs).
+// comprises ; les sous-entrées du menu du site (ordre, onglet de la page, ajout et suppression d'une page : src/scripts/edition/menus.mjs, R321 (3)).
 interface Props {
   entry: WikiEntry;
   ouverture?: boolean;
@@ -34,16 +34,9 @@ const menu = menuLateralDe(entry.id, entries);
   description={entry.data.summary}
   edition={modifiable ? entry.id : undefined}
   entree={menu ? menu.rubrique.chemin : estUnePageDeNotion(entry) ? GLOSSAIRE.chemin : undefined}
+  affichee={ouverture ? cheminDePage(entry.id) : undefined}
   couleurPropre
 >
   {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
-  {
-    menu ? (
-      <MenuLateral rubrique={menu.rubrique} pages={menu.pages} entry={entry} edition={menu.edition}>
-        <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
-      </MenuLateral>
-    ) : (
-      <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
-    )
-  }
+  <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
 </Base>

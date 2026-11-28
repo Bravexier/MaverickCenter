@@ -1,6 +1,6 @@
 ---
 name: zone-edition-menus
-description: "Mode modification des menus latéraux (Règles, races) et des pages des Règles : ordre par glisser-déposer, onglet d'une page, création et suppression, pages protégées ou citées, plan vivant /api/edition/plan/. À charger avant de lire, modifier ou relire ce code ou ses tests."
+description: "Mode modification des menus du site portant les onglets des Règles et les races, et des pages des Règles : ordre par glisser-déposer, onglet d'une page, création et suppression, pages protégées ou citées, plan vivant /api/edition/plan/. À charger avant de lire, modifier ou relire ce code ou ses tests."
 paths: ["client/serveur/edition-plan.mjs", "client/src/scripts/edition/menus.mjs", "client/src/scripts/edition/glisser.mjs", "client/src/lib/ordre-des-menus.mjs", "client/src/lib/pages-protegees.mjs", "client/src/lib/citations-db.mjs", "client/test/ordre-des-menus.test.mjs", "client/test/serveur-edition-plan.test.mjs", "client/test/serveur-edition-pages-regles.test.mjs", "client/test/pages-protegees.test.mjs", "client/test/citations-db.test.mjs", "client/test/db-pages-du-site.test.mjs", "client/test/serveur-edition-onglets.test.mjs"]
 user-invocable: false
 ---
@@ -10,7 +10,7 @@ user-invocable: false
 - Service : `serveur/edition-plan.mjs` (`domainesDuPlan` : opération `ordonner`, domaine de `regles_onglet_entree`, création et suppression d'une page des Règles ; `planVivant`, route `GET /api/edition/plan/`). Les outils communs (`refus`, `creerPage`, `supprimerPage`) lui sont donnés par `serveur/edition.mjs`, sans import en retour.
 - Page : extension `menus` (`src/scripts/edition/menus.mjs`), geste `glisser.mjs`, logique pure `lib/ordre-des-menus.mjs`.
 - Protection `lib/pages-protegees.mjs`, citations `lib/citations-db.mjs` (sur `lib/wikilinks-resolution.mjs`, sans `yaml`, que le service n'a pas).
-- Attributs `data-ed-*` du menu : skill `zone-guide`. Ordre des races : skill `zone-races`. Le reste de l'édition : skill `zone-edition`.
+- Les menus modifiés sont les sous-listes du menu du site (R321 (3) : `data-ed-menu` sur la sous-liste, `data-ed-entree`, `data-ed-rang`, `data-ed-groupe` sur les entrées ; skill `zone-menu`, `lib/menu-sous-entrees.mjs`). Ordre des races : skill `zone-races`. Le reste de l'édition : skill `zone-edition`.
 
 ## À lire
 - `docs/serveur.md`, « Édition des règles (site de dev) » (ligne « Plan des Règles et liste des races », route `/api/edition/plan/`) ; `docs/api.md` (action `ordre`, `pages-du-guide/`).
@@ -20,6 +20,8 @@ user-invocable: false
 - Le titre d'un onglet des Règles se modifie (R319 (5), qui remplace « Non, fixe » pour lui seul) ; aucun onglet ne se crée ni ne se retire. L'adresse `regles/<id>/` ne suit pas encore le titre (un lot à part).
 - Pages des Règles ajoutées et supprimées (Guide du MJ, Découvrir et pages typées hors périmètre). Création : titre, onglet, résumé, tous obligatoires, texte écrit ensuite en place, aucune source ; adresse `/regles/<slug>/` tirée du titre et figée ; page en fin de menu. Une entrée « bientôt » se remplit (son libellé pour titre). L'onglet d'une page se change par une liste, l'adresse reste.
 - Suppression : refusée tant qu'une page la cite (le service donne la liste), puis son adresse donne la 404 ; pas de table des renvois. Aucun bouton « Supprimer » sur une page protégée (`boutonSupprimer`, décision du leader-technique) ; une page seulement citée garde le bouton, et le refus 409 liste les textes qui la citent. Une page que l'adresse d'un mot-clé verrouillé vise ne se supprime pas (R221) : 409 avec `details.mots_cles_verrouilles` (`citations-db.mjs#motsClesVerrouillesQuiYMenent`, `refusDuMotCleVerrouille`, appelés par `edition-plan.mjs`) ; le bouton ne le prévoit pas, le service tranche (R221).
+- Poignées et extension `menus` : seulement sur les pages des Règles et des races (R321 (6)) ; `lib/ordre-des-menus.mjs#menusModifiablesDeLaPage` ne garde que les listes dont l'entrée porte `data-contient-la-page`. On réordonne un menu depuis l'une de ses pages ; une page de magie ou de classe n'a ni poignées ni ouverture du menu. Hors de ces pages, le plan vivant ne redessine pas ces menus.
+- Le mode modification ouvre le menu du site (bande réduite dépliée, tiroir ouvert une fois sur écran étroit) par l'événement `menu-du-site:edition` (`detail.actif`, sur `document`), sans écrire l'état gardé (skill `site-version-portable`). `ordre-des-menus.mjs#htmlDUneEntree` dessine une entrée du plan vivant avec le balisage du menu du site.
 - Un titre modifié change le libellé de son entrée de menu (« Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »).
 
 ## Invariants
@@ -34,7 +36,7 @@ user-invocable: false
 - `refus(ed, e)`, point d'entrée d'une extension (`extensions.mjs`) : un nœud DOM que l'annonce montre à la place du message (les pages qui citent, en liens).
 - Avant la reconstruction : une page supprimée mais encore construite affiche un avis avec un lien vers son onglet (`pageSupprimeeEnAttente`) ; `/races/` (pastilles et tableau des magies innées) suit `plan.races` dans la surcouche (`raceDuLien`, `ordonnerSelon`), l'extension `menus` y est donc active aussi. Une page créée sans aperçu s'édite en place (`lib/markdown-edition.mjs#etatDuTexte`, qui rend son Markdown dans le navigateur).
 - Le résumé se pose sous le titre (`edition/guide.mjs#poserLeResume`) ; `page.resume` n'est modifiable que pour une page du guide.
-- La page d'une Règle créée est dessinée sur la 404 (`edition/nouvelles.mjs`) tant que le site n'est pas reconstruit ; le plan vivant redessine les menus.
+- La page d'une Règle créée est dessinée sur la 404 (`edition/nouvelles.mjs`) tant que le site n'est pas reconstruit ; `lib/ordre-des-menus.mjs#menuDeLaPageCreee(plan, id)` donne `onglet:<id>` et `nouvelles.mjs` marque le `.menu-site__groupe` de cette liste (`data-contient-la-page`) : l'extension `menus` (après `nouvelles` dans `EXTENSIONS`) redessine alors la liste avec la page et ses poignées (`ordre-des-menus`).
 
 ## Tests
 - `ordre-des-menus`, `serveur-edition-plan`, `serveur-edition-pages-regles`, `pages-protegees`, `citations-db`, `db-pages-du-site` (une page créée sur le site de dev vit dans sa base ; `data/rows` en reçoit la copie par le workflow), `serveur-edition-onglets` (titre d'onglet : lot, refus, API, annulation d'une ligne), `edition-tous-ecrans`.

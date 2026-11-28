@@ -19,7 +19,7 @@ user-invocable: false
 - `docs/chronologie.md` : « La page », « Modifier la chronologie (site de dev) », « Les données », « Règles de sélection », « Questions au propriétaire ». C'est l'évolution E5 de `docs/feuille-de-route.md`.
 
 ## Choix du propriétaire
-- Les onglets des Règles (`MenuLateral.astro`, skill `zone-guide`) reprennent sa mise en page (menu à gauche, page à droite), sans barre, dates ni chevrons.
+- La Chronologie garde sa frise, son menu propre et son tiroir (R321 (4)) : elle n'est pas imbriquée dans le menu du site, réduit au départ sur ses pages (`MENU_PROPRE`, skill `zone-menu`).
 - Menu Codex. Une page par événement daté (`/chronologie/<id>/`). `/chronologie/` = la frise et son mode d'emploi.
 - À gauche, en vertical, la frise : une immense barre en dégradé, une ligne par événement, la date à gauche de la barre, le titre à droite ; losange = Impact majeur. Elle défile seule.
 - Un clic ouvre la page de l'événement à droite (75 % de la largeur). Tout à droite, deux chevrons : Haut (précédent) et Bas (suivant).

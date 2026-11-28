@@ -11,6 +11,9 @@
 //   - `onglet`        l'id d'un onglet des Règles (regles_onglet.id) : son libellé est le titre de l'onglet dans la base (sauf `libelleArbo`), son adresse regles/<id>/ ;
 //   - `enfants`       les sous-pages d'une entrée qui se déplie (Introduction : Découvrir, L'univers) ; une entrée à enfants n'a pas de lien. `cle` la nomme (l'état
 //                     replié ou déplié se garde par `cle`) ;
+//   - `repliee`       une entrée à enfants sans lien, repliée au départ sauf si la page courante est dedans (R321 (6) : Introduction, comme toutes les entrées) ;
+//   - `sous`          ce que l'entrée porte en sous-entrées, tiré de la base au build (R321 : `races`, `magies`, `classes`, lib/menu-sous-entrees.mjs) ; un onglet des Règles porte les
+//                     pages de son plan sans l'écrire. L'entrée garde son lien, un chevron déplie ses sous-entrées ;
 //   - `niveau`        « joueur », « mj » ou « createur » : le niveau d'accès voulu ([J], [MJ], [C] de R319 (3)) ; une rubrique peut le porter (elle disparaît alors avec ses
 //                     entrées). Appliqué par le lot 4 (R319) : le build l'écrit sur l'élément du menu (`data-niveau-menu`, caché : le menu d'un Observateur sans JavaScript ni
 //                     réponse du service) et scripts/compte.mjs le montre selon le niveau du compte ; la version portable (pas de service) le retire (`sansNiveau`). Ne cache qu'un
@@ -40,18 +43,20 @@ export const NAV = [
     // la rubrique Ressources, fait ouvrir Le Jeu à sa page.
     autres: ['capacites/', 'fiche/'],
     items: [
-      // Introduction n'est pas une page : elle se déplie sur Découvrir et L'univers
+      // Introduction n'est pas une page : elle se déplie sur Découvrir et L'univers ; repliée au départ comme toutes les entrées, ouverte d'office sur Découvrir et
+      // L'univers (R321 (6))
       {
         cle: 'introduction',
         label: 'Introduction',
+        repliee: true,
         enfants: [
           { label: 'Découvrir', motCle: 44, libelleArbo: true, path: 'decouvrir/' },
           { label: 'L’univers', motCle: 201, path: 'decouvrir/l-univers/' },
         ],
       },
-      { label: 'Les races', motCle: 298, libelleArbo: true, path: 'races/' },
-      { label: 'Les magies', motCle: 223, libelleArbo: true, path: 'magies/' },
-      { label: 'Les classes', motCle: 66, libelleArbo: true, path: 'classes/' },
+      { label: 'Les races', motCle: 298, libelleArbo: true, path: 'races/', sous: 'races' },
+      { label: 'Les magies', motCle: 223, libelleArbo: true, path: 'magies/', sous: 'magies' },
+      { label: 'Les classes', motCle: 66, libelleArbo: true, path: 'classes/', sous: 'classes' },
       { label: 'Les métiers', motCle: 240, libelleArbo: true, path: 'metiers/' },
       { label: 'Les familiers', path: 'ressources/familiers/' },
       // l'onglet des Règles (page d'ouverture : guide/creer-son-personnage) ; l'entrée garde le nom de l'arborescence (dix entrées en tout, R319 (4))

@@ -10,11 +10,11 @@ import { lireSansCrlf } from './aide-fins-de-ligne.mjs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  CLASSE_DES_ARMES_DE_DEPART, CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_FICHE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES,
+  CLASSE_DES_ARMES_DE_DEPART, CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_FICHE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES, FAMILLES_DU_MENU,
   MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDeMateriau, classeDuPoids, classeDuTypeDArmure,
   classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeDegats, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
-  classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
+  classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDuMenu, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
   secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon, classeDeCase,
 } from '../src/lib/palette-css.mjs';
 import { COULEURS_DES_CASES } from '../src/lib/cases-couleurs.mjs';
@@ -118,6 +118,11 @@ test('vingt et une familles, chacune lue dans le module de sa règle : magies, a
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case', 'degats']);
   assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+  // le mode d'émission du menu : une famille d'une zone que le menu pose sur chaque page, hors de la feuille de Base.astro (épinglée sous 4 ko)
+  assert.deepEqual(FAMILLES_DU_MENU, ['classe']);
+  assert.ok(FAMILLES_DU_MENU.every((f) => FAMILLES_DES_ZONES.includes(f) && !FAMILLES_DE_CHAQUE_PAGE.includes(f)), 'des familles de zone, jamais de chaque page');
+  assert.equal(cssDuMenu(), cssDesFamilles(FAMILLES_DU_MENU));
+  for (const f of FAMILLES_DU_MENU) assert.ok(!cssDeLaPalette().includes(`.couleur-${f}-`), `${f} : pas dans la feuille de chaque page`);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
   assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
@@ -361,13 +366,25 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : la page Armes');
   for (const rel of ['index.html', 'ressources/armes/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
   // les catégories de classe et les races : sur leurs listes et leurs pages, et seulement là (et la fiche)
-  assert.ok(page('classes/index.html').includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'classes : la liste');
+  assert.ok(page('classes/index.html').includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'classes : la liste (comme le menu, qui la pose sur chaque page)');
   assert.ok(page('classes/guerrier/index.html').includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), 'classes et types de don : la page d’une classe');
   // les genres de sort : sur les pages des magies seules
   assert.ok(page('magies/magie-du-feu/index.html').includes(`<style>${cssDesFamilles(['genre'])}</style>`), 'genres : la page d’une magie');
   for (const rel of ['index.html', 'classes/index.html', 'races/humain/index.html']) assert.ok(!/\.couleur-(?:genre|don)-/.test(page(rel)), `${rel} : ni genres ni types`);
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
-  for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
+  // la famille du menu (FAMILLES_DU_MENU : `classe`) est sur chaque page, dans le <style> du menu seulement, une seule fois ; les autres familles de zone restent interdites
+  const feuilleDuMenu = `<style>${cssDuMenu()}</style>`;
+  for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'races/humain/index.html', 'ressources/armes/index.html']) {
+    const html = page(rel);
+    assert.equal(html.split(feuilleDuMenu).length - 1, 1, `${rel} : la feuille du menu, une fois`);
+    const nav = html.match(/<nav class="menu-site[^>]*data-menu-site[^>]*>[\s\S]*?<\/nav>/)?.[0] ?? '';
+    assert.ok(nav.includes(feuilleDuMenu), `${rel} : la feuille du menu est dans le menu`);
+    assert.ok(!html.slice(0, html.indexOf('<nav class="menu-site')).includes(feuilleDuMenu), `${rel} : pas avant le menu (entre l'en-tête et le corps)`);
+  }
+  for (const rel of ['index.html', 'magies/index.html']) {
+    const sansLeMenu = page(rel).replace(feuilleDuMenu, '');
+    assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(sansLeMenu), `${rel} : pas de ces familles hors du menu`);
+  }
   // les matériaux, les armes de départ, les types d'armure et les poids : les pages Armes, Armures et Boucliers, les composants (matériaux), la fiche (poids)
   assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la page Armes');
   // les types de dégâts sont dans la feuille de chaque page (icône d'un mot-clé) : la page Armes ne les émet pas une seconde fois
@@ -571,9 +588,8 @@ test('les feuilles des magies lisent les propriétés que posent les classes : p
   dans('src/styles/magie/creatures.css', 'button.creature__bouton--magie', `--creature-1: var(${fond}); --creature-2: var(${second});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__noeud', `--p: var(${fond});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__pastille', `--p: var(${fond});`);
-  // le panneau latéral des pages de magie : les mêmes pastilles que la carte (demande du propriétaire du 2026-11-05)
-  dans('src/styles/global/pastille.css', '.magies-panneau__lien', `--p: var(${fond});`);
-  dans('src/styles/global/pastille.css', '.magies-panneau__point', `--p: var(${fond});`);
+  // les magies du menu latéral du site (R321 : plus de panneau à côté de la page) : un point de la couleur de leur classe (`--couleur`)
+  dans('src/styles/global/menu-site.css', '.menu-site__point', `var(--couleur, currentColor)`);
   // la carte : le trait prend --couleur ou --couleur-2 de ses classes, selon la magie survolée
   const carte = lire('src/components/magie/MagiesConstellation.astro');
   assert.ok(carte.includes(`.magies-relation.avec-\${k} { --c: var(${fond});`) && carte.includes(`.magies-relation.seconde-\${k} { --c: var(${second}); }`), 'règles du survol');

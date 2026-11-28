@@ -35,6 +35,7 @@ test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leur
   // Introduction n'est pas une page : pas de lien à elle, ses sous-pages seulement ; navPaths les compte, et les `autres` gardent les pages hors menu
   const introduction = rubrique('jeu').items[0];
   assert.ok(!introduction.path && !introduction.motCle && !introduction.onglet && introduction.cle, 'une entrée qui se déplie, nommée par `cle` (l’état replié)');
+  assert.equal(introduction.repliee, true, 'R321 (6) : Introduction est repliée au départ, comme toutes les entrées (le rendu l’ouvre d’office sur Découvrir et L’univers)');
   assert.ok(navPaths().includes('decouvrir/l-univers/') && navPaths().filter((p) => p.includes('#')).join() === 'personnages/#pretires', 'seule l’entrée Personnages prétirés porte une ancre (R320)');
   assert.deepEqual(rubrique('ressources').autres, ['ressources/']);
   assert.deepEqual(rubrique('regles').autres, ['regles/']);
@@ -43,7 +44,7 @@ test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leur
 });
 
 test('R319 (3) : les niveaux sont portés par les données ; entreesVisibles retire `devSeulement` ([Dev]), `prodSeulement` ([Prod]) et, pour la version portable, tout `niveau` ; le niveau du compte, lui, s’applique dans le navigateur', () => {
-  const champs = ['label', 'path', 'motCle', 'libelleArbo', 'onglet', 'enfants', 'cle', 'niveau', 'devSeulement', 'prodSeulement'];
+  const champs = ['label', 'path', 'motCle', 'libelleArbo', 'onglet', 'enfants', 'cle', 'sous', 'repliee', 'niveau', 'devSeulement', 'prodSeulement'];
   for (const e of NAV.flatMap((g) => entreesAPlat(g.items))) {
     assert.ok(Object.keys(e).every((k) => champs.includes(k)), `${e.label} : un champ que lib/menu-db.mjs ne connaît pas`);
     assert.ok(e.niveau === undefined || NIVEAUX_DU_MENU.includes(e.niveau), `${e.label} : niveau ${e.niveau}`);

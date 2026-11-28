@@ -1,7 +1,7 @@
 // Extension de l'éditeur pour la page d'une classe (components/classes/ClassePage.astro) — demande du propriétaire (D11) : ajouter et supprimer des
 // spécialités et des dons depuis le site de dev, en mode modification.
 //   - la page relit l'état vivant de la classe (POST /api/edition/classe/) ; si des spécialités ou des dons ont été créés ou supprimés depuis la
-//     construction du site, elle redessine ses dons, ses spécialités et sa navigation avec le rendu des gabarits (lib/classe-dons-rendu.mjs, sur le même
+//     construction du site, elle redessine ses dons, ses spécialités et ses ancres du menu du site (R321 (6)) avec le rendu des gabarits (lib/classe-dons-rendu.mjs, sur le même
 //     assemblage que le build : lib/classe-assemblage.mjs), puis rebranche ses onglets (évènement « onglets:brancher », components/Onglets.astro) ;
 //   - en mode modification : « + Ajouter un don de classe », « + Ajouter un don à <SPÉCIALITÉ> », « + Ajouter une option » (sur un choix ou un don
 //     seul, jamais sur un don de spécialité), « + Ajouter une spécialité » (selon lib/dons-edition.mjs#permissions) ; « Supprimer » à bascule sur chaque
@@ -18,14 +18,16 @@
 //     #avecLaMagieDuDon).
 import { assemblerClasse } from '../../lib/classe-assemblage.mjs';
 import { analyserTypeDeDon } from '../../lib/classe-champs.mjs';
+import { ancresRedessinees } from '../../lib/classe-ancres.mjs';
 import {
-  doitRedessiner, empreinteDeStructure, htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites,
+  doitRedessiner, empreinteDeStructure, htmlDesDons, htmlDesSpecialites, htmlDuRepereMagique,
 } from '../../lib/classe-dons-rendu.mjs';
 import {
   avecLaMagieDuDon, champDeLaMagieDuDon, consequences, libelleDeRetrait, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions,
 } from '../../lib/dons-edition.mjs';
 import { CHAMPS_HORS_COLONNES, ENTITES, MAGIES_D_UN_DON_VARIABLE } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
+import { htmlDUneAncre } from '../../lib/menu-ancre-rendu.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 
 const racine = () => document.querySelector('.classe[data-ed-classe]');
@@ -115,20 +117,22 @@ function redessinerLeRepere(classe) {
   liste.prepend(elementDe(html));
 }
 
-/** Un lien de la navigation de la page (« Spécialités », « Dons ») : ajouté à sa place s'il manque, retiré s'il n'a plus lieu d'être. */
-function lienDeNavigation(nav, href, libelle, montrer, suivants) {
-  const enPlace = nav.querySelector(`:scope > a[href="${href}"]`);
-  if (!montrer) {
-    enPlace?.remove();
-    return;
-  }
-  if (enPlace) return;
-  const a = document.createElement('a');
-  a.href = href;
-  a.textContent = libelle;
-  const suivant = [...suivants.map((h) => nav.querySelector(`:scope > a[href="${h}"]`)), nav.querySelector('.classe-nav__specialites')].find(Boolean);
-  if (suivant) suivant.before(a);
-  else nav.append(a);
+/**
+ * Les ancres de la classe affichée dans le menu latéral du site (R321 (6) : ses sections, sous son entrée ; avant, la barre `classe-nav` de la page) : la liste sous l'entrée
+ * qui porte `aria-current="page"`, ou null (la page est dessinée sur la 404, ou la classe n'avait qu'une section à la construction : pas d'ancres, donc pas de liste).
+ */
+const listeDesAncres = () => document.querySelector('[data-menu-site] .menu-site__groupe > .menu-site__ligne > a[aria-current="page"]')
+  ?.closest('.menu-site__groupe')?.querySelector(':scope > .menu-site__sous > .menu-site__sous-liste') ?? null;
+
+/** Refait les ancres de la classe depuis l'état vivant : « Spécialités », « Dons » et, sous lui, une entrée par spécialité qui a des dons ; les autres sections restent comme construites. */
+function redessinerLesAncres(classe, aDons) {
+  const liste = listeDesAncres();
+  if (!liste) return;
+  const presentes = new Set([...liste.querySelectorAll('a[href^="#"]')].map((a) => a.getAttribute('href')));
+  const ancres = ancresRedessinees(presentes, classe, aDons);
+  liste.innerHTML = ancres.map(htmlDUneAncre).join('');
+  // sans ancre (une seule section reste), le chevron n'a plus rien à déplier
+  liste.closest('.menu-site__groupe')?.querySelector(':scope > .menu-site__ligne > .menu-site__replier')?.toggleAttribute('hidden', ancres.length === 0);
 }
 
 /** Avant de brancher les onglets redessinés : ouvre celui du panneau `id` (au lieu du premier), s'il existe encore. */
@@ -156,7 +160,7 @@ function suivreLAdresse() {
 }
 
 /**
- * Redessine dons, spécialités, navigation et repère « Classe magique » depuis l'état vivant (la page construite ne les montre plus tels qu'ils sont). L'onglet
+ * Redessine dons, spécialités, ancres du menu du site et repère « Classe magique » depuis l'état vivant (la page construite ne les montre plus tels qu'ils sont). L'onglet
  * de spécialité ouvert le reste ; `adresse` (au chargement) : l'élément que vise l'adresse est ouvert et montré, comme sur une page construite.
  */
 function redessiner(ed, { adresse = false } = {}) {
@@ -169,17 +173,7 @@ function redessiner(ed, { adresse = false } = {}) {
   remplacer('specialites', htmlDesSpecialites(classe), ['#depart', '#dons', '#annexe']);
   const dons = remplacer('dons', htmlDesDons(classe, options), ['#annexe']);
   redessinerLeRepere(classe);
-  const nav = racine().querySelector('.classe-nav');
-  if (nav) {
-    const groupe = htmlDuGroupeDeNavigation(classe);
-    const enPlace = nav.querySelector('.classe-nav__specialites');
-    const gabarit = document.createElement('template');
-    gabarit.innerHTML = groupe;
-    if (enPlace) enPlace.replaceWith(...gabarit.content.childNodes);
-    else if (groupe) nav.append(...gabarit.content.childNodes);
-    lienDeNavigation(nav, '#specialites', 'Spécialités', lienDesSpecialites(classe), ['#depart', '#dons', '#annexe']);
-    lienDeNavigation(nav, '#dons', 'Dons', Boolean(dons), ['#annexe']);
-  }
+  redessinerLesAncres(classe, Boolean(dons));
   racine().dataset.edStructure = empreinteDeStructure(classe);
   rouvrirLePanneau(ouvert);
   for (const g of racine().querySelectorAll('.specialites[data-onglets]')) g.dispatchEvent(new CustomEvent('onglets:brancher', { bubbles: true }));
