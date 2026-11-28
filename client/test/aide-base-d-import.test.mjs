@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -204,6 +205,35 @@ test('defaireLeSite, migration 0136 : un lot ancien de mot_cle (libelle, url, de
   assert.equal(ligne(db, 'SELECT definition FROM page WHERE id = ?', p.id).definition, q.description, 'sur la page : la définition d’import');
   assert.equal(ligne(db, 'SELECT 1 AS n FROM repere WHERE mot_cle_id = ?', p.mot_cle_id), undefined, 'un mot-clé de page n’a pas de repère');
   assert.deepEqual(lotsDuTest(db), [], 'les lots défaits quittent l’historique');
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+});
+
+test('defaireLeSite, migration 0136 : un ancrage défait rend aussitôt son repère au mot-clé (contrat C0), où se défont les lots plus anciens ; un désancrage défait le lui retire', (t) => {
+  const db = copieDImport(t);
+  const [r, q] = reperesDecrits(db, 2);
+  const origine = ligne(db, 'SELECT * FROM repere WHERE mot_cle_id = ?', r.id);
+  const [p, p2] = db.prepare('SELECT id, titre FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 2').all().map((l) => ({ ...l }));
+  // r : renommé au titre de sa future page et redéfini (lot 1), puis ancré sur cette page, son adresse alignée sur la sienne (lot 2, comme un lot
+  // « Ancrage des mots-clés ») ; la base porte l'état d'après la 0136 : plus de repère, définition, couleur et icône sur la page
+  db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(r.id);
+  db.prepare('UPDATE page SET mot_cle_id = ?, definition = ?, couleur = ?, icone = ? WHERE id = ?').run(r.id, 'Plif.', origine.couleur, origine.icone, p.id);
+  tracer(db, { lot: '2026-11-01T10:00:00.000Z-ancre-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: r.id }, operation: 'modifier',
+    avant: { libelle: origine.nom, description: origine.definition }, apres: { libelle: p.titre, description: 'Plif.' } });
+  tracer(db, { lot: '2026-11-02T10:00:00.000Z-ancre-2', rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'page', cle: { id: p.id }, operation: 'modifier',
+    avant: { mot_cle_id: null }, apres: { mot_cle_id: r.id } });
+  tracer(db, { lot: '2026-11-02T10:00:00.000Z-ancre-2', rang: 2, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: r.id }, operation: 'modifier',
+    avant: { url: origine.adresse }, apres: { url: adresseDeLaPageEnBase(db, p.id) } });
+  // q : une page ancrée sur lui qu'un lot a désancrée ; la 0136 lui a donné son repère
+  tracer(db, { lot: '2026-11-03T10:00:00.000Z-ancre-3', rang: 1, faitLe: '2026-11-03T10:00:00Z', table: 'page', cle: { id: p2.id }, operation: 'modifier',
+    avant: { mot_cle_id: q.id }, apres: { mot_cle_id: null } });
+
+  assert.deepEqual(defaireLeSite(db), []);
+  assert.deepEqual(ligne(db, 'SELECT * FROM repere WHERE mot_cle_id = ?', r.id), origine, 'le repère rendu à l’ancrage défait, puis le lot plus ancien défait dessus : son nom, son adresse, sa définition d’import');
+  assert.deepEqual(ligne(db, 'SELECT mot_cle_id, definition, couleur, icone FROM page WHERE id = ?', p.id), { mot_cle_id: null, definition: null, couleur: null, icone: null },
+    'la page désancrée ne garde rien du mot-clé');
+  assert.deepEqual(ligne(db, 'SELECT mot_cle_id, definition FROM page WHERE id = ?', p2.id), { mot_cle_id: q.id, definition: q.description }, 'le désancrage défait : la page reprend sa définition');
+  assert.equal(ligne(db, 'SELECT 1 AS n FROM repere WHERE mot_cle_id = ?', q.id), undefined, 'et le repère part (il ne double jamais une page)');
+  assert.deepEqual(lotsDuTest(db), []);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 

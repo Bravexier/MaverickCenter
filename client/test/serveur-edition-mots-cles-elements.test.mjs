@@ -29,15 +29,8 @@ import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
 const racine = dossierTemporaire('edition-mots-cles-elements');
 let n = 0;
-const SANS_ELEMENT = `SELECT k.id FROM mot_cle k WHERE NOT EXISTS (SELECT 1 FROM page WHERE mot_cle_id = k.id) AND NOT EXISTS (SELECT 1 FROM sort WHERE mot_cle_id = k.id)
-  AND NOT EXISTS (SELECT 1 FROM repere WHERE mot_cle_id = k.id)`;
 function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(n += 1)}`) }).chemin);
-  // la copie du contenu peut porter un mot-clé sans élément (contrat C0 non tenu, signalé) : il est retiré de la base d'essai, il bloquerait la règle des clés
-  for (const { id } of db.prepare(SANS_ELEMENT).all()) {
-    db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(id);
-    db.prepare('DELETE FROM mot_cle WHERE id = ?').run(id);
-  }
   const un = (sql, ...p) => {
     const l = db.prepare(sql).get(...p);
     return l ? { ...l } : undefined;

@@ -137,6 +137,8 @@ test('créer : un identifiant déjà employé (journal, page supprimée par le p
   for (const [page, slug] of Object.entries(ADRESSES_RENOMMEES_DU_GUIDE)) {
     if (!db.prepare('SELECT 1 FROM page WHERE id = ?').get(page)) continue; // supprimée sur le site de dev : son adresse ne sert plus rien
     db.prepare('UPDATE page SET titre = ?, titre_cle = ? WHERE id = ?').run('Essai R228', 'essai-r228', page);
+    // sur un contenu ancré, le mot-clé de la page porte son nom (migration 0136) : sa clé suit, comme le service la recalcule au renommage
+    db.prepare('UPDATE mot_cle SET cle = ? WHERE id = (SELECT mot_cle_id FROM page WHERE id = ?)').run(`essai-r228-${slug}`, page);
     db.prepare('DELETE FROM alias WHERE cle = ?').run(slug);
     assert.equal(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(slug), undefined, `${slug} : plus aucune clé de page`);
     const titre = slug.split('-').map((m, i) => (i ? m : m[0].toUpperCase() + m.slice(1))).join(' ');

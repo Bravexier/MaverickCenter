@@ -49,9 +49,10 @@ test('V1 : des icônes de la liste du site, sur des mots-clés de plusieurs genr
   const { rapport, db } = variante(t, 'V1');
   assert.ok(rapport.faites.length > 0);
   const valeurs = new Set(ICONES.map((i) => i.valeur));
-  // l'icône se lit sur l'élément du mot-clé (migration 0136) : `porteur` dit la ligne écrite, la page ou le repère (le mot-clé avant la migration)
+  // l'icône se lit sur l'élément du mot-clé (migration 0136) : `porteur` dit la ligne écrite, la page, le sort ou le repère (le mot-clé avant la migration)
   for (const f of rapport.faites) assert.equal(lireUnMotCle(db, f.id).icone, f.icone);
-  assert.ok(rapport.faites.every((f) => ['mot_cle', 'page', 'repere'].includes(f.porteur.table)), 'jamais un sort, qui n’a pas d’icône');
+  // depuis la 0136, un sort porte l'icône de son mot-clé (R309 (14)) : un contenu ancré en a
+  assert.ok(rapport.faites.every((f) => ['mot_cle', 'page', 'sort', 'repere'].includes(f.porteur.table)), 'la ligne du mot-clé, ou son élément');
   assert.ok(rapport.faites.every((f) => valeurs.has(f.icone)), 'seulement des icônes que le site propose (lib/icones.mjs)');
   const genres = new Set(rapport.faites.map((f) => f.groupe.split(':')[0]));
   assert.ok(genres.has('categorie') && genres.has('page'), 'des catégories de mots-clés et des types de page');

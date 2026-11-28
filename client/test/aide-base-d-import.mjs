@@ -32,6 +32,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, lireHistorique } from '../src/lib/historique-site.mjs';
@@ -117,8 +118,15 @@ function oublierLesReferencesDesMigrations(db, table, cle) {
 const COLONNES_DE_L_ELEMENT = Object.freeze({
   repere: Object.freeze({ libelle: 'nom', url: 'adresse', description: 'definition', couleur: 'couleur', icone: 'icone' }),
   page: Object.freeze({ description: 'definition', couleur: 'couleur', icone: 'icone' }),
-  sort: Object.freeze({}),
+  sort: Object.freeze({ description: 'definition', couleur: 'couleur', icone: 'icone' }),
 });
+
+/**
+ * Le nom et l'adresse propres d'un mot-clé ancré (`libelle`, `url`), par id : avant la 0136, le mot-clé les portait à côté de sa page ou de son
+ * sort. Une entrée ancienne de `mot_cle` qui les écrit, défaite pendant que le mot-clé est ancré, les note ici ; ils passent dans le repère si un
+ * ancrage défait le laisse sans élément. Propre à un appel de defaireLeSite.
+ */
+const LOGIQUES_PROPRES = Object.freeze(['libelle', 'url']);
 
 /** L'élément du mot-clé `id` dans `db` : { table, ou, cle } ou null. */
 function elementDe(db, id) {
@@ -134,7 +142,7 @@ function elementDe(db, id) {
  * Défait, sur l'élément du mot-clé, les colonnes logiques qu'une entrée ancienne de `mot_cle` écrivait (base à la structure 0136 et après). Une
  * suppression défaite remet aussi le repère d'un mot-clé qui n'a ni page ni sort, avec les valeurs de son « avant ».
  */
-function defaireSurLElement(db, e, id) {
+function defaireSurLElement(db, e, id, propres) {
   if (e.operation === 'inserer') return;
   if (e.operation === 'supprimer') {
     if (elementDe(db, id) || !e.avant?.libelle) return;
@@ -144,6 +152,13 @@ function defaireSurLElement(db, e, id) {
   }
   const element = elementDe(db, id);
   if (!element) return;
+  if (element.table !== 'repere') {
+    const notes = propres.get(id) ?? {};
+    for (const l of LOGIQUES_PROPRES.filter((x) => e.avant && x in e.avant)) {
+      if (!(l in notes) || memes(notes[l], e.apres?.[l])) notes[l] = e.avant[l];
+    }
+    propres.set(id, notes);
+  }
   const actuelle = db.prepare(`SELECT * FROM "${element.table}" WHERE ${element.ou}`).get(element.cle);
   const valeurs = Object.entries(COLONNES_DE_L_ELEMENT[element.table]).filter(([logique]) => e.avant && logique in e.avant).flatMap(([logique, col]) => {
     const v = e.avant[logique];
@@ -152,6 +167,51 @@ function defaireSurLElement(db, e, id) {
     return reecrit === undefined ? [] : [[col, reecrit]];
   });
   if (valeurs.length) db.prepare(`UPDATE "${element.table}" SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${element.ou}`).run(...valeurs.map(([, v]) => v), element.cle);
+}
+
+/** Les mots-clés qu'une entrée de `page` ou de `sort` ancre ou désancre (son mot_cle_id avant, après, et celui de la ligne actuelle). */
+function motsClesAncres(e, actuelle) {
+  if ((e.table !== 'page' && e.table !== 'sort') || (e.operation === 'modifier' && !(e.avant && 'mot_cle_id' in e.avant))) return [];
+  return [...new Set([actuelle?.mot_cle_id, e.avant?.mot_cle_id, e.apres?.mot_cle_id].filter((id) => id !== null && id !== undefined))];
+}
+
+/** La page, sinon le sort du mot-clé `id`, avec ce qu'en recevrait son repère : { table, id, nom, adresse, definition, couleur, icone } ou null. */
+function ancrageDe(db, id) {
+  const page = db.prepare('SELECT id, titre, definition, couleur, icone FROM page WHERE mot_cle_id = ?').get(id);
+  if (page) return { table: 'page', id: page.id, nom: page.titre, adresse: adresseDeLaPageEnBase(db, page.id), definition: page.definition, couleur: page.couleur, icone: page.icone };
+  const sort = db.prepare('SELECT id, nom, definition, couleur, icone FROM sort WHERE mot_cle_id = ?').get(id);
+  return sort ? { table: 'sort', id: sort.id, nom: sort.nom, adresse: null, definition: sort.definition, couleur: sort.couleur, icone: sort.icone } : null;
+}
+
+/**
+ * Après une entrée défaite de `page` ou de `sort` qui ancre ou désancre le mot-clé `id` (base à la structure 0136 et après), tient le contrat C0 : un
+ * mot-clé laissé sans page ni sort reçoit aussitôt son repère, tiré de l'élément qu'il avait (`avant`, lu avant l'entrée : son titre ou son nom, l'adresse
+ * de la page, sa définition, sa couleur et son icône, vidées sur l'élément qui reste), le nom et l'adresse propres notés (`propres`) l'emportant ; les
+ * entrées plus anciennes de `mot_cle` s'y défont. Un mot-clé ancré de nouveau quitte son repère : sa définition, sa couleur et son icône passent sur
+ * l'élément qui ne les a pas, son nom et son adresse sont notés. `provisoires` : les repères ainsi créés.
+ */
+function tenirLAncrage(db, id, avant, { propres, provisoires }) {
+  if (!db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id)) return;
+  const element = ancrageDe(db, id);
+  const repere = db.prepare('SELECT * FROM repere WHERE mot_cle_id = ?').get(id);
+  if (!element && !repere && avant) {
+    const notes = propres.get(id) ?? {};
+    const nom = notes.libelle ?? avant.nom;
+    if (!nom) return;
+    db.prepare('INSERT INTO repere (mot_cle_id, nom, adresse, definition, couleur, icone) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, nom, 'url' in notes ? notes.url : avant.adresse, avant.definition ?? null, avant.couleur ?? null, avant.icone ?? null);
+    if (db.prepare(`SELECT 1 FROM "${avant.table}" WHERE id = ?`).get(avant.id)) {
+      db.prepare(`UPDATE "${avant.table}" SET definition = NULL, couleur = NULL, icone = NULL WHERE id = ?`).run(avant.id);
+    }
+    propres.delete(id);
+    provisoires.add(id);
+  } else if (element && repere) {
+    db.prepare(`UPDATE "${element.table}" SET definition = coalesce(definition, ?), couleur = coalesce(couleur, ?), icone = coalesce(icone, ?) WHERE id = ?`)
+      .run(repere.definition, repere.couleur, repere.icone, element.id);
+    db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(id);
+    propres.set(id, { libelle: repere.nom, url: repere.adresse });
+    provisoires.delete(id);
+  }
 }
 
 /**
@@ -164,6 +224,8 @@ function defaireSurLElement(db, e, id) {
 export function defaireLeSite(db, { garder = new Set() } = {}) {
   const entrees = lireHistorique(db).filter((e) => !garder.has(e.lot));
   const ecarts = [];
+  const aDesReperes = Boolean(colonnesDe(db, 'repere')) && !colonnesDe(db, 'mot_cle')?.has('libelle');
+  const suivi = { propres: new Map(), provisoires: new Set() };
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('BEGIN');
   db.exec('PRAGMA defer_foreign_keys = ON'); // l'ordre inverse des opérations d'un lot peut passer par un état transitoire
@@ -176,10 +238,17 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
       const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
       const actuelle = db.prepare(`SELECT * FROM "${e.table}" WHERE ${ou}`).get(...Object.values(cle));
       try {
+        const ancres = aDesReperes ? motsClesAncres(e, actuelle).map((id) => [id, ancrageDe(db, id)]) : [];
         if (e.operation === 'inserer') {
           if (actuelle) oublierLesReferencesDesMigrations(db, e.table, cle);
           if (actuelle) db.prepare(`DELETE FROM "${e.table}" WHERE ${ou}`).run(...Object.values(cle));
         } else if (e.operation === 'supprimer') {
+          if (actuelle && e.table === 'repere' && suivi.provisoires.delete(cle.mot_cle_id)) {
+            // le repère qu'un ancrage défait plus tard dans l'ordre inverse a créé : la suppression défaite lui rend les valeurs de son « avant »
+            const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c) && c !== 'mot_cle_id');
+            if (valeurs.length) db.prepare(`UPDATE repere SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...valeurs.map(([, v]) => v), ...Object.values(cle));
+            continue;
+          }
           if (actuelle) continue; // remise depuis par une migration : gardée
           const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c));
           db.prepare(`INSERT INTO "${e.table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
@@ -193,7 +262,8 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
           });
           if (valeurs.length) db.prepare(`UPDATE "${e.table}" SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...valeurs.map(([, v]) => v), ...Object.values(cle));
         }
-        if (e.table === 'mot_cle' && !colonnes.has('libelle') && cle.id !== undefined) defaireSurLElement(db, e, cle.id);
+        for (const [id, avant] of ancres) tenirLAncrage(db, id, avant, suivi);
+        if (e.table === 'mot_cle' && !colonnes.has('libelle') && cle.id !== undefined) defaireSurLElement(db, e, cle.id, suivi.propres);
       } catch (err) {
         ecarts.push(`${e.table} ${e.texte} (${e.operation}, lot ${e.lot}) : ${err.message}`);
       }

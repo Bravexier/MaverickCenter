@@ -10,6 +10,7 @@ import { enregistrer } from '../serveur/edition.mjs';
 import { estUnePageDeNotion } from '../serveur/edition-notions.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { CATEGORIES_NOUVELLES, categorieDuType, planDeLAncrage, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
+import { elementDuMotCle, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -85,12 +86,17 @@ test('« Sort » et « Type de sort » renommées : le plan ne les recrée pas e
     for (const [table, id] of [['sort', element], ['type_sort', code]]) {
       // sur un contenu ancré : l'ancre retirée, et son ancien mot-clé sous un autre nom (sinon, même nom et même type : à trancher)
       const ancien = db.prepare(`SELECT mot_cle_id AS m FROM "${table}" WHERE id = ?`).get(id).m;
+      const nom = ancien === null ? null : lireUnMotCle(db, ancien).libelle;
       db.prepare(`UPDATE "${table}" SET mot_cle_id = NULL WHERE id = ?`).run(id);
       // sa page de notion (R309 (7)) porte aussi son nom : retirée de cette copie, sinon le nom est pris (à trancher)
       for (const p of ancien === null ? [] : db.prepare('SELECT id FROM page WHERE mot_cle_id = ?').all(ancien)) {
         if (estUnePageDeNotion(db, p.id)) db.prepare('DELETE FROM page WHERE id = ?').run(p.id);
       }
-      if (ancien !== null) db.prepare("UPDATE mot_cle SET libelle = libelle || ' quitté', cle = cle || '-quitte' WHERE id = ?").run(ancien);
+      if (ancien === null) continue;
+      db.prepare("UPDATE mot_cle SET cle = cle || '-quitte' WHERE id = ?").run(ancien);
+      // depuis la 0136, son nom se lit sur son élément : resté sans page ni sort, il le garde dans un repère (contrat C0), sous le nom quitté
+      if (!elementDuMotCle(db, ancien)) db.prepare('INSERT INTO repere (mot_cle_id, nom) VALUES (?, ?)').run(ancien, `${nom} quitté`);
+      else if (elementDuMotCle(db, ancien).table === 'repere') db.prepare('UPDATE repere SET nom = ? WHERE mot_cle_id = ?').run(`${nom} quitté`, ancien);
     }
     renommer(db, sort);
     renommer(db, type);
