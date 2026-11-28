@@ -6,8 +6,8 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 224 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
-  0 familles d'import ; 1 pages (dont `page.slug_adresse` et `page_ancienne_adresse`, R316), liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
+- `data/schema.sql` : la structure. 225 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+  0 familles d'import ; 1 pages (dont `page.slug_adresse` et `page_ancienne_adresse`, R316 ; `page.definition`, `page.couleur`, `page.icone`, 0136), liens, mots-clés (`mot_cle` : `id`, `cle`, `verrou`, `monnaie_id` ; `repere`, l'élément d'un mot-clé sans page ni sort, 0135), sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
   13 fiches de personnages et groupes de jeu ; 14 journal de l'édition et brouillon de la note de version ; 15 notes de version et historique des
@@ -47,7 +47,7 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 - Provenance (`famille`, `origine`, `source_ref`) : retirée à la 1.0 (`CLAUDE.md`) ; n'y rien investir.
 - Registre `.json` d'une ancienne migration de données : `textes` ou `valeurs` pour ce qui n'est pas une correction d'un classeur ; `corrections` (avant/apres en chaînes) est lu comme de l'orthographe et défait par `tools/sources/rapprocher.mjs` (skill `sources-rapprochement`) ; `evenements` est lu par la chronologie (skill `zone-chronologie`).
 - Ce que chaque migration a fixé (mots-clés, plan des Règles, ordre des races, critique, spécialisations, classes, plafonds de NPM, résistances physiques, 0121…) : skill `base-sqlite-migrations`.
-- Dérivées (`scripts/db-derive.mjs`) : `lien` (vue `lien_page`) = les `[[…]]` (pages d'exemple), puis chaque balise d'un mot-clé dont l'adresse mène à une page (`adresses-db.mjs#pageDeLAdresse`) ; `page_fts` indexe le texte affiché (`texteSansBalises`), jamais l'id d'un mot-clé ni les marques d'onglets (`::: onglets`, `:::`), les ancres figées ni les couleurs écrites (`scripts/db-derive.mjs#textePlein`) : la recherche de la base reste alignée sur celle du site (`lib/recherche-index.ts`).
+- Dérivées (`scripts/db-derive.mjs`) : `lien` (vue `lien_page`) = les `[[…]]` (pages d'exemple), puis chaque balise d'un mot-clé dont l'adresse mène à une page (`adresses-db.mjs#pageDeLAdresse`) ; `page_fts` indexe le texte affiché (`texteSansBalises`), jamais l'id d'un mot-clé ni les marques d'onglets (`::: onglets`, `:::`), les ancres figées ni les couleurs écrites (`lib/index-des-pages.mjs#textePlein`, calcul commun à `db-derive.mjs` et au service) : la recherche de la base reste alignée sur celle du site (`lib/recherche-index.ts`).
 - Le site de dev est la source de tout le contenu (`CLAUDE.md`) : valeur d'import par `lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`, `effectifDImport`).
 
 ## Choix du propriétaire

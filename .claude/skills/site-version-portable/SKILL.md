@@ -28,6 +28,7 @@ user-invocable: false
 - `lib/debug-atelier-page.mjs` n'est importé que par `scripts/debug-atelier.mjs` ; `lib/debug-atelier.mjs` l'est par ce script et par le service (`serveur/atelier.mjs`), jamais par un autre script de page.
 - `lib/debug-structure.mjs` est un module pur, importé seulement par `scripts/debug-structure.mjs`, troisième script de la page Debug (avec `debug.mjs` et `debug-schema.mjs` : skill `zone-debug-metriques`).
 - `lib/valeurs-fermees-rendu.mjs` (les types de dégâts et les magies en balises du glossaire, skill `zone-mots-cles`) est pur (sans dépendance navigateur ni Astro) ; aucun script de page ne l'importe lui-même, il n'atteint le navigateur que par les rendus partagés (`armes-rendu.mjs` importé par `scripts/edition/armes.mjs`, `edition-rendu.mjs` par `editeur.mjs`), dans la chaîne de l'édition absente du portable.
+- `lib/page-de-notion-rendu.mjs` (pur : le HTML de la page d'une notion créée sur le site de dev, `htmlDeLaPageDeNotion`) n'est importé que par `scripts/edition/nouvelles.mjs`, dans la chaîne de l'édition absente du portable ; `test/pages-de-notion-site-de-dev.test.mjs` épingle cet unique importeur.
 
 ## Publication claude.ai
 
