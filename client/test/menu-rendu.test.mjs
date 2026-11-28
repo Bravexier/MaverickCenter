@@ -66,6 +66,12 @@ test('la page courante : aria-current="page" sur son entrée, aria-current="true
   assert.deepEqual(courants({}), [], 'sans page courante, rien n’est marqué');
   // un « bientôt » n'est jamais courant
   assert.equal(courantDe({ href: null }, { ici: '/base/', adresse: (r) => r }), null);
+  // R320 (4) : une entrée qui mène à une section (« personnages/#pretires ») est la page courante, son ancre ne compte pas
+  const ancree = { href: 'personnages/#pretires' };
+  const adresse = (r) => `/base/${r}`;
+  assert.equal(courantDe(ancree, { ici: '/base/personnages/', adresse }), 'page');
+  assert.equal(courantDe(ancree, { ici: '/base/autre/', adresse }), null);
+  assert.equal(courantDe({ href: 'personnages/' }, { ici: '/base/personnages/', adresse }), 'page', 'sans ancre : inchangé');
   assert.equal(contientLaPage(entrees[0], { ici: '/base/premier/', adresse: (r) => `/base/${r}` }), true);
   assert.equal(contientLaPage(entrees[1], { ici: '/base/premier/', adresse: (r) => `/base/${r}` }), false);
 });

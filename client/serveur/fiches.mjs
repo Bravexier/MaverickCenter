@@ -214,6 +214,50 @@ export function transfererFiche(db, id, utilisateurId) {
   return { id, nature: 'joueur', proprietaire: proprietaireDe(db, id), visibilite };
 }
 
+/** Les niveaux de session qui copient un prétiré (R320 (2) : Joueur, MJ et Créateur, comme « Mes personnages » ; ni l'Observateur ni le visiteur). */
+export const NIVEAUX_QUI_COPIENT = Object.freeze(['joueur', 'mj', 'createur']);
+
+/**
+ * « Copier le prétiré » (décision R320) : crée une fiche de joueur au compte de `appelant`, copie complète du prétiré `id` — la ligne `personnage` (portrait
+ * et cadrage compris) et toutes ses parties (PARTIES_DE_FICHE) —, sous un nouvel identifiant. La copie est de nature `joueur`, rangée à l'appelant, PRIVÉE
+ * (R320 (3) : visible de lui et d'un Créateur jusqu'à ce qu'il la change), son nom reste celui du prétiré ; `cree_le` et `modifie_le` sont l'instant de
+ * la copie. Le prétiré ne change pas. Une seule transaction : une erreur n'écrit rien.
+ * Erreurs : ErreurFiche (403 sans session de niveau Joueur, MJ ou Créateur, ou sans compte ; 404 fiche absente ou fiche de joueur qu'il ne voit pas ;
+ * 400 la source n'est pas un prétiré).
+ * @returns {{ id: string, nature: 'joueur', proprietaire: { id: string, nom_affichage: string }, visibilite: 'privee', copie_de: string }}
+ */
+export function copierUnPretire(db, id, appelant = SANS_SESSION, { maintenant = new Date() } = {}) {
+  if (!appelant.utilisateur || !NIVEAUX_QUI_COPIENT.includes(appelant.niveau)) {
+    throw new ErreurFiche(403, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
+  }
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    if (!db.prepare('SELECT 1 FROM utilisateur WHERE id = ?').get(appelant.utilisateur)) throw new ErreurFiche(403, 'Ce compte n’existe pas.');
+    const droits = droitsSurLaFiche(db, id, appelant);
+    if (!droits) throw new ErreurFiche(404, 'Fiche introuvable.');
+    if (droits.nature !== 'pretire') throw new ErreurFiche(400, 'Seul un prétiré se copie : cette fiche est celle d’un joueur.');
+    const nouvelle = randomUUID();
+    const t = instant(maintenant);
+    // la ligne : les colonnes du service reçoivent leur valeur, les autres sont recopiées telles quelles (noms lus par PRAGMA table_info)
+    const service = { id: '?', nature: "'joueur'", proprietaire_id: '?', visibilite: "'privee'", cree_le: '?', modifie_le: '?' };
+    const colonnes = colonnesDe(db, 'personnage');
+    const valeursDuService = { id: nouvelle, proprietaire_id: appelant.utilisateur, cree_le: t, modifie_le: t };
+    const jetons = colonnes.filter((c) => c in valeursDuService).map((c) => valeursDuService[c]);
+    db.exec('PRAGMA defer_foreign_keys = ON'); // les parties se posent après la ligne, et se relisent ensemble à la fin
+    db.prepare(`INSERT INTO personnage (${colonnes.map((c) => `"${c}"`).join(', ')}) SELECT ${colonnes.map((c) => service[c] ?? `"${c}"`).join(', ')} FROM personnage WHERE id = ?`)
+      .run(...jetons, id);
+    for (const [, table] of partiesDeLaBase(db)) {
+      const cols = colonnesDeDetail(db, table).map((c) => `"${c}"`).join(', ');
+      db.prepare(`INSERT INTO "${table}" (personnage_id${cols ? `, ${cols}` : ''}) SELECT ?${cols ? `, ${cols}` : ''} FROM "${table}" WHERE personnage_id = ?`).run(nouvelle, id);
+    }
+    db.exec('COMMIT');
+    return { id: nouvelle, nature: 'joueur', proprietaire: proprietaireDe(db, nouvelle), visibilite: 'privee', copie_de: id };
+  } catch (e) {
+    annuler(db);
+    throw e;
+  }
+}
+
 /**
  * Règle le menu « Visible par » de la fiche de joueur `id` (décision R318 : Tous, MJ, Privé). Pour le propriétaire de la fiche ou une session de niveau
  * Créateur. « MJ » n'est accepté que d'une session de niveau MJ ou Créateur (« option accessible que pour les MJ ») : un Joueur qui la demande est refusé.

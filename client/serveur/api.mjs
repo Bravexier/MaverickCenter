@@ -15,6 +15,10 @@
 //   GET  /api/personnages/<id>/portrait/   l'image du portrait (ses octets, pas du JSON) ; 304 si l'empreinte est celle qu'a le navigateur (ETag) ; 404 si la fiche n'est pas vue
 //   PUT  /api/personnages/<id>/proprietaire/   { utilisateur_id } → { id, nature: 'joueur', proprietaire: { id, nom_affichage }, visibilite } : range la fiche au compte (R318) ;
 //                                   session Créateur seulement (403 sinon) ; 400 si le compte n'existe pas, 404 si la fiche n'existe pas ; la visibilité ne change pas
+//   POST /api/personnages/<id>/copie/   « Copier le prétiré » (R320), sans corps utile (JSON exigé comme toute écriture) → 201 { id, nature: 'joueur', proprietaire: { id, nom_affichage },
+//                                   visibilite: 'privee', copie_de } : copie complète (ligne, parties, portrait) du prétiré, sous un nouvel identifiant, au compte de la session ; la page l'ouvre par
+//                                   /fiche/?id=<id> ; session de niveau Joueur, MJ ou Créateur en production (403 sinon : sans session, clé comprise, ou Observateur) ; au site de dev, classe `ecriture` : le Créateur seul (R310 (3)) ; 404 fiche absente ou fiche de joueur non vue ;
+//                                   400 si la fiche n'est pas un prétiré
 //   PUT  /api/personnages/<id>/visibilite/   { visibilite: 'tous' | 'mj' | 'privee' } → { id, visibilite } : le menu « Visible par » d'une fiche de joueur (R318) ; son propriétaire ou
 //                                   une session Créateur (403 sinon, 404 si elle n'est pas vue) ; 'mj' seulement d'une session de niveau MJ ou Créateur ; 400 pour un prétiré
 //   GET  /api/utilisateurs/         { utilisateurs: [{ id, nom_affichage, niveau }] } : les comptes, pour le menu de transfert ; session Créateur seulement (403 sinon, clé comprise)
@@ -172,7 +176,7 @@ import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { lireLActivation } from './paquets-de-la-production.mjs';
 import { creerLesInterrupteursDeGithub, estUnDossier, etatDeLaBascule2 } from './bascule-2-etat.mjs';
 import {
-  ErreurFiche, appelantDe, controlesDe, droitsSurLaFiche, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, proprietaireDe, reglerLaVisibilite, supprimerFiche, transfererFiche,
+  ErreurFiche, NIVEAUX_QUI_COPIENT, appelantDe, controlesDe, copierUnPretire, droitsSurLaFiche, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, proprietaireDe, reglerLaVisibilite, supprimerFiche, transfererFiche,
 } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -314,6 +318,7 @@ export function traiter(requete, service) {
     if (reste[0] === 'portrait') return traiterPortrait(requete, service, brut, permis);
     if (reste[0] === 'proprietaire') return traiterProprietaire(requete, service, brut, permis);
     if (reste[0] === 'visibilite') return traiterVisibilite(requete, service, brut, permis);
+    if (reste[0] === 'copie') return traiterCopie(requete, service, brut, permis);
     return erreur(404, 'Adresse inconnue.');
   }
 
@@ -405,6 +410,32 @@ function traiterProprietaire(requete, service, brut, permis) {
     service.journal?.(`fiches : fiche ${id} rangée au compte ${resultat.proprietaire.id}`);
     service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'transfert' } });
     return json(200, resultat);
+  });
+}
+
+/**
+ * POST /api/personnages/<id>/copie/ (sans corps utile) : « Copier le prétiré » (R320). Une session de niveau Joueur, MJ ou Créateur (403 sinon : sans session, clé
+ * de lecture comprise, ou Observateur) ; la copie complète du prétiré devient une fiche de joueur privée de ce compte. Rend 201 { id, nature, proprietaire,
+ * visibilite, copie_de } et `Location` ; 404 fiche absente ou fiche de joueur non vue, 400 si la fiche n'est pas un prétiré. La page l'ouvre par /fiche/?id=<id>.
+ */
+function traiterCopie(requete, service, brut, permis) {
+  const refus = permis('POST');
+  if (refus) return refus;
+  const appelant = appelantDeLaRequete(service, requete.entetes ?? {});
+  if (!NIVEAUX_QUI_COPIENT.includes(appelant.niveau) || !appelant.utilisateur) return erreur(403, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
+  const id = idDeFiche(brut);
+  if (id === null) return erreur(404, 'Fiche introuvable.');
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const interdit = refusEcriture(requete.entetes ?? {});
+  if (interdit) return interdit;
+  return repondre(ErreurFiche, () => {
+    const t0 = performance.now();
+    const resultat = copierUnPretire(db, id, appelant);
+    // le journal dit les identifiants, jamais le nom d'un joueur
+    service.journal?.(`fiches : copie du prétiré ${id} en la fiche de joueur ${resultat.id}`);
+    service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'copie' } });
+    return json(201, resultat, { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.id)}/` });
   });
 }
 

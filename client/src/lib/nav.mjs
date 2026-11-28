@@ -56,7 +56,8 @@ export const NAV = [
       { label: 'Les familiers', path: 'ressources/familiers/' },
       // l'onglet des Règles (page d'ouverture : guide/creer-son-personnage) ; l'entrée garde le nom de l'arborescence (dix entrées en tout, R319 (4))
       { label: 'La fiche de personnage', onglet: 'fiche-de-personnage', libelleArbo: true, path: 'regles/fiche-de-personnage/' },
-      { label: 'Personnages prétirés', path: 'personnages/' },
+      // R320 (4) : l'entrée ouvre directement la section Prétirés de /personnages/ (`id="pretires"`, pages/personnages.astro)
+      { label: 'Personnages prétirés', path: 'personnages/#pretires' },
     ],
   },
   {

@@ -237,7 +237,7 @@ test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique
   assert.ok(entreesDeLaListe(jeu).slice(0, 2).every((e) => e.href && e.motCle), 'Découvrir et L’univers : des liens de mot-clé, sous Introduction');
   // un lien de mot-clé (R319 (4)) : la balise d'un texte, l'infobulle sur le côté ; un lien simple pour une entrée sans mot-clé
   assert.match(jeu, /<a data-placement="cote" class="mot-cle[^"]*" href="\/races\/" data-mot-cle="[^"]+"/);
-  assert.match(jeu, /<a class="menu-site__lien" href="\/personnages\/">/);
+  assert.match(jeu, /<a class="menu-site__lien" href="\/personnages\/#pretires">/, 'R320 (4) : Personnages prétirés ouvre la section Prétirés');
   // une ressource hors menu ouvre les Ressources ; Autres en dernière entrée
   // R319 (3) : Ressources est une rubrique [J] : le build écrit le menu d'un Observateur (Le Jeu montré) ; scripts/compte.mjs montre celle de la page à un Joueur
   assert.deepEqual(rubriquesDeLEntete(lire('ressources/alchimie/index.html')).filter((r) => r.montree || r.courante), [{ cle: 'jeu', libelle: 'Le Jeu', montree: true, courante: false }, { cle: 'ressources', libelle: 'Ressources', montree: false, courante: true }]);

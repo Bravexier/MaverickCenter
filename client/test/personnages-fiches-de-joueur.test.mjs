@@ -126,7 +126,8 @@ test('R318 : un échec de réglage dit que rien n’a changé, et distingue la p
   }
   assert.notEqual(messageDEchec('visibilite', 403, null), messageDEchec('proprietaire', 403, null), 'selon l’action');
   assert.ok(messageDEchec('proprietaire', 400, { erreur: 'compte inconnu' }).includes('compte inconnu'), 'le motif du service est repris');
-  assert.ok(messageDEchec('visibilite', 403, { acces: 'niveau' }).includes(LIBELLES_DES_NIVEAUX.createur), 'la porte du site de dev dit le niveau requis');
+  assert.ok(messageDEchec('visibilite', 403, { acces: 'niveau', niveau_requis: 'createur' }).includes(LIBELLES_DES_NIVEAUX.createur), 'la porte du site de dev dit le niveau requis qu’elle renvoie');
+  assert.ok(!Object.values(LIBELLES_DES_NIVEAUX).some((n) => messageDEchec('visibilite', 403, { acces: 'niveau' }).includes(n)), 'sans niveau_requis, aucun niveau n’est nommé');
   assert.ok(!messageDEchec('visibilite', 400, { erreur: 42 }).includes('42'), 'un motif qui n’est pas un texte est ignoré');
 });
 

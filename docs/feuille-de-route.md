@@ -199,8 +199,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 - **Entamé** (R318, lot `feature/fiches-de-joueur`) : `v_personnage_visible` suit `utilisateur.niveau` (migration 0134 ; `utilisateur_role` reste, vide) ; le
   service lit les fiches de joueur selon la vue (prétirés ouverts à tout visiteur, R307) et ne les écrit que pour leur propriétaire ou un Créateur ; le
   Créateur range une fiche à un compte ; menu « Visible par » (Tous, MJ, Privé) ; « Mes personnages » dans le menu du profil (R319), `/personnages/` ne liste que
-  les fiches visibles.
-- **À faire** : création d'une fiche à son nom par un joueur ; partage à des utilisateurs désignés ; copie d'un prétiré vers un joueur ; écriture de sa fiche
+  les fiches visibles ; « Copier le prétiré » crée une fiche de joueur privée au compte connecté (R320).
+- **À faire** : création d'une fiche à son nom par un joueur ; partage à des utilisateurs désignés ; écriture de sa fiche
   par un MJ propriétaire sur le site de dev (la porte demande aujourd'hui le Créateur).
 - **Fiches détachées** (R313 (2)) : la fiche d'un joueur qui quitte le serveur **reste, sans propriétaire**, et son compte est effacé (R312). Aujourd'hui une fiche sans propriétaire est un prétiré : le schéma (`personnage.proprietaire_id`, `CHECK` de `nature`) devra
   distinguer une fiche détachée d'un prétiré. D'ici là, le service n'efface pas un compte que référence une fiche.

@@ -24,7 +24,7 @@ test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leur
   assert.deepEqual(plan(rubrique('ressources')), ['Armes', 'Armures', 'Boucliers', 'Accessoires', 'Ceinture', 'Livres & Parchemins', 'Artisanat', 'Composants', 'Autres']);
   assert.deepEqual(plan(rubrique('monde')), ['Chronologie', 'Lieux (bientôt)', 'Mythologie', 'Bestiaire', 'Factions']);
   assert.deepEqual(plan(rubrique('taverne')), ['Parties (bientôt)', 'Planning (bientôt)', 'Galerie', 'Suggestions (bientôt)', 'Archives', 'Debug']);
-  assert.deepEqual(chemins(rubrique('jeu')), [null, 'decouvrir/', 'decouvrir/l-univers/', 'races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/', 'regles/fiche-de-personnage/', 'personnages/']);
+  assert.deepEqual(chemins(rubrique('jeu')), [null, 'decouvrir/', 'decouvrir/l-univers/', 'races/', 'magies/', 'classes/', 'metiers/', 'ressources/familiers/', 'regles/fiche-de-personnage/', 'personnages/#pretires']);
   assert.deepEqual(chemins(rubrique('ressources')), [
     'ressources/armes/', 'ressources/armures/', 'ressources/bouclier/', 'ressources/accessoires/', 'ressources/objets-a-la-ceinture/', 'ressources/livre-parchemin/',
     'regles/artisanat/', 'ressources/composants/', 'ressources/',
@@ -35,7 +35,7 @@ test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leur
   // Introduction n'est pas une page : pas de lien à elle, ses sous-pages seulement ; navPaths les compte, et les `autres` gardent les pages hors menu
   const introduction = rubrique('jeu').items[0];
   assert.ok(!introduction.path && !introduction.motCle && !introduction.onglet && introduction.cle, 'une entrée qui se déplie, nommée par `cle` (l’état replié)');
-  assert.ok(navPaths().includes('decouvrir/l-univers/') && !navPaths().some((p) => p.includes('#')));
+  assert.ok(navPaths().includes('decouvrir/l-univers/') && navPaths().filter((p) => p.includes('#')).join() === 'personnages/#pretires', 'seule l’entrée Personnages prétirés porte une ancre (R320)');
   assert.deepEqual(rubrique('ressources').autres, ['ressources/']);
   assert.deepEqual(rubrique('regles').autres, ['regles/']);
   assert.ok(!navPaths().includes('fiche/'), 'R319 (6) : pas d’entrée pour le générateur de fiche ; on y arrive par Personnages prétirés et par l’onglet des Règles');
@@ -136,6 +136,10 @@ test('la rubrique courante est repérée, avec ou sans préfixe de déploiement 
   const courante = (chemin, o = {}) => rubriqueCourante(chemin, o.base ?? '/', NAV, o.entree)?.key ?? null;
   assert.equal(groupIsCurrent(rubrique('jeu'), '/races/elfe/'), true);
   assert.equal(groupIsCurrent(rubrique('jeu'), '/MaverickCenter/personnages/', '/MaverickCenter/'), true, 'Personnages prétirés');
+  // R320 (4) : « Personnages prétirés » ouvre la section Prétirés ; son ancre ne change ni la rubrique ni la page courante
+  assert.equal(groupIsCurrent(rubrique('jeu'), '/personnages/'), true, 'R320 : l’entrée porte une ancre, la page reste du Jeu');
+  assert.equal(courante('/personnages/'), 'jeu', 'R320');
+  assert.equal(courante('/MaverickCenter/personnages/', { base: '/MaverickCenter/' }), 'jeu', 'R320, avec préfixe de déploiement');
   assert.equal(groupIsCurrent(rubrique('jeu'), '/fiche/'), true, 'le générateur n’a pas d’entrée (R319 (6)) mais sa page est du Jeu');
   assert.equal(groupIsCurrent(rubrique('jeu'), '/capacites/clerc-zelote/'), true, 'un don de classe va avec les classes');
   assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/armes/'), true);
@@ -307,4 +311,15 @@ test('/tags/<clé>/ n’existe plus : la page 404 mène aux éléments du mot-cl
   assert.equal(adresseComplete('/recherche/?mot-cle=feu', '?mot-cle=glace'), '/recherche/?mot-cle=feu', 'le mot-clé de l’adresse l’emporte');
   assert.equal(adresseComplete('/fiche/', '?id=12', '#notes'), '/fiche/?id=12#notes');
   assert.equal(adresseComplete('/races/nain/', '', ''), '/races/nain/');
+});
+
+test('R320 (4) : « Personnages prétirés » ouvre la section Prétirés, dont la page porte l’ancre', () => {
+  const entree = entreesAPlat(rubrique('jeu').items).find((e) => e.path?.startsWith('personnages/'));
+  assert.ok(entree, 'une entrée du Jeu mène à /personnages/');
+  const [page, ancre] = entree.path.split('#');
+  assert.equal(page, 'personnages/');
+  assert.ok(ancre, 'l’entrée porte une ancre');
+  const source = readFileSync(new URL('../src/pages/personnages.astro', import.meta.url), 'utf8');
+  assert.ok(source.includes(`<section class="personnages-section" id="${ancre}"`), 'la section de la page porte cet id');
+  assert.ok(!navPaths().some((p) => p === 'personnages/'), 'plus d’entrée vers le haut de la page');
 });

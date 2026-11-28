@@ -279,7 +279,7 @@ test('/fiche/ : la barre Nouveau, Télécharger, Exporter, Importer (PC), Import
   const boutons = [...barre.matchAll(/<button type="button"(?: class="[^"]*")? id="([a-z-]+)"[^>]*>([^<]+)<\/button>|<input type="file" id="(fiche-importer)"[^>]*><span[^>]*>([^<]+)<\/span>/g)]
     .map((m) => (m[1] ? `${m[1]} ${m[2]}` : `${m[3]} ${m[4]}`));
   assert.deepEqual(boutons, ['fiche-nouvelle Nouveau', 'fiche-telecharger Télécharger', 'fiche-exporter Exporter', 'fiche-importer Importer (PC)',
-    'fiche-importer-en-ligne Importer (en ligne)', 'fiche-supprimer Supprimer']);
+    'fiche-importer-en-ligne Importer (en ligne)', 'fiche-copier Copier le prétiré', 'fiche-supprimer Supprimer']);
   // plus d'export ni d'import en JSON, plus d'impression (Ctrl+P reste possible : la mise en page d'impression est gardée)
   assert.ok(!/fiche-imprimer|fiche-exporter-tableur|Exporter \(JSON\)|\.json/.test(barre), 'ni JSON ni Imprimer dans la barre');
   // `id` juste après `type="button"` : la version portable (tools/build-artifact.mjs) masque ainsi Télécharger, Exporter et Importer (en ligne)
@@ -408,7 +408,7 @@ test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fich
   // R319 (6) : pas d'entrée pour /fiche/ ; on y arrive par « Personnages prétirés » (/personnages/, dont chaque ligne mène à fiche/?id=…) et par l'onglet des Règles
   const hrefs = entreesDeLaListe(menuLateral(lire('index.html'))).map((e) => e.href);
   assert.ok(!hrefs.includes('/fiche/'), 'aucune entrée vers /fiche/');
-  assert.ok(hrefs.includes('/personnages/') && hrefs.includes('/regles/fiche-de-personnage/'), 'Personnages prétirés et l’onglet Fiche de personnage');
+  assert.ok(hrefs.includes('/personnages/#pretires') && hrefs.includes('/regles/fiche-de-personnage/'), 'Personnages prétirés et l’onglet Fiche de personnage');
   // la section « Mes personnages » de /personnages/ (R318, étape E8) est au menu du profil (R319), pas à une rubrique
   assert.match(lire('index.html'), /<a class="site-compte__entree" href="\/personnages\/#mes-personnages">/);
   assert.ok(!hrefs.includes('/personnages/#mes-personnages'));

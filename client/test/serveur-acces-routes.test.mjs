@@ -98,6 +98,7 @@ test('le classement : seul le nécessaire est ouvert, la lecture (session MJ ou 
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
       ['POST', '/api/mise-a-jour/conflits/'], ['POST', '/api/mise-a-jour/copier/'], // « Copier vers le dépôt » (lot 8, base source)
       ['POST', '/api/personnages/'], ['PUT', '/api/personnages/essai/'], ['DELETE', '/api/personnages/essai/'],
+      ['POST', '/api/personnages/essai/copie/'], // R320 et R310 (3) : « Copier le prétiré » ; au dev, le Créateur seul (en production, le service décide)
       ['PUT', '/api/personnages/essai/proprietaire/'], ['PUT', '/api/personnages/essai/visibilite/'], // R318 : ranger une fiche, « Visible par »
       ['POST', '/api/v1/metiers/'], ['PATCH', '/api/v1/metiers/essai/'], ['DELETE', '/api/v1/metiers/essai/'],
     ],

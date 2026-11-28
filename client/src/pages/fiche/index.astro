@@ -70,6 +70,8 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <button type="button" id="fiche-exporter" data-client-google={client} disabled title={client ? INFOBULLES_DES_EXPORTS.exporterGrise : INFOBULLES_DES_EXPORTS.exporterSansClient}>Exporter</button>
         <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden /><span role="button" tabindex="0" title="Un classeur .xlsx au modèle de la fiche V15.2.2, ordinateur ou auto (depuis Google Sheets : Fichier › Télécharger › Microsoft Excel)">Importer (PC)</span></label>
         <button type="button" id="fiche-importer-en-ligne" title="Le lien d’une feuille Google Sheets partagée à « Tous les utilisateurs disposant du lien »">Importer (en ligne)</button>
+        {/* R320 : « Copier le prétiré », sur un prétiré enregistré et pour un compte Joueur, MJ ou Créateur seulement (src/scripts/fiche.mjs#copier) ; caché sans compte (version portable) */}
+        <button type="button" id="fiche-copier" hidden>Copier le prétiré</button>
         <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
       </span>
     </div>
