@@ -129,7 +129,7 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   // le titre d'un onglet se modifie sur le site de dev (R319 (5)) : celui du plan de la base, jamais un texte figé
   const titreDeLOnglet = (id) => ongletsDesRegles().find((o) => o.id === id).titre;
   assert.equal(fil('regles/combats'), `<a href="/">Accueil</a> › <a href="/regles/combats/">${titreDeLOnglet('combats')}</a>`, '/regles/combats/ : le fil de sa page d’ouverture');
-  assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
+  assert.equal(fil('regles'), `<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">${titreDeLOnglet('fiche-de-personnage')}</a>`, '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
   const vocabulaire = chargerVocabulaire(db);
   for (const p of pagesConstruites) {
