@@ -14,7 +14,7 @@ Aujourd'hui, une page renommée garde l'adresse de son identifiant : « Anti-cor
 
 - L'adresse d'une page se **calcule depuis son identifiant** : `lib/metiers.mjs#cheminDePage(id)`, lu par 59 fichiers (build, service, scripts du navigateur). `page.id` vaut `type/slug` (`CHECK` du schéma), et la route `pages/[type]/[slug].astro` tire son chemin de l'identifiant.
 - Formes particulières : un métier mène à sa ligne (`/metiers/#metier-forgeron`) ; une page du guide à `/regles/<slug>/`, `/mj/<slug>/` ou `/decouvrir/<slug>/` (`lib/livres.mjs#adresseDuGuide`) ; sept pages sont servies par une route fixe (Armes, Armures, Bouclier, Accessoires, Bâton magique, Pièces élémentaires ; Bienvenue à `/decouvrir/`).
-- Le renommage ne touche pas l'adresse : `serveur/edition.mjs:1825` (« son adresse ne change pas »). Il passe par le domaine `PAGE` (guide et Codex), par `suivrePage` (fiche d'une capacité, `edition.mjs:1698`) et par la table du métier (`edition.mjs:726`). Une race ou une classe ne renomme pas sa page : le site refuse `race.nom` et `classe.nom`, un lot `page.titre` d'une race ou d'une classe est refusé, un lot `race.nom` laisse le titre de la page (constat de la relecture finale, 2026-11-27).
+- Le renommage ne touche pas l'adresse : `serveur/edition.mjs:1825` (« son adresse ne change pas »). Il passe par le domaine `PAGE` (guide et Codex), par `suivrePage` (fiche d'une capacité, `edition.mjs:1698`) et par la table du métier (`edition.mjs:726`). Une race ou une classe ne renomme pas sa page : le site refuse `race.nom` et `classe.nom`, un lot `page.titre` d'une race ou d'une classe est refusé, un lot `race.nom` laisse le titre de la page (constat de la relecture finale, 2026-11-27). Depuis le 2026-11-28 (R316 (6)), un lot qui change `race.nom` ou `classe.nom` fait suivre le titre de la page s’il le portait encore (§3).
 - Les liens entre pages sont des **balises de mots-clés** : leur `href` est `mot_cle.url`. Depuis le chantier 1, `mot_cle.url` d'un mot-clé ancré est une copie de l'adresse de sa page, écrite par `serveur/edition-ancrage.mjs#alignerMotCle`.
 - Les redirections existantes sont toutes faites **par la page 404** (`pages/404.astro`, `lib/nav.mjs`) : elle reçoit la liste des renvois au build (`data-renvois`) et remplace l'adresse. Aucune redirection nginx, Caddy ni service.
 - Le site de dev refabrique ses pages par l'atelier quand le contenu change ; entre-temps, la page 404 du site de dev dessine une page créée (`scripts/edition/nouvelles.mjs`).
@@ -81,6 +81,8 @@ L'adresse d'une page garde sa forme : seule la source du dernier segment change,
 ## 3. Renommer
 
 Un module du service (voisin de `edition-ancrage.mjs`) suit, en fin de lot, chaque page dont **le titre a changé dans ce lot**, d'où que vienne le changement : page du guide ou du Codex, capacité, métier, race, classe, lot déposé par l'équipe. Aujourd'hui, seuls la page du guide ou du Codex, le don (capacité) et le métier changent un titre ; la règle de segment d'une race ou d'une classe existe et est testée, mais aucune voie du site ni d'un lot ne change encore le titre de leur page (le faire suivre serait un comportement nouveau, à demander au propriétaire). Jamais en annulation ni au rejeu du journal, qui relit les lignes écrites.
+
+Ajout du 2026-11-28 (R316 (6), réponse du propriétaire « Oui, faire suivre ») : un lot déposé qui change `race.nom` ou `classe.nom` (voie générique `ecrire_modifier`, `serveur/edition.mjs`) fait suivre le titre de la page de même identifiant s’il valait encore l’ancien nom (`titre_cle` avec lui ; un titre retouché à la main reste), comme `suivrePage` pour un don ; l’adresse suit alors en fin de lot par la règle ci-dessous. Le titre suit dans `ecrire_modifier` et non en fin de lot : l’annulation repasse par cette opération pour remettre le nom, et le titre revient avec lui. Ne suivent pas : le nom de la classe raciale quand sa race est renommée, le titre des capacités « Nom (Classe) » quand leur classe l’est ; le site ne renomme toujours ni une race ni une classe.
 
 **Le segment voulu** est celui que la création donnerait aujourd'hui à cette page (décision 1), par la même fonction que la création :
 
@@ -162,7 +164,7 @@ Validés avec la conception le 2026-11-27.
 4. **R228, R272 et les listes des anciens plans restent dans le code**, telles quelles.
 5. **Le suffixe des pages autres que capacités et Règles** est `-2`, `-3`… : la création refuse aujourd'hui un nom pris pour ces pages, la réponse 2 ne les nommait pas.
 6. **L'adresse d'une capacité renommée reprend le slug de l'identifiant de sa classe**, comme une capacité créée aujourd'hui dans cette classe, même si la classe a été renommée depuis.
-7. **Renommer une classe ne change pas l'adresse de ses capacités** : seule une page dont le titre change est suivie.
+7. **Renommer une classe ne change pas l'adresse de ses capacités** : seule une page dont le titre change est suivie. (2026-11-28 : toujours vrai avec R316 (6), le titre « Nom (Classe) » d’une capacité ne suit pas le nom de sa classe.)
 8. **Annuler un renommage ne laisse aucune ancienne adresse.**
 9. **Pas de ligne propre à l'adresse** dans la note de version.
 10. **Les mots-clés qui mènent à une section de la page suivent aussi** (§3, point 5).

@@ -257,10 +257,10 @@ test('R316 (1) : une page suivie dont le premier segment voulu donne son adresse
   },
 ));
 
-test('R316 (1) : une race et une classe renommées ; l’adresse de la classe ne porte pas « (classe) » ; une classe raciale prend le segment de sa race renommée dans le même lot', () => cas(
+test('R316 (1) : une race et une classe renommées ; l’adresse de la classe vient de son nom, pas du titre de sa page ; une classe raciale prend le segment de sa race renommée dans le même lot', () => cas(
   (db) => {
     const race = poserRace(db, 'races/zephyrion-elfe', nom('Elfe'));
-    const classe = poserClasse(db, 'classes/zephyrion-elfe', nom('Elfe'), { titre: `${nom('Elfe')} (classe)` });
+    const classe = poserClasse(db, 'classes/zephyrion-elfe', nom('Elfe'), { titre: nom('Elfe des bois') });
     const lezard = poserRace(db, 'races/zephyrion-lezard', nom('Lézard'));
     const raciale = poserClasse(db, 'classes/zephyrion-lezard', nom('Lézard'), { categorie: CATEGORIE_RACIALE });
     return {
@@ -273,7 +273,7 @@ test('R316 (1) : une race et une classe renommées ; l’adresse de la classe ne
   (m) => {
     const { race, classe, lezard, raciale } = m.monde;
     parUnLot(m, ['race', race.id, { nom: nom('Sylve') }], ['page', race.id, { titre: nom('Sylve') }],
-      ['classe', classe.id, { nom: nom('Sylve') }], ['page', classe.id, { titre: `${nom('Sylve')} (classe)` }]);
+      ['classe', classe.id, { nom: nom('Sylve') }], ['page', classe.id, { titre: nom('Sylve des bois') }]);
     const segment = normalize(nom('Sylve'));
     assert.deepEqual(etat(m, race.id, race.motCle), { segment, adresse: `/races/${segment}/`, url: `/races/${segment}/` });
     assert.deepEqual(etat(m, classe.id, classe.motCle), { segment, adresse: `/classes/${segment}/`, url: `/classes/${segment}/` });
@@ -299,7 +299,7 @@ test('R316 (1) : les segments voulus sont ceux de la création, dans l’ordre (
     const { un } = poserDeuxDons(db);
     poserMetier(db, 'metiers/zephyrion-forgeur', nom('Batteur'));
     db.prepare('UPDATE page SET titre = ? WHERE id = ?').run(nom('page du métier'), 'metiers/zephyrion-forgeur');
-    poserClasse(db, 'classes/zephyrion-elfe', nom('Elfe'), { titre: `${nom('Elfe')} (classe)` });
+    poserClasse(db, 'classes/zephyrion-elfe', nom('Elfe'), { titre: nom('Elfe des bois') });
     poserRace(db, 'races/zephyrion-lezard', nom('Lézard'));
     poserClasse(db, 'classes/zephyrion-lezard', nom('Lézard'), { categorie: CATEGORIE_RACIALE });
     poserPageLisible(db, 'guide/zephyrion-page', nom('autre titre'));

@@ -102,7 +102,7 @@ export const poserMetier = (db, id, nom) => poserElement(db, 'metier', id, nom, 
 /** Une race et sa page. */
 export const poserRace = (db, id, nom) => poserElement(db, 'race', id, nom);
 
-/** Une classe et sa page : `titre`, celui de la page (« Nom (classe) » pour l'homonyme d'une race) ; `categorie` (classe-champs.mjs#CATEGORIE_RACIALE : une classe raciale). */
+/** Une classe et sa page : `titre`, celui de la page (son nom par défaut ; un autre : un titre retouché à la main) ; `categorie` (classe-champs.mjs#CATEGORIE_RACIALE : une classe raciale). */
 export const poserClasse = (db, id, nom, { titre = nom, categorie = 'essai' } = {}) => poserElement(db, 'classe', id, nom, { titre, nom_cle: normalize(nom), categorie_id: categorie });
 
 /** Un don de la classe `classe` et sa fiche « Nom (Classe) », de niveau `niveau` et de rang `rang`, seul sur sa ligne. */
