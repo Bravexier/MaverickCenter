@@ -1,14 +1,14 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 134 : 224 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 135 : 225 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
 ## Sommaire
 
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
-- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `page_ancienne_adresse`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
+- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `page_ancienne_adresse`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `repere`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `magie_specialisation`, `sort`, `sort_type`, `type_sort`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `type_degats`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
@@ -148,6 +148,19 @@ Les synonymes d'un mot-clé (décision R233, migration 0115 ; demande du propri�
 | `libelle` | TEXT | oui |  | l'écriture telle qu'enregistrée (« AM », « Nat. », « Action bonus ») |
 | `libelle_cle` | TEXT | oui | unique |  |
 | `ordre` | INTEGER | oui |  | rang parmi les synonymes du mot-clé (0 = premier) ; sans UNIQUE, pour échanger deux places dans un même lot : à égalité, l'id départage |
+
+### `repere`
+
+Le repère d'un mot-clé (migration 0135 ; chantier 4 des mots-clés, « le retrait des colonnes », docs/chantier-retrait-des-colonnes.md §2) : l'élément d'un mot-clé que ne désigne ni une page (page.mot_cle_id) ni un sort (sort.mot_cle_id). Il mène à un endroit du site qui n'est pas une ligne de la base (une rubrique, une page calculée, une section de page), ou nomme une notion dont le nom attend un arbitrage. Une ligne par mot-clé au plus (mot_cle_id est la clé primaire) ; supprimer le mot-clé retire son repère (ON DELETE CASCADE). Les contraintes de `adresse`, `definition`, `couleur` et `icone` sont celles de mot_cle.url, description, couleur et icone, recopiées. Qu'un mot-clé à repère n'ait ni page ni sort ne se lit pas dans un CHECK : le service le refuse à l'écriture d'un lot (client/serveur/edition-mots-cles.mjs#refusDuRepere). Table créée VIDE : les repères sont posés par un lot de changements du site de dev (client/src/lib/lot-des-reperes.mjs). À la migration 0135, rien ne lit cette table : les colonnes de mot_cle font encore foi, un repère n'en est que la copie (client/src/lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES : ni texte à balises, ni note de version).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `mot_cle_id` | INTEGER | oui | PK, → mot_cle.id | le mot-clé dont c'est l'élément |
+| `nom` | TEXT | oui |  | le nom du mot-clé (l'écriture affichée) ; même contrainte que mot_cle.libelle |
+| `adresse` | TEXT | non |  |  |
+| `definition` | TEXT | non |  | la définition du glossaire ; NULL : pas encore décrit. Comme mot_cle.description |
+| `couleur` | TEXT | non |  |  |
+| `icone` | TEXT | non |  |  |
 
 ### `page_tag`
 

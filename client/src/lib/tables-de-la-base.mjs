@@ -5,7 +5,8 @@
 //     version et l'historique des modifications du site (section 15 : TABLES_DES_NOTES) — jamais modifiées par l'édition
 //     (serveur/edition-journal.mjs#TABLES_INTERDITES) ;
 //   - dérivées (TABLES_DERIVEES : section 11, `-- @derivee`, hors tables de recherche plein texte) : recalculées par le build depuis les autres ;
-//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (skill base-orthographe).
+//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (skill base-orthographe) ;
+//   - les tables de contenu pas encore lues (TABLES_PAS_ENCORE_LUES) : `repere`, copie des colonnes du mot-clé jusqu'à leur retrait.
 // Aucune n'est lue comme un texte de règles par les balises du glossaire des mots-clés (lib/mots-cles-db.mjs#textesDeLaBase : ni contrôlée par
 // db:check, ni réécrite au rejeu du journal).
 // Le classement en trois classes (contenu, propre au site, calculée) est en bas de ce fichier. Sans dépendance (sauf lib/fiche-format.mjs, pur).
@@ -35,6 +36,15 @@ export const TABLES_DERIVEES = Object.freeze(['lien', 'lien_candidat']);
  */
 export const TRACES_TELLES_QUELLES = Object.freeze(['note_cellule', 'ecart_source', 'correction', 'commentaire_orphelin', 'alias', 'source']);
 
+/**
+ * Les tables de contenu que rien ne lit encore : `repere` (migration 0135), tant que les colonnes du mot-clé font foi (docs/chantier-retrait-des-colonnes.md,
+ * §7, « PR A » : « rien ne la lit »). Un repère n'y est que la copie du nom, de l'adresse, de la définition, de la couleur et de l'icône de son mot-clé : lu
+ * comme un texte de règles (lib/mots-cles-db.mjs#textesDeLaBase), il compterait deux fois chaque mention d'un mot-clé et chaque page citée, et la note de
+ * version (lib/notes-de-version.mjs#TABLES_SANS_COMPARAISON) redirait ce que dit déjà la ligne du mot-clé. À VIDER quand les colonnes du mot-clé partent
+ * (« PR B » du même chantier) : le repère devient alors le texte qu'on lit.
+ */
+export const TABLES_PAS_ENCORE_LUES = Object.freeze(['repere']);
+
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 // Le classement de TOUTES les tables (lot 5 du chantier « la base du site de dev devient la source de vérité » : docs/chantier-base-de-dev.md, R274,
 // garde-fou 9). Chaque table de la base est de l'une de trois classes, et une table que le classement ne connaît pas est refusée par le test
@@ -54,7 +64,7 @@ export const CLASSES_DE_TABLES = Object.freeze({ CONTENU: 'contenu', PROPRE_AU_S
 
 /** Sections 0 à 10 de data/schema.sql : les règles, le lore et leurs traces (la section 11 est calculée ; la 12 est faite de vues). */
 export const TABLES_DE_REGLES = Object.freeze([
-  'famille', 'type_page', 'page', 'alias', 'mot_cle', 'categorie_mot_cle', 'mot_cle_categorie', 'mot_cle_ancienne_cle', 'mot_cle_synonyme',
+  'famille', 'type_page', 'page', 'alias', 'mot_cle', 'categorie_mot_cle', 'mot_cle_categorie', 'mot_cle_ancienne_cle', 'mot_cle_synonyme', 'repere',
   'page_ancienne_adresse', 'page_tag', 'source', 'page_source', 'page_entite', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet', 'annonce', 'regles_onglet',
   'regles_onglet_entree', 'caracteristique', 'competence', 'niveau_global', 'niveau_deblocage', 'seuil_niveau', 'regle_constante',
   'entrainement_palier', 'initiative_agilite', 'type_don', 'posture', 'posture_effet', 'posture_critique', 'magie', 'magie_role', 'magie_resistance',

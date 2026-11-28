@@ -1055,10 +1055,10 @@ describe('fonctions pures', () => {
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
     // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
-    // (et ses lignes filles, qu'un lot noté avant ne notait pas : catégories, synonymes, clés quittées, la même liste que le service)
+    // (et ses lignes filles, qu'un lot noté avant ne notait pas : catégories, synonymes, clés quittées, repère (migration 0135), la même liste que le service)
     assert.deepEqual(TABLES_DES_FILLES_DU_MOT_CLE, FILLES_DU_SERVICE);
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 9001 }, apres: null })),
-      ['mot_cle', 'mot_cle_ancienne_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'page', 'page_tag'],
+      ['mot_cle', 'mot_cle_ancienne_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'page', 'page_tag', 'repere'],
       'la cascade de page_tag et des lignes filles, et les pages typées refaites depuis les lignes dont les balises sont retirées');
     // une monnaie supprimée (un lot ancien, R220 (1)) : son ON DELETE SET NULL vide mot_cle.monnaie_id (migration 0113)
     assert.deepEqual(tablesDuLot(lot({ table: 'monnaie', operation: 'supprimer', avant: { id: 'po' }, apres: null })), ['monnaie', 'mot_cle']);

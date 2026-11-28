@@ -45,7 +45,7 @@ export const synonymesDuMotCle = (db, id) => (tableExiste(db, 'mot_cle_synonyme'
   ? db.prepare('SELECT id, libelle, libelle_cle, ordre FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre, id').all(id).map((s) => ({ ...s })) : []);
 
 /**
- * Les tables filles d'un mot-clé (ON DELETE CASCADE vers mot_cle, migrations 0113 et 0115), hors page_tag (ses étiquettes : des mentions,
+ * Les tables filles d'un mot-clé (ON DELETE CASCADE vers mot_cle, migrations 0113, 0115 et 0135 : son repère), hors page_tag (ses étiquettes : des mentions,
  * lib/mentions-des-mots-cles.mjs) et sort_mot_cle (sans cascade : un mot-clé qui étiquette un sort ne se supprime pas), avec leur clé primaire.
  * Une suppression ou une fusion les retire en les notant au journal, avant la ligne de mot_cle (retirerLesFillesDuMotCle) : la cascade du schéma n'en
  * retire alors rien hors du journal, que la mise à jour refuserait (fichier hors des tables du lot, scripts/mise-a-jour-github.mjs#tablesDuLot, qui les
@@ -55,8 +55,26 @@ export const FILLES_DU_MOT_CLE = Object.freeze({
   mot_cle_categorie: Object.freeze(['mot_cle_id', 'categorie_id']),
   mot_cle_synonyme: Object.freeze(['id']),
   mot_cle_ancienne_cle: Object.freeze(['cle']),
+  repere: Object.freeze(['mot_cle_id']),
 });
 export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(Object.keys(FILLES_DU_MOT_CLE));
+
+/**
+ * Le refus (409, sans numéro de décision : une session Créateur ne l'ouvre pas) d'un repère qu'un lot de changements insère (table `repere`, migration
+ * 0135 ; docs/chantier-retrait-des-colonnes.md, §2), ou null : un repère est l'élément d'un mot-clé qui existe et que ne désigne ni une page ni un sort
+ * (`page.mot_cle_id`, `sort.mot_cle_id`). Aussi pour l'annulation d'un lot qui remet un repère retiré. Sa clé ne se modifie pas (lib/lot-de-changements.mjs).
+ */
+export function refusDuRepere(db, table, valeurs) {
+  if (table !== 'repere') return null;
+  const id = valeurs?.mot_cle_id;
+  if (!Number.isInteger(id) || !db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id)) return `Repère : le mot-clé ${JSON.stringify(id ?? null)} n’existe pas.`;
+  // l'identifiant de la page ou du sort, pas son nom : un refus qui citerait « R… » serait lu comme un verrou (edition-lots.mjs#decisionsCitees)
+  const page = db.prepare('SELECT id FROM page WHERE mot_cle_id = ?').get(id);
+  if (page) return `Repère : le mot-clé ${id} a déjà une page (${page.id}) ; son nom et son adresse se lisent sur elle, il ne reçoit pas de repère.`;
+  const sort = db.prepare('SELECT id FROM sort WHERE mot_cle_id = ?').get(id);
+  if (sort) return `Repère : le mot-clé ${id} a déjà un sort (${sort.id}) ; son nom et son adresse se lisent sur lui, il ne reçoit pas de repère.`;
+  return null;
+}
 
 /**
  * Retire, en les notant au journal par `w`, les lignes filles du mot-clé `id` (FILLES_DU_MOT_CLE), avant sa suppression ou sa fusion. `vers` (une

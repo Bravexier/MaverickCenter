@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 224 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 225 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -13,7 +13,7 @@
 
 ## 1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)
 
-**Relations dans cette section** : `alias→page`, `mot_cle_ancienne_cle→mot_cle`, `mot_cle_categorie→categorie_mot_cle`, `mot_cle_categorie→mot_cle`, `mot_cle_synonyme→mot_cle`, `page_ancienne_adresse→page`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→mot_cle`, `page_tag→page`, `page→mot_cle`, `page→type_page`, `panneau_regles_bloc→panneau_regles`, `panneau_regles→page`, `regles_onglet_entree→page`, `regles_onglet_entree→regles_onglet`, `regles_onglet→regles_onglet_entree`
+**Relations dans cette section** : `alias→page`, `mot_cle_ancienne_cle→mot_cle`, `mot_cle_categorie→categorie_mot_cle`, `mot_cle_categorie→mot_cle`, `mot_cle_synonyme→mot_cle`, `page_ancienne_adresse→page`, `page_entite→page`, `page_source→page`, `page_source→source`, `page_tag→mot_cle`, `page_tag→page`, `page→mot_cle`, `page→type_page`, `panneau_regles_bloc→panneau_regles`, `panneau_regles→page`, `regles_onglet_entree→page`, `regles_onglet_entree→regles_onglet`, `regles_onglet→regles_onglet_entree`, `repere→mot_cle`
 
 **Vers d'autres sections** : `mot_cle→monnaie (§9)`
 
@@ -28,6 +28,7 @@
 | `mot_cle_categorie` | Les catégories d'un mot-clé (« La colonne Category des Keyword serai une liste des ID » ; table de liaison, choix du leader-technique). | **mot_cle_id**→mot_cle, **categorie_id**→categorie_mot_cle |
 | `mot_cle_ancienne_cle` | Les clés qu'un mot-clé a quittées (migration 0113 ; « une correspondance des anciennes clés est bienvenue ») : une balise d'un ancien lot du journal ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui. | **cle**, mot_cle_id→mot_cle |
 | `mot_cle_synonyme` | Les synonymes d'un mot-clé (décision R233, migration 0115 ; demande du propriétaire : « Il faudra aussi prévoir plieurs labelles secondaires pour les cas des tages avec des synonymes (exemple : Action | **id**, mot_cle_id→mot_cle, libelle, libelle_cle, ordre |
+| `repere` | Le repère d'un mot-clé (migration 0135 ; chantier 4 des mots-clés, « le retrait des colonnes », docs/chantier-retrait-des-colonnes.md §2) : l'élément d'un mot-clé que ne désigne ni une page (page.mot_ | **mot_cle_id**→mot_cle, nom, adresse?, definition?, couleur?, icone? |
 | `page_tag` | Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page gardait la sienne). | **page_id**→page, **ordre**, tag_id→mot_cle |
 | `source` | Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact). | **id**, nature, texte, url?, genre?, google_id?, fichier?, onglets? |
 | `page_source` |  | **page_id**→page, **ordre**, source_id→source |

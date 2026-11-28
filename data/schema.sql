@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 134;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 135;  -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -290,6 +290,27 @@ CREATE TABLE mot_cle_synonyme (
                                                      -- dans un même lot : à égalité, l'id départage
 ) STRICT;
 CREATE INDEX mot_cle_synonyme_mot_cle ON mot_cle_synonyme (mot_cle_id, ordre);   -- les synonymes d'un mot-clé, dans l'ordre ; contrôle de la cascade
+
+-- Le repère d'un mot-clé (migration 0135 ; chantier 4 des mots-clés, « le retrait des colonnes », docs/chantier-retrait-des-colonnes.md §2) : l'élément
+-- d'un mot-clé que ne désigne ni une page (page.mot_cle_id) ni un sort (sort.mot_cle_id). Il mène à un endroit du site qui n'est pas une ligne de la
+-- base (une rubrique, une page calculée, une section de page), ou nomme une notion dont le nom attend un arbitrage. Une ligne par mot-clé au plus
+-- (mot_cle_id est la clé primaire) ; supprimer le mot-clé retire son repère (ON DELETE CASCADE). Les contraintes de `adresse`, `definition`, `couleur`
+-- et `icone` sont celles de mot_cle.url, description, couleur et icone, recopiées. Qu'un mot-clé à repère n'ait ni page ni sort ne se lit pas dans
+-- un CHECK : le service le refuse à l'écriture d'un lot (client/serveur/edition-mots-cles.mjs#refusDuRepere). Table créée VIDE : les repères sont posés par
+-- un lot de changements du site de dev (client/src/lib/lot-des-reperes.mjs). À la migration 0135, rien ne lit cette table : les colonnes de mot_cle
+-- font encore foi, un repère n'en est que la copie (client/src/lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES : ni texte à balises, ni note de version).
+CREATE TABLE repere (
+  mot_cle_id INTEGER NOT NULL PRIMARY KEY REFERENCES mot_cle(id) ON DELETE CASCADE,   -- le mot-clé dont c'est l'élément
+  nom        TEXT    NOT NULL CHECK (length(nom) > 0),          -- le nom du mot-clé (l'écriture affichée) ; même contrainte que mot_cle.libelle
+  adresse    TEXT    CHECK (adresse IS NULL OR (adresse GLOB '/*' AND adresse NOT GLOB '//*' AND adresse NOT GLOB '*[^!-~]*' AND instr(adresse, '\') = 0)),
+                                                                 -- l'adresse où mène le mot-clé : interne, relative à la racine du site, sans le préfixe de
+                                                                 -- déploiement (« /classes/ », « /fiche/ ») ; NULL : aucune. Même contrainte que mot_cle.url
+  definition TEXT    CHECK (definition IS NULL OR length(definition) > 0),   -- la définition du glossaire ; NULL : pas encore décrit. Comme mot_cle.description
+  couleur    TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
+                                                                 -- une référence « <famille>:<id> » de la palette ou « #rrggbb » ; NULL : aucune. Comme mot_cle.couleur
+  icone      TEXT    CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'))
+                                                                 -- une référence « <famille>:<id> » d'une icône du site ; NULL : aucune. Comme mot_cle.icone
+) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
 -- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la

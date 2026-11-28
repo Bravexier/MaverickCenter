@@ -71,7 +71,7 @@ import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { motsClesAncres, motsClesPropres, outilsDeLAncrage, refusDeLaSecondeCategorie, refusDesSynonymesTransmis, refusDuDetachement, refusDuVerrou, sousLeVerrou } from './edition-ancrage.mjs';
-import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
+import { idSuivant, outilsDesMotsCles, refusDuRepere, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { outilsDesAdresses, refusDeLAdresse } from './edition-adresses.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -3700,7 +3700,8 @@ const OPERATIONS_DU_LOT = {
     return `${op.table} ${Object.keys(op.valeurs).join(', ')}`;
   },
   ecrire_inserer(ctx, op) {
-    const adresse = refusDeLAdresse(ctx, op.table, op.valeurs); // l'ancienne adresse d'une page (R316), avant le gel : une session Créateur ne l’ouvre pas
+    // l'ancienne adresse d'une page (R316), le repère d'un mot-clé qui a une page ou un sort (migration 0135) : avant le gel, une session Créateur ne l’ouvre pas
+    const adresse = refusDeLAdresse(ctx, op.table, op.valeurs) ?? refusDuRepere(ctx.db, op.table, op.valeurs);
     if (adresse) throw new ErreurEdition(409, adresse);
     if (TABLES_FIGEES[op.table] && ctx.gel !== false) throw new ErreurEdition(409, `${op.table} : ${TABLES_FIGEES[op.table]}.`);
     // `restaurer` : l'annulation d'un lot remet une ligne qu'il a retirée, à l'identique (ses colonnes tenues par le service comprises : ce n'est pas une

@@ -1,4 +1,4 @@
-// Les lignes filles d'un mot-clé (mot_cle_categorie, mot_cle_synonyme, mot_cle_ancienne_cle : migrations 0113, 0115) quand il est supprimé ou
+// Les lignes filles d'un mot-clé (mot_cle_categorie, mot_cle_synonyme, mot_cle_ancienne_cle, repere : migrations 0113, 0115, 0135) quand il est supprimé ou
 // fusionné sur le site de dev (serveur/edition-mots-cles.mjs#retirerLesFillesDuMotCle, #recevoirLaFusion) :
 //   - notées au journal avant la ligne de mot_cle (la cascade du schéma n'en retire alors rien hors du journal), si bien que la mise à jour des règles
 //     (scripts/mise-a-jour-regles.mjs) accepte le lot : aucun fichier hors des tables du lot ;
@@ -18,8 +18,10 @@ import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
+import { appliquer as appliquerLeLot, deposer as deposerLeLot } from '../serveur/edition-lots.mjs';
 import { TABLES_DES_FILLES_DU_MOT_CLE } from '../serveur/edition-mots-cles.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
+import { operationsDesReperes } from '../src/lib/lot-des-reperes.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -74,12 +76,17 @@ const mettreAJour = (journal) => appliquerMiseAJour({
 /** Les modifications notées au journal du service, par table et opération (« table:operation »). */
 const notees = (db) => new Set(db.prepare('SELECT table_nom, operation FROM modification').all().map((m) => `${m.table_nom}:${m.operation}`));
 
-test('B1 : un mot-clé catégorisé, avec synonyme et clé quittée, supprimé en forçant puis un autre fusionné : tout est noté, et la mise à jour des règles passe', () => {
+test('B1 : un mot-clé catégorisé, avec synonyme, clé quittée et repère, supprimé en forçant puis un autre fusionné : tout est noté, et la mise à jour des règles passe', async () => {
   const { db, lot, filles } = base();
   const [c1] = categoriesDesMotsCles(db).map((c) => c.id);
   // A : une catégorie, un synonyme, un renommage (sa clé quittée) ; puis supprimé en forçant (il est sur des pages)
   lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [c1] }, { op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: ['Zq essai alpha'] }]);
   lot([{ op: 'modifier', table: 'mot_cle', cle: { id: A.id }, valeurs: { libelle: `${A.libelle} zq` } }]);
+  // son repère (migration 0135) : posé par un lot de changements, la seule voie qui l'écrit (table hors édition : le dépôt du test l'ouvre, comme la base source)
+  const repere = operationsDesReperes(db).find((o) => o.cle.mot_cle_id === A.id);
+  const proposition = await deposerLeLot(() => db, { titre: 'Repère d’essai', nature: 'code', operations: [repere] }, { enArrierePlan: false, controle: { ouvertHorsEdition: true } });
+  assert.equal(proposition.verdict, 'applicable', JSON.stringify(proposition.essai?.operations));
+  appliquerLeLot(db, proposition.id);
   assert.deepEqual(filles(A.id), TABLES_DES_FILLES_DU_MOT_CLE, 'A a des lignes dans chaque table fille');
   // D : un synonyme
   lot([{ op: 'synonymes_mot_cle', mot_cle: D.id, synonymes: ['Zq essai delta'] }]);

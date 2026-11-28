@@ -45,8 +45,9 @@ test('R184 : le plan de la base, onglet par onglet et entrée par entrée, dans 
     assert.ok(o.entrees.some((e) => e.page === o.ouverture), `${o.id} : ouvre sur ${o.ouverture}`);
   }
   // R184 (1), (11) : les quatre onglets après Découvrir et L'univers (fixes) ; « Artisanat » est un lien, en Exploration (un lien ne change pas
-  // d'onglet), juste après « Exercer un métier » à l'import (le site de dev réordonne les menus : test/aide-base-d-import.mjs)
-  assert.deepEqual(plan.map((o) => o.titre), ['Fiche de personnage', 'Mécaniques générales', 'Les combats', 'Exploration']);
+  // d'onglet), juste après « Exercer un métier » à l'import (le site de dev réordonne les menus : test/aide-base-d-import.mjs). Leur titre se modifie
+  // sur le site de dev (R319 (5)) : le test porte sur leurs identifiants, fixes, pas sur leur texte.
+  assert.deepEqual(plan.map((o) => o.id), ['fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
   const artisanat = plan.find((o) => o.id === 'exploration').entrees.find((e) => e.adresse === 'regles/artisanat/');
   assert.deepEqual(artisanat, { id: 'lien:regles/artisanat', rang: artisanat.rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
   const exploration = chargerPlanDesRegles(baseDImport()).find((o) => o.id === 'exploration').entrees;

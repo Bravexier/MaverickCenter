@@ -383,7 +383,7 @@ export function verifierSimulation(donnees, essai) {
  * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON) ; un lot qui écrit une entrée
  * du calcul des armures et des boucliers (décision R207 (1) : TABLES_DES_ENTREES_DU_CALCUL) peut réécrire armures, boucliers et pages
  * (TABLES_DES_VALEURS_CALCULEES). Un mot-clé supprimé ou fusionné par un lot noté avant que le service ne note ses lignes filles retire aussi, par la
- * cascade, ses catégories, synonymes et clés quittées (TABLES_DES_FILLES_DU_MOT_CLE) ; une monnaie supprimée vide mot_cle.monnaie_id (ON DELETE SET
+ * cascade, ses catégories, synonymes, clés quittées et son repère (TABLES_DES_FILLES_DU_MOT_CLE) ; une monnaie supprimée vide mot_cle.monnaie_id (ON DELETE SET
  * NULL, migration 0113).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
@@ -398,7 +398,7 @@ export const TABLES_DES_ENTREES_DU_CALCUL = Object.freeze([
 ]);
 export const TABLES_DES_VALEURS_CALCULEES = Object.freeze(['armure', 'bouclier', 'page']);
 // serveur/edition-mots-cles.mjs#TABLES_DES_FILLES_DU_MOT_CLE, recopiée (test/mise-a-jour-github.test.mjs les compare)
-export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(['mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle']);
+export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(['mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle', 'repere']);
 // serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
 export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 

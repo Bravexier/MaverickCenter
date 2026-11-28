@@ -126,7 +126,9 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
     }
     assert.equal(fil(cheminDePage(id).slice(0, -1)), filDeLOnglet(id), id);
   }
-  assert.equal(fil('regles/combats'), '<a href="/">Accueil</a> › <a href="/regles/combats/">Les combats</a>', '/regles/combats/ : le fil de sa page d’ouverture');
+  // le titre d'un onglet se modifie sur le site de dev (R319 (5)) : celui du plan de la base, jamais un texte figé
+  const titreDeLOnglet = (id) => ongletsDesRegles().find((o) => o.id === id).titre;
+  assert.equal(fil('regles/combats'), `<a href="/">Accueil</a> › <a href="/regles/combats/">${titreDeLOnglet('combats')}</a>`, '/regles/combats/ : le fil de sa page d’ouverture');
   assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
   const vocabulaire = chargerVocabulaire(db);
@@ -406,7 +408,7 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(liens.slice(1).map((l) => l[0]), ARTISANAT.pages.slice(1).map((id) => `/${cheminDePage(id)}`));
   // R184 : l'Artisanat est une entrée lien de l'onglet Exploration : son menu latéral, son entrée marquée, l'onglet marqué au menu du site
   const { html, main } = lire('regles/artisanat');
-  const { entrees } = menuLateral(main, 'Exploration');
+  const { entrees } = menuLateral(main, ongletsDesRegles().find((o) => o.id === 'exploration').titre); // titre modifiable (R319 (5))
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'regles')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/exploration/', 'true']], 'l’onglet Exploration, marqué au menu');
