@@ -22,14 +22,14 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { colonneDerivee, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { examinerLeLot, lotsResolus, resoudreLeConflit } from '../serveur/edition-conflits.mjs';
 import { adresseDeLaPage, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
 import { formesNonCanoniques, lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
-import { ETIQUETTE_D_ESSAI, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
+import { ETIQUETTE_D_ESSAI, poserUnMotCle, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-suppression-forcee');
 let compteur = 0;
@@ -73,7 +73,7 @@ function nouvelle(db = vivante()) {
   const poser = (libelle, { verrou = 0, description = 'Définition d’essai (R223).', id = null } = {}) => {
     const l = libre(libelle);
     const numero = id ?? ligne('SELECT max(id) + 1 AS n FROM mot_cle').n;
-    db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(numero, l, normalize(l), description, verrou);
+    poserUnMotCle(db, { id: numero, libelle: l, cle: normalize(l), description, verrou });
     return numero;
   };
   const etiqueter = (pageId, tagId) => {
@@ -83,7 +83,8 @@ function nouvelle(db = vivante()) {
   };
   const ajouterAuCorps = (pageId, texte) => db.prepare('UPDATE page SET corps_md = corps_md || ? WHERE id = ?').run(texte, pageId);
   const nombreDeModifications = () => ligne('SELECT count(*) AS n FROM modification').n;
-  const motCle = (id) => ligne('SELECT * FROM mot_cle WHERE id = ?', id);
+  // le nom et la définition se lisent sur l'élément du mot-clé (migration 0136) ; absent : undefined
+  const motCle = (id) => lireUnMotCle(db, id) ?? undefined;
   /** La clé d'un mot-clé (migration 0113 : ce que citent les balises). */
   const cle = (id) => motCle(id)?.cle;
   return { db, appel, lot, ligne, libre, creer, poser, etiqueter, ajouterAuCorps, nombreDeModifications, motCle, cle };
@@ -152,7 +153,7 @@ test('R223 : sans forçage, 409 de R196 (mentions, rien d’écrit) ; forcée, c
   assert.equal(s.motCle(cite).description, 'Voir Essai.', 'texte de case : le texte écrit');
   for (const e of etiquettes) assert.equal(s.ligne('SELECT 1 FROM page_tag WHERE page_id = ? AND ordre = ?', e.page_id, e.ordre), undefined, `étiquette de ${e.page_id} retirée`);
   // aucune balise orpheline
-  const vocabulaire = vocabulaireDesMotsCles(s.db.prepare('SELECT * FROM mot_cle').all());
+  const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(s.db));
   for (const [t, markdown] of [[corpsDe(p.guide), true], [corpsDe(p.guideExemple), true], [corpsDe(p.deriveeExemple), true], [s.motCle(cite).description, false]]) {
     assert.equal(citeEncore(t, m, markdown), false, t.slice(-200));
     assert.deepEqual(formesNonCanoniques(t, vocabulaire, { markdown }).filter((f) => f.balise.includes(k)), [], t.slice(-200));
@@ -163,7 +164,8 @@ test('R223 : sans forçage, 409 de R196 (mentions, rien d’écrit) ; forcée, c
   const notees = s.db.prepare('SELECT table_nom, cle, operation FROM modification WHERE lot_id = ? ORDER BY rang').all(r.lot).map((x) => `${x.table_nom} ${x.operation} ${x.cle}`);
   for (const attendue of [
     `page modifier ${JSON.stringify({ id: p.guide })}`, `page modifier ${JSON.stringify({ id: p.guideExemple })}`, `page modifier ${JSON.stringify({ id: p.deriveeExemple })}`,
-    `mot_cle modifier ${JSON.stringify({ id: cite })}`, ...etiquettes.map((e) => `page_tag supprimer ${JSON.stringify(e)}`),
+    // la définition qui le citait : sur le repère du mot-clé (migration 0136)
+    `repere modifier ${JSON.stringify({ mot_cle_id: cite })}`, ...etiquettes.map((e) => `page_tag supprimer ${JSON.stringify(e)}`),
   ]) assert.ok(notees.includes(attendue), `${attendue} : ${notees.join(' ; ')}`);
   assert.equal(notees.at(-1), `mot_cle supprimer ${JSON.stringify({ id: k })}`);
   s.db.close();
@@ -322,7 +324,7 @@ test('R223 (6), rejeu : une suppression forcée se rejoue forcée (mentions appa
     const libelle = site.libre(`Essai rejeu ${nom}`);
     ids[nom] = idLibre(site, livraison);
     cles[nom] = normalize(libelle);
-    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, ?)').run(ids[nom], libelle, cles[nom], 'Définition d’essai (R223).', verrou);
+    for (const s of [site, livraison]) poserUnMotCle(s.db, { id: ids[nom], libelle, cle: cles[nom], description: 'Définition d’essai (R223).', verrou });
   }
   const ligneDe = (s, id) => s.motCle(id);
   const avantSuppression = Object.fromEntries(Object.entries(ids).map(([nom, id]) => [nom, ligneDe(site, id)]));
@@ -334,8 +336,7 @@ test('R223 (6), rejeu : une suppression forcée se rejoue forcée (mentions appa
   for (const s of [site, livraison]) {
     s.db.prepare('UPDATE panneau_regles_bloc SET texte = ? WHERE panneau_id = ? AND rang = ?').run(texteDuBloc, bloc.panneau_id, bloc.rang);
     s.etiqueter(p.lore, ids.forcee);
-    s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, verrou) VALUES (?, ?, ?, ?, 1)')
-      .run(idCitant, verrouilleCitant, normalize(verrouilleCitant), `Voir {{${cles.forceeVerrouillee}|x}}.`);
+    poserUnMotCle(s.db, { id: idCitant, libelle: verrouilleCitant, cle: normalize(verrouilleCitant), description: `Voir {{${cles.forceeVerrouillee}|x}}.`, verrou: 1 });
   }
   // le site de dev : la forcée par le service ; la verrouillée comme un lot noté avant le verrou (gel faux : R219 (6)) ; l'ordinaire, sans mention
   ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forcee }, forcer: true }]));
@@ -398,7 +399,7 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
     const libelle = site.libre(`Essai marqueur ${nom}`);
     ids[nom] = idLibre(site, livraison);
     cles[nom] = normalize(libelle);
-    for (const s of [site, livraison]) s.db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)').run(ids[nom], libelle, cles[nom], 'Définition d’essai (R223).');
+    for (const s of [site, livraison]) poserUnMotCle(s.db, { id: ids[nom], libelle, cle: cles[nom], description: 'Définition d’essai (R223).' });
   }
   const libelleDe = (id) => site.motCle(id).libelle;
   const L = libelleDe(ids.forceeSansMention);
@@ -412,10 +413,11 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
     ecrireBloc(s, blocs[0], `${blocs[0].texte} Voir {{${cles.cascade}}}.`);
     ecrireBloc(s, blocs[5], `${blocs[5].texte} Voir {{${cles.forceeEnConflit}}}.`);
   }
-  // le site de dev : la fusion (le lot ne note que l'étiquette retirée et la ligne de mot_cle) ; la suppression forcée sans mention
+  // le site de dev : la fusion (le lot ne note que l'étiquette retirée et la ligne de mot_cle, avec son repère : migration 0136) ; la suppression forcée
+  // sans mention
   const fusion = ok(site.lot([{ op: 'fusionner_mots_cles', mot_cle: ids.source, dans: ids.cible }]));
   assert.deepEqual(site.db.prepare('SELECT table_nom, operation FROM modification WHERE lot_id = ? ORDER BY rang').all(fusion.lot).map((m) => `${m.table_nom} ${m.operation}`),
-    ['page_tag supprimer', 'mot_cle supprimer', 'mot_cle_ancienne_cle inserer'], 'une fusion par étiquettes seules (sa clé passe à la cible : R233 (11))');
+    ['page_tag supprimer', 'repere supprimer', 'mot_cle supprimer', 'mot_cle_ancienne_cle inserer'],'une fusion par étiquettes seules (sa clé passe à la cible : R233 (11))');
   ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forceeSansMention }, forcer: true }]));
   // une suppression forcée dont la réécriture sera en conflit (les règles livrées changent le même bloc) : son marqueur reste au journal
   const lotEnConflit = ok(site.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: ids.forceeEnConflit }, forcer: true }])).lot;
@@ -427,7 +429,11 @@ test('R223 (6), rejeu au marqueur du résumé : une fusion par étiquettes seule
     modifications.forEach(([table, cle, operation, avant, apres], i) => site.db.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente')")
       .run(lot, i + 1, table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres)));
   };
-  const motCleEntier = (id) => ({ ...site.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id) });
+  // l'« avant » d'un lot ancien : la ligne du mot-clé avec ses colonnes d'avant la migration 0136 (libelle, url, description, couleur, icone)
+  const motCleEntier = (id) => {
+    const { element, ...ligneAncienne } = lireUnMotCle(site.db, id);
+    return ligneAncienne;
+  };
   const etiquette = (e, id) => ['page_tag', e, 'supprimer', { ...e, tag_id: id }, null];
   lotAncien(1, [
     etiquette(etiquettes.cascade, ids.cascade),

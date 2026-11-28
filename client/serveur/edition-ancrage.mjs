@@ -7,12 +7,12 @@
 import { adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSortEnBase } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
-import { categorieDuType, estAncre, fautesDuVocabulaire, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
-import { lireBalises, motCleDeLaRef, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categorieDuType, estAncre, TYPE_DE_RUBRIQUE } from '../src/lib/mots-cles-ancrage.mjs';
+import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { elementDuMotCle, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
-import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
+import { creerLeRepere, motCleDansUnRefus, nomSurLElement, reprendreLeRepere, retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
 
 const NOMS = Object.freeze({ page: 'Page', sort: 'Sort', type_sort: 'Type de sort' });
 /** La mention d'une décision dans un refus de la règle des clés (« (décision R232 (9)) »). */
@@ -20,10 +20,9 @@ const MENTION_D_UNE_DECISION = / ?\(décisions? R[0-9]+(?: \([0-9]+\))?(?:, R[0-
 
 /** Ce qu'aucun lot ne fait à un mot-clé ancré, session Créateur comprise : écrire son nom, son adresse ou sa clé, le supprimer, le fondre dans un autre. */
 const FERME_AUX_LOTS = new Set(['libelle', 'url', 'cle', 'suppression', 'fusion']);
-const CITE_UN_NUMERO = /\bR[0-9]+\b/;
 
-/** Le sujet d'un refus du verrou : un libellé qui s'écrit comme un numéro de décision n'y entre pas (voir l'en-tête). */
-const motCleDansUnRefus = (libelle) => (libelle && !CITE_UN_NUMERO.test(libelle) ? `Le mot-clé « ${libelle} »` : 'Ce mot-clé');
+/** Le nom du mot-clé `id`, lu sur son élément (lib/mots-cles-db.mjs#lireUnMotCle : la table mot_cle ne le porte plus depuis la migration 0136), ou undefined. */
+const nomDuMotCle = (db, id) => lireUnMotCle(db, id)?.libelle;
 
 /** Le refus d'une seconde catégorie : `nombre`, celles qu'il aurait. */
 export const refusDeLaSecondeCategorie = (libelle, nombre) => `${motCleDansUnRefus(libelle)} n’a qu’un seul type : il en aurait ${nombre}.`;
@@ -46,7 +45,7 @@ export function refusDuVerrou(ctx, id, colonnes, { ancres = null } = {}) {
   if (!sousLeVerrou(ctx)) return null;
   const visees = ctx.voie === 'lot' ? colonnes.filter((c) => FERME_AUX_LOTS.has(c)) : colonnes;
   if (!visees.length || !(ancres ? ancres.has(id) : estAncre(ctx.db, id))) return null;
-  const sujet = motCleDansUnRefus(ctx.db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle);
+  const sujet = motCleDansUnRefus(nomDuMotCle(ctx.db, id));
   if (visees.includes('suppression')) return `${sujet} est relié à un élément : il ne se supprime pas seul, il part avec son élément.`;
   if (visees.includes('fusion')) return `${sujet} est relié à un élément : il ne se fusionne pas dans un autre.`;
   if (ctx.voie === 'lot') return `${sujet} est relié à un élément : son nom, son adresse et sa clé viennent de lui, aucun lot ne les écrit.`;
@@ -71,7 +70,7 @@ export function refusDuDetachement(ctx, table, avant, valeurs = null) {
   const colonne = LIENS_DE_LA_VOIE_GENERIQUE[table];
   if (!colonne || (avant[colonne] ?? null) === null) return null;
   if (valeurs !== null && (!Object.hasOwn(valeurs, colonne) || (valeurs[colonne] ?? null) === avant[colonne])) return null;
-  if (table === 'mot_cle') return `${motCleDansUnRefus(avant.libelle)} est relié à sa monnaie : un lot ne retire ni ne remplace ce lien.`;
+  if (table === 'mot_cle') return `${motCleDansUnRefus(nomDuMotCle(ctx.db, avant.id))} est relié à sa monnaie : un lot ne retire ni ne remplace ce lien.`;
   return `${NOM_DE_L_ELEMENT[table]} garde son mot-clé : un lot ne retire ni ne remplace ce lien.`;
 }
 
@@ -171,10 +170,11 @@ const partAvec = (cle, ids) => [cle.id, cle.page_id, cle.capacite_id, cle.metier
 export function motsClesPropres(db, table, ids, { avec = [] } = {}) {
   const sortie = new Map();
   if (!aDesAncres(db, table)) return sortie;
-  const sien = db.prepare(`SELECT k.id, k.libelle, k.verrou FROM "${table}" e JOIN mot_cle k ON k.id = e.mot_cle_id WHERE e.id = ?`);
+  // le nom se lit sur l'élément (lireUnMotCle) : la table mot_cle ne le porte plus (migration 0136)
+  const sien = db.prepare(`SELECT k.id, k.verrou FROM "${table}" e JOIN mot_cle k ON k.id = e.mot_cle_id WHERE e.id = ?`);
   for (const id of ids) {
     const m = sien.get(id);
-    if (m) sortie.set(id, { id: m.id, libelle: m.libelle, verrou: m.verrou, mentions: [] });
+    if (m) sortie.set(id, { id: m.id, libelle: nomDuMotCle(db, m.id), verrou: m.verrou, mentions: [] });
   }
   if (!sortie.size) return sortie;
   const mentions = mentionsDesMotsCles(db, [...sortie.values()].map((m) => m.id));
@@ -188,7 +188,7 @@ export function motsClesPropres(db, table, ids, { avec = [] } = {}) {
 
 /**
  * Les outils de l'ancrage, liés au service : { ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer,
- * retirerLeMotCle, sousLeVerrou, refusDuVerrou, secondesCategories }. Les écritures de ce module ne passent jamais sous le verrou : elles vont directement par `w`.
+ * retirerLeMotCle, repereApresLAnnulation, sousLeVerrou, refusDuVerrou, secondesCategories }. Les écritures de ce module ne passent jamais sous le verrou : elles vont directement par `w`.
  * @param {{ ErreurEdition: Function, MOTS_CLES: object, creerMotCle: Function, ADRESSES: object }} o la classe d'erreur, les outils du vocabulaire, la création
  *   d'un mot-clé et les outils des adresses (serveur/edition-adresses.mjs)
  */
@@ -219,22 +219,29 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
 
   /**
    * Crée le mot-clé de l'élément, avec son type (`type` : un id de catégorie) et son ancre : jamais verrouillé, sans définition (R219 (5)). Le nom et
-   * l'adresse donnés doivent être ceux de l'élément (409 sinon). Rend l'id du mot-clé.
+   * l'adresse, quand le lot les donne, doivent être ceux de l'élément (409 sinon) ; absents, rien n'est contrôlé. Rien n'est copié : le nom et l'adresse
+   * se lisent sur la page ou le sort (migration 0136) ; le mot-clé d'un type de sort, qui n'a ni page ni sort, reçoit un repère au nom de l'élément
+   * (serveur/edition.mjs#creerMotCle). Rend l'id du mot-clé.
    */
-  function ancrerNouveau(ctx, { table, id, libelle, url = null, type }) {
+  function ancrerNouveau(ctx, { table, id, libelle, url, type }) {
     const e = elementOuRefus(ctx.db, table, id);
     if (e.mot_cle_id !== null) throw new ErreurEdition(409, `${NOMS[table]} « ${id} » : cet élément a déjà son mot-clé (#${e.mot_cle_id}).`);
     const nomVoulu = nomDeLElement(e, table, id);
-    if (libelle !== nomVoulu) throw new ErreurEdition(409, `${NOMS[table]} « ${id} » : le nom d’un mot-clé ancré est celui de son élément (« ${nomVoulu} », reçu « ${libelle} »).`);
-    if ((url ?? null) !== e.adresse) {
+    if (libelle !== undefined && libelle !== nomVoulu) {
+      throw new ErreurEdition(409, `${NOMS[table]} « ${id} » : le nom d’un mot-clé ancré est celui de son élément (« ${nomVoulu} », reçu « ${libelle} »).`);
+    }
+    if (url !== undefined && (url ?? null) !== e.adresse) {
       throw new ErreurEdition(409, `${NOMS[table]} « ${id} » : l’adresse d’un mot-clé ancré est celle de son élément (${JSON.stringify(e.adresse)}, reçu ${JSON.stringify(url ?? null)}).`);
     }
-    return sansNumeroDeDecision(() => creerMotCle(ctx, libelle, null, { url: e.adresse, categories: [type], ancre: { table, id }, parent: e.parent }));
+    return sansNumeroDeDecision(() => creerMotCle(ctx, nomVoulu, null, { url: e.adresse, categories: [type], ancre: { table, id }, parent: e.parent }));
   }
 
   /**
    * Pose l'ancre d'un élément sur le mot-clé `mot_cle_id`. Retirer une ancre (`null`) ou la remplacer n'est permis qu'à l'annulation d'un lot (`ctx.annulation`) :
-   * c'est elle qui remet la valeur d'avant.
+   * c'est elle qui remet la valeur d'avant. Un mot-clé a un repère si et seulement s'il n'a ni page ni sort (docs/chantier-retrait-des-colonnes.md, §2) :
+   * celui qui reçoit une page ou un sort perd le sien dans la même opération (sa définition, sa couleur et son icône passent sur la page ou le sort,
+   * R309 (14)) ; celui que l'annulation laisse sans page ni sort en retrouve un, fait de la page ou du sort quitté
+   * (repereDeLElementQuitte), si le lot ne l'a pas déjà remis.
    */
   function ancrerElement(ctx, { table, id, mot_cle_id }) {
     const { db, w } = ctx;
@@ -247,6 +254,26 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
     }
     if (mot_cle_id !== null && !lireLigne(db, 'mot_cle', { id: mot_cle_id })) throw new ErreurEdition(404, `Mot-clé introuvable : ${JSON.stringify(mot_cle_id)}`);
     w.modifier(table, { id }, { mot_cle_id });
+    if (table === 'type_sort') return; // un type de sort n'est pas l'élément de son mot-clé : sa page de notion l'est, sinon son repère
+    if (mot_cle_id !== null) reprendreLeRepere(db, w, mot_cle_id, { table, id });
+    if (ligne.mot_cle_id !== null && ligne.mot_cle_id !== mot_cle_id) repereDeLElementQuitte(ctx, ligne.mot_cle_id, table, id);
+  }
+
+  /**
+   * L'annulation d'un lot a retiré au mot-clé `motCleId` sa page ou son sort (`table`, `id`) : s'il reste sans page, sans sort et sans repère, il en reçoit un,
+   * fait de l'élément quitté (le titre, l'adresse, la définition, la couleur et l'icône de la page, vidées sur elle ; le nom, la définition, la couleur et
+   * l'icône d'un sort, vidées sur lui, sans adresse), pour garder un nom.
+   */
+  function repereDeLElementQuitte(ctx, motCleId, table, id) {
+    const { db, w } = ctx;
+    if (!nomSurLElement(db) || !lireLigne(db, 'mot_cle', { id: motCleId }) || elementDuMotCle(db, motCleId)) return;
+    const p = table === 'sort'
+      ? db.prepare('SELECT nom AS titre, definition, couleur, icone FROM sort WHERE id = ?').get(id)
+      : db.prepare('SELECT titre, definition, couleur, icone FROM page WHERE id = ?').get(id);
+    const adresse = table === 'sort' ? null : adresseDeLaPageEnBase(db, id);
+    creerLeRepere(w, motCleId, { nom: p.titre, adresse, definition: p.definition, couleur: p.couleur, icone: p.icone });
+    const portes = Object.fromEntries(['definition', 'couleur', 'icone'].filter((c) => p[c] !== null).map((c) => [c, null]));
+    if (Object.keys(portes).length) w.modifier(table, { id }, portes);
   }
 
   /** L'élément que le mot-clé `id` ancre : { table, elementId } (la page, sinon le sort, sinon le type de sort), ou null. */
@@ -259,26 +286,15 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
   }
 
   /**
-   * Recopie sur le mot-clé `id` le nom et l'adresse de son élément (la page, sinon le sort, sinon le type de sort : un mot-clé peut ancrer une page et un type).
-   * Un type de sort n'a pas d'adresse : celle du mot-clé reste. La clé n'est pas recalculée ici : `recalculerEnFinDeLot`, une fois, après la dernière opération.
+   * L'opération `aligner_mot_cle` d'un lot (gardée pour les lots déjà déposés, rejoués ou repris) : elle recopiait sur le mot-clé `id` le nom et l'adresse de
+   * son élément ; depuis la migration 0136 ils se lisent sur lui, elle n'écrit plus rien. Ses refus restent : un mot-clé introuvable (404), qui n'ancre
+   * aucun élément (409). La clé n'est pas recalculée ici : `recalculerEnFinDeLot`, une fois, après la dernière opération.
    */
   function alignerMotCle(ctx, id) {
-    const { db, w } = ctx;
-    const m = lireLigne(db, 'mot_cle', { id });
+    const { db } = ctx;
+    const m = lireUnMotCle(db, id);
     if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${JSON.stringify(id)}`);
-    const ancre = ancreDuMotCle(db, id);
-    if (!ancre) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : il n’ancre aucun élément, il ne s’aligne sur rien.`);
-    const { table, elementId } = ancre;
-    const e = elementDe(db, table, elementId);
-    const libelle = nomDeLElement(e, table, elementId);
-    const valeurs = {};
-    if (m.libelle !== libelle) {
-      const [pris] = synonymesPris(motsClesDeLaBase(db, { elements: false }), { id, libelle });
-      if (pris) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : le nom « ${libelle} » s’écrit comme le synonyme « ${pris.synonyme} » du mot-clé « ${pris.m.libelle} ».`, { champ: 'libelle', mot_cle: pris.m.id });
-      valeurs.libelle = libelle;
-    }
-    if (table !== 'type_sort' && (m.url ?? null) !== e.adresse) valeurs.url = e.adresse;
-    if (Object.keys(valeurs).length) w.modifier('mot_cle', { id }, valeurs);
+    if (!ancreDuMotCle(db, id)) throw new ErreurEdition(409, `${motCleDansUnRefus(m.libelle)} n’ancre aucun élément : il ne s’aligne sur rien.`);
   }
 
   /** Le recalcul différé des clés, une fois après la dernière opération d'un lot : la règle ne juge que l'état final. Rend le résumé. */
@@ -299,7 +315,9 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
     const categorie = categorieDuType(db, nom); // même renommée au Glossaire
     if (categorie === null) return null;
     const url = adresseDeLaPage(id, null); // une page neuve n'a pas de segment renommé (R316)
-    if (db.prepare('SELECT 1 FROM mot_cle WHERE url = ?').get(url)) return null;
+    // seul un repère écrit son adresse (migration 0136) : une page en a une à elle, que rien d'autre ne tient
+    const tenue = nomSurLElement(db) ? 'SELECT 1 FROM repere WHERE adresse = ?' : 'SELECT 1 FROM mot_cle WHERE url = ?';
+    if (db.prepare(tenue).get(url)) return null;
     ctx.adressesDuLot = null; // la page vient d'être créée : les adresses retenues par le lot ne la connaissent pas
     try {
       return w.isoler(() => ancrerNouveau(ctx, { table: 'page', id, libelle: titre, url, type: categorie }));
@@ -310,42 +328,13 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
   }
 
   /**
-   * Parmi les mots-clés `ids`, ceux qui peuvent prendre le nom de leur élément sans que la règle refuse le vocabulaire (essayés jusqu'au point fixe). Ne juge pas l'écriture
-   * des clés : deux homonymes qui échangent leur nom passent ici, puis `recalculerLesCles` refuse leurs clés croisées (`suivreLesElements` les écarte alors).
-   */
-  function nomsQuiPassent(db, ids) {
-    const motsCles = motsClesDeLaBase(db, { elements: false });
-    const parId = new Map(motsCles.map((m) => [m.id, m]));
-    const libelles = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
-    const voulus = new Map();
-    for (const id of ids) {
-      const ancre = ancreDuMotCle(db, id);
-      const nom = ancre ? elementDe(db, ancre.table, ancre.elementId)?.nom : null;
-      if (nom && normalize(nom) && nom !== parId.get(id)?.libelle) voulus.set(id, nom);
-    }
-    let futurs = motsCles;
-    const passent = [];
-    for (let avance = true; avance && voulus.size;) {
-      avance = false;
-      for (const [id, nom] of voulus) {
-        const essai = futurs.map((m) => (m.id === id ? { ...m, libelle: nom } : m));
-        if (fautesDuVocabulaire(essai, libelles, parId).length) continue;
-        futurs = essai;
-        passent.push(id);
-        voulus.delete(id);
-        avance = true;
-      }
-    }
-    return passent;
-  }
-
-  /**
-   * Fin d'un lot écrit par le service : le mot-clé suit ce que CE lot a changé (`w.lignes`, jamais l'état de la base : un renommage annulé ne revient pas). `page.titre`
-   * et `sort.nom` : nom suivi, clés recalculées ; un nom que la règle refuse laisse le mot-clé tel quel, comme ceux dont les clés se croiseraient (un échange de noms : le
-   * refus les cite, `details.mots_cles`), et les autres suivent. `magie.nom` : la clé des sorts homonymes dépend de leur parent ; un mot-clé retiré (`ctx.clesDues`) : un
-   * homonyme peut retrouver sa clé. Dans ces deux cas le recalcul est dû : s'il est refusé sans renommage à écarter, le refus remonte (sans numéro de décision), car le
-   * vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal). Rend vrai s'il a recalculé les clés : l'appelant n'a pas à le refaire.
-   * D'abord, l'adresse d'une page renommée suit son titre (décision R316, serveur/edition-adresses.mjs) : le mot-clé aligné ensuite la trouve déjà à jour.
+   * Fin d'un lot écrit par le service : les clés suivent ce que CE lot a changé (`w.lignes`, jamais l'état de la base : un renommage annulé ne revient pas). Le
+   * nom d'un mot-clé se lit sur sa page, son sort ou son repère (migration 0136) : `page.titre`, `sort.nom` ou `repere.nom` changé, il a déjà suivi, et les
+   * clés se recalculent. Un renommage n'est jamais refusé à cause du mot-clé (docs/chantier-ancrage-mots-cles.md, choix 7) : celui d'une page ou d'un sort que
+   * la règle ne sait pas distinguer garde sa clé, à trancher (serveur/edition-mots-cles.mjs#clesTenues). `magie.nom` : la clé des sorts homonymes dépend de
+   * leur parent ; un mot-clé retiré (`ctx.clesDues`) : un homonyme peut retrouver sa clé. Dans ces deux cas le recalcul est dû : s'il est refusé, le refus
+   * remonte (sans numéro de décision), car le vocabulaire resterait faux. Jamais en annulation ni au rejeu (qui relit le journal). Rend vrai s'il a recalculé
+   * les clés : l'appelant n'a pas à le refaire. D'abord, l'adresse d'une page renommée suit son titre (décision R316, serveur/edition-adresses.mjs).
    */
   function suivreLesElements(ctx) {
     if (ctx.annulation) return false;
@@ -353,37 +342,28 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
     const { db, w } = ctx;
     const clesDues = ctx.clesDues === true;
     ctx.clesDues = false;
-    const aSuivre = new Set();
+    let renomme = false;
     let parentChange = false;
     for (const { table, cle, colonnes } of w.lignes) {
       if (!colonnes) continue;
       if ((table === 'page' && colonnes.includes('titre')) || (table === 'sort' && colonnes.includes('nom'))) {
-        const motCle = db.prepare(`SELECT mot_cle_id AS id FROM "${table}" WHERE id = ?`).get(cle.id)?.id ?? null;
-        if (motCle !== null) aSuivre.add(motCle);
+        renomme ||= (db.prepare(`SELECT mot_cle_id AS id FROM "${table}" WHERE id = ?`).get(cle.id)?.id ?? null) !== null;
+      } else if (table === 'repere' && colonnes.includes('nom')) {
+        renomme = true;
       } else if (table === 'magie' && colonnes.includes('nom')) {
         parentChange ||= Boolean(db.prepare('SELECT 1 FROM sort WHERE magie_id = ? AND mot_cle_id IS NOT NULL LIMIT 1').get(cle.id));
       }
     }
     const recalculDu = parentChange || clesDues;
-    let renommes = aSuivre.size ? nomsQuiPassent(db, aSuivre) : [];
-    while (renommes.length || recalculDu) {
-      try {
-        w.isoler(() => {
-          for (const id of renommes) alignerMotCle(ctx, id);
-          MOTS_CLES.recalculerLesCles(ctx);
-        });
-        return true;
-      } catch (e) {
-        if (!(e instanceof ErreurEdition)) throw e;
-        const cites = new Set(e.details?.mots_cles ?? []);
-        const restants = renommes.filter((id) => !cites.has(id));
-        if (restants.length < renommes.length) renommes = restants; // les mots-clés que le refus cite gardent leur nom, les autres suivent
-        else if (!recalculDu) return false;
-        else if (renommes.length) renommes = []; // un autre refus d'un nom : le recalcul dû se tente sans aucun renommage
-        else return sansNumeroDeDecision(() => { throw e; });
-      }
+    if (!renomme && !recalculDu) return false;
+    try {
+      w.isoler(() => MOTS_CLES.recalculerLesCles(ctx));
+      return true;
+    } catch (e) {
+      if (!(e instanceof ErreurEdition)) throw e;
+      if (!recalculDu) return false;
+      return sansNumeroDeDecision(() => { throw e; });
     }
-    return false;
   }
 
   /**
@@ -405,20 +385,45 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
   /**
    * Après l'élément : retire le mot-clé `id`, ses catégories, synonymes et clés quittées. Le recalcul des clés (un homonyme peut retrouver la sienne) est noté dû, et fait une
    * fois en fin de lot par `suivreLesElements` : un état entre deux opérations n'a pas à satisfaire la règle. Tenu par un autre élément (une ancre, une magie, un type de
-   * dégâts, une monnaie, un sort qui le porte : R289), il reste ; s'il menait à l'élément parti (`adresse`), son adresse se vide.
+   * dégâts, une monnaie, un sort qui le porte : R289), il reste ; sans autre page ni sort, il reçoit alors un repère au nom de l'élément parti (`element` : la
+   * ligne de la page ou du sort supprimé), avec sa définition, sa couleur et son icône, sans adresse : le lecteur voit le même nom et la même
+   * infobulle, la balise ne mène plus nulle part. Sur une base d'avant la migration 0136, son adresse se vide s'il menait à l'élément parti (`adresse`).
    */
-  function retirerLeMotCle(ctx, id, { adresse = null } = {}) {
+  function retirerLeMotCle(ctx, id, { adresse = null, element = null } = {}) {
     const { db, w } = ctx;
     const m = lireLigne(db, 'mot_cle', { id });
     if (!m) return;
-    if (m.verrou) throw new ErreurEdition(409, `Mot-clé « ${m.libelle} » : il est verrouillé, il ne se retire pas.`);
+    const nom = element?.titre ?? element?.nom ?? nomDuMotCle(db, id);
+    if (m.verrou) throw new ErreurEdition(409, `${motCleDansUnRefus(nom)} est verrouillé : il ne se retire pas.`);
     if (estAncre(db, id) || db.prepare('SELECT 1 FROM sort_mot_cle WHERE mot_cle_id = ? LIMIT 1').get(id)) {
-      if (adresse !== null && m.url === adresse) w.modifier('mot_cle', { id }, { url: null });
+      if (!nomSurLElement(db)) {
+        if (adresse !== null && m.url === adresse) w.modifier('mot_cle', { id }, { url: null });
+      } else repereDuSurvivant(ctx, id, nom, element);
       return;
     }
     retirerLesFillesDuMotCle(db, w, id);
     w.supprimer('mot_cle', { id });
     ctx.clesDues = true;
+  }
+
+  /**
+   * Le mot-clé `id` vient de perdre sa page ou son sort (`element` : la ligne supprimée), par un lot ou par l'annulation d'un lot (R289 ; décisions B3-3 et
+   * B3-4 du chantier 4) : s'il existe encore sans page, sans sort ni repère, il reçoit un repère au nom `nom`, avec la définition, la couleur et l'icône
+   * de la page ou du sort (R309 (14)), sans adresse (l'élément parti n'en a plus). Jamais un second : un repère déjà là (remis par l'annulation elle-même) reste tel quel.
+   */
+  function repereDuSurvivant(ctx, id, nom, element) {
+    const { db, w } = ctx;
+    if (!nomSurLElement(db) || !lireLigne(db, 'mot_cle', { id }) || elementDuMotCle(db, id)) return;
+    creerLeRepere(w, id, { nom, definition: element?.definition ?? null, couleur: element?.couleur ?? null, icone: element?.icone ?? null });
+  }
+
+  /**
+   * L'annulation d'un lot a supprimé la page ou le sort `element` (la ligne retirée) : son mot-clé, qui reste (motCleARetirer : null en annulation), retrouve
+   * un repère si le lot ne le lui a pas déjà remis (repereDuSurvivant).
+   */
+  function repereApresLAnnulation(ctx, element) {
+    if (!ctx.annulation || (element?.mot_cle_id ?? null) === null) return;
+    repereDuSurvivant(ctx, element.mot_cle_id, element.titre ?? element.nom, element);
   }
 
   /**
@@ -432,12 +437,13 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
     const sortie = [];
     for (const id of ajoutees) {
       const { n } = db.prepare('SELECT count(*) AS n FROM mot_cle_categorie WHERE mot_cle_id = ?').get(id);
-      if (n > 1) sortie.push({ id, message: refusDeLaSecondeCategorie(db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, n) });
+      if (n > 1) sortie.push({ id, message: refusDeLaSecondeCategorie(nomDuMotCle(db, id), n) });
     }
     return sortie;
   }
 
   return {
-    ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle, sousLeVerrou, refusDuVerrou, secondesCategories,
+    ancrerNouveau, ancrerElement, alignerMotCle, recalculerEnFinDeLot, ancrerLaPage, suivreLesElements, motCleARetirer, retirerLeMotCle, repereApresLAnnulation, sousLeVerrou,
+    refusDuVerrou, secondesCategories,
   };
 }

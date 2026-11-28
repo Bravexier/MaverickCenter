@@ -219,16 +219,18 @@ test('db:check (migration 0098) : un lien mal écrit (guillemet compris) ou vers
   const avant = check();
   assert.equal(avant.statut, 0, JSON.stringify(avant.problemes));
   const d = new DatabaseSync(copie);
-  assert.equal(avant.bilan.liens_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE url IS NOT NULL').get().n);
-  assert.equal(avant.bilan.couleurs_mots_cles, d.prepare('SELECT count(*) AS n FROM mot_cle WHERE couleur IS NOT NULL').get().n);
-  // quatre mots-clés qui ne sont reliés à aucun élément (leur adresse n'est pas la copie de celle d'une page : R309), sans adresse d'abord ; sur un contenu
+  // l'adresse et la couleur se lisent sur l'élément de chaque mot-clé (migration 0136)
+  const lus = motsClesDeLaBase(d, { elements: false });
+  assert.equal(avant.bilan.liens_mots_cles, lus.filter((m) => m.url !== null).length);
+  assert.equal(avant.bilan.couleurs_mots_cles, lus.filter((m) => m.couleur !== null).length);
+  // quatre mots-clés qui ne sont reliés à aucun élément (leur adresse et leur couleur sont sur leur repère : R309), sans adresse d'abord ; sur un contenu
   // où les notions ont leur page (R309 (7)), il en reste peu sans adresse
-  const [a, b, c, e] = d.prepare('SELECT id FROM mot_cle ORDER BY url IS NOT NULL, id').all().filter((m) => !estAncre(d, m.id)).slice(0, 4).map((m) => m.id);
-  d.prepare("UPDATE mot_cle SET url = '/races/pas-de-page-d-essai/' WHERE id = ?").run(a);
-  d.prepare("UPDATE mot_cle SET url = '/races/drakos' WHERE id = ?").run(b);
-  d.prepare("UPDATE mot_cle SET couleur = 'race:inconnue' WHERE id = ?").run(c);
-  // le CHECK de mot_cle.url l'admet (ASCII imprimable) ; db:check le refuse par la même fonction que le service (fauteDeFormeDeLUrl)
-  d.prepare("UPDATE mot_cle SET url = '/races/drakos/#x\"onmouseover' WHERE id = ?").run(e);
+  const [a, b, c, e] = d.prepare('SELECT mot_cle_id AS id FROM repere ORDER BY adresse IS NOT NULL, mot_cle_id').all().filter((m) => !estAncre(d, m.id)).slice(0, 4).map((m) => m.id);
+  d.prepare("UPDATE repere SET adresse = '/races/pas-de-page-d-essai/' WHERE mot_cle_id = ?").run(a);
+  d.prepare("UPDATE repere SET adresse = '/races/drakos' WHERE mot_cle_id = ?").run(b);
+  d.prepare("UPDATE repere SET couleur = 'race:inconnue' WHERE mot_cle_id = ?").run(c);
+  // le CHECK de repere.adresse l'admet (ASCII imprimable) ; db:check le refuse par la même fonction que le service (fauteDeFormeDeLUrl)
+  d.prepare("UPDATE repere SET adresse = '/races/drakos/#x\"onmouseover' WHERE mot_cle_id = ?").run(e);
   const page = d.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' ORDER BY id").get();
   d.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`${page.corps_md}\n\nVoir [[Drakos]] et \`[[Drakos]]\`, [Discord](/#lien-discord), [ailleurs](https://exemple.org/).\n`, page.id);
   const metier = d.prepare('SELECT id, description FROM metier ORDER BY id').get();

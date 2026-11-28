@@ -14,6 +14,7 @@ import { ErreurEdition, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, lignesEnAttente } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, decisionsCitees, lire } from '../serveur/edition-lots.mjs';
 import { ADRESSES_DES_PAGES_SERVIES } from '../src/lib/equipement.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { adresseDesRegles, idDesRegles, nom, outilsDesCas, photo, poserUnePageDesRegles, refusDuDepot, TOUS_LES_VERROUS } from './aide-adresses-lots.mjs';
 import { baseDAncrage, poserCapacite, poserClasse, poserPageLisible } from './aide-ancrage.mjs';
@@ -70,7 +71,7 @@ test('R316 : un lot qui renomme une page passe et l’adresse suit ; une de ses 
     const lotAncre = await renommerParUnLot(m, id, nom('un'), nom('deux'));
     assert.equal(lotAncre.etat, 'applique', JSON.stringify(lotAncre.refus ?? null));
     assert.equal(segment(id), normalize(nom('deux')));
-    assert.equal(m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(motCle).url, adresseDesRegles(nom('deux')));
+    assert.equal(lireUnMotCle(m.db, motCle).url, adresseDesRegles(nom('deux')), 'l’adresse du mot-clé se lit sur sa page (migration 0136)');
     assert.deepEqual(photo(m.db).anciennes, [{ adresse: `regles/${normalize(nom('un'))}/`, page_id: id }]);
     // la surcouche des pages ne reçoit pas l'ancienne adresse, mais bien la page renommée
     const enAttente = lignesEnAttente(m.db, { pourLesPages: true });

@@ -23,7 +23,10 @@ function cleDuPlan(net, crees, notions) {
   if (TABLES_ANCRABLES.includes(net.table)) return net.genre === 'modifier' && Object.hasOwn(net.fin, 'mot_cle_id') ? `${net.table}:${net.cle.id}` : null;
   if (net.table === 'mot_cle') {
     if (notions.has(net.cle.id)) return null;
-    return net.genre === 'modifier' && (Object.hasOwn(net.fin, 'libelle') || Object.hasOwn(net.fin, 'url')) ? `nom:${net.cle.id}` : null;
+    // un alignement d'un lot d'avant la migration 0136 : ses colonnes `libelle` et `url`, retirées depuis, restent dans ce que le journal note (`brut`) ;
+    // depuis, le plan n'écrit plus rien sur le mot-clé, et aucune ligne ne rend cette clé
+    const fin = net.brut?.fin ?? net.fin;
+    return net.genre === 'modifier' && (Object.hasOwn(fin, 'libelle') || Object.hasOwn(fin, 'url')) ? `nom:${net.cle.id}` : null;
   }
   if (net.table === 'mot_cle_categorie') return crees.has(net.cle.mot_cle_id) ? null : `type:${net.cle.mot_cle_id}`;
   if (net.table === 'categorie_mot_cle' && net.genre === 'inserer') return `categorie:${net.fin.libelle}`;

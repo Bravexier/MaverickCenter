@@ -27,7 +27,8 @@ test('la définition écrite est rendue telle quelle ; sans définition ni résu
   const sans = monde();
   assert.equal(chargerNotion(sans.db, sans.page).definition, null);
   const avec = monde();
-  avec.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run('Définition d’essai, avec {{zephyrion-b}}.', avec.motCle);
+  // la définition d'un mot-clé ancré se lit sur sa page (migration 0136)
+  avec.db.prepare('UPDATE page SET definition = ? WHERE id = ?').run('Définition d’essai, avec {{zephyrion-b}}.', avec.page);
   assert.equal(chargerNotion(avec.db, avec.page).definition, 'Définition d’essai, avec {{zephyrion-b}}.');
 });
 

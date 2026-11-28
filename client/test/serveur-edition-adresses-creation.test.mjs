@@ -17,7 +17,7 @@ import { planVivant } from '../serveur/edition-plan.mjs';
 import { adresseDeLaPage, adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { citationsDe } from '../src/lib/citations-db.mjs';
 import { planDeLAncrage } from '../src/lib/mots-cles-ancrage.mjs';
-import { elementsDesMotsCles } from '../src/lib/mots-cles-db.mjs';
+import { elementsDesMotsCles, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
@@ -25,6 +25,7 @@ import {
   recalculerLesCles,
 } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-adresses-creation');
 let n = 0;
@@ -230,7 +231,9 @@ test('R316 : une page renommée puis supprimée emporte ses anciennes adresses, 
     const etat = (db) => ({
       pages: db.prepare('SELECT id, titre, slug_adresse FROM page ORDER BY id').all().map((p) => ({ ...p })),
       anciennes: db.prepare('SELECT adresse, page_id FROM page_ancienne_adresse ORDER BY adresse').all().map((p) => ({ ...p })),
-      motsCles: db.prepare('SELECT id, url FROM mot_cle ORDER BY id').all().map((p) => ({ ...p })),
+      // l'adresse d'un mot-clé se lit sur son élément (migration 0136) ; son repère, tel quel
+      motsCles: db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((p) => ({ id: p.id, url: lireUnMotCle(db, p.id).url })),
+      reperes: db.prepare('SELECT * FROM repere ORDER BY mot_cle_id').all().map((p) => ({ ...p })),
     });
     const journal = journalExporte(m.db);
     const neuve = ouvrirBaseVivante(m.depart);
@@ -272,7 +275,7 @@ test('R316 : un lien saisi vers l’adresse d’aujourd’hui d’une page renom
     const { cible: { id, motCle }, texte } = m.monde;
     renommer(m, id, nom('deux'));
     const nouvelle = `/regles/${normalize(nom('deux'))}/`;
-    assert.equal(m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(motCle).url, nouvelle);
+    assert.equal(lireUnMotCle(m.db, motCle).url, nouvelle);
     const cle = m.db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(motCle).cle;
     const corps = () => m.db.prepare('SELECT corps_md FROM page WHERE id = ?').get(texte).corps_md;
 
@@ -295,8 +298,9 @@ test('R316 : une page renommée est citée par un lien écrit vers son adresse d
     const { id } = m.monde;
     renommer(m, id, nom('deux'));
     // un texte qui cite la page par son adresse écrite (une définition de mot-clé : un texte que le service ne réécrit pas en balise)
-    m.db.prepare("INSERT INTO mot_cle (id, libelle, cle, description) VALUES (9500, 'Zephyrion citant', 'zephyrion-citant', ?)").run(`Voir /regles/${normalize(nom('deux'))}/.`);
-    assert.deepEqual(citationsDe(m.db, id).filter((c) => c.comment === 'adresse').map((c) => c.cle.id), [9500]);
+    poserUnMotCle(m.db, { id: 9500, libelle: 'Zephyrion citant', cle: 'zephyrion-citant', description: `Voir /regles/${normalize(nom('deux'))}/.` });
+    // (sans page ni sort, sa définition est dans son repère : migration 0136)
+    assert.deepEqual(citationsDe(m.db, id).filter((c) => c.comment === 'adresse').map((c) => [c.table, c.cle.mot_cle_id]), [['repere', 9500]]);
     m.db.prepare('DELETE FROM mot_cle WHERE id = 9500').run();
   },
 ));
@@ -314,9 +318,11 @@ test('R316 : le calcul de l’ancrage et les éléments d’un mot-clé lisent l
   db.prepare('UPDATE magie SET mot_cle_id = ? WHERE id = ?').run(motCleDeLaMagie, magie);
   db.prepare("UPDATE page SET slug_adresse = 'zephyrienne', titre = 'Zéphyrienne' WHERE id = ?").run(page);
   db.prepare("UPDATE page SET slug_adresse = 'zephyrie' WHERE id = ?").run(magie);
-  db.prepare("UPDATE mot_cle SET url = '/races/zephyrienne/', libelle = 'Zéphyrienne' WHERE id = ?").run(motCleDeLaPage);
-  db.prepare("UPDATE mot_cle SET url = '/magies/zephyrie/#sort-zephyr' WHERE id = ?").run(motCleDuSort);
-  db.prepare("UPDATE mot_cle SET url = '/magies/zephyrie/' WHERE id = ?").run(motCleDeLaMagie);
+  // depuis la migration 0136, le nom et l'adresse des mots-clés de la page et du sort se lisent sur eux ; celui de la magie, sans page ni sort, garde
+  // les siens dans son repère
+  db.prepare("UPDATE repere SET adresse = '/magies/zephyrie/' WHERE mot_cle_id = ?").run(motCleDeLaMagie);
+  assert.deepEqual([lireUnMotCle(db, motCleDeLaPage).libelle, lireUnMotCle(db, motCleDeLaPage).url], ['Zéphyrienne', '/races/zephyrienne/']);
+  assert.equal(lireUnMotCle(db, motCleDuSort).url, '/magies/zephyrie/#sort-zephyr');
   recalculerLesCles(db);
 
   const elements = elementsDesMotsCles(db);

@@ -42,7 +42,7 @@ import { copierLaBase } from '../serveur/epreuve-des-lots.mjs';
 import { controlerLaNature } from '../src/lib/lot-de-changements.mjs';
 import { TABLES, texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { baliserLeMot, ecrituresDuMot, ecrituresDuMotDans, sansLesBalisesDuMot } from '../src/lib/glossaire-balisage.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
 import { SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
 import { lotDesChangements } from './lot-de-source.mjs';
@@ -87,8 +87,9 @@ export const RUBRIQUES_DECOUPEES = Object.freeze([...new Set(['attributs', 'sant
 /** Les colonnes réécrites, dans l'ordre des lots : [{ table, colonne, markdown }] (TABLES : champs « texte » et « markdown », et PHRASES_D_UNE_LIGNE). */
 export const TEXTES = Object.freeze(Object.entries(TABLES).flatMap(([table, def]) => Object.entries(def.colonnes)
   .filter(([colonne, champ]) => champ.type === 'texte' || champ.type === 'markdown' || PHRASES_D_UNE_LIGNE.some(([t, c]) => t === table && c === colonne))
-  // la définition d'un mot-clé n'est écrite que pour les mots-clés créés ici (une définition qui en cite un autre : `--mots`)
-  .filter(() => table !== 'mot_cle')
+  // la définition d'un mot-clé n'est écrite que pour les mots-clés créés ici (une définition qui en cite un autre : `--mots`) ; depuis la migration 0136,
+  // elle est sur son élément : son repère, ou la colonne `definition` de sa page
+  .filter(([colonne]) => table !== 'mot_cle' && table !== 'repere' && !(table === 'page' && colonne === 'definition'))
   .map(([colonne, champ]) => ({ table, colonne, markdown: champ.type === 'markdown' }))));
 
 /**
@@ -271,10 +272,12 @@ export function baliser(mots, { rows = join(RACINE, 'data', 'rows'), base = null
         let numero = existant?.id;
         if (!numero) {
           // un mot-clé NU, comme le créera le lot proposé (un lot ne crée jamais la page de notion d'un mot-clé qu'il insère : edition-chronologie.mjs, MOT_CLE.creer) :
-          // le service sans voie de route, qui créerait aussi la page de notion (docs/chantier-pages-de-notion.md, §4). « Préparer l'ancrage » la lui donne ensuite
+          // le service sans voie de route, qui créerait aussi la page de notion (docs/chantier-pages-de-notion.md, §4). « Préparer l'ancrage » la lui donne ensuite.
+          // Il naît avec son repère, qui porte son nom et sa définition (migration 0136 : docs/chantier-retrait-des-colonnes.md §2)
           numero = creerLeMotCleNu(db, { page: 'recherche', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: m.libelle, description: m.description } }] });
         }
-        const { libelle, cle: id } = db.prepare('SELECT libelle, cle FROM mot_cle WHERE id = ?').get(numero);
+        // son nom se lit sur son élément (page, sort ou repère : lib/mots-cles-db.mjs#lireUnMotCle), dans la structure qu'a la base
+        const { libelle, cle: id } = lireUnMotCle(db, numero);
         const mot = { id, libelle, motif: m.motif, casse: m.casse === true, noms: nomsAvecLeMot(db, m.motif, m.casse === true), exclus: exclusDe(m.exclus),
           contextes: contextesDe(m.contextes), horsDe: m.horsDe ?? [], sauf: m.sauf ?? [], cree: !existant,
           usage: { exclus: new Set(), contextes: new Set(), horsDe: new Set(), sauf: new Set() } };

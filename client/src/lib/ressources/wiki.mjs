@@ -196,8 +196,16 @@ export const RESSOURCES = [
       'Les trois se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien, la couleur et l’icône de la cible, et lui donne ' +
       'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens ; elle lui transmet aussi les synonymes de la source (sauf ' +
       'ceux que R233 (4) refuse) et sa clé, qui mène désormais à la cible (R233 (11)) ; une source qui a des synonymes ne se fusionne pas dans une ' +
-      'cible verrouillée (409, `champ: synonymes`).',
+      'cible verrouillée (409, `champ: synonymes`). ' +
+      'Depuis la migration 0136 (docs/chantier-retrait-des-colonnes.md), `libelle`, `url`, `description`, `couleur` et `icone` ne sont plus des ' +
+      'colonnes de la table `mot_cle` : ils se lisent sur l’élément du mot-clé (le titre, l’adresse, la définition, la couleur et l’icône de sa page ; ' +
+      'sinon le nom et la place de son sort, qui n’a ni définition, ni couleur, ni icône ; sinon son repère), et la ressource les rend sous les mêmes ' +
+      'noms, filtrables, cherchables et triables. Ils ne s’écrivent ici que pour un mot-clé à repère (sans page ni sort) : le nom et l’adresse d’un ' +
+      'mot-clé de page ou de sort se lisent sur elle ou lui (409).',
     table: 'mot_cle',
+    // les champs lus sur l'élément du mot-clé (migration 0136 : serveur/ressources.mjs#structureServie, lib/mots-cles-db.mjs#lireUnMotCle) et les tables
+    // où le service les écrit (serveur/edition-mots-cles.mjs#ecrireSurLElement : le repère, la définition, la couleur et l'icône d'une page)
+    champsDeLElement: { champs: ['libelle', 'url', 'description', 'couleur', 'icone'], ecritSur: ['repere', 'page'] },
     libelle: 'libelle',
     enfants: [
       {
@@ -462,7 +470,7 @@ const JOURNAL = 'journal de l’édition du site de dev (section 14), servi par 
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
 export const HORS_RESSOURCE = {
-  repere: 'Repère d’un mot-clé sans page ni sort (migration 0135, docs/chantier-retrait-des-colonnes.md) : son nom, son adresse, sa définition, sa couleur et son icône. Écrit par un lot de changements ; rien ne le lit encore, la ressource `mots-cles` rend toujours les colonnes du mot-clé ; pas un élément de l’API.',
+  repere: 'Repère d’un mot-clé sans page ni sort (migrations 0135 et 0136, docs/chantier-retrait-des-colonnes.md) : son nom, son adresse, sa définition, sa couleur et son icône. La ressource `mots-cles` les rend et les écrit sous les noms `libelle`, `url`, `description`, `couleur` et `icone` ; pas un élément de l’API.',
   page_ancienne_adresse: 'Registre technique des renvois : l’adresse quittée d’une page renommée (décision R316, migration 0133), écrite par le service au renommage, qui sert à la page 404 ; pas un élément de l’API.',
   utilisateur: `Compte utilisateur (identifiant Discord, nom affiché, niveau : observateur, joueur, mj ou créateur, R310), écrit à chaque connexion par Discord ; le niveau dit aussi qui voit quelle fiche (R318) : ${FICHES}.`,
   utilisateur_role: `Rôles cumulables d’un compte (mj, editeur, admin) : table laissée vide, rien ne l’écrit ni ne la lit depuis R318 (la visibilité des fiches suit \`utilisateur.niveau\`) : ${FICHES}.`,

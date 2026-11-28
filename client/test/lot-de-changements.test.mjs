@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import {
-  COLONNES_D_UNE_PAGE_DE_NOTION, ETATS_D_UNE_OPERATION, FORMAT_DU_LOT, LOT_OUVERT_AUX_TABLES_HORS_EDITION, NATURES, NATURES_D_UN_LOT, OPERATIONS, comparerAvecLaBase, controlerLaNature,
+  COLONNES_D_UNE_PAGE_DE_NOTION, COLONNES_VENUES_APRES, ETATS_D_UNE_OPERATION, FORMAT_DU_LOT, LOT_OUVERT_AUX_TABLES_HORS_EDITION, NATURES, NATURES_D_UN_LOT, OPERATIONS, comparerAvecLaBase, controlerLaNature,
   controlerLeLot, lireUnLot, tablesDeLEdition,
 } from '../src/lib/lot-de-changements.mjs';
 import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_DE_REGLES, TABLES_PROPRES_AU_SITE } from '../src/lib/tables-de-la-base.mjs';
@@ -198,6 +198,28 @@ test('supprimer : « avant » est la ligne entière, à la clé de l’opératio
   assert.match(messages(avecUneErreur({ ...supprimer(), avant: { [CLE_ED]: 3 } })), /en entier/);
   assert.match(messages(avecUneErreur({ ...supprimer(3), avant: ligneEntiere(EDITION, { [CLE_ED]: 4 }) })), /ne valent pas la clé/);
   assert.deepEqual(rangs(avecUneErreur({ ...supprimer(), avant: { [CLE_ED]: 3 } })), [2]);
+});
+
+test('supprimer : les colonnes venues après le lot (0136, NULL permise) peuvent manquer à « avant » ; elles valent alors NULL à la comparaison', () => {
+  for (const [table, venues] of Object.entries(COLONNES_VENUES_APRES)) {
+    const s = structure(table);
+    for (const c of venues) assert.ok(s.colonnes.includes(c), `${table}.${c} existe dans le schéma`);
+    const id = `essai/${table}`;
+    const entiere = ligneEntiere(table, { [s.cle[0]]: id });
+    const ancien = Object.fromEntries(Object.entries(entiere).filter(([c]) => !venues.includes(c)));
+    const op = { table, cle: { [s.cle[0]]: id }, operation: 'supprimer', avant: ancien };
+    assert.deepEqual(controler(lot([op]), { ouvertHorsEdition: true }).erreurs, [], `${table} : un avant écrit avant la 0136 reste valide`);
+    // une autre colonne qui manque reste refusée
+    const autre = s.colonnes.find((c) => !venues.includes(c) && !s.cle.includes(c));
+    const { [autre]: _manque, ...incomplet } = ancien;
+    assert.match(messages(controler(lot([{ ...op, avant: incomplet }]), { ouvertHorsEdition: true })), new RegExp(`en entier \\(manque « ${autre} »\\)`));
+    // absente, une colonne venue après est attendue NULL : remplie depuis, la ligne a changé (le site prime)
+    const lire = (valeurs) => () => ({ ...entiere, ...valeurs });
+    assert.equal(comparerAvecLaBase(lot([op]), lire({})).operations[0].etat, 'applicable');
+    const remplie = comparerAvecLaBase(lot([op]), lire({ [venues[0]]: 'remplie depuis' })).operations[0];
+    assert.equal(remplie.etat, 'changee');
+    assert.deepEqual(remplie.ecarts, [{ colonne: venues[0], attendue: null, actuelle: 'remplie depuis' }]);
+  }
 });
 
 test('ancrage : la page de notion (insertion de `page`, { notion: true }, apres : id, titre, mot_cle_id), refusée ailleurs ; chaque forme garde ses clés', () => {

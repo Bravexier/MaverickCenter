@@ -21,6 +21,7 @@ import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { attributEd, ENTITES, lireAttributEd, TABLES } from '../src/lib/edition-modele.mjs';
 import { PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneau, ordonnerBlocs, ordresApresDeplacement } from '../src/lib/panneaux-regles-db.mjs';
 import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -105,7 +106,10 @@ test('le texte d’un bloc (Markdown sûr) et le titre d’une tuile ; jamais de
   const lire = (b) => db.prepare('SELECT * FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(p.id, b.rang);
   // un lien (migration 0098) : la balise d'un mot-clé (celui des composants, ou un autre de la base : le site de dev supprime des mots-clés)
   // (une balise cite la clé : migration 0113, décision R232 (3))
-  const motCle = db.prepare("SELECT cle FROM mot_cle ORDER BY cle = 'composants' DESC, url IS NULL, id LIMIT 1").get().cle;
+  // (l'adresse se lit sur l'élément du mot-clé : migration 0136 ; motsClesDeLaBase les rend dans l'ordre de leur id)
+  const rang = (m) => [m.cle === 'composants' ? 0 : 1, m.url == null ? 1 : 0];
+  const motCle = motsClesDeLaBase(db, { elements: false })
+    .sort((a, b) => rang(a)[0] - rang(b)[0] || rang(a)[1] - rang(b)[1])[0].cle;
   ok(modifier(texte, { texte: `${texte.texte}\n\nUne phrase **ajoutée** et un {{${motCle}|lien}}.` }, { texte: texte.texte }));
   assert.match(lire(texte).texte, /Une phrase \*\*ajoutée\*\*/);
   assert.equal(modifier(texte, { texte: 'Du <script>alert(1)</script>' }).statut, 400, 'HTML brut');

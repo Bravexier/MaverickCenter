@@ -2,11 +2,11 @@
 // de vérité », R274, R275) : une migration fusionnée ne se modifie plus ; une migration de structure ne porte aucun texte de règle ; un renommage réécrit le
 // journal et l'historique ; les migrations nouvelles passent sur une base remplie, par le code du service, sans rien perdre ; le bilan est rendu par migration.
 // Les règles sont éprouvées sur du SQL (fonctions pures) et sur de petits dépôts git temporaires ; le passage sur une base remplie, sur celle des règles du
-// dépôt ramenée à la version 128 (aide-structure-sur-place.mjs).
+// dépôt ramenée à la version d'avant la migration de `migration_recue` (aide-structure-sur-place.mjs : au plancher de la livraison des tests).
 //   node --test test/scripts-controler-les-migrations.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -17,7 +17,8 @@ import {
   AVERTISSEMENT_DONNEES, ErreurDeControle, TABLES_QUI_GARDENT_DES_NOMS, analyserUneMigration, decouperLeSql, rendreLeResume, reglesDUneMigration, reglesDesFichiers,
 } from '../scripts/controler-les-migrations-lib.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
-import { LIVRAISON, NUMERO, RACINE, baseRemplie, etatDuFichier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { remplirUneBase } from '../scripts/base-remplie-lib.mjs';
+import { LIVRAISON, NUMERO, RACINE, baseDesRegles, baseRemplie, etatDuFichier, nouveauChemin, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'controler-les-migrations.mjs');
 const regles = (violations) => violations.map((v) => v.regle);
@@ -371,7 +372,7 @@ test('script : le code de sortie dit la règle violée (1), la réussite (0) ou 
 const migration = (numero, sql) => ({ numero, fichier: `${String(numero).padStart(4, '0')}-essai.sql`, empreinte: 'a'.repeat(64), sql });
 // Les migrations réelles à appliquer sur la base d'avant : celle qui crée `migration_recue` (NUMERO, calculé) et celles qui la suivent (la base d'avant n'a ni leur
 // structure ni la sienne : test/aide-structure-sur-place.mjs#annulerLesMigrations) ; la dernière livrée fixe la version du schema.sql. Lues dans la livraison des
-// tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties).
+// tests (test/aide-structure-sur-place.mjs#LIVRAISON : la migration de `migration_recue` reprise au-dessus du plancher, le schema.sql).
 const REELLES = readdirSync(LIVRAISON.migrations).filter((f) => /^\d{4}-.*\.sql$/.test(f) && Number(f.slice(0, 4)) >= NUMERO).sort()
   .map((fichier) => ({ numero: Number(fichier.slice(0, 4)), fichier, empreinte: 'a'.repeat(64), sql: readFileSync(join(LIVRAISON.migrations, fichier), 'utf8') }));
 const FICHIER_0129 = REELLES[0].fichier;
@@ -455,21 +456,34 @@ test('base remplie : rien à appliquer sur une base à jour', (t) => {
 });
 
 test('la base remplie porte de quoi perdre : des lignes dans chaque table que le contrôle protège', () => {
-  // le compte (et la fiche de joueur, inscrite au groupe) n'est posé qu'à partir de la version de la migration 0132 (connexion Discord, R310) : la
-  // base d'avant (version NUMERO - 1) n'en a pas, la base courante si
+  // le compte (et la fiche de joueur, inscrite au groupe) n'est posé qu'à partir de la version de la migration 0132 (connexion Discord, R310,
+  // scripts/base-remplie-lib.mjs) : la base d'avant des tests (au plancher, test/aide-structure-sur-place.mjs#livraisonDesTests) en a un si elle est à
+  // cette version ou au-dessus ; une base de version 131 n'en a pas
   const anterieure = new DatabaseSync(baseRemplie({ anterieure: true }).chemin, { readOnly: true });
   const courante = new DatabaseSync(baseRemplie().chemin, { readOnly: true });
+  const v131 = nouveauChemin('v131');
+  copyFileSync(baseDesRegles(), v131);
+  const avant0132 = new DatabaseSync(v131);
   try {
+    avant0132.exec('PRAGMA foreign_keys = ON; PRAGMA user_version = 131');
+    remplirUneBase(avant0132);
     const compte = ['groupe_membre', 'utilisateur'];
+    const anterieureACompte = NUMERO - 1 >= 132;
     for (const table of ['personnage', ...compte, 'modification_lot', 'modification', 'historique_modification', 'lot_de_changements', 'numero_donne']) {
       assert.ok(TABLES_A_NE_PAS_PERDRE.includes(table), `${table} est protégée`);
-      const db = compte.includes(table) ? courante : anterieure;
-      assert.ok(db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n >= 1, `${table} est remplie`);
+      for (const [nom, db] of [['courante', courante], ...(anterieureACompte || !compte.includes(table) ? [['d’avant', anterieure]] : [])]) {
+        assert.ok(db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n >= 1, `${table} est remplie (base ${nom})`);
+      }
     }
-    for (const table of compte) assert.equal(anterieure.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, `${table} : aucun compte avant 0132`);
+    for (const table of compte) {
+      assert.equal(avant0132.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, `${table} : aucun compte avant 0132`);
+      if (!anterieureACompte) assert.equal(anterieure.prepare(`SELECT count(*) AS n FROM ${table}`).get().n, 0, `${table} : aucun compte avant 0132 (base d’avant)`);
+    }
+    assert.ok(avant0132.prepare('SELECT count(*) AS n FROM personnage').get().n >= 1, 'le prétiré, sans compte');
   } finally {
     anterieure.close();
     courante.close();
+    avant0132.close();
   }
 });
 

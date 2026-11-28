@@ -19,6 +19,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { retirerLeMotCleDeLaPage } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
+import { lireUnMotCle, poserUnMotCle } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('liens-rompus');
 let compteur = 0;
@@ -48,11 +49,10 @@ function motCleLibre(db, base) {
     if (!db.prepare('SELECT 1 FROM mot_cle WHERE cle = ?').get(normalize(libelle))) return libelle;
   }
 }
-/** Un mot-clé écrit directement dans la base (les règles d'un essai) : l'id suivant (migration 0113) et sa clé ; rend son id. */
+/** Un mot-clé écrit directement dans la base (les règles d'un essai) : l'id suivant (migration 0113), sa clé et son repère (migration 0136) ; rend son id. */
 function insererMotCle(db, libelle, url) {
   const id = db.prepare('SELECT coalesce(max(id), 0) + 1 AS n FROM mot_cle').get().n;
-  db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(id, libelle, normalize(libelle), url);
-  return id;
+  return poserUnMotCle(db, { id, libelle, url });
 }
 const creer = (lot, titre) => ok(lot([{ op: 'creer', entite: 'page_des_regles', valeurs: { titre, onglet_id: 'combats', resume: 'Essai.' } }])).crees[0].id;
 const corpsDe = (db, id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
@@ -106,7 +106,7 @@ test('liensRompusParLeLot : la page retirée garde son titre et ses alias pour l
       const mot = insererMotCle(db, libelle, adresseDeLaPage(cible));
       db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`Voir {{${normalize(libelle)}}}.`, citante);
       for (const url of [adresseDeLaPage(cible), `${adresseDeLaPage(cible)}#ancre-d-essai`]) {
-        db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(url, mot);
+        db.prepare('UPDATE repere SET adresse = ? WHERE mot_cle_id = ?').run(url, mot); // l'adresse du mot-clé est celle de son repère (migration 0136)
         const rompus = liensRompusParLeLot(db, lotDeRetrait);
         assert.equal(rompus.length, 1, url);
         assert.deepEqual(rompus[0].citations.map((c) => [c.table, c.cle.id, c.comment]).sort(),
@@ -115,7 +115,7 @@ test('liensRompusParLeLot : la page retirée garde son titre et ses alias pour l
       }
       // le mot-clé ne mène plus à la page (plus d'adresse, ou une autre) : ni lui ni ses balises ne la citent
       for (const url of [null, '/regles/']) {
-        db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(url, mot);
+        db.prepare('UPDATE repere SET adresse = ? WHERE mot_cle_id = ?').run(url, mot);
         assert.deepEqual(liensRompusParLeLot(db, lotDeRetrait), [], String(url));
       }
     } finally {
@@ -232,7 +232,8 @@ test('rejeu : une page citée par un mot-clé à adresse et ses balises (migrati
     chargerJournal(db, livres);
     rejouerLeJournal(db);
     db.exec('DELETE FROM modification; DELETE FROM modification_lot');
-    db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(`${adresseDeLaPage(cible)}#ancre-d-essai`, mot);
+    // l'adresse d'un mot-clé sans page ni sort est celle de son repère (migration 0136)
+    db.prepare('UPDATE repere SET adresse = ? WHERE mot_cle_id = ?').run(`${adresseDeLaPage(cible)}#ancre-d-essai`, mot);
     db.exec('COMMIT');
     db.exec('BEGIN');
     chargerJournal(db, suite);
@@ -253,7 +254,7 @@ test('rejeu : une page citée par un mot-clé à adresse et ses balises (migrati
     // le lot de l'adresse résolu (version 1 : le mot-clé ne mène plus à la page), la suppression passe ; la balise reste, sans page derrière
     const dAdresse = examinerLeLot(db, adresse);
     ok({ statut: 200, corps: resoudreLeConflit(db, { lot: adresse, empreinte: dAdresse.empreinte, choix: Object.fromEntries(dAdresse.conflits.map((c) => [c.id, { choix: 1 }])) }) });
-    assert.equal(db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(mot).url, null);
+    assert.equal(lireUnMotCle(db, mot).url, null);
     const dRetrait = examinerLeLot(db, retrait);
     assert.deepEqual(dRetrait.conflits.filter((c) => c.table === 'page'), []);
     const fin = resoudreLeConflit(db, { lot: retrait, empreinte: dRetrait.empreinte, choix: Object.fromEntries(dRetrait.conflits.map((c) => [c.id, { choix: c.choix_possibles[0] }])) });

@@ -113,6 +113,78 @@ print(json.dumps(r))`);
   assert.deepEqual(sansTable, [[null, []], [2, []]], 'sans la table des synonymes : seuls clé et libellé');
 });
 
+// Le retrait des colonnes (migration 0136, chantier 4) : le mot-clé n'a plus de nom ; il se lit sur son élément, sa page (titre), sinon son sort (nom),
+// sinon son repère (nom), comme la vue v_mot_cle. La règle de la clé ne change pas, seulement d'où vient le nom ; une écriture que le site a fait
+// quitter à l'élément (page renommée, repère renommé ou supprimé avec son mot-clé) mène au mot-clé comme le faisait l'ancien libellé.
+const TABLES_136 = `
+CREATE TABLE mot_cle (id INTEGER PRIMARY KEY, cle TEXT UNIQUE);
+CREATE TABLE page (id TEXT PRIMARY KEY, titre TEXT, mot_cle_id INTEGER, slug_adresse TEXT);
+CREATE TABLE sort (id TEXT PRIMARY KEY, nom TEXT, mot_cle_id INTEGER);
+CREATE TABLE repere (mot_cle_id INTEGER PRIMARY KEY, nom TEXT, adresse TEXT);
+CREATE TABLE mot_cle_ancienne_cle (cle TEXT PRIMARY KEY, mot_cle_id INTEGER);
+CREATE TABLE page_tag (page_id TEXT, ordre INTEGER, tag_id INTEGER, PRIMARY KEY (page_id, ordre), UNIQUE (page_id, tag_id));
+CREATE TABLE historique_modification (lot_id TEXT, rang INTEGER, fait_le TEXT, table_nom TEXT, cle TEXT, operation TEXT, avant TEXT, apres TEXT);
+INSERT INTO mot_cle VALUES (1, 'mrode'), (2, 'boule-de-feu-feu'), (3, 'glossaire'), (4, 'essai');
+INSERT INTO page VALUES ('lore/mrode', 'Mrode la Grande', 1, NULL), ('lore/autre', 'Autre', NULL, NULL);
+INSERT INTO sort VALUES ('magies/feu#sort:boule-de-feu', 'Boule de feu', 2);
+INSERT INTO repere VALUES (3, 'Le Glossaire', '/regles/glossaire/');
+`;
+const TRACES_136 = `
+h = lambda lot, rang, table, cle, op, avant, apres: db.execute('INSERT INTO historique_modification VALUES (?,?,?,?,?,?,?,?)',
+    (lot, rang, '2026-11-28T10:00:0' + str(rang) + 'Z', table, json.dumps(cle), op, avant and json.dumps(avant), apres and json.dumps(apres)))
+h('l1', 1, 'page', {'id': 'lore/mrode'}, 'modifier', {'titre': 'Vieille Mrode'}, {'titre': 'Mrode la Grande'})
+h('l2', 2, 'repere', {'mot_cle_id': 3}, 'modifier', {'nom': 'Lexique', 'adresse': '/lexique/'}, {'nom': 'Le Glossaire', 'adresse': '/regles/glossaire/'})
+h('l3', 3, 'page_tag', {'page_id': 'lore/y', 'ordre': 1}, 'modifier', {'tag_id': 5}, {'tag_id': 3})
+h('l3', 4, 'repere', {'mot_cle_id': 5}, 'supprimer', {'mot_cle_id': 5, 'nom': 'Ancien nom', 'adresse': None}, None)
+h('l3', 5, 'mot_cle', {'id': 5}, 'supprimer', {'id': 5, 'cle': 'ancien'}, None)
+h('l4', 6, 'page', {'id': 'lore/autre'}, 'modifier', {'titre': 'Autre ancien'}, {'titre': 'Autre'})
+`;
+
+test('maverick.py#trouver_mot_cle à la structure 136 : le nom se lit sur l’élément, et une écriture que l’élément a quittée mène au mot-clé', { skip: sansPython }, () => {
+  const r = pythonSurTables(TABLES_136, `${TRACES_136}
+r = {e: T.trouver_mot_cle(db, e) for e in ['Mrode la Grande', 'Boule de feu', 'le glossaire', 'Vieille Mrode', 'Lexique', 'Ancien nom', 'ancien', 'Autre ancien']}
+r['libelles'] = T._libelles(db)
+print(json.dumps(r))`);
+  assert.deepEqual(r.libelles, [[1, 'Mrode la Grande', 'mrode'], [2, 'Boule de feu', 'boule-de-feu-feu'], [3, 'Le Glossaire', 'glossaire'], [4, 'essai', 'essai']],
+    'page, sinon sort, sinon repère ; sans élément, la clé');
+  assert.deepEqual(r['Mrode la Grande'], [1, []], 'le titre de la page');
+  assert.deepEqual(r['Boule de feu'], [2, []], 'le nom du sort');
+  assert.deepEqual(r['le glossaire'], [3, []], 'le nom du repère');
+  assert.deepEqual(r['Vieille Mrode'], [1, []], 'l’ancien titre de la page ancrée mène à son mot-clé');
+  assert.deepEqual(r.Lexique, [3, []], 'l’ancien nom du repère');
+  assert.deepEqual(r['Ancien nom'], [3, []], 'le nom d’un mot-clé supprimé, porté par son repère, mène au mot-clé qui a reçu ses pages');
+  assert.deepEqual(r.ancien, [3, []], 'sa clé aussi');
+  assert.deepEqual(r['Autre ancien'], [null, []], 'l’ancien titre d’une page qui n’ancre aucun mot-clé ne mène à rien');
+});
+
+test('codex.py à la structure 136 : la table mot_cle remise à sa forme d’avant (nom, adresse), et l’état d’import rend les noms de l’élément', { skip: sansPython }, () => {
+  const r = pythonSurTables(TABLES_136, `${TRACES_136}
+sys.path.insert(0, ${JSON.stringify(fileURLToPath(new URL('../../tools/docs/', import.meta.url)))})
+import codex as C
+C.mot_cle_a_l_ancienne(db)
+courant = db.execute('SELECT id, cle, libelle, url FROM mot_cle ORDER BY id').fetchall()
+v = C.Vocabulaire.__new__(C.Vocabulaire)
+v.db, v.elements = db, True
+v.defaire_le_site()
+print(json.dumps({'courant': courant, 'import': db.execute('SELECT id, cle, libelle, url FROM mot_cle ORDER BY id').fetchall(),
+                  'renommes': [a.get('libelle') for _, _, _, _, a in C.traces_du_vocabulaire(db, True)]}))`);
+  assert.deepEqual(r.courant, [
+    [1, 'mrode', 'Mrode la Grande', '/lore/mrode/'],
+    [2, 'boule-de-feu-feu', 'Boule de feu', '/magies/feu/#sort-boule-de-feu'],
+    [3, 'glossaire', 'Le Glossaire', '/regles/glossaire/'],
+    [4, 'essai', 'essai', null],
+  ]);
+  assert.deepEqual(r.import, [
+    [1, 'mrode', 'Vieille Mrode', '/lore/mrode/'],
+    [2, 'boule-de-feu-feu', 'Boule de feu', '/magies/feu/#sort-boule-de-feu'],
+    [3, 'glossaire', 'Lexique', '/lexique/'],
+    [4, 'essai', 'essai', null],
+    [5, 'ancien', 'Ancien nom', null],
+  ], 'chaque trace de l’élément rejouée à l’envers ; le mot-clé supprimé revient avec le nom de son repère');
+  assert.deepEqual(r.renommes, ['Mrode la Grande', 'Le Glossaire', null, null],
+    'la page qui n’ancre aucun mot-clé n’en dit rien');
+});
+
 // Les mots-clés protégés (lib/mots-cles.mjs#MOTS_CLES_PROTEGES ; décision R195 : le site les reconnaît à leur ancien id texte) : un importeur les
 // pose par l'id entier de leur mot-clé (maverick.py#MOTS_CLES_PROTEGES, migration 0113), jamais par leur écriture. Il écrit dans `tags:` l'écriture
 // courante du mot-clé de cet id (maverick.py#libelle_protege, codex.py Vocabulaire.protege), qui ne mène qu'à lui : un autre mot-clé qui a pris
@@ -122,7 +194,11 @@ print(json.dumps(r))`);
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const LEURRE = 100000;
 
-/** Lance un script Python (`python3 -I -`, par l'entrée standard : la liste des pages dépasse la ligne de commande de Windows) qui a `maverick as T` et `db` (le vocabulaire `vocabulaire` chargé), et rend son JSON. */
+/**
+ * Lance un script Python (`python3 -I -`, par l'entrée standard : la liste des pages dépasse la ligne de commande de Windows) qui a `maverick as T` et
+ * `db` (le vocabulaire `vocabulaire` chargé, avec le repere.sql voisin : depuis la migration 0136, le nom d'un mot-clé est celui de son élément), et
+ * rend son JSON.
+ */
 function python(script, vocabulaire) {
   const p = spawnSync('python3', ['-X', 'utf8', '-I', '-'], { encoding: 'utf8', input: `
 import json, os, re, sqlite3, sys
@@ -130,10 +206,12 @@ sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T
 VOCABULAIRE = ${JSON.stringify(vocabulaire ?? '')}
 db = sqlite3.connect(':memory:')
-db.execute(re.search(r'CREATE TABLE mot_cle \\([\\s\\S]*?\\) STRICT;', open(T.SCHEMA, encoding='utf-8').read()).group(0))
+for table in ('mot_cle', 'repere'):
+    db.execute(re.search(r'CREATE TABLE ' + table + r' \\([\\s\\S]*?\\) STRICT;', open(T.SCHEMA, encoding='utf-8').read()).group(0))
 db.execute('CREATE TABLE mot_cle_ancienne_cle (cle TEXT PRIMARY KEY, mot_cle_id INTEGER)')
-if VOCABULAIRE:
-    db.executescript(open(VOCABULAIRE, encoding='utf-8').read())
+for fichier in ([VOCABULAIRE, os.path.join(os.path.dirname(VOCABULAIRE), 'repere.sql')] if VOCABULAIRE else []):
+    if os.path.exists(fichier):
+        db.executescript(open(fichier, encoding='utf-8').read())
 ${script}` });
   assert.equal(p.status, 0, p.stderr);
   return JSON.parse(p.stdout);
@@ -142,14 +220,22 @@ ${script}` });
 /** maverick.py#MOTS_CLES_PROTEGES : { clé : id entier, ou null }. */
 const idsProteges = () => python('print(json.dumps(T.MOTS_CLES_PROTEGES))');
 
+/**
+ * Écrit un vocabulaire à la structure 136 dans `dossier` : mot_cle.sql (id, clé) et repere.sql (le nom de chaque mot-clé, porté par son repère) ;
+ * `mots` = [[id, nom, clé]]. Rend le chemin de mot_cle.sql.
+ */
+function ecrireLeVocabulaire(dossier, mots) {
+  const sql = (s) => `'${String(s).replaceAll("'", "''")}'`;
+  writeFileSync(join(dossier, 'mot_cle.sql'), mots.map(([id, , cle]) => `INSERT INTO mot_cle (id, cle) VALUES (${id}, ${sql(cle)});\n`).join(''));
+  writeFileSync(join(dossier, 'repere.sql'), mots.map(([id, nom]) => `INSERT INTO repere (mot_cle_id, nom) VALUES (${id}, ${sql(nom)});\n`).join(''));
+  return join(dossier, 'mot_cle.sql');
+}
+
 function vocabulaireDEssai(t) {
-  const fichier = join(dossierTemporaire('mots-cles-proteges-', { t }), 'mot_cle.sql');
-  const lignes = Object.entries(idsProteges()).filter(([, id]) => id !== null).flatMap(([cle, id]) => [
-    `INSERT INTO mot_cle (id, libelle, cle) VALUES (${id}, 'Essai ${cle}', 'essai-${cle}');`,
-    `INSERT INTO mot_cle (id, libelle, cle) VALUES (${LEURRE + id}, '${cle}', '${cle}');`,
-  ]);
-  writeFileSync(fichier, `${lignes.join('\n')}\n`);
-  return fichier;
+  return ecrireLeVocabulaire(dossierTemporaire('mots-cles-proteges-', { t }), Object.entries(idsProteges()).filter(([, id]) => id !== null).flatMap(([cle, id]) => [
+    [id, `Essai ${cle}`, `essai-${cle}`],
+    [LEURRE + id, cle, cle],
+  ]));
 }
 
 /**
@@ -201,9 +287,8 @@ print(json.dumps({'libelle': libelle, 'pose': T.mot_cle(db, libelle), 'ecriture'
 });
 
 test('maverick.py#libelle_protege : un protégé qui a des homonymes s’écrit par sa clé (0113)', { skip: sansPython }, (t) => {
-  const fichier = join(dossierTemporaire('mots-cles-proteges-homonymes-', { t }), 'mot_cle.sql');
   const race = idsProteges().race;
-  writeFileSync(fichier, `INSERT INTO mot_cle (id, libelle, cle) VALUES (${race}, 'Race', 'race-regles');\nINSERT INTO mot_cle (id, libelle, cle) VALUES (${LEURRE}, 'Race', 'race-magie');\n`);
+  const fichier = ecrireLeVocabulaire(dossierTemporaire('mots-cles-proteges-homonymes-', { t }), [[race, 'Race', 'race-regles'], [LEURRE, 'Race', 'race-magie']]);
   const r = python(`print(json.dumps({'ecriture': T.libelle_protege('race', VOCABULAIRE)}))`, fichier);
   assert.equal(r.ecriture, 'race-regles', 'son libellé est ambigu : sa clé');
 });

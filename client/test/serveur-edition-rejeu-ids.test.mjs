@@ -16,7 +16,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { mentionsDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { elementDuMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -58,14 +58,22 @@ test('rejeu d’un lot d’avant la 0113 : ids entiers, balises par la clé cour
   const tag = adapter(modification(1, 'page_tag', 'inserer', { page_id: page.id, ordre: 99 }, null, { page_id: page.id, ordre: 99, tag_id: 'codex' }));
   assert.equal(lu(tag.apres).tag_id, protege.id);
   const renomme = adapter(modification(2, 'mot_cle', 'modifier', { id: 'codex' }, { libelle: 'x', libelle_cle: 'x' }, { libelle: 'y', libelle_cle: 'y' }));
-  assert.deepEqual(lu(renomme.cle), { id: protege.id });
+  // depuis la migration 0136, le libellé se porte sur l'élément du mot-clé : son repère (par le même id entier) ; celui d'un mot-clé de page ou de
+  // sort n'en était que la copie (sans effet)
+  if (elementDuMotCle(db, protege.id).table === 'repere') {
+    assert.deepEqual([renomme.table_nom, lu(renomme.cle), lu(renomme.apres)], ['repere', { mot_cle_id: protege.id }, { nom: 'y' }]);
+  } else {
+    assert.deepEqual([lu(renomme.cle), renomme.sansEffet], [{ id: protege.id }, true]);
+  }
   assert.ok(!('libelle_cle' in lu(renomme.apres)) && !('libelle_cle' in lu(renomme.avant)));
   // un mot-clé que le lot crée : l'id suivant, sa clé, et la même traduction pour l'étiquette qui le pose ensuite
   const max = db.prepare('SELECT max(id) AS m FROM mot_cle').get().m;
   const cree = adapter(modification(3, 'mot_cle', 'inserer', { id: 'essai-zq-rejeu' }, null, { id: 'essai-zq-rejeu', libelle: 'Essai zq rejeu', libelle_cle: 'essai-zq-rejeu', description: 'd' }));
   const id = lu(cree.cle).id;
   assert.ok(Number.isInteger(id) && id > max);
-  assert.deepEqual(lu(cree.apres), { id, libelle: 'Essai zq rejeu', description: 'd', cle: 'essai-zq-rejeu' });
+  // sans page ni sort, il naît avec son repère (migration 0136) : nom et définition y vont
+  assert.deepEqual(lu(cree.apres), { id, cle: 'essai-zq-rejeu' });
+  assert.deepEqual(cree.aCreer, [{ table: 'repere', valeurs: { mot_cle_id: id, nom: 'Essai zq rejeu', adresse: null, definition: 'd', couleur: null, icone: null } }]);
   const pose = adapter(modification(4, 'page_tag', 'inserer', { page_id: page.id, ordre: 98 }, null, { page_id: page.id, ordre: 98, tag_id: 'essai-zq-rejeu' }));
   assert.equal(lu(pose.apres).tag_id, id);
   // une abréviation écrite (colonne retirée par la 0115) : une forme sans équivalent, en conflit ; une abréviation qui est déjà un synonyme passe
@@ -86,7 +94,8 @@ test('rejeu : une modification d’après la 0113 (ids entiers, clés courantes)
   const page = db.prepare("SELECT id, corps_md FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1").get();
   const modifications = [
     modification(0, 'page', 'modifier', { id: page.id }, { corps_md: page.corps_md }, { corps_md: `${page.corps_md}\n\n{{${m.cle}}}` }),
-    modification(1, 'mot_cle', 'modifier', { id: m.id }, { libelle: 'a' }, { libelle: 'b', cle: 'b' }),
+    // (la clé seule : le libellé se porte sur l’élément depuis la migration 0136)
+    modification(1, 'mot_cle', 'modifier', { id: m.id }, { cle: m.cle }, { cle: 'b' }),
     modification(2, 'page_tag', 'inserer', { page_id: page.id, ordre: 99 }, null, { page_id: page.id, ordre: 99, tag_id: m.id }),
   ];
   for (const x of modifications) assert.deepEqual(adapter(x), x);
@@ -143,7 +152,9 @@ test('rejeu (R309) : un mot-clé renommé vers la clé égale à son ancien id g
   assert.ok(vise, 'un mot-clé d’essai');
   const vivante = (n) => {
     const base = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(dossier, n) }).chemin);
-    base.prepare("UPDATE mot_cle SET libelle = 'Zq essai reprise', cle = 'zq-essai-reprise' WHERE id = ?").run(vise.id);
+    // sans élément, son nom est dans son repère (migration 0136)
+    base.prepare("UPDATE mot_cle SET cle = 'zq-essai-reprise' WHERE id = ?").run(vise.id);
+    base.prepare("UPDATE repere SET nom = 'Zq essai reprise' WHERE mot_cle_id = ?").run(vise.id);
     return base;
   };
   const site = vivante('site');

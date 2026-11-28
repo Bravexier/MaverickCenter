@@ -14,6 +14,7 @@ import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magi
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { effetsDuModeHyper } from '../src/lib/mode-hyper-texte.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { COMPETENCES_D_ATTAQUE } from '../src/lib/posture-texte.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 
@@ -138,7 +139,8 @@ test('R180 : le guide et le mot-clé « Réussite critique » rappellent le plaf
     assert.match(corpsDImport(id), PLAFOND, id);
   }
   // le Lexique est devenu des mots-clés (migration 0090) : sa phrase est la définition du mot-clé de clé `reussite-critique` (synonyme RC, 0115)
-  assert.match(texteDImport('mot_cle', motCleDImport('reussite-critique'), 'description') ?? '', PLAFOND, 'mot_cle reussite-critique');
+  // (la définition se lit sur l'élément du mot-clé, sa page ou son repère : migration 0136)
+  assert.match(lireUnMotCle(baseDImport(), motCleDImport('reussite-critique').id)?.description ?? '', PLAFOND, 'mot_cle reussite-critique');
   const reussir = corpsDImport('guide/reussir-une-action');
   assert.ok(reussir.includes('Au-delà de 95 %, le surplus élargit la réussite critique : de 96 à 102 %, +2 % ; à partir de 103 %, +5 % au total.'));
   assert.ok(reussir.includes('Le score compté est celui du moment, posture comprise, et ce bonus vaut sur tout jet, quelle que soit la posture.'));

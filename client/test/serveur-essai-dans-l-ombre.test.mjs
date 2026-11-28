@@ -21,7 +21,7 @@ import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { CLASSES_DE_TABLES, TABLES_DE_CONTENU, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 import { LIVRAISON, NUMERO, annulerLesMigrations, baseDesRegles, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
-/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties). */
+/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : la migration de `migration_recue` reprise au-dessus du plancher, le schema.sql). */
 const livre = lireLesMigrations(LIVRAISON);
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');

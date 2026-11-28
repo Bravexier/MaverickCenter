@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traceDAujourdhui } from '../serveur/edition.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -61,7 +62,8 @@ test('un id inconnu (fondu ou supprimé), un id entier et une autre table passen
 test('db:appliquer-edition : un journal d’avant la 0113 entre dans historique_modification avec l’id entier du mot-clé', () => {
   const rows = join(tmp, 'rapatriement', 'rows');
   copieDesRowsDeDepart(rows);
-  const description = courante.prepare('SELECT description FROM mot_cle WHERE id = ?').get(ESSAI.id).description;
+  // la définition se lit sur l'élément du mot-clé (migration 0136) ; le journal d'avant la 0113 l'écrivait sur mot_cle
+  const { description } = lireUnMotCle(courante, ESSAI.id);
   const lot = 'essai-traces-0113-1';
   const journal = { format: 'maverick-edition/1', lots: [{ id: lot, fait_le: '2026-11-08T03:00:00Z', auteur_id: null, page_id: 'regles/glossaire/', resume: 'Mot-clé : Définition',
     resolu_le: null, resolu_par: null, resolution: null, modifications: [{ rang: 1, table: 'mot_cle', cle: { id: ESSAI.ancienId }, operation: 'modifier',

@@ -18,6 +18,7 @@ import { fabriquerPaquet } from '../serveur/paquet.mjs';
 import { lignesDeLIndex } from '../src/lib/index-des-pages.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { ancrerUnMotCle, baseDAncrage, poserMotCle, poserPageLisible, recalculerLesCles } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -71,7 +72,7 @@ const lotDesNotions = (m) => m.db.prepare("SELECT id, lot_id, contenu FROM lot_d
 const lot = (operations) => ({ format: FORMAT_DU_LOT, titre: `Notions d’essai ${(n += 1)}`, nature: 'decision', decision: 'R309', operations });
 /** L'insertion de la page de notion du mot-clé `k`, comme le plan l'écrit. */
 function pageDeNotion(m, k) {
-  const { libelle } = m.db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(k);
+  const { libelle } = lireUnMotCle(m.db, k);
   const id = NOTIONS.idDeNotion(m.db, libelle);
   return { table: 'page', cle: { id }, operation: 'inserer', apres: { id, titre: libelle, mot_cle_id: k }, ancrage: { notion: true } };
 }

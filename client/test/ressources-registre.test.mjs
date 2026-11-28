@@ -69,8 +69,10 @@ test('registre : chaque table du schéma est rangée une fois et une seule (ress
 
 test('registre : chaque colonne citée existe dans la base (clé, libellé, liste, recherche, tri, condition, liens parent)', () => {
   const defauts = [];
+  // les champs qu'une ressource lit sur l'élément de sa ligne (migration 0136 : le nom, l'adresse… d'un mot-clé, `champsDeLElement`) comptent comme ses colonnes
+  const surLElement = new Map(RESSOURCES.filter((r) => r.champsDeLElement).map((r) => [r.table, r.champsDeLElement.champs]));
   const verifier = (table, colonnes, quoi) => {
-    const connues = colonnesDe(table);
+    const connues = [...colonnesDe(table), ...(surLElement.get(table) ?? [])];
     if (!connues.length) { defauts.push(`${quoi} : table ${table} absente de la base`); return; }
     for (const c of colonnes) if (c && !connues.includes(c)) defauts.push(`${quoi} : colonne ${table}.${c} inconnue`);
   };
@@ -132,7 +134,9 @@ test('registre : chaque ligne d’un enfant, d’une dérivée ou d’une extens
 });
 
 test('registre : tout ce que le site de dev sait déjà écrire est joignable par l’API (TABLES modifiables, ENTITES créées et supprimées, opérations du lot)', { skip: Boolean(seulModule) }, () => {
-  const modifiables = new Set(RESSOURCES.flatMap((r) => [...tablesModifiables(r), ...(r.enfants ?? []).flatMap(tablesModifiables)]));
+  // une table où le service écrit les champs qu'une ressource lit sur l'élément de sa ligne (le repère d'un mot-clé, `champsDeLElement.ecritSur`) est joignable par elle
+  const modifiables = new Set(RESSOURCES.flatMap((r) => [...tablesModifiables(r), ...(r.enfants ?? []).flatMap(tablesModifiables),
+    ...(tablesModifiables(r).length ? r.champsDeLElement?.ecritSur ?? [] : [])]));
   assert.deepEqual(Object.keys(TABLES).filter((t) => !modifiables.has(t) && !Object.hasOwn(TABLES_SANS_ECRITURE_DIRECTE, t)), [], 'tables de TABLES sans ressource qui les modifie');
   // les exceptions : des tables de TABLES, rangées dans une ressource en lecture seule (le menu d'un onglet des Règles), jamais modifiables par l'API
   for (const t of Object.keys(TABLES_SANS_ECRITURE_DIRECTE)) {

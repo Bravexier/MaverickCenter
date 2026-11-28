@@ -2,19 +2,21 @@
 // pur : il lit la base et rend des lots de changements (`maverick-lot/1`), il n'écrit rien ; l'action « Préparer l'ancrage » les dépose, un par un, et
 // recalcule le plan après chacun. Il ne prend que ce qui manque encore (rejouable) et ne devine rien : un élément que la règle ne sait pas nommer ou
 // classer est laissé de côté et listé « à trancher ».
-//   Lot 1 (`noms`) : les catégories nouvelles, le type unique, les ancres des mots-clés existants, le nom et l'adresse alignés sur la page.
+//   Lot 1 (`noms`) : les catégories nouvelles, le type unique, les ancres des mots-clés existants. Depuis la migration 0136 (docs/chantier-retrait-des-colonnes.md),
+//   le nom et l'adresse d'un mot-clé se lisent sur son élément : rien ne s'aligne ni ne se recopie, l'ancre posée lui donne le nom de sa page.
 //   Lots 2 à 4 (`sorts`, `pages`, `capacites`) : les mots-clés créés. Leur `ancrage.type` est un id de catégorie : ils ne sont rendus qu'une fois les quatre
 //   catégories nouvelles en base (l'action recalcule le plan après le lot 1) ; `comptes` décrit tout de même l'ancrage entier.
 //   Lot 5 (`notions`, docs/chantier-pages-de-notion.md, §3 ; R309 (7)) : la page de notion de chaque mot-clé sans élément, ou dont les éléments ne sont que
 //   types de sort, types de dégâts et monnaies, et sans adresse. Rendu seulement quand les quatre autres n'ont plus rien à faire.
 // Sans dépendance navigateur ni Astro : la base est passée par l'appelant.
-import { adresseDeLaPage, adresseDuSort, slugsDAdresse } from './adresses-db.mjs';
+import { adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSort, adresseDuSortEnBase, adressesDuSite, slugsDAdresse } from './adresses-db.mjs';
 import { FORMAT_DU_LOT } from './lot-de-changements.mjs';
 import { AUTEUR_DE_L_ANCRAGE, DECISION_DE_L_ANCRAGE } from './lots-d-ancrage.mjs';
 import { referencesDesMotsCles } from './mentions-des-mots-cles.mjs';
 import { synonymesPris, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { clesDesMotsCles, HomonymesRefuses, RAISONS } from './mots-cles-cles.mjs';
 import { categoriesDesMotsCles, elementsDesMotsCles, motsClesDeLaBase } from './mots-cles-db.mjs';
+import { fauteDeLUrl } from './mots-cles-liens.mjs';
 import { normalize } from './text.mjs';
 
 /** Les quatre catégories que l'ancrage crée (conception, §2). */
@@ -120,9 +122,12 @@ function libellesDesTypes(db) {
   return sortie;
 }
 
-/** Le vocabulaire tel que le plan le laisserait : noms alignés, types uniques, éléments créés (ids négatifs, provisoires). */
+/**
+ * Le vocabulaire tel que le plan le laisserait : noms des mots-clés ancrés (un mot-clé prend le nom de l'élément qu'on lui donne pour ancre : son nom se lit
+ * sur lui), types uniques, éléments créés (ids négatifs, provisoires).
+ */
 function vocabulaireFutur(motsCles, elements, reclasses) {
-  const noms = new Map(elements.filter((e) => e.aligner).map((e) => [e.mot_cle, e.nom]));
+  const noms = new Map(elements.filter((e) => e.mot_cle !== null && e.ancrer).map((e) => [e.mot_cle, e.nom]));
   const futurs = motsCles.map((m) => ({ ...m, libelle: noms.get(m.id) ?? m.libelle, categories: reclasses.has(m.id) ? [reclasses.get(m.id)] : m.categories }));
   const crees = new Map();
   elements.filter((e) => e.mot_cle === null).forEach((e, i) => {
@@ -168,7 +173,7 @@ function eprouver({ motsCles, parId, libelles, elements, reclasses, trancher }) 
     const fautes = fautesDuVocabulaire(futurs, libelles, parId).filter((f) => !faits.has(f.raison));
     if (!fautes.length) return gardes;
     const [faute] = fautes;
-    const renommes = new Map(gardes.filter((e) => e.aligner && e.nom !== parId.get(e.mot_cle)?.libelle).map((e) => [e.mot_cle, e]));
+    const renommes = new Map(gardes.filter((e) => e.mot_cle !== null && e.ancrer && e.nom !== parId.get(e.mot_cle)?.libelle).map((e) => [e.mot_cle, e]));
     const homonymes = futurs.filter((m) => normalize(m.libelle) === faute.base).map((m) => m.id);
     const retires = new Set();
     let reclassesRetires = [];
@@ -208,10 +213,31 @@ const jetonSuivant = () => {
   return () => `m${(n += 1)}`;
 };
 
-/** La création d'un mot-clé ancré : sans `cle`, que le service calcule. */
+/**
+ * La création d'un mot-clé ancré, sans `cle`, que le service calcule. Celui d'une page ou d'un sort : son id seul (son nom et son adresse se lisent sur
+ * l'élément, migration 0136). Celui d'un type de sort, qui n'a pas de nom à lui : son id et son nom, que son repère porte (docs/chantier-retrait-des-colonnes.md, §2).
+ */
 function creation(e, jeton) {
   const id = { $numero: jeton() };
-  return { table: 'mot_cle', cle: { id }, operation: 'inserer', apres: { id, libelle: e.nom, url: e.adresse ?? null }, ancrage: { table: e.table, id: e.id, type: e.type } };
+  const apres = e.table === 'type_sort' ? { id, libelle: e.nom } : { id };
+  return { table: 'mot_cle', cle: { id }, operation: 'inserer', apres, ancrage: { table: e.table, id: e.id, type: e.type } };
+}
+
+/**
+ * Le refus de la création ancrée sur la page ou le sort `id` (`table`), ou null : le lien que son mot-clé lirait sur l'élément (lib/adresses-db.mjs) doit mener à
+ * une page du site, comme le lien qu'un lot d'avant la migration 0136 donnait au mot-clé créé (serveur/edition.mjs#refuserLeLien, même motif). Le lot ne
+ * donne plus ce lien, que le service ne contrôle donc plus : le lot le refuse à sa ligne, avant les contrôles du contenu de la fin. Null aussi pour un type de
+ * sort (pas d'adresse) ou un élément absent (le service le refuse). `adresses` : adressesDuSite(db), lu une fois par l'appelant.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ table: string, id: string }} element
+ */
+export function refusDuLienDeLAncre(db, { table, id }, adresses = null) {
+  const ligne = table === 'page' ? db.prepare('SELECT titre AS nom FROM page WHERE id = ?').get(id)
+    : table === 'sort' ? db.prepare('SELECT nom FROM sort WHERE id = ?').get(id) : null;
+  if (!ligne) return null;
+  const url = table === 'page' ? adresseDeLaPageEnBase(db, id) : adresseDuSortEnBase(db, id);
+  const faute = fauteDeLUrl(url, adresses ?? adressesDuSite(db));
+  return faute ? `Mot-clé « ${ligne.nom} » : le lien « ${url} » ne convient pas (${faute}).` : null;
 }
 
 /** Le changement de catégories d'un reclassé : retirer celles qu'il perd, poser son type s'il ne l'a pas. */
@@ -225,15 +251,6 @@ function reclassement(m, categorie, valeur) {
     ops.push({ table: 'mot_cle_categorie', cle: ligne, operation: 'inserer', apres: { ...ligne } });
   }
   return ops;
-}
-
-/** L'alignement d'un mot-clé sur sa page : les colonnes qui diffèrent seulement. */
-function alignement(e, m) {
-  const avant = {};
-  const apres = {};
-  if (m.libelle !== e.nom) [avant.libelle, apres.libelle] = [m.libelle, e.nom];
-  if ((m.url ?? null) !== e.adresse) [avant.url, apres.url] = [m.url ?? null, e.adresse];
-  return { table: 'mot_cle', cle: { id: m.id }, operation: 'modifier', avant, apres, ancrage: { aligner: true } };
 }
 
 /**
@@ -370,19 +387,22 @@ export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } =
       m = designes[0] ?? null;
     }
     if (m) {
-      const ancree = p.mot_cle_id !== null;
-      if (!ancree && pris.has(m.id)) {
+      // une page ancrée : son mot-clé lit son nom et son adresse sur elle, rien à faire
+      if (p.mot_cle_id !== null) continue;
+      if (pris.has(m.id)) {
         trancher('page', p.id, p.titre, `son mot-clé #${m.id} est déjà l’ancre de « ${pris.get(m.id)} »`);
         continue;
       }
-      if (!ancree && sansType.has(m.id)) {
+      if (sansType.has(m.id)) {
         trancher('page', p.id, p.titre, `son mot-clé #${m.id} n’a pas de type unique`);
         continue;
       }
-      const differe = m.libelle !== p.titre || (m.url ?? null) !== adresse;
-      if ((ancree && !differe) || !retenu(base.cle)) continue;
+      if (!retenu(base.cle)) continue;
+      // l'ancre lui donne le nom de la page : un renommage que le propriétaire a écarté (`nom:<id>`, l'annulation d'un alignement d'avant la migration 0136)
+      // laisse la page sans ancre
+      if (m.libelle !== p.titre && !retenu(`nom:${m.id}`)) continue;
       pris.set(m.id, p.id);
-      elements.push({ ...base, mot_cle: m.id, ancrer: !ancree, aligner: differe && retenu(`nom:${m.id}`), famille: 'noms' });
+      elements.push({ ...base, mot_cle: m.id, ancrer: true, famille: 'noms' });
     } else {
       const rubrique = TYPE_DE_RUBRIQUE[p.type];
       const type = rubrique ? categories.idDe(rubrique) : null;
@@ -393,14 +413,8 @@ export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } =
 
   const typeDesSorts = categories.idDe(TYPE_D_UN_SORT);
   for (const s of db.prepare('SELECT s.id, s.nom, s.mot_cle_id, m.nom AS parent FROM sort s JOIN magie m ON m.id = s.magie_id ORDER BY s.id').all()) {
-    if (s.mot_cle_id !== null) {
-      // un sort ancré se relit comme une page ancrée : son mot-clé reprend son nom et son adresse, sauf si la règle le refuse (à trancher) ; une page qui le tient décide de son nom
-      const m = parId.get(s.mot_cle_id);
-      const adresse = adresseDuSortDe(s.id);
-      if (!m || !normalize(s.nom) || pris.has(m.id) || (m.libelle === s.nom && (m.url ?? null) === adresse) || !retenu(`sort:${s.id}`)) continue;
-      elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse, mot_cle: m.id, ancrer: false, aligner: retenu(`nom:${m.id}`), famille: 'noms' });
-      continue;
-    }
+    // un sort ancré : son mot-clé lit son nom et son adresse sur lui, rien à faire
+    if (s.mot_cle_id !== null) continue;
     if (typeDesSorts === null || !normalize(s.nom)) trancher('sort', s.id, s.nom, typeDesSorts === null ? `le type « ${TYPE_D_UN_SORT} » n’existe plus` : 'son nom n’a ni lettre ni chiffre');
     else if (retenu(`sort:${s.id}`)) elements.push({ cle: `sort:${s.id}`, table: 'sort', id: s.id, nom: s.nom, adresse: adresseDuSortDe(s.id), mot_cle: null, type: typeDesSorts, parent: s.parent, famille: 'sorts' });
   }
@@ -412,20 +426,19 @@ export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } =
     if (!noms) continue;
     const cle = `type_sort:${t.id}`;
     if (t.mot_cle_id !== null) {
-      // un type ancré se relit de même, sauf celui qui reprend un mot-clé (il garde son nom, décision 3) ; il n'a pas d'adresse : celle du mot-clé reste
+      // un type ancré, sauf celui qui reprend un mot-clé (il garde son nom, décision 3) : un type de sort n'est pas l'élément de son mot-clé, dont le nom se lit
+      // sur sa page de notion ou son repère (migration 0136) ; quand ses sorts l'écrivent autrement, rien n'est renommé, les deux noms sont à trancher
       const m = parId.get(t.mot_cle_id);
       if (!m || t.id === TYPE_REPRIS.code || pris.has(m.id)) continue;
       if (noms.length > 1) trancher('type_sort', t.id, m.libelle, `ses sorts l’écrivent de plusieurs façons : ${noms.join(', ')}`);
-      else if (m.libelle !== noms[0] && normalize(noms[0]) && retenu(cle)) {
-        elements.push({ cle, table: 'type_sort', id: t.id, nom: noms[0], adresse: m.url ?? null, mot_cle: m.id, ancrer: false, aligner: retenu(`nom:${m.id}`), famille: 'noms' });
-      }
+      else if (m.libelle !== noms[0] && normalize(noms[0])) trancher('type_sort', t.id, m.libelle, `ses sorts l’écrivent « ${noms[0]} », son mot-clé s’appelle « ${m.libelle} »`);
       continue;
     }
     if (t.id === TYPE_REPRIS.code) {
       const m = parId.get(TYPE_REPRIS.mot_cle);
       if (!m) trancher('type_sort', t.id, noms[0], `le mot-clé repris #${TYPE_REPRIS.mot_cle} a disparu`);
       else if (sansType.has(m.id)) trancher('type_sort', t.id, noms[0], `son mot-clé #${m.id} n’a pas de type unique`);
-      else if (retenu(cle)) elements.push({ cle, table: 'type_sort', id: t.id, nom: m.libelle, adresse: m.url ?? null, mot_cle: m.id, ancrer: true, aligner: false, famille: 'noms' });
+      else if (retenu(cle)) elements.push({ cle, table: 'type_sort', id: t.id, nom: m.libelle, adresse: m.url ?? null, mot_cle: m.id, ancrer: true, famille: 'noms' });
     } else if (noms.length > 1) trancher('type_sort', t.id, noms[0], `ses sorts l’écrivent de plusieurs façons : ${noms.join(', ')}`);
     else if (retenu(cle)) elements.push({ cle, table: 'type_sort', id: t.id, nom: noms[0], adresse: null, mot_cle: null, type: typeDesTypes, famille: 'sorts' });
   }
@@ -440,11 +453,11 @@ export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } =
   const crees = gardes.filter((e) => e.mot_cle === null);
   const deFamille = (famille) => crees.filter((e) => e.famille === famille);
   const existants = gardes.filter((e) => e.mot_cle !== null);
-  const alignes = existants.filter((e) => e.aligner);
   const comptes = {
     crees: crees.length, capacites: deFamille('capacites').length, autres_pages: deFamille('pages').length,
     sorts: crees.filter((e) => e.table === 'sort').length, types: crees.filter((e) => e.table === 'type_sort').length,
-    renommes: alignes.filter((e) => e.nom !== parId.get(e.mot_cle).libelle).length, reclasses: reclasses.size, ancres_existants: existants.filter((e) => e.ancrer).length,
+    // les ancres qui changent le nom d'un mot-clé (il prend celui de sa page)
+    renommes: existants.filter((e) => e.ancrer && e.nom !== parId.get(e.mot_cle).libelle).length, reclasses: reclasses.size, ancres_existants: existants.filter((e) => e.ancrer).length,
     notions: notions.length,
   };
 
@@ -455,7 +468,6 @@ export function planDeLAncrage(db, { ecartees = new Set(), idDeNotion = null } =
     ...categories.nouvelles.map((c) => ({ table: 'categorie_mot_cle', cle: { id: { $numero: c.jeton } }, operation: 'inserer', apres: { id: { $numero: c.jeton }, libelle: c.libelle } })),
     ...[...reclasses].sort(([a], [b]) => a - b).flatMap(([id, categorie]) => reclassement(parId.get(id), categorie, categories.valeur)),
     ...existants.filter((e) => e.ancrer).map((e) => ({ table: e.table, cle: { id: e.id }, operation: 'modifier', avant: { mot_cle_id: null }, apres: { mot_cle_id: e.mot_cle } })),
-    ...alignes.map((e) => alignement(e, parId.get(e.mot_cle))),
   ];
   const jeton = jetonSuivant();
   const suite = categories.nouvelles.length ? [] : [

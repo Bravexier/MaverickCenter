@@ -284,6 +284,8 @@ Ils auront chacun leur conception. Voici ce qui est déjà décidé et ce qu'il 
 
 ## Chantier 4 : le retrait des colonnes
 
+Conçu le 2026-11-28 : `docs/chantier-retrait-des-colonnes.md`
+
 Quand chaque mot-clé renvoie à quelque chose, il ne garde que son numéro, sa clé et son type :
 
 - **`libelle` et `url`** disparaissent : le nom et l'adresse se lisent sur l'élément. `type_degats` et `type_sort` n'ont pas de nom aujourd'hui : il leur en faut un.

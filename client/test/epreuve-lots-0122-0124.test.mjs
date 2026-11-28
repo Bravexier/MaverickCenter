@@ -31,15 +31,25 @@ const sqlDe = (n) => readFileSync(join(MIGRATIONS, readdirSync(MIGRATIONS).find(
 const migrations = lireLesLots(FIXTURES, NUMEROS);
 const racine = dossierTemporaire('epreuve-lots');
 let bilan;
+let echecDuBilan = null;
 // les tests qui lisent le bilan comparent chaque lot au SQL des migrations 0122 à 0124 rejoué : ils sortent avec ces migrations mixtes
 // (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES), et le bilan n'est alors plus calculé
 const testDuSql = testRetireAvecLesMixtes(import.meta.url);
+// un bilan qui échoue fait échouer, avec son erreur, chaque test qui le lit (lireLeBilan), et ceux-là seuls : les autres ne le lisent pas
 before(async () => {
   if (mixtesSorties()) return;
-  const { chemin } = preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'vivante') });
-  bilan = await refaireLEpreuve({ chemin, dossier: join(racine, 'copies'), migrations, sqlDe });
+  try {
+    const { chemin } = preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'vivante') });
+    bilan = await refaireLEpreuve({ chemin, dossier: join(racine, 'copies'), migrations, sqlDe });
+  } catch (e) {
+    echecDuBilan = e;
+  }
 });
-const de = (n) => bilan.migrations.find((m) => m.migration === n);
+const lireLeBilan = () => {
+  if (echecDuBilan) throw echecDuBilan;
+  return bilan;
+};
+const de = (n) => lireLeBilan().migrations.find((m) => m.migration === n);
 const total = (o) => Object.values(o).reduce((a, b) => a + b, 0);
 
 test('les lots sont de vrais lots maverick-lot/1 : valides une fois les tables hors édition ouvertes, refusés au dépôt tant qu’elles sont éteintes', () => {
@@ -125,7 +135,10 @@ test('le complément : les lignes que le service retire lui-même avec une entit
 });
 
 testDuSql('même base : après chaque lot, le service a écrit ce que la migration écrit, table de contenu par table de contenu (modulo les numéros donnés et ce que le service refuse, (c))', () => {
-  for (const m of bilan.migrations) {
+  // le SQL et les lots de ces migrations écrivent les colonnes du mot-clé que la 0136 a retirées : l'épreuve se refait à la structure de leur temps
+  // (serveur/epreuve-des-lots.mjs#remettreLesColonnesDuMotCle)
+  assert.equal(lireLeBilan().avant.colonnes_du_mot_cle_remises, true);
+  for (const m of lireLeBilan().migrations) {
     assert.deepEqual(m.comparaison.non_expliquees, [], `migration ${m.migration} : une table diffère de la base migrée sans que (c) l’explique`);
     assert.ok(m.comparaison.tables >= 100, `migration ${m.migration} : les tables de contenu se comparent toutes`);
     assert.equal(m.comparaison.egales, m.comparaison.tables - m.comparaison.expliquees_par_les_refus.length, `migration ${m.migration} : toutes les autres tables sont identiques`);
@@ -155,7 +168,7 @@ testDuSql('les verrous des décisions : le lot ne s’applique qu’avec l’acc
   assert.deepEqual(de('0122').verrous_ouverts, ['R218', 'R219']);
   assert.deepEqual(de('0123').verrous_ouverts, ['R218']);
   assert.deepEqual(de('0124').verrous_ouverts, ['R218', 'R219']);
-  for (const m of bilan.migrations) assert.deepEqual(m.verrous_ouverts, m.lot_ouvert.essai.verrous);
+  for (const m of lireLeBilan().migrations) assert.deepEqual(m.verrous_ouverts, m.lot_ouvert.essai.verrous);
 });
 
 testDuSql('annuler (garde-fou 11) : la 0122 s’annule et la base d’avant revient ; la 0123 et la 0124 sont REFUSÉES par le service (ancre figée, adresse disparue), le lot reste appliqué', () => {

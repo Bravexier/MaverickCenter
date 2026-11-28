@@ -166,7 +166,8 @@ test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouv�
   assert.ok(vocabulaire.some((m) => m.description === null), 'un mot-clé pas encore décrit : NULL');
   assert.ok(vocabulaire.every((m) => Number.isInteger(m.id) && typeof m.cle === 'string'), 'un id entier et une clé (migration 0113)');
   const homonymes = (libelle) => vocabulaire.filter((m) => normalize(m.libelle) === normalize(libelle)).length > 1;
-  const tags = db.prepare('SELECT m.libelle, m.cle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
+  // le libellé se lit sur l'élément du mot-clé (vue v_mot_cle, migration 0136)
+  const tags = db.prepare('SELECT m.libelle, m.cle, m.id FROM page_tag t JOIN v_mot_cle m ON m.id = t.tag_id').all();
   assert.ok(tags.length > 0, 'des pages portent encore des mots-clés (ceux dont le site se sert)');
   for (const t of tags) {
     assert.equal(idDuMotCle(db, t.cle), t.id, t.cle);

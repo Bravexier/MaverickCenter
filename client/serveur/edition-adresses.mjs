@@ -14,6 +14,8 @@ import { normalize } from '../src/lib/text.mjs';
 import { sousLeVerrou } from './edition-ancrage.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
+const colonnesDe = (db, table) => db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name);
+
 /** Ce que rend adressePrise pour une adresse tenue par une route fixe, une rubrique ou un nom réservé des Règles (aucune page ne la tient). */
 const ROUTE = 'route';
 
@@ -196,8 +198,12 @@ export function outilsDesAdresses({ ErreurEdition }) {
     placer(aSuivre.filter((p) => !estUneClasse(p)));
     placer(aSuivre.filter(estUneClasse));
     if (!deplacees.length) return 0;
-    // les mots-clés à déplacer, lus avant toute écriture : deux pages qui échangent leurs adresses ne se prennent pas leurs mots-clés
-    const motsCles = db.prepare('SELECT id, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id').all();
+    // les mots-clés à déplacer, lus avant toute écriture : deux pages qui échangent leurs adresses ne se prennent pas leurs mots-clés. Depuis la migration 0136,
+    // seul un repère écrit son adresse (Carquois, Consommable, Ceinture) ; celle d'un mot-clé de page ou de sort se lit sur lui et suit seule
+    const reperes = !colonnesDe(db, 'mot_cle').includes('url');
+    const motsCles = reperes
+      ? (tableExiste(db, 'repere') ? db.prepare('SELECT mot_cle_id AS id, adresse AS url FROM repere WHERE adresse IS NOT NULL ORDER BY mot_cle_id').all() : [])
+      : db.prepare('SELECT id, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id').all();
     const suivis = deplacees.map((d) => ({ ...d, urls: urlsQuiSuivent(motsCles, d) }));
     const retenues = new Set(deplacees.map((d) => d.adresse));
     for (const d of suivis) {
@@ -205,7 +211,10 @@ export function outilsDesAdresses({ ErreurEdition }) {
       libererLAdresse(ctx, d.adresse);
       // quittée pour une page du même lot : elle est vivante ; quittée par une page créée dans ce lot : jamais publiée
       if (!retenues.has(d.quittee) && !creees.has(d.id)) garderLAncienne(ctx, d.quittee, d.id);
-      for (const [motCle, url] of d.urls) w.modifier('mot_cle', { id: motCle }, { url });
+      for (const [motCle, url] of d.urls) {
+        if (reperes) w.modifier('repere', { mot_cle_id: motCle }, { adresse: url });
+        else w.modifier('mot_cle', { id: motCle }, { url });
+      }
     }
     ctx.adressesDuLot = null; // les adresses du site ont changé (edition.mjs#creerMotCle les garde le temps d'un lot)
     return deplacees.length;

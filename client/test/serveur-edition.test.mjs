@@ -17,6 +17,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { annonceDesFiches, attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
 
@@ -242,7 +243,7 @@ test('supprimer un métier dont l’ancre est l’adresse d’un mot-clé : 409 
   const cree = lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: adresseDeLaPage(id) } }], 'regles/glossaire/');
   assert.equal(cree.statut, 200, JSON.stringify(cree.corps));
   const motCle = cree.corps.crees[0].id;
-  assert.equal(ligne('SELECT url FROM mot_cle WHERE id = ?', motCle).url, `/metiers/#metier-${id.slice('metiers/'.length)}`);
+  assert.equal(lireUnMotCle(db, motCle).url,`/metiers/#metier-${id.slice('metiers/'.length)}`);
   const refus = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.ok(refus.corps.erreur.includes(`« ${nom} » est l’adresse du mot-clé « ${libelle} »`), refus.corps.erreur);

@@ -10,6 +10,7 @@ import { CATEGORIES_NOUVELLES } from '../src/lib/mots-cles-ancrage.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 const SCHEMA = fileURLToPath(new URL('../../data/schema.sql', import.meta.url));
 const CODES_DES_TYPES = ['attaque', 'entrave', 'soin', 'amplification', 'placement', 'invocation', 'construction', 'protection', 'meteo', 'aleatoire'];
@@ -52,10 +53,13 @@ function poserCategorie(db, libelle) {
 /** Crée les quatre catégories de l'ancrage (sans elles, le plan ne rend que le lot 1). */
 export const poserLesCategoriesNouvelles = (db) => CATEGORIES_NOUVELLES.forEach((libelle) => poserCategorie(db, libelle));
 
-/** Un mot-clé : `categories` par libellé ; `id` : le suivant à partir de 9001 s'il n'est pas donné. Rend son id. */
+/**
+ * Un mot-clé sans page ni sort : `categories` par libellé ; `id` : le suivant à partir de 9001 s'il n'est pas donné. Depuis la migration 0136, son nom et son
+ * adresse sont dans son repère (test/aide-mots-cles.mjs#poserUnMotCle). Rend son id.
+ */
 export function poserMotCle(db, { id, libelle, url = null, categories = [], synonymes = [] }) {
-  const numero = id ?? Math.max(PREMIER_ID - 1, db.prepare('SELECT coalesce(max(id), 0) AS n FROM mot_cle').get().n) + 1;
-  db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(numero, libelle, `essai-${numero}`, url);
+  const suivant = Math.max(PREMIER_ID - 1, db.prepare('SELECT coalesce(max(id), 0) AS n FROM mot_cle').get().n) + 1;
+  const numero = poserUnMotCle(db, { id: id ?? suivant, libelle, cle: `essai-${id ?? suivant}`, url });
   for (const c of categories) db.prepare('INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (?, ?)').run(numero, idDeCategorie(db, c));
   synonymes.forEach((s, i) => inserer(db, 'mot_cle_synonyme', { id: numero * 100 + i, mot_cle_id: numero, libelle: s, libelle_cle: normalize(s), ordre: i + 1 }));
   return numero;
@@ -82,8 +86,14 @@ export function ancrerUnMotCle(db, table, id, { categories = [], verrou = false 
   const nom = db.prepare(`SELECT ${table === 'page' ? 'titre' : 'nom'} AS nom FROM "${table}" WHERE id = ?`).get(id).nom;
   const motCle = poserMotCle(db, { libelle: nom, url: table === 'page' ? adresseDeLaPage(id, null) : adresseDuSort(id, null), categories });
   db.prepare(`UPDATE "${table}" SET mot_cle_id = ? WHERE id = ?`).run(motCle, id);
+  sansRepere(db, motCle); // un repère ne double jamais une page ni un sort (migration 0136)
   if (verrou) db.prepare('UPDATE mot_cle SET verrou = 1 WHERE id = ?').run(motCle);
   return motCle;
+}
+
+/** Retire le repère du mot-clé `id` (il vient de recevoir une page ou un sort) ; sans effet sur une base d'avant la migration 0136. */
+function sansRepere(db, id) {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'repere'").get()) db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(id);
 }
 
 /** Une entité typée et sa page (même id) : `table` (metier, race, classe, capacite), ses colonnes en plus du nom ; `titre`, celui de la page. */
@@ -179,24 +189,34 @@ export function recalculerLesCles(db) {
 
 /**
  * Simule l'application d'un lot du plan, en SQL : numéros suivants, création, type et ancre, modifications, page de notion (la page, son mot-clé pour ancre,
- * l'adresse du mot-clé devenue la sienne), puis les clés recalculées.
+ * le repère du mot-clé repris par elle), puis les clés recalculées.
  */
 export function appliquerEnSql(db, lot) {
   const numeros = new Map();
   const suivant = (table) => db.prepare(`SELECT coalesce(max(id), 0) + 1 AS n FROM "${table}"`).get().n;
   for (const o of lot.operations) {
     if (o.table === 'page' && o.ancrage?.notion === true) {
+      // la page reprend le repère du mot-clé (migration 0136) : sa définition, sa couleur et son icône, puis le repère part
       poserPage(db, o.apres.id, o.apres.titre);
       ecrire(db, 'page', { id: o.apres.id }, { mot_cle_id: o.apres.mot_cle_id });
-      ecrire(db, 'mot_cle', { id: o.apres.mot_cle_id }, { url: adresseDeLaPage(o.apres.id, null) });
+      const r = db.prepare('SELECT definition, couleur, icone FROM repere WHERE mot_cle_id = ?').get(o.apres.mot_cle_id);
+      if (r) ecrire(db, 'page', { id: o.apres.id }, { ...r });
+      sansRepere(db, o.apres.mot_cle_id);
     } else if (o.operation === 'inserer' && o.table === 'categorie_mot_cle') {
       numeros.set(o.cle.id.$numero, poserCategorie(db, o.apres.libelle));
     } else if (o.operation === 'inserer' && o.table === 'mot_cle') {
       const id = Math.max(suivant('mot_cle'), PREMIER_ID);
       numeros.set(o.cle.id.$numero, id);
-      db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(id, o.apres.libelle, `provisoire-${id}`, o.apres.url ?? null);
+      // le nom d'un type de sort est dans le lot ; celui d'une page ou d'un sort se lit sur l'élément, qui ne laisse pas de repère
+      const { table } = o.ancrage;
+      const nom = o.apres.libelle ?? db.prepare(`SELECT ${table === 'page' ? 'titre' : 'nom'} AS nom FROM "${table}" WHERE id = ?`).get(o.ancrage.id).nom;
+      poserUnMotCle(db, { id, libelle: nom, cle: `provisoire-${id}` });
+      if (table !== 'type_sort') sansRepere(db, id);
       db.prepare('INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (?, ?)').run(id, o.ancrage.type);
       ecrire(db, o.ancrage.table, { id: o.ancrage.id }, { mot_cle_id: id });
+    } else if (o.operation === 'modifier' && ['page', 'sort'].includes(o.table) && Object.hasOwn(o.apres, 'mot_cle_id')) {
+      ecrire(db, o.table, o.cle, o.apres);
+      sansRepere(db, o.apres.mot_cle_id);
     } else if (o.operation === 'inserer') {
       const { mot_cle_id, categorie_id } = donnees(o.apres, numeros);
       db.prepare('INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (?, ?)').run(mot_cle_id, categorie_id);

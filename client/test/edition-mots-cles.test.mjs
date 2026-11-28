@@ -20,6 +20,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { htmlDeLaLigneDuGlossaire } from '../src/lib/mots-cles-balises.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import {
   categoriesDistinctes, ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, confirmationDesRetraits, decocherLesAutres, ecrituresDesCibles, endroitsDesMentions,
@@ -516,7 +517,7 @@ async function surLeService(noms, options = {}) {
   const service = { base: () => db, etat: () => ({}), edition: true };
   const prise = (t) => {
     const k = normalize(t);
-    return db.prepare('SELECT libelle FROM mot_cle').all().some((m) => normalize(m.libelle) === k)
+    return db.prepare('SELECT libelle FROM v_mot_cle').all().some((m) => normalize(m.libelle) === k)
       || Boolean(db.prepare('SELECT 1 FROM mot_cle WHERE cle = ? UNION ALL SELECT 1 FROM mot_cle_synonyme WHERE libelle_cle = ? UNION ALL SELECT 1 FROM mot_cle_ancienne_cle WHERE cle = ?').get(k, k, k));
   };
   const libre = (base) => {
@@ -562,7 +563,7 @@ async function surLeService(noms, options = {}) {
     p.motsCles.debut(p.ed);
     await attendre();
   };
-  const motCle = (id) => db.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get(id);
+  const motCle = (id) => db.prepare('SELECT id, libelle FROM v_mot_cle WHERE id = ?').get(id);
   return { ...p, db, service, mots, enregistrer, relire, motCle: (id) => (motCle(id) ? { ...motCle(id) } : null) };
 }
 
@@ -589,7 +590,8 @@ test('service : « + Ajouter un mot-clé » crée la notion et sa page par la ro
   }
   cliquer(s.document.querySelector('.ed-outils-mots-cles').querySelector('button'));
   await s.formulaires.at(-1).valider({ libelle, categories: [String(type)], description: '' });
-  const m = s.db.prepare('SELECT id, url FROM mot_cle WHERE libelle = ?').get(libelle);
+  const trouve = s.db.prepare('SELECT id FROM v_mot_cle WHERE libelle = ?').get(libelle);
+  const m = trouve && lireUnMotCle(s.db, trouve.id); // l'adresse se lit sur l'élément (migration 0136)
   assert.ok(m, `créé : ${JSON.stringify(s.ed.annonces.at(-1))}`);
   const page = s.db.prepare('SELECT id, titre, resume FROM page WHERE mot_cle_id = ?').get(m.id);
   assert.deepEqual([page?.titre, page?.resume], [libelle, null], 'sa page de notion, sans résumé');
@@ -821,7 +823,7 @@ test('migration 0098 : la lecture (le lien en colonne Lien, le liseré de la cou
 test('service : l’adresse et la couleur saisies sur le Glossaire sont enregistrées (vidées : NULL) ; une couleur ou une adresse mal écrite est refusée (400, `champ`)', async () => {
   const s = await surLeService({ A: 'Essai couleur' });
   const { A } = s.mots;
-  const valeurs = () => ({ ...s.db.prepare('SELECT url, couleur FROM mot_cle WHERE id = ?').get(A.id) });
+  const valeurs = () => { const { url, couleur } = lireUnMotCle(s.db, A.id); return { url, couleur }; };
   const avec = async (saisies) => {
     for (const [colonne, valeur] of Object.entries(saisies)) (colonne === 'url' ? s.adresse(A.id) : s.couleur(A.id)).controle.value = valeur;
     const r = await s.enregistrer();
@@ -1083,7 +1085,7 @@ test('décision R223, contre le service : un mot-clé cité se supprime en forç
   assert.deepEqual(r.operations, [{ op: 'supprimer', entite: 'mot_cle', cle: { id: A.id }, forcer: true }]);
   assert.match(s.questions.at(-1), /^- .* sera supprimé en forçant \(décision R223\) : 1 mention sera remplacée/m);
   assert.equal(s.motCle(A.id), null, 'A supprimé');
-  const definition = s.db.prepare('SELECT description FROM mot_cle WHERE id = ?').get(B.id).description;
+  const definition = s.db.prepare('SELECT description FROM v_mot_cle WHERE id = ?').get(B.id).description;
   assert.ok(!definition.includes('{{') && definition.includes('texte affiché d’essai'), `la balise devient son texte affiché : ${definition}`);
 });
 

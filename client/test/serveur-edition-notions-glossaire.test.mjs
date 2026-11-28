@@ -10,6 +10,7 @@ import { decisionsCitees } from '../serveur/edition-lots.mjs';
 import { ENTITES } from '../src/lib/edition-modele.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { CHAMPS_D_UNE_NOTION } from '../src/lib/mots-cles-edition.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { adresseDesRegles, idDesRegles, nom, outilsDesCas } from './aide-adresses-lots.mjs';
 import { idDeCategorie, poserLesCategoriesNouvelles, poserPageLisible } from './aide-ancrage.mjs';
@@ -27,7 +28,11 @@ const sansVoie = (m, operations) => enregistrer(m.db, { page: 'regles/glossaire/
 const creation = (valeurs) => ({ op: 'creer', entite: 'mot_cle', valeurs });
 
 const journal = (m) => m.db.prepare('SELECT count(*) AS n FROM modification').get().n;
-const motCleNomme = (m, libelle) => m.db.prepare('SELECT * FROM mot_cle WHERE libelle = ?').get(libelle);
+/** Le mot-clé de ce nom (lireUnMotCle : le nom, l'adresse et la définition se lisent sur son élément, migration 0136), ou undefined. */
+const motCleNomme = (m, libelle) => {
+  const l = m.db.prepare('SELECT id FROM v_mot_cle WHERE libelle = ?').get(libelle);
+  return l ? lireUnMotCle(m.db, l.id) : undefined;
+};
 const pageDuMotCle = (m, id) => m.db.prepare('SELECT * FROM page WHERE mot_cle_id = ?').get(id);
 const categories = (m, id) => m.db.prepare('SELECT categorie_id AS c FROM mot_cle_categorie WHERE mot_cle_id = ? ORDER BY c').all(id).map((l) => l.c);
 
@@ -92,7 +97,7 @@ test('par une route : une adresse donnée, le nom d’une page, deux types : ref
     refus409(m, () => parLaRoute(m, [creation({ libelle: nom('Rivage') })]));
     refus409(m, () => parLaRoute(m, [creation({ libelle: nom('Ressac'), categories: [idDeCategorie(m.db, 'Règles'), idDeCategorie(m.db, 'Notion')] })]));
     assert.equal(motCleNomme(m, nom('Ressac')), undefined);
-    assert.equal(m.db.prepare('SELECT count(*) AS n FROM mot_cle WHERE libelle = ?').get(nom('Rivage')).n, 0);
+    assert.equal(m.db.prepare('SELECT count(*) AS n FROM v_mot_cle WHERE libelle = ?').get(nom('Rivage')).n, 0);
     assert.equal(pages(), avant, 'aucune page créée');
   },
 ));

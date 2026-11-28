@@ -21,7 +21,7 @@ import { convertirLesLiens, liensDuTexte, tableDeConversion } from '../src/lib/l
 import { ADRESSES_DU_PLAN_PRECEDENT } from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { formesNonCanoniques } from '../src/lib/mots-cles-balises.mjs';
-import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { FUSIONS_DANS_L_EXISTANT, MOTS_CLES_EXISTANTS_REPRIS } from '../scripts/liens-en-mots-cles.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { FAMILLES_DE_LA_PALETTE, classeDeMagie, idDeCouleur } from '../src/lib/palette-css.mjs';
@@ -51,7 +51,8 @@ const LOTS_AVANT_0098 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots
 // les lignes retouchées par un lot rapatrié après la 0098 : « table|clé JSON »
 const retouchees = new Set(historiqueSite(db).entrees.filter((e) => !LOTS_AVANT_0098.has(e.lot)).map((e) => `${e.table}|${e.texte}`));
 const intacte = (table, cle) => !retouchees.has(`${table}|${JSON.stringify(cle)}`);
-const motCle = (id) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
+// le nom, l'adresse, la couleur et la définition se lisent sur l'élément du mot-clé (migration 0136)
+const motCle = (id) => lireUnMotCle(db, id) ?? undefined;
 const texte = (table, colonne, id) => db.prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE id = ?`).get(id)?.v;
 const pageExemple = new Set(db.prepare("SELECT id FROM page WHERE statut = 'example'").all().map((p) => p.id));
 const LIENS_GARDES = ['/#lien-discord'];
@@ -89,22 +90,25 @@ const selonLesClesDe0113 = (r, fragment) => BALISES_REECRITES.filter((t) => t.ta
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
 const baliseOuReecriture = (r, v) => ecritOuReecrit(r, r.balise, v);
 
-test('0098 : couleur et url en dernier dans mot_cle et dans v_mot_cle', () => {
-  // les colonnes ajoutées après la 0098 viennent ensuite (`verrou`, 0110 : décisions R218, R219 ; `monnaie_id`, 0113 ; `icone`, 0116) ;
-  // l'abréviation, qui les précédait, est devenue un synonyme (migration 0115)
-  const AJOUTEES_APRES_0098 = new Set(['verrou', 'monnaie_id', 'icone']);
-  assert.deepEqual(db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name).filter((c) => !AJOUTEES_APRES_0098.has(c)).slice(-2), ['couleur', 'url']);
-  assert.deepEqual(db.prepare('PRAGMA table_info(v_mot_cle)').all().map((c) => c.name).slice(-2), ['couleur', 'url']);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 98, true);
+test('0098, puis 0136 : la couleur et l’adresse de la 0098 ont quitté mot_cle pour l’élément du mot-clé (repère : couleur, adresse ; page : couleur) ; v_mot_cle rend la couleur', () => {
+  // la migration 0136 (chantier 4, « le retrait des colonnes ») ne laisse à mot_cle que son id, sa clé, son verrou et sa monnaie ; le nom, l'adresse, la
+  // définition, la couleur et l'icône se lisent sur la page, le sort ou le repère du mot-clé (lib/mots-cles-db.mjs)
+  const colonnes = (table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  assert.deepEqual(colonnes('mot_cle'), ['id', 'cle', 'verrou', 'monnaie_id']);
+  assert.ok(['couleur', 'adresse'].every((c) => colonnes('repere').includes(c)), 'le repère porte la couleur et l’adresse');
+  assert.ok(colonnes('page').includes('couleur'), 'la page porte la couleur de son mot-clé');
+  assert.deepEqual(colonnes('v_mot_cle'), ['id', 'cle', 'libelle', 'description', 'couleur', 'icone', 'verrou', 'monnaie_id', 'nb_pages']);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version >= 136, true);
 });
 
-test('0098 : la base refuse une couleur qui n’est ni « famille:id » ni « #rrggbb », et une adresse externe', () => {
+test('0098 : la base refuse une couleur qui n’est ni « famille:id » ni « #rrggbb », et une adresse externe (sur le repère du mot-clé depuis la 0136)', () => {
   const m = new DatabaseSync(':memory:');
   m.exec(SCHEMA);
-  const poser = (couleur, url) => m.prepare("INSERT INTO mot_cle (id, libelle, cle, couleur, url) VALUES (1, 'X', 'x', ?, ?)").run(couleur, url);
+  m.exec("INSERT INTO mot_cle (id, cle) VALUES (1, 'x')");
+  const poser = (couleur, url) => m.prepare("INSERT INTO repere (mot_cle_id, nom, couleur, adresse) VALUES (1, 'X', ?, ?)").run(couleur, url);
   for (const [couleur, url] of [['magie:sang', '/magies/magie-du-sang/'], ['#a1b2c3', null], ['magie:espace-temps', '/metiers/#metier-mineur'], [null, null]]) {
     poser(couleur, url);
-    m.exec('DELETE FROM mot_cle WHERE id = 1');
+    m.exec('DELETE FROM repere WHERE mot_cle_id = 1');
   }
   for (const couleur of ['Magie:sang', 'magie:', 'ma-gie:x', 'magie:x:y', 'magie:x-', '#A1B2C3', '#abc', 'rouge']) assert.throws(() => poser(couleur, null), /CHECK/, couleur);
   for (const url of ['//hote/', 'https://exemple.org/', 'magies/', '/a b/', '/\\hote', '/é/']) assert.throws(() => poser(null, url), /CHECK/, url);
@@ -138,9 +142,11 @@ testDeLaMixte('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libe
     assert.ok(entree, `${r.id} : dans la correspondance de la 0113`);
     // le mot-clé de « La montée de niveau », fondu depuis par la migration 0122 (test db-0122-retrait-la-montee-de-niveau.test.mjs)
     if (fonduParLa0122(r.id) || fonduParLa0124(r.id)) { assert.equal(motCle(entree.id), undefined, r.id); continue; }
-    if (!intacte('mot_cle', { id: entree.id })) continue;
+    if (!intacte('mot_cle', { id: entree.id }) || !intacte('repere', { mot_cle_id: entree.id })) continue;
     const m = motCle(entree.id);
     assert.ok(m, r.id);
+    // depuis la 0136, un mot-clé ancré lit son adresse et sa couleur sur sa page : une page retouchée par le site ne se compare pas
+    if (m.element.table === 'page' && !intacte('page', { id: m.element.id })) continue;
     // l'adresse de la 0098, ou celle qu'une migration postérieure a fixée (0123 : « Les neuf alignements » fondue dans « Alignement », registre
     // `mots_cles_modifies`)
     const urls = [r.url, ...URLS_APRES_0098.filter((u) => u.id === entree.id && u.avant === r.url).map((u) => u.apres)];

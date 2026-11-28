@@ -12,6 +12,7 @@ import { corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { effetsDuModeHyper } from '../src/lib/mode-hyper-texte.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
@@ -162,10 +163,12 @@ test('R237 (12) : Modes Hyper de l’Elfe argenté et du Felfe changés par le d
 });
 
 test('R218 (5), R219 (5) : un mot-clé par race, qui la nomme et mène à sa page, de la forme de ceux des races pures, mais non verrouillé', () => {
-  // le modèle : le mot-clé de l'Humain, race pure (par son adresse à l'import, figée par le registre 0113)
-  const motCle = (base, id) => un(base, 'SELECT * FROM mot_cle WHERE id = ?', id);
+  // le modèle : le mot-clé de l'Humain, race pure (par son adresse à l'import, figée par le registre 0113). Depuis la migration 0136, le nom, l'adresse,
+  // la définition, la couleur et l'icône se lisent sur l'élément du mot-clé (page, sort, sinon repère : lireUnMotCle, motsClesDeLaBase)
+  const motCle = (base, id) => lireUnMotCle(base, id);
   const categories = (base, id) => tous(base, 'SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ? ORDER BY categorie_id', id).map((c) => c.categorie_id);
-  const humain = un(dImport, "SELECT * FROM mot_cle WHERE url = '/races/humain/'");
+  const tousLesMotsCles = motsClesDeLaBase(dImport, { elements: false });
+  const humain = tousLesMotsCles.find((k) => k.url === `/${HUMAIN}/`);
   assert.equal(humain.verrou, 1, 'R218 (5) : le mot-clé d’une race du classeur est verrouillé');
   assert.deepEqual(Object.keys(MOTS_CLES_DE_LA_0120).sort(), [...RACES_DE_LA_0120].sort());
   for (const [race, id] of Object.entries(MOTS_CLES_DE_LA_0120)) {
@@ -177,7 +180,7 @@ test('R218 (5), R219 (5) : un mot-clé par race, qui la nomme et mène à sa pag
     assert.deepEqual([m.description, m.monnaie_id, m.icone], [humain.description, humain.monnaie_id, humain.icone], race);
     assert.deepEqual(categories(dImport, id), categories(dImport, humain.id), `${race} : catégories des races pures`);
     assert.equal(m.verrou, 0, `${race} : R219 (5), « Un mot-clé créé plus tard n'est pas verrouillé, même pour une nouvelle race »`);
-    assert.equal(un(dImport, 'SELECT count(*) AS n FROM mot_cle WHERE url = ?', m.url).n, 1, `${race} : un seul mot-clé mène à sa page`);
+    assert.equal(tousLesMotsCles.filter((k) => k.url === m.url).length, 1, `${race} : un seul mot-clé mène à sa page`);
   }
   // aujourd'hui : le verrou ne change que par migration (R218 (4)) ; le mot-clé, non verrouillé, peut avoir été modifié ou supprimé sur le site
   for (const id of Object.values(MOTS_CLES_DE_LA_0120)) {

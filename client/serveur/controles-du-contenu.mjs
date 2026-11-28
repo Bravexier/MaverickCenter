@@ -15,7 +15,8 @@ import { analyserCout, mentionneUnNm } from '../src/lib/sort-analyse.mjs';
 import { repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { clesDesMotsCles, HomonymesRefuses, RAISONS } from '../src/lib/mots-cles-cles.mjs';
+import { HomonymesRefuses, RAISONS } from '../src/lib/mots-cles-cles.mjs';
+import { ClesCroisees, clesTenues, motsClesDePageOuDeSort } from './edition-mots-cles.mjs';
 import { fauteDeLUrl, lienGarde } from '../src/lib/mots-cles-liens.mjs';
 import { adresseDeLaPage, adressesDuSite } from '../src/lib/adresses-db.mjs';
 import { pageARouteFixe } from '../src/lib/metiers.mjs';
@@ -352,7 +353,9 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   // ni les tables dérivées, ni les traces gardées telles quelles, ni la recherche plein texte ; lib/tables-de-la-base.mjs). Une balise dans un code
   // d'un texte mis en forme est une écriture littérale : ni lue ni contrôlée.
   // La clé de chaque mot-clé est celle de la règle (décision R232 (2), (9), (10) : lib/mots-cles-cles.mjs#clesDesMotsCles, la jumelle de
-  // tools/db/maverick.py#cles_des_mots_cles, stricte : aucun homonyme sans catégorie propre, aucune clé prise deux fois) ; une clé quittée
+  // tools/db/maverick.py#cles_des_mots_cles, stricte : aucun homonyme sans catégorie propre, aucune clé prise deux fois), à une tolérance près, celle du
+  // service (serveur/edition-mots-cles.mjs#clesTenues, la même fonction) : le mot-clé d'une page ou d'un sort que la règle ne sait pas distinguer garde sa
+  // clé, « à trancher » (un renommage n'est jamais refusé : docs/chantier-ancrage-mots-cles.md, choix 7), compté au bilan sans être une erreur ; une clé quittée
   // (mot_cle_ancienne_cle) n'est la clé courante d'aucun mot-clé. Les synonymes (migration 0115, décision R233 (4)) : libelle_cle = normalize(libelle)
   // (aussi gardé par db-derive), et la règle de lib/mots-cles-balises.mjs#fautesDuSynonyme, la même que celle du service (normalize non vide, ni espace
   // autour, ni « { », « } », « | », saut de ligne, ni « : » final ; ni le libellé de son propre mot-clé, ni le libellé, un synonyme ou la clé d'un autre).
@@ -361,13 +364,17 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     const vocabulaire = vocabulaireDesMotsCles(motsCles);
     if (noms.has('categorie_mot_cle')) {
       try {
-        const cles = clesDesMotsCles(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])));
+        const { cles, aTrancher } = clesTenues(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])), { attendent: motsClesDePageOuDeSort(db) });
         for (const m of motsCles) {
           if (cles.get(m.id) !== m.cle) signaler('mot_cle', m.id, 'cle_du_mot_cle', `mot_cle ${m.id} : la clé « ${m.cle} » n'est pas celle de la règle (« ${cles.get(m.id)} », décision R232)`);
         }
+        bilan.mots_cles_a_trancher = aTrancher.length;
       } catch (e) {
-        if (!(e instanceof HomonymesRefuses)) throw e;
-        for (const f of e.fautes) signaler('mot_cle', f.ids.join(', '), 'homonymes', `mot_cle ${f.ids.join(', ')} (« ${f.base} ») : ${RAISONS[f.raison]} (décision R232)`);
+        if (e instanceof ClesCroisees) {
+          for (const id of e.ids) signaler('mot_cle', id, 'cle_du_mot_cle', `mot_cle ${id} : sa clé et celle d'un autre mot-clé s'échangeraient (décision R232)`);
+        } else if (e instanceof HomonymesRefuses) {
+          for (const f of e.fautes) signaler('mot_cle', f.ids.join(', '), 'homonymes', `mot_cle ${f.ids.join(', ')} (« ${f.base} ») : ${RAISONS[f.raison]} (décision R232)`);
+        } else throw e;
       }
       const courantes = new Set(motsCles.map((m) => m.cle));
       for (const m of motsCles) for (const a of m.anciennes_cles) if (courantes.has(a)) signaler('mot_cle_ancienne_cle', a, 'ancienne_cle', `mot_cle_ancienne_cle « ${a} » (mot-clé ${m.id}) : c'est la clé courante d'un mot-clé`);
@@ -413,8 +420,10 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     // sont pas vérifiées) ; sa couleur est « #rrggbb » ou une référence que la palette connaît (lib/palette-css.mjs#fauteDeLaCouleur) ; et plus aucun
     // texte des règles et des pages (textesDeLaBase : ni les sections 13 à 15, ni les tables dérivées, ni les traces) n'écrit de lien `[[…]]` ni de lien
     // Markdown interne `[texte](/…)` hors code (lib/liens-en-mots-cles.mjs#liensDuTexte), sauf une page d'exemple et les liens que la migration a gardés
-    // (lib/mots-cles-liens.mjs#LIENS_GARDES).
-    if (colonnes('mot_cle').some((c) => c.name === 'url')) {
+    // (lib/mots-cles-liens.mjs#LIENS_GARDES). Depuis la migration 0136, l'adresse, la couleur et l'icône se lisent sur l'élément du mot-clé (l'objet de
+    // motsClesDeLaBase) : ces contrôles ne dépendent plus d'une colonne du mot-clé.
+    const surLElement = noms.has('repere') && !colonnes('mot_cle').some((c) => c.name === 'libelle');
+    if (surLElement || colonnes('mot_cle').some((c) => c.name === 'url')) {
       const adresses = adressesDuSite(db);
       let urls = 0;
       let couleurs = 0;
@@ -447,7 +456,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
 
     // L'icône d'un mot-clé (migration 0116, décision R235) : NULL, ou une icône de la liste du site (lib/icones.mjs#ICONES, la seule liste ; la règle du
     // service, serveur/edition.mjs#refuserLIcone : fauteDeLIcone) ; le CHECK de la colonne ne lit que la forme « famille:id ».
-    if (colonnes('mot_cle').some((c) => c.name === 'icone')) {
+    if (surLElement || colonnes('mot_cle').some((c) => c.name === 'icone')) {
       let icones = 0;
       for (const m of motsCles) {
         if (m.icone === null) continue;
@@ -456,6 +465,20 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
         if (faute) signaler('mot_cle', m.id, 'icone_du_mot_cle', `mot_cle ${m.id} : l’icône « ${m.icone} » ne convient pas (${faute})`);
       }
       bilan.icones_mots_cles = icones;
+    }
+
+    // L'élément de chaque mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md §1, §2, §9) : une page, un sort ou, à défaut, un repère ; un mot-clé
+    // a un repère si et seulement s'il n'a ni page ni sort (un repère ne double jamais une page ni un sort, il n'en serait qu'une copie).
+    if (surLElement) {
+      const ancre = (t) => noms.has(t) && colonnes(t).some((c) => c.name === 'mot_cle_id');
+      const de = (t, x) => (ancre(t) ? `EXISTS (SELECT 1 FROM "${t}" e WHERE e.mot_cle_id = ${x})` : '0');
+      for (const { id } of db.prepare(`SELECT m.id FROM mot_cle m WHERE NOT ${de('page', 'm.id')} AND NOT ${de('sort', 'm.id')} AND NOT EXISTS (SELECT 1 FROM repere r WHERE r.mot_cle_id = m.id) ORDER BY m.id`).all()) {
+        signaler('mot_cle', id, 'mot_cle_sans_element', `mot_cle ${id} : il n'a ni page, ni sort, ni repère ; son nom ne se lit nulle part`);
+      }
+      for (const { id } of db.prepare(`SELECT r.mot_cle_id AS id FROM repere r WHERE ${de('page', 'r.mot_cle_id')} OR ${de('sort', 'r.mot_cle_id')} ORDER BY r.mot_cle_id`).all()) {
+        signaler('repere', id, 'repere_en_double', `repere ${id} : son mot-clé a une page ou un sort, qui porte déjà son nom ; le repère n'en serait qu'une copie`);
+      }
+      bilan.reperes_mots_cles = db.prepare('SELECT count(*) AS n FROM repere').get().n;
     }
   }
 

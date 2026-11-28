@@ -32,9 +32,11 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { adresseDeLaPageEnBase } from '../src/lib/adresses-db.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, lireHistorique } from '../src/lib/historique-site.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { contenuSorti } from '../src/lib/sortie-du-contenu.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { REGISTRES_GARDES } from './aide-registres-sortis.mjs';
@@ -109,6 +111,110 @@ function oublierLesReferencesDesMigrations(db, table, cle) {
 }
 
 /**
+ * Depuis la migration 0136, le nom, l'adresse, la définition, la couleur et l'icône d'un mot-clé se lisent sur son élément (sa page, sinon son
+ * sort, sinon son repère) : un lot ancien du site les écrivait sur `mot_cle`. Colonnes logiques de `mot_cle` -> colonnes de l'élément, par table
+ * (le titre et l'adresse d'une page, le nom d'un sort ont leur propre historique : ils ne se défont pas ici).
+ */
+const COLONNES_DE_L_ELEMENT = Object.freeze({
+  repere: Object.freeze({ libelle: 'nom', url: 'adresse', description: 'definition', couleur: 'couleur', icone: 'icone' }),
+  page: Object.freeze({ description: 'definition', couleur: 'couleur', icone: 'icone' }),
+  sort: Object.freeze({ description: 'definition', couleur: 'couleur', icone: 'icone' }),
+});
+
+/**
+ * Le nom et l'adresse propres d'un mot-clé ancré (`libelle`, `url`), par id : avant la 0136, le mot-clé les portait à côté de sa page ou de son
+ * sort. Une entrée ancienne de `mot_cle` qui les écrit, défaite pendant que le mot-clé est ancré, les note ici ; ils passent dans le repère si un
+ * ancrage défait le laisse sans élément. Propre à un appel de defaireLeSite.
+ */
+const LOGIQUES_PROPRES = Object.freeze(['libelle', 'url']);
+
+/** L'élément du mot-clé `id` dans `db` : { table, ou, cle } ou null. */
+function elementDe(db, id) {
+  const page = db.prepare('SELECT id FROM page WHERE mot_cle_id = ?').get(id);
+  if (page) return { table: 'page', ou: '"id" = ?', cle: page.id };
+  const sort = db.prepare('SELECT id FROM sort WHERE mot_cle_id = ?').get(id);
+  if (sort) return { table: 'sort', ou: '"id" = ?', cle: sort.id };
+  const repere = db.prepare('SELECT mot_cle_id FROM repere WHERE mot_cle_id = ?').get(id);
+  return repere ? { table: 'repere', ou: '"mot_cle_id" = ?', cle: id } : null;
+}
+
+/**
+ * Défait, sur l'élément du mot-clé, les colonnes logiques qu'une entrée ancienne de `mot_cle` écrivait (base à la structure 0136 et après). Une
+ * suppression défaite remet aussi le repère d'un mot-clé qui n'a ni page ni sort, avec les valeurs de son « avant ».
+ */
+function defaireSurLElement(db, e, id, propres) {
+  if (e.operation === 'inserer') return;
+  if (e.operation === 'supprimer') {
+    if (elementDe(db, id) || !e.avant?.libelle) return;
+    db.prepare('INSERT INTO repere (mot_cle_id, nom, adresse, definition, couleur, icone) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, e.avant.libelle, e.avant.url ?? null, e.avant.description ?? null, e.avant.couleur ?? null, e.avant.icone ?? null);
+    return;
+  }
+  const element = elementDe(db, id);
+  if (!element) return;
+  if (element.table !== 'repere') {
+    const notes = propres.get(id) ?? {};
+    for (const l of LOGIQUES_PROPRES.filter((x) => e.avant && x in e.avant)) {
+      if (!(l in notes) || memes(notes[l], e.apres?.[l])) notes[l] = e.avant[l];
+    }
+    propres.set(id, notes);
+  }
+  const actuelle = db.prepare(`SELECT * FROM "${element.table}" WHERE ${element.ou}`).get(element.cle);
+  const valeurs = Object.entries(COLONNES_DE_L_ELEMENT[element.table]).filter(([logique]) => e.avant && logique in e.avant).flatMap(([logique, col]) => {
+    const v = e.avant[logique];
+    if (memes(actuelle[col], e.apres?.[logique])) return [[col, v]];
+    const reecrit = avantReecrit('mot_cle', { id }, logique, v, e.apres?.[logique], actuelle[col]);
+    return reecrit === undefined ? [] : [[col, reecrit]];
+  });
+  if (valeurs.length) db.prepare(`UPDATE "${element.table}" SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${element.ou}`).run(...valeurs.map(([, v]) => v), element.cle);
+}
+
+/** Les mots-clés qu'une entrée de `page` ou de `sort` ancre ou désancre (son mot_cle_id avant, après, et celui de la ligne actuelle). */
+function motsClesAncres(e, actuelle) {
+  if ((e.table !== 'page' && e.table !== 'sort') || (e.operation === 'modifier' && !(e.avant && 'mot_cle_id' in e.avant))) return [];
+  return [...new Set([actuelle?.mot_cle_id, e.avant?.mot_cle_id, e.apres?.mot_cle_id].filter((id) => id !== null && id !== undefined))];
+}
+
+/** La page, sinon le sort du mot-clé `id`, avec ce qu'en recevrait son repère : { table, id, nom, adresse, definition, couleur, icone } ou null. */
+function ancrageDe(db, id) {
+  const page = db.prepare('SELECT id, titre, definition, couleur, icone FROM page WHERE mot_cle_id = ?').get(id);
+  if (page) return { table: 'page', id: page.id, nom: page.titre, adresse: adresseDeLaPageEnBase(db, page.id), definition: page.definition, couleur: page.couleur, icone: page.icone };
+  const sort = db.prepare('SELECT id, nom, definition, couleur, icone FROM sort WHERE mot_cle_id = ?').get(id);
+  return sort ? { table: 'sort', id: sort.id, nom: sort.nom, adresse: null, definition: sort.definition, couleur: sort.couleur, icone: sort.icone } : null;
+}
+
+/**
+ * Après une entrée défaite de `page` ou de `sort` qui ancre ou désancre le mot-clé `id` (base à la structure 0136 et après), tient le contrat C0 : un
+ * mot-clé laissé sans page ni sort reçoit aussitôt son repère, tiré de l'élément qu'il avait (`avant`, lu avant l'entrée : son titre ou son nom, l'adresse
+ * de la page, sa définition, sa couleur et son icône, vidées sur l'élément qui reste), le nom et l'adresse propres notés (`propres`) l'emportant ; les
+ * entrées plus anciennes de `mot_cle` s'y défont. Un mot-clé ancré de nouveau quitte son repère : sa définition, sa couleur et son icône passent sur
+ * l'élément qui ne les a pas, son nom et son adresse sont notés. `provisoires` : les repères ainsi créés.
+ */
+function tenirLAncrage(db, id, avant, { propres, provisoires }) {
+  if (!db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id)) return;
+  const element = ancrageDe(db, id);
+  const repere = db.prepare('SELECT * FROM repere WHERE mot_cle_id = ?').get(id);
+  if (!element && !repere && avant) {
+    const notes = propres.get(id) ?? {};
+    const nom = notes.libelle ?? avant.nom;
+    if (!nom) return;
+    db.prepare('INSERT INTO repere (mot_cle_id, nom, adresse, definition, couleur, icone) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, nom, 'url' in notes ? notes.url : avant.adresse, avant.definition ?? null, avant.couleur ?? null, avant.icone ?? null);
+    if (db.prepare(`SELECT 1 FROM "${avant.table}" WHERE id = ?`).get(avant.id)) {
+      db.prepare(`UPDATE "${avant.table}" SET definition = NULL, couleur = NULL, icone = NULL WHERE id = ?`).run(avant.id);
+    }
+    propres.delete(id);
+    provisoires.add(id);
+  } else if (element && repere) {
+    db.prepare(`UPDATE "${element.table}" SET definition = coalesce(definition, ?), couleur = coalesce(couleur, ?), icone = coalesce(icone, ?) WHERE id = ?`)
+      .run(repere.definition, repere.couleur, repere.icone, element.id);
+    db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(id);
+    propres.set(id, { libelle: repere.nom, url: repere.adresse });
+    provisoires.delete(id);
+  }
+}
+
+/**
  * Défait dans `db` (ouverte en écriture) les modifications du site, de la dernière à la première, sauf celles des lots `garder`, puis retire de
  * l'historique les lots défaits. Rend ce qui n'a pas pu être défait (opération et raison). Exporté pour le test de l'aide.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -118,6 +224,8 @@ function oublierLesReferencesDesMigrations(db, table, cle) {
 export function defaireLeSite(db, { garder = new Set() } = {}) {
   const entrees = lireHistorique(db).filter((e) => !garder.has(e.lot));
   const ecarts = [];
+  const aDesReperes = Boolean(colonnesDe(db, 'repere')) && !colonnesDe(db, 'mot_cle')?.has('libelle');
+  const suivi = { propres: new Map(), provisoires: new Set() };
   db.exec('PRAGMA foreign_keys = ON');
   db.exec('BEGIN');
   db.exec('PRAGMA defer_foreign_keys = ON'); // l'ordre inverse des opérations d'un lot peut passer par un état transitoire
@@ -130,10 +238,17 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
       const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
       const actuelle = db.prepare(`SELECT * FROM "${e.table}" WHERE ${ou}`).get(...Object.values(cle));
       try {
+        const ancres = aDesReperes ? motsClesAncres(e, actuelle).map((id) => [id, ancrageDe(db, id)]) : [];
         if (e.operation === 'inserer') {
           if (actuelle) oublierLesReferencesDesMigrations(db, e.table, cle);
           if (actuelle) db.prepare(`DELETE FROM "${e.table}" WHERE ${ou}`).run(...Object.values(cle));
         } else if (e.operation === 'supprimer') {
+          if (actuelle && e.table === 'repere' && suivi.provisoires.delete(cle.mot_cle_id)) {
+            // le repère qu'un ancrage défait plus tard dans l'ordre inverse a créé : la suppression défaite lui rend les valeurs de son « avant »
+            const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c) && c !== 'mot_cle_id');
+            if (valeurs.length) db.prepare(`UPDATE repere SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...valeurs.map(([, v]) => v), ...Object.values(cle));
+            continue;
+          }
           if (actuelle) continue; // remise depuis par une migration : gardée
           const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c));
           db.prepare(`INSERT INTO "${e.table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
@@ -147,9 +262,22 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
           });
           if (valeurs.length) db.prepare(`UPDATE "${e.table}" SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...valeurs.map(([, v]) => v), ...Object.values(cle));
         }
+        for (const [id, avant] of ancres) tenirLAncrage(db, id, avant, suivi);
+        if (e.table === 'mot_cle' && !colonnes.has('libelle') && cle.id !== undefined) defaireSurLElement(db, e, cle.id, suivi.propres);
       } catch (err) {
         ecarts.push(`${e.table} ${e.texte} (${e.operation}, lot ${e.lot}) : ${err.message}`);
       }
+    }
+    if (colonnesDe(db, 'repere') && !colonnesDe(db, 'mot_cle')?.has('libelle')) {
+      // un repère remis avant la page ou le sort que le même lot avait retirés (ordre inverse) : sa définition, sa couleur et son icône passent sur
+      // la page, et il s'efface (un repère ne double jamais une page ou un sort)
+      db.exec(`UPDATE page SET
+          definition = coalesce(definition, (SELECT r.definition FROM repere r WHERE r.mot_cle_id = page.mot_cle_id)),
+          couleur = coalesce(couleur, (SELECT r.couleur FROM repere r WHERE r.mot_cle_id = page.mot_cle_id)),
+          icone = coalesce(icone, (SELECT r.icone FROM repere r WHERE r.mot_cle_id = page.mot_cle_id))
+        WHERE mot_cle_id IN (SELECT mot_cle_id FROM repere)`);
+      db.exec(`DELETE FROM repere WHERE mot_cle_id IN (SELECT mot_cle_id FROM page WHERE mot_cle_id IS NOT NULL)
+        OR mot_cle_id IN (SELECT mot_cle_id FROM sort WHERE mot_cle_id IS NOT NULL)`);
     }
     const rompues = db.prepare('PRAGMA foreign_key_check').all().map((f) => `${f.table} (rowid ${f.rowid}) -> ${f.parent}`);
     if (rompues.length) throw new Error(`base d'import : clés étrangères rompues\n${rompues.join('\n')}\n${ecarts.join('\n')}`);
@@ -203,10 +331,20 @@ export function reglesDImport(options) {
   return entree.regles;
 }
 
-/** La cellule `colonne` de la ligne `cle` dans la base d'import ; undefined pour une ligne absente (créée par le site, ou supprimée par une migration). */
+/** Les colonnes logiques d'un mot-clé, lues sur son élément depuis la migration 0136 (lib/mots-cles-db.mjs#lireUnMotCle). */
+const CHAMPS_LOGIQUES_DU_MOT_CLE = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+
+/**
+ * La cellule `colonne` de la ligne `cle` dans la base d'import ; undefined pour une ligne absente (créée par le site, ou supprimée par une migration).
+ * Une colonne logique d'un mot-clé que la table ne porte plus (libelle, url, description, couleur, icone : migration 0136) se lit sur son élément.
+ */
 export function texteDImport(table, cle, colonne, options) {
   const db = baseDImport(options);
   const c = cleDeLigne(db, table, cle);
+  if (table === 'mot_cle' && CHAMPS_LOGIQUES_DU_MOT_CLE.includes(colonne) && !colonnesDe(db, table)?.has(colonne)) {
+    const m = lireUnMotCle(db, c.id);
+    return m ? m[colonne] : undefined;
+  }
   if (!colonnesDe(db, table)?.has(colonne)) throw new Error(`${table}.${colonne} : colonne absente de la base`);
   const ligne = db.prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE ${Object.keys(c).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(c));
   return ligne ? ligne.v : undefined;

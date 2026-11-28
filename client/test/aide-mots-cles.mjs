@@ -4,12 +4,15 @@
 // l'exporteur, triées par clé), dont on construit les règles (db-build, db-derive) : la base vivante, les reconstructions et le rapatriement partent des
 // mêmes lignes. Chaque mot-clé d'essai a une définition (valable que la colonne soit NOT NULL DEFAULT '' ou nullable, CHECK length > 0).
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
+
+export { lireUnMotCle };
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 export const DEFINITION_D_ESSAI = 'Mot-clé d’essai des tests (test/aide-mots-cles.mjs).';
@@ -81,10 +84,19 @@ export function ajouterLesMotsClesDEssai(rows) {
     writeFileSync(join(rows, `${table}.sql`), `${[tete, ...corps].join('\n')}\n`);
   };
   const motsCles = lire('mot_cle');
+  // depuis la migration 0136, le nom et la définition d'un mot-clé sans page ni sort sont dans son repère ; avant, dans sa ligne
+  const ancienne = !existsSync(join(rows, 'repere.sql')) || motsCles.some((l) => /^INSERT INTO mot_cle \([^)]*\blibelle\b/.test(l));
+  const reperes = ancienne ? null : lire('repere');
   for (const { id, cle, libelle } of Object.values(TOUS_LES_MOTS_CLES_D_ESSAI)) {
-    motsCles.push(`INSERT INTO mot_cle (id, libelle, cle, description) VALUES (${id}, ${sql(libelle)}, ${sql(cle)}, ${sql(DEFINITION_D_ESSAI)});`);
+    if (ancienne) {
+      motsCles.push(`INSERT INTO mot_cle (id, libelle, cle, description) VALUES (${id}, ${sql(libelle)}, ${sql(cle)}, ${sql(DEFINITION_D_ESSAI)});`);
+    } else {
+      motsCles.push(`INSERT INTO mot_cle (id, cle) VALUES (${id}, ${sql(cle)});`);
+      reperes.push(`INSERT INTO repere (mot_cle_id, nom, definition) VALUES (${id}, ${sql(libelle)}, ${sql(DEFINITION_D_ESSAI)});`);
+    }
   }
   ecrire('mot_cle', motsCles, (l) => [Number(/VALUES \((\d+),/.exec(l)[1])]);
+  if (reperes) ecrire('repere', reperes, (l) => [Number(/VALUES \((\d+),/.exec(l)[1])]);
   const tags = lire('page_tag');
   const ordres = new Map();
   for (const l of tags) {
@@ -154,4 +166,28 @@ export function avecLesClesDe(db, texte) {
       ?? db.prepare('SELECT m.cle FROM mot_cle_ancienne_cle a JOIN mot_cle m ON m.id = a.mot_cle_id WHERE a.cle = ?').get(ref.trim())?.cle;
     return cle ? `{{${cle}${fin}` : tout;
   });
+}
+
+/**
+ * Pose un mot-clé d'essai sans page ni sort dans la base `db` (une copie) : sa ligne de mot_cle et, depuis la migration 0136, son repère (nom, adresse,
+ * définition, couleur, icône) ; sur une base à l'ancienne structure (colonne mot_cle.libelle), ces valeurs vont dans les colonnes du mot-clé que la base
+ * a, et aucun repère n'est posé. `id` : par défaut le suivant, à partir de PREMIER_ID_D_ESSAI ; `cle` : normalize du libellé. Rend l'id.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ id?: number, libelle: string, cle?: string, url?: string|null, description?: string|null, couleur?: string|null, icone?: string|null, verrou?: 0|1 }} motCle
+ */
+export function poserUnMotCle(db, { id, libelle, cle = normalize(libelle), url = null, description = null, couleur = null, icone = null, verrou = 0 }) {
+  const numero = id ?? Math.max(PREMIER_ID_D_ESSAI - 1, db.prepare('SELECT coalesce(max(id), 0) AS n FROM mot_cle').get().n) + 1;
+  const colonnes = db.prepare('SELECT name FROM pragma_table_info(?)').all('mot_cle').map((c) => c.name);
+  const inserer = (table, valeurs) => {
+    const noms = Object.keys(valeurs);
+    db.prepare(`INSERT INTO ${table} (${noms.join(', ')}) VALUES (${noms.map(() => '?').join(', ')})`).run(...Object.values(valeurs));
+  };
+  if (colonnes.includes('libelle')) {
+    const valeurs = { id: numero, libelle, cle, url, description, couleur, icone, verrou };
+    inserer('mot_cle', Object.fromEntries(Object.entries(valeurs).filter(([c]) => colonnes.includes(c))));
+  } else {
+    inserer('mot_cle', { id: numero, cle, verrou });
+    inserer('repere', { mot_cle_id: numero, nom: libelle, adresse: url, definition: description, couleur, icone });
+  }
+  return numero;
 }

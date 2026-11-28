@@ -29,7 +29,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { adresseDuMotCle, htmlDuNomDuMotCle, motsClesCites, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { chargerVocabulaire, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { ancreDuPanneau } from '../src/lib/panneaux-regles-rendu.mjs';
 import { texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
 import { entreesDeLaListe, listeDeLaRubrique, rubriquesDeLEntete } from './aide-menu-html.mjs';
@@ -164,7 +164,8 @@ test('panneau des armes : les huit blocs de l’import dans l’ordre (tant que 
 
 test('panneaux de règles : leurs balises du glossaire rendues (mode complet « Libellé : définition », gras), aucune brute hors de `data-balise`', options, () => {
   // par leur clé : celle que citent les balises (décision R232 (3))
-  const motsCles = new Map(base.prepare('SELECT id, cle, libelle, description, icone, url FROM mot_cle').all().map((m) => [m.cle, m]));
+  // libellé, définition, icône et adresse se lisent sur l'élément du mot-clé (migration 0136)
+  const motsCles = new Map(motsClesDeLaBase(base, { elements: false }).map((m) => [m.cle, m]));
   let completes = 0;
   for (const o of PAGES_SERVIES_PAR_L_EQUIPEMENT) {
     const m = main[pageDuPanneau(o.ancre)];

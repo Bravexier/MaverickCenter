@@ -15,11 +15,26 @@ import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDAncrage, poserMagie, poserMotCle, poserPage, poserSort } from './aide-ancrage.mjs';
 
-/** Un mot-clé d'essai dont la clé est celle de son libellé (les balises la citent), avec sa définition écrite s'il en a une. */
+/**
+ * Un mot-clé d'essai dont la clé est celle de son libellé (les balises la citent), avec sa définition écrite s'il en a une : sur son repère tant qu'il
+ * n'a ni page ni sort (migration 0136).
+ */
 function mot(db, libelle, { description = null } = {}) {
   const id = poserMotCle(db, { libelle });
-  db.prepare('UPDATE mot_cle SET cle = ?, description = ? WHERE id = ?').run(normalize(libelle), description, id);
+  db.prepare('UPDATE mot_cle SET cle = ? WHERE id = ?').run(normalize(libelle), id);
+  db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(description, id);
   return id;
+}
+
+/**
+ * Ancre le mot-clé `id` sur la page ou le sort `element` : sa définition passe du repère à la page (un sort n'en a pas), et le repère s'efface (un mot-clé
+ * a un repère si et seulement s'il n'a ni page ni sort, migration 0136).
+ */
+function ancrer(db, id, table, element) {
+  const { definition } = db.prepare('SELECT definition FROM repere WHERE mot_cle_id = ?').get(id);
+  if (table === 'page') db.prepare('UPDATE page SET mot_cle_id = ?, definition = ? WHERE id = ?').run(id, definition, element);
+  else db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(id, element);
+  db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(id);
 }
 
 /**
@@ -30,17 +45,17 @@ function monde() {
   const db = baseDAncrage();
   const ids = {};
   ids.zephyra = mot(db, 'Zéphyra');
-  db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(ids.zephyra, poserPage(db, 'guide/zephyra', 'Zéphyra', { resume: 'Le résumé de la page de Zéphyra.' }));
+  ancrer(db, ids.zephyra, 'page', poserPage(db, 'guide/zephyra', 'Zéphyra', { resume: 'Le résumé de la page de Zéphyra.' }));
   ids.boree = mot(db, 'Borée');
   const magie = poserMagie(db, 'magies/magie-de-boree', 'Magie de Borée');
-  db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(ids.boree, poserSort(db, magie, 'Borée', { effets: 'Les effets du sort Borée.\nUne seconde ligne.' }));
+  ancrer(db, ids.boree, 'sort', poserSort(db, magie, 'Borée', { effets: 'Les effets du sort Borée.\nUne seconde ligne.' }));
   ids.auster = mot(db, 'Auster', { description: 'La définition écrite d’Auster.' });
-  db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(ids.auster, poserPage(db, 'guide/auster', 'Auster', { resume: 'Le résumé d’Auster, jamais montré.' }));
+  ancrer(db, ids.auster, 'page', poserPage(db, 'guide/auster', 'Auster', { resume: 'Le résumé d’Auster, jamais montré.' }));
   ids.notus = mot(db, 'Notus');
   ids.eurus = mot(db, 'Eurus');
-  db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(ids.eurus, poserPage(db, 'guide/eurus', 'Eurus'));
+  ancrer(db, ids.eurus, 'page', poserPage(db, 'guide/eurus', 'Eurus'));
   ids.levant = mot(db, 'Levant');
-  db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(ids.levant, poserPage(db, 'guide/levant', 'Levant', { resume: 'Voir {{boree|le vent du nord}} : coûte 5 RO.' }));
+  ancrer(db, ids.levant, 'page', poserPage(db, 'guide/levant', 'Levant', { resume: 'Voir {{boree|le vent du nord}} : coûte 5 RO.' }));
   return { db, ids };
 }
 
@@ -73,7 +88,7 @@ test('sans définition : le résumé de la page, ou les effets du sort', () => {
   assert.equal(htmlDeLaBalise(lireUneBalise('{{zephyra}}'), v).id, motDe(v, 'zephyra').id);
   // jamais recopié : la définition écrite du vocabulaire reste vide, comme dans la base
   assert.equal(motDe(v, 'zephyra').description, '');
-  assert.equal(db.prepare('SELECT description FROM mot_cle WHERE id = ?').get(motDe(v, 'zephyra').id).description, null);
+  assert.equal(db.prepare('SELECT description FROM v_mot_cle WHERE id = ?').get(motDe(v, 'zephyra').id).description, null);
 });
 
 test('ni l’un ni l’autre : pas de bulle', () => {

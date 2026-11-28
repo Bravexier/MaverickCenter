@@ -10,11 +10,13 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { typeDeDegatsAffiche } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // telles que la page les reçoit
 const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
-const motCle = (id) => db.prepare('SELECT libelle, description FROM mot_cle WHERE id = ?').get(id);
+// le nom et la définition se lisent sur l'élément du mot-clé (page, sort ou repère : migration 0136)
+const motCle = (id) => lireUnMotCle(db, id);
 
 test('un type physique lié à son mot-clé : son libellé de la page, la couleur du mot-clé, le libellé puis la définition en infobulle', () => {
   const types = db.prepare('SELECT id, mot_cle_id FROM type_degats WHERE magie_id IS NULL AND mot_cle_id IS NOT NULL ORDER BY id').all();

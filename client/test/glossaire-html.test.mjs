@@ -18,7 +18,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { mentionsDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { definitionDuMotCle, htmlDeLIcone, pagesDesMentions } from '../src/lib/mots-cles-balises.mjs';
-import { categoriesDesMotsCles, chargerVocabulaire, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, chargerVocabulaire, lireUnMotCle, motsClesDeLaBase, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
 import { FAMILLES_DE_LA_PALETTE } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
@@ -90,9 +90,10 @@ test('R234 : le Glossaire — au menu du profil ; le tableau de tous les mots-cl
     assert.equal(ligne.includes('class="glossaire-mot__origine"'), !m.description && Boolean(m.element?.texte), `${m.cle} : la mention du texte de son élément`);
   }
   assert.equal(avecLien, vocabulaire.filter((m) => m.url).length);
-  assert.ok(vocabulaire.filter((m) => m.icone).length >= 1 || !baseDImport().prepare('SELECT 1 FROM mot_cle WHERE icone IS NOT NULL').get(), 'des icônes dès l’import');
+  // l'icône et l'adresse se lisent sur l'élément du mot-clé (migration 0136) : la vue v_mot_cle, la lecture du vocabulaire
+  assert.ok(vocabulaire.filter((m) => m.icone).length >= 1 || !baseDImport().prepare('SELECT 1 FROM v_mot_cle WHERE icone IS NOT NULL').get(), 'des icônes dès l’import');
   // plus de 270 mots-clés à adresse à l'import (migration 0098)
-  const lies = baseDImport().prepare('SELECT count(*) AS n FROM mot_cle WHERE url IS NOT NULL').get().n;
+  const lies = motsClesDeLaBase(baseDImport()).filter((m) => m.url).length;
   assert.ok(lies >= 270, `${lies} libellés liés à l’import`);
   // les balises des définitions rendues par le middleware (data-balise les garde)
   assert.doesNotMatch(tableau.replace(/ data-[a-z-]+="[^"]*"/g, ''), /\{\{[^{}\n]+\}\}/, 'aucune balise brute');
@@ -156,7 +157,14 @@ test('« rendu identique » : les pages colorées gardent leur classe (magie, ca
   const db = ouvrirBase();
   const h = historiqueSite(db);
   const vocabulaire = chargerVocabulaire(db);
-  const parLeSite = (m) => h.creee('mot_cle', { id: m.id }) || h.modifiee('mot_cle', { id: m.id }, 'couleur') || h.modifiee('mot_cle', { id: m.id }, 'url');
+  // depuis la migration 0136, la couleur et l'adresse se modifient sur l'élément du mot-clé (sa page, son repère) : les traces anciennes restent sur mot_cle
+  const parLeSite = (m) => {
+    if (h.creee('mot_cle', { id: m.id }) || h.modifiee('mot_cle', { id: m.id }, 'couleur') || h.modifiee('mot_cle', { id: m.id }, 'url')) return true;
+    const element = lireUnMotCle(db, m.id)?.element;
+    if (element?.table === 'page') return ['couleur', 'mot_cle_id'].some((c) => h.modifiee('page', { id: element.id }, c)) || h.creee('page', { id: element.id });
+    if (element?.table === 'repere') return h.creee('repere', { mot_cle_id: m.id }) || ['couleur', 'adresse'].some((c) => h.modifiee('repere', { mot_cle_id: m.id }, c));
+    return false;
+  };
   for (const rel of pages()) {
     const main = /<main class="([^"]*)"/.exec(readFileSync(join(dist, rel), 'utf8'));
     if (!main) continue;

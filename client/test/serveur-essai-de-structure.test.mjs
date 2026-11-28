@@ -17,7 +17,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { LIVRAISON, NUMERO, baseDesRegles, baseRemplie, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
-const livre = lireLesMigrations(LIVRAISON); // test/aide-structure-sur-place.mjs#LIVRAISON : au-dessus du plancher quand les mixtes sont sorties
+const livre = lireLesMigrations(LIVRAISON); // test/aide-structure-sur-place.mjs#LIVRAISON : la migration de `migration_recue` reprise au-dessus du plancher
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
 const schemaALaVersion = (version) => schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);

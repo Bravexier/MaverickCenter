@@ -247,10 +247,11 @@ test('R218 : annuler une écriture qu’une décision verrouille demande le mêm
 
 test('ce que le service a écrit autour du lot (clé recalculée, balises réécrites) est remis aussi : le mot-clé et les textes redeviennent ce qu’ils étaient, la clé quittée reste un renvoi', async () => {
   const m = nouvelle();
-  const motCle = m.un('SELECT id, libelle, cle FROM mot_cle WHERE verrou = 0 ORDER BY id LIMIT 1');
+  const motCle = m.un('SELECT id, libelle, cle FROM v_mot_cle WHERE verrou = 0 ORDER BY id LIMIT 1');
   const proposition = await deposer(m, unLot([{ table: 'mot_cle', cle: { id: motCle.id }, operation: 'modifier', avant: { libelle: motCle.libelle }, apres: { libelle: `Zqxw renommé ${process.pid}` } }],
     { nature: 'decision', decision: 'R232' }));
-  const tables = ['mot_cle', 'page', 'metier', 'sort', 'capacite']; // les textes que les balises de la clé peuvent citer
+  // les textes que les balises de la clé peuvent citer ; le repère, où se lit le nom d'un mot-clé sans page ni sort (migration 0136)
+  const tables = ['mot_cle', 'repere', 'page', 'metier', 'sort', 'capacite'];
   const avantApplication = dump(m.db, tables);
   const anciennesAvant = dump(m.db, ['mot_cle_ancienne_cle']).mot_cle_ancienne_cle;
   const applique = ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}));
@@ -270,7 +271,7 @@ test('ce que le service a écrit autour du lot (clé recalculée, balises rééc
 
 test('une colonne que le service recalcule vers une troisième valeur pendant la remise n’est pas écrasée : elle est listée « gardée » avec la valeur trouvée', async () => {
   const m = nouvelle();
-  const motCle = m.un('SELECT id, libelle, cle FROM mot_cle WHERE verrou = 0 ORDER BY id LIMIT 1');
+  const motCle = m.un('SELECT id, libelle, cle FROM v_mot_cle WHERE verrou = 0 ORDER BY id LIMIT 1');
   const [c1, c2] = m.db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 2').all().map((c) => c.id);
   const proposition = await deposer(m, unLot([{ table: 'mot_cle', cle: { id: motCle.id }, operation: 'modifier', avant: { libelle: motCle.libelle }, apres: { libelle: `Zqxw tierce ${process.pid}` } }]));
   const applique = ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}));
@@ -282,12 +283,17 @@ test('une colonne que le service recalcule vers une troisième valeur pendant la
   const cleAvecCategorie = m.un('SELECT cle FROM mot_cle WHERE id = ?', motCle.id).cle;
 
   const vu = await apercu(m, applique.id);
+  // depuis la migration 0136, le nom se remet sur l'élément du mot-clé (son repère, ou sa page) : cette ligne est remise ; la ligne du mot-clé ne porte plus
+  // que la clé recalculée, gardée avec la valeur trouvée
+  const nom = vu.operations.find((o) => (o.table === 'repere' && o.cle.mot_cle_id === motCle.id) || (o.table === 'page' && o.apercu?.colonnes?.some((c) => c.colonne === 'titre')));
+  assert.equal(nom?.etat, 'remise', JSON.stringify(vu.operations));
   const op = vu.operations.find((o) => o.table === 'mot_cle' && o.cle.id === motCle.id);
-  assert.equal(op.etat, 'remise', JSON.stringify(op));
+  assert.equal(op.etat, 'gardee', JSON.stringify(op));
+  assert.deepEqual(op.ecarts.map((e) => e.colonne), ['cle'], JSON.stringify(op));
   const trouvee = m.un('SELECT cle FROM mot_cle WHERE id = ?', motCle.id).cle;
   assert.equal(trouvee, cleAvecCategorie, 'l’aperçu n’écrit rien');
   const annule = ok(await m.appel('POST', adresse(applique.id, 'annuler/'), {}));
-  assert.equal(m.un('SELECT libelle FROM mot_cle WHERE id = ?', motCle.id).libelle, motCle.libelle, 'le libellé est remis');
+  assert.equal(m.un('SELECT libelle FROM v_mot_cle WHERE id = ?', motCle.id).libelle, motCle.libelle, 'le libellé est remis');
   const apres = m.un('SELECT cle FROM mot_cle WHERE id = ?', motCle.id).cle;
   assert.notEqual(apres, clePosee);
   const ecart = annule.bilan.annulation.operations.find((o) => o.table === 'mot_cle' && o.cle.id === motCle.id && o.ecarts)?.ecarts.find((e) => e.colonne === 'cle');

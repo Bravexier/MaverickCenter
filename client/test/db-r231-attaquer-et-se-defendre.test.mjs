@@ -16,6 +16,7 @@ import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { lireBalises } from '../src/lib/mots-cles-balises.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
@@ -42,8 +43,19 @@ const cites = (texte, markdown = false) => lireBalises(texte, { markdown }).map(
 // Le registre de la 0112 nomme un mot-clé par son id texte d'alors, que ses balises citent ; depuis la migration 0113, l'id est un entier figé (le
 // registre de la 0113 fait le pont : idDuMotCleNomme), les balises citent la clé (avecLesClesDe) et l'abréviation est un synonyme (0115).
 const idDe = (table, id) => (table === 'mot_cle' ? idDuMotCleNomme(id) : id);
-const cellule = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v;
-const motCle = (db, ancienId) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(ancienId));
+// (le libellé, l'adresse, la définition, la couleur et l'icône d'un mot-clé se lisent sur son élément depuis la migration 0136)
+const RETIREES_DU_MOT_CLE = ['libelle', 'url', 'description', 'couleur', 'icone'];
+const cellule = (db, t) => (t.table === 'mot_cle' && RETIREES_DU_MOT_CLE.includes(t.col)
+  ? (lireUnMotCle(db, idDe(t.table, t.cle.id)) ?? undefined)?.[t.col]
+  : db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v);
+// libellé, adresse, définition et couleur d'un mot-clé se lisent sur son élément (page, sort ou repère : migration 0136)
+const motCle = (db, ancienId) => lireUnMotCle(db, idDuMotCleNomme(ancienId)) ?? undefined;
+/** Le mot-clé dont l'adresse est `url` (lue sur son élément), ou undefined. */
+const motsClesLus = new WeakMap();
+const motCleDeLAdresse = (db, url) => {
+  if (!motsClesLus.has(db)) motsClesLus.set(db, motsClesDeLaBase(db, { elements: false }));
+  return motsClesLus.get(db).find((m) => m.url === url);
+};
 const cleDe = (db, ancienId) => motCle(db, ancienId)?.cle;
 /**
  * Le fragment `fragment` est dans `texte`, ses balises écrites avec la clé d'aujourd'hui (avecLesClesDe) ou telles que la migration les a écrites : une
@@ -103,8 +115,8 @@ test('R231 (4) : chaque caractéristique a son mot-clé, de sa couleur ; sa déf
     const refs = cites(m.description);
     const competences = db.prepare('SELECT id FROM competence WHERE caracteristique_id = ? ORDER BY ordre').all(k.id).map((c) => cleDe(db, idDeCompetence(c.id)));
     // le mot-clé de chaque magie innée de la caractéristique : celui qui mène à sa page (jamais `sang`, la barre)
-    const magies = db.prepare("SELECT k.cle FROM magie m JOIN mot_cle k ON k.url = '/' || m.id || '/' WHERE m.caracteristique_id = ? ORDER BY m.ordre").all(k.id)
-      .map((r) => r.cle);
+    const magies = db.prepare('SELECT id FROM magie WHERE caracteristique_id = ? ORDER BY ordre').all(k.id)
+      .map((r) => motCleDeLAdresse(db, `/${r.id}/`)?.cle).filter(Boolean);
     assert.ok(magies.length > 0, `${k.id} : une magie innée au moins`);
     assert.deepEqual(refs, [cleDe(db, 'caracteristiques'), ...competences, ...magies], k.id);
   }
@@ -150,7 +162,7 @@ testDeLaMixte('R231 (1) : titres, anciens titres en alias, « Localisation des d
     // l'ancien titre en alias (R184 (2))
     assert.ok(db.prepare('SELECT 1 FROM alias WHERE page_id = ? AND cle = ?').get(id, normalize(titre.avant)), `${id} : ancien titre en alias`);
     // le mot-clé de la page (son adresse y mène) prend le titre ; verrouillé, id et adresse inchangés
-    const m = db.prepare('SELECT * FROM mot_cle WHERE url = ?').get(adresse(id));
+    const m = motCleDeLAdresse(db, adresse(id));
     assert.deepEqual([m.libelle, m.cle, m.verrou], [page.titre, normalize(page.titre), 1], id);
   }
   assert.deepEqual(db.prepare('SELECT page_id FROM alias WHERE cle = ?').all(normalize('Localisation des dégâts')).map((r) => r.page_id), [ATTAQUE]);

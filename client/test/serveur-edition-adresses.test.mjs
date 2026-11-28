@@ -19,6 +19,7 @@ import { ADRESSES_DES_PAGES_SERVIES } from '../src/lib/equipement.mjs';
 import { ADRESSES_RENOMMEES_DU_GUIDE, DECOUVRIR, NOMS_RESERVES } from '../src/lib/livres.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { PAGE_DES_REGLES } from '../src/lib/metiers.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
   ancrerUnMotCle, baseDAncrage, poserCapacite, poserClasse, poserMagie, poserMetier, poserMotCle, poserOnglet, poserPageLisible, poserRace, poserSort,
@@ -98,12 +99,13 @@ function parUnLot(m, ...ecritures) {
 const etat = (m, id, motCle = null) => ({
   segment: m.db.prepare('SELECT slug_adresse AS s FROM page WHERE id = ?').get(id).s,
   adresse: adresseDeLaPageEnBase(m.db, id),
-  url: motCle === null ? null : m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(motCle).url,
+  url: motCle === null ? null : urlDe(m, motCle),
 });
 const anciennes = (m) => m.db.prepare('SELECT adresse, page_id FROM page_ancienne_adresse ORDER BY adresse').all().map((l) => ({ adresse: l.adresse, page_id: l.page_id }));
 /** Les lignes du journal sur `table` : l'annulation et le rejeu relisent ce que le suivi a écrit. */
 const auJournal = (m, table) => m.db.prepare('SELECT count(*) AS n FROM modification WHERE table_nom = ?').get(table).n;
-const urlDe = (m, motCle) => m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(motCle).url;
+// l'adresse du mot-clé, lue sur son élément (migration 0136)
+const urlDe = (m, motCle) => lireUnMotCle(m.db, motCle).url;
 
 /** Une page des Règles et son mot-clé ancré. */
 function poserUnePageDesRegles(db, titre, { verrou = false, sansMotCle = false } = {}) {

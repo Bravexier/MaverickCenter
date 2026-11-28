@@ -9,7 +9,7 @@ import { appliquerUnLot, enregistrer, ErreurEdition, NOTIONS } from '../serveur/
 import { decisionsCitees } from '../serveur/edition-lots.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { adresseDesRegles, idDesRegles, nom, outilsDesCas } from './aide-adresses-lots.mjs';
@@ -37,7 +37,8 @@ function poserLeMonde(db) {
 /** Un mot-clé du type Notion, décrit, coloré, avec une icône (et ses synonymes). */
 function poserNotion(db, libelle, { synonymes = [] } = {}) {
   const id = poserMotCle(db, { libelle, categories: ['Notion'], synonymes });
-  db.prepare("UPDATE mot_cle SET description = ?, couleur = '#336699', icone = 'monnaie:rf' WHERE id = ?").run(`Définition d’essai de ${libelle}.`, id);
+  // la définition, la couleur et l'icône d'un mot-clé sans page ni sort sont dans son repère (migration 0136)
+  db.prepare("UPDATE repere SET definition = ?, couleur = '#336699', icone = 'monnaie:rf' WHERE mot_cle_id = ?").run(`Définition d’essai de ${libelle}.`, id);
   return id;
 }
 
@@ -55,7 +56,13 @@ const ecrire = (m, ...operations) => enregistrer(m.db, { page: 'essai/', operati
 /** La création d'un mot-clé par une route du site (`voie: 'route'`, que seules donnent serveur/api.mjs et serveur/ressources.mjs) : la notion et sa page. */
 const parLaRoute = (m, valeurs) => enregistrer(m.db, { page: 'essai/', operations: [{ op: 'creer', entite: 'mot_cle', valeurs }] }, { voie: 'route' });
 
-const motCle = (m, id) => m.db.prepare('SELECT id, libelle, cle, description, couleur, icone, url, verrou, monnaie_id FROM mot_cle WHERE id = ?').get(id);
+/** Le mot-clé tel qu'il se lit (lib/mots-cles-db.mjs#lireUnMotCle : nom, adresse, définition, couleur et icône sur son élément, migration 0136), sans l'élément. */
+const motCle = (m, id) => {
+  const k = lireUnMotCle(m.db, id);
+  if (!k) return undefined;
+  const { element, ...lu } = k;
+  return lu;
+};
 const ligneDe = (m, id) => (motCle(m, id) ? { ...motCle(m, id) } : null);
 const categories = (m, id) => m.db.prepare('SELECT categorie_id AS c FROM mot_cle_categorie WHERE mot_cle_id = ? ORDER BY c').all(id).map((l) => l.c);
 const synonymes = (m, id) => m.db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre').all(id).map((l) => l.libelle);
@@ -157,9 +164,9 @@ test('refus, sans numéro de décision et sans rien écrire : mot-clé inconnu, 
     assert.equal(refus(m, () => pageDe(m, libre, { id: 'guide/zephyrion-autre' })).statut, 409, 'un identifiant qui n’est pas tiré de son nom');
     // un nom sans lettre ni chiffre (que la création d'un mot-clé refuse) : posé à la main le temps de l'essai
     const libelle = motCle(m, libre).libelle;
-    m.db.prepare("UPDATE mot_cle SET libelle = '« ? »' WHERE id = ?").run(libre);
+    m.db.prepare("UPDATE repere SET nom = '« ? »' WHERE mot_cle_id = ?").run(libre);
     assert.equal(refus(m, () => pageDe(m, libre)).statut, 409);
-    m.db.prepare('UPDATE mot_cle SET libelle = ? WHERE id = ?').run(libelle, libre);
+    m.db.prepare('UPDATE repere SET nom = ? WHERE mot_cle_id = ?').run(libelle, libre);
     assert.equal(page(m, idDesRegles(nom('Libre'))), undefined);
   },
 ));
@@ -168,12 +175,13 @@ test('refus, sans numéro de décision et sans rien écrire : un mot-clé qui m�
   (db) => {
     const monde = poserLeMonde(db);
     const adresse = poserNotion(db, nom('Ailleurs'));
-    db.prepare("UPDATE mot_cle SET url = '/regles/zephyrion-autre-page/' WHERE id = ?").run(adresse);
+    db.prepare("UPDATE repere SET adresse = '/regles/zephyrion-autre-page/' WHERE mot_cle_id = ?").run(adresse);
     // le sort et la magie : leur mot-clé sans adresse, pour que le refus vienne du lien et non de l'adresse
     const duSort = poserMotCle(db, { libelle: nom('Eclair'), categories: ['Notion'] });
     poserMagie(db, 'zephyrion-magie', nom('Magie'));
     const sort = poserSort(db, 'zephyrion-magie', nom('Eclair'));
     db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(duSort, sort);
+    db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(duSort); // un repère ne double jamais un sort (migration 0136)
     const deLaMagie = poserMotCle(db, { libelle: nom('Arcane'), categories: ['Notion'] });
     poserMagie(db, 'zephyrion-arcane', nom('Arcane'), { mot_cle_id: deLaMagie });
     return { ...monde, adresse, duSort, sort, deLaMagie };
@@ -245,7 +253,7 @@ test('notion nouvelle : le mot-clé (type et définition donnés), sa page et l�
     const e = refus(m, () => parLaRoute(m, { libelle: nom('Vague'), categories: [notion] }));
     assert.equal(e.statut, 409, e.message);
     assert.equal(page(m, idDesRegles(nom('Vague'))), undefined);
-    assert.equal(m.db.prepare('SELECT id FROM mot_cle WHERE libelle = ?').get(nom('Vague')), undefined);
+    assert.equal(m.db.prepare('SELECT id FROM v_mot_cle WHERE libelle = ?').get(nom('Vague')), undefined);
     // le nom d'une page : refusé de même
     assert.equal(refus(m, () => parLaRoute(m, { libelle: nom('ouverture'), categories: [notion] })).statut, 409);
   },

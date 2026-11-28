@@ -25,6 +25,7 @@ import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('conflits');
 const ouvertes = [];
@@ -89,11 +90,16 @@ before(() => {
   // les deux métiers du scénario (le site de dev supprime des métiers) : leur ligne, leur page et ce qui les compose
   for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
   // le métier renommé du scénario, sans ancre (R309) : son mot-clé suivrait le nom et ajouterait des lignes au lot, que la fixture, faite sur un contenu sans ancre, ne connaît pas
-  r0db.prepare('UPDATE page SET mot_cle_id = NULL WHERE id = ?').run(ACROBATE);
+  // (depuis la migration 0136, un mot-clé sans page ni sort a un repère : celui de la page le reçoit, avec son nom, sa définition, sa couleur et son
+  // icône, vidées sur la page, sans adresse)
+  const ancre = r0db.prepare('SELECT mot_cle_id, titre, definition, couleur, icone FROM page WHERE id = ?').get(ACROBATE);
+  r0db.prepare('UPDATE page SET mot_cle_id = NULL, definition = NULL, couleur = NULL, icone = NULL WHERE id = ?').run(ACROBATE);
+  if (ancre?.mot_cle_id != null) {
+    r0db.prepare('INSERT INTO repere (mot_cle_id, nom, definition, couleur, icone) VALUES (?, ?, ?, ?, ?)').run(ancre.mot_cle_id, ancre.titre, ancre.definition, ancre.couleur, ancre.icone);
+  }
   // et, pour la même raison, sans mot-clé qui mène à sa ligne (R316) : sur un contenu ancré, l'adresse de ce mot-clé suivrait le renommage du métier
-  r0db.prepare('UPDATE mot_cle SET url = NULL WHERE url = ?').run(adresseDeLaPageEnBase(r0db, ACROBATE));
-  r0db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)')
-    .run(ETIQUETTE.id, ETIQUETTE.libelle, ETIQUETTE.cle, 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
+  r0db.prepare('UPDATE repere SET adresse = NULL WHERE adresse = ?').run(adresseDeLaPageEnBase(r0db, ACROBATE));
+  poserUnMotCle(r0db, { id: ETIQUETTE.id, libelle: ETIQUETTE.libelle, cle: ETIQUETTE.cle, description: 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).' });
   r0db.close();
   S.dossier = chemin('scenario');
   const { chemin: vivante } = preparerBaseVivante({ regles: r0, dossier: S.dossier });
@@ -603,6 +609,9 @@ test('une rupture « enfant » : le mot-clé supprimé sur le site de dev, que l
   const r = resoudreLeConflit(db, { lot: S.etiquette, empreinte: d.empreinte, choix: tousLesChoix(d, 2) });
   assert.equal(r.nouveau_lot, null);
   assert.equal(lire(db, 'SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ?', ETIQUETTE.id).n, 1);
+  // la suppression de son repère, notée par le même lot (migration 0136), suit celle du mot-clé : ni conflit à elle, ni modification saine qui partirait seule
+  assert.deepEqual(d.saines.filter((s) => s.table === 'repere'), [], 'le repère suit son mot-clé');
+  assert.equal(lire(db, 'SELECT count(*) AS n FROM repere WHERE mot_cle_id = ?', ETIQUETTE.id).n, 1, 'le mot-clé gardé garde son repère, donc son nom');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 

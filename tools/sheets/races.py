@@ -5,7 +5,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/sheets/races.py --dump <races-index.json> --dump <fiche-auto-v15.json> --dump <les-races.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
-    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; le mot-clé protégé `race` s'écrit avec son libellé courant)
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut, avec page.sql, sort.sql et repere.sql voisins depuis la migration 0136 qui y a mis le nom ; le mot-clé protégé `race` s'écrit avec son libellé courant)
 
 Les trois dumps sont obligatoires ; chacun est reconnu à son contenu (l'ordre des `--dump` n'a pas d'importance) :
 l'index des races (une seule feuille), la fiche personnage (onglets « Race », « Bonus Race », « Accessibilité de

@@ -387,7 +387,13 @@ cette catégorie n'existe pas dans la base, la notion est créée sans type, san
 (`champ: "url"`). Refusés aussi en `409`, sans rien écrire : un nom qui est déjà le titre, l'adresse ou un alias d'une page, un homonyme sans catégorie
 qui le distingue de chacun des autres (`champ: "categories"`), une clé déjà prise ou un libellé qui s'écrit comme le synonyme d'un autre mot-clé
 (`champ: "libelle"`). Relié à sa page, le mot-clé ne se modifie, ne se fusionne ni ne se supprime ensuite à son adresse (`409`) : renommer sa page le
-renomme. Pas de corps d'exemple dans la description OpenAPI. `categories-de-mots-cles/` : une catégorie se crée,
+renomme. Pas de corps d'exemple dans la description OpenAPI. Depuis la migration 0136 (chantier 4,
+[`chantier-retrait-des-colonnes.md`](chantier-retrait-des-colonnes.md)), `libelle`, `url`, `description`, `couleur` et `icone` ne sont plus des
+colonnes de la table `mot_cle` : ils se lisent sur l'élément du mot-clé (le titre, l'adresse, la définition, la couleur et l'icône de sa page ; sinon
+le nom et la place de son sort, qui n'a ni définition, ni couleur, ni icône ; sinon son repère, table `repere`). La ressource les rend sous les mêmes
+noms, dans la liste, le détail et le catalogue (après les colonnes de la table), et ils se filtrent, se cherchent et se trient comme des colonnes
+(`serveur/ressources.mjs#structureServie`, registre `champsDeLElement`). Par `PATCH`, ils ne s'écrivent que sur un mot-clé à repère (le service les
+écrit dans son repère) ; le nom et l'adresse d'un mot-clé de page ou de sort se lisent sur elle ou lui (`409`). `categories-de-mots-cles/` : une catégorie se crée,
 se renomme (`PATCH`, `libelle` unique, sinon `409`) et ne se supprime que vide (`409` avec `mots_cles` sinon). La ref d'une balise du glossaire peut
 être la clé, le libellé que porte un seul mot-clé, ou un synonyme, quelle que soit la casse (un libellé de plusieurs homonymes : `400`, `refs` et
 `homonymes`) ; elle s'enregistre par la clé, le texte tapé gardé tel quel (« {{ic}} » → « {{instant-cast|ic}} », R233 (10) :

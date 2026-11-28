@@ -11,6 +11,7 @@ import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, lire } from '../serveur/edition-lots.mjs';
 import { CATEGORIE_RACIALE } from '../src/lib/classe-champs.mjs';
 import { nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { nom, outilsDesCas, photo, TOUS_LES_VERROUS } from './aide-adresses-lots.mjs';
 import { ancrerUnMotCle, poserClasse, poserRace } from './aide-ancrage.mjs';
@@ -24,10 +25,10 @@ const photoDe = (db) => ({
   elements: db.prepare('SELECT id, nom, NULL AS nom_cle FROM race UNION ALL SELECT id, nom, nom_cle FROM classe ORDER BY id').all().map((e) => ({ ...e })),
 });
 
-/** La page `id`, son mot-clé `motCle` et ses anciennes adresses. */
+/** La page `id`, son mot-clé `motCle` (son nom et son adresse, lus sur son élément depuis la migration 0136) et ses anciennes adresses. */
 const etat = (db, { id, motCle }) => ({
   page: { ...db.prepare('SELECT titre, titre_cle, slug_adresse FROM page WHERE id = ?').get(id) },
-  motCle: { ...db.prepare('SELECT libelle, url FROM mot_cle WHERE id = ?').get(motCle) },
+  motCle: (({ libelle, url }) => ({ libelle, url }))(lireUnMotCle(db, motCle)),
   anciennes: db.prepare('SELECT adresse FROM page_ancienne_adresse WHERE page_id = ? ORDER BY adresse').all(id).map((a) => a.adresse),
 });
 

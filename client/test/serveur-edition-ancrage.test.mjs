@@ -16,6 +16,7 @@ import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { messageDeLAncrage } from '../src/lib/lots-rendu.mjs';
 import { CATEGORIES_NOUVELLES, TYPE_UNIQUE } from '../src/lib/mots-cles-ancrage.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { baseDAncrage, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -83,7 +84,8 @@ async function apresLaChaine() {
 
 const lancer = (m, options = {}) => preparerLAncrage(m.base, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT, ...options });
 const ancre = (m, table, id) => m.db.prepare(`SELECT mot_cle_id AS a FROM "${table}" WHERE id = ?`).get(id).a;
-const nomDe = (m, id) => m.db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle;
+// le nom se lit sur l'élément du mot-clé : sa page, sinon son sort, sinon son repère (migration 0136)
+const nomDe = (m, id) => lireUnMotCle(m.db, id)?.libelle;
 const lotsR309 = (m) => m.db.prepare("SELECT id, etat, lot_id FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid").all();
 const rangDansLeJournal = (m, lotId, table, cle) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lotId, table)
   .find((l) => Object.entries(cle).every(([c, v]) => JSON.parse(l.cle)[c] === v))?.rang;
@@ -222,20 +224,26 @@ test('une ligne annulée reste écartée et listée, avec tout son groupe', asyn
   assert.deepEqual((await lancer(m)).lots, [], 'rien n’est redéposé');
 });
 
-test('un renommage annulé garde l’ancien nom, signalé comme écart', async () => {
+// Depuis la migration 0136, un mot-clé ancré lit son nom sur sa page : c'est l'ancre qui le renomme, et le lot n'a plus de ligne de renommage (sa ligne de
+// mot-clé ne change que la clé, qui revient avec l'ancre). Annuler l'ancre rend l'état d'avant : son repère, avec son ancien nom (décisions B4-2, B3-4).
+test('une ancre qui renomme, annulée, rend l’ancien nom et son repère ; la page reste sans ancre, signalée comme écart', async () => {
   const m = await apresLaChaine();
   const { motCleRace, race } = m.monde;
-  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: motCleRace });
+  const { lot, rang } = ligneDuLot(m, 'page', { id: race });
   const nouveau = nomDe(m, motCleRace);
+  const cle = ligneDuLot(m, 'mot_cle', { id: motCleRace });
+  assert.equal(cle.lot, lot, 'la clé du mot-clé change avec son ancre');
+  assert.equal(lire(m.db, lot).lignes.find((l) => l.n === cle.rang).annulable_seule, false, 'seule, sa clé ne s’annule pas');
   annulerUneLigne(m.db, lot, rang);
   const ancien = nomDe(m, motCleRace);
   assert.notEqual(ancien, nouveau);
+  assert.equal(lireUnMotCle(m.db, motCleRace).element.table, 'repere', 'son repère est revenu');
+  assert.equal(lire(m.db, lot).lignes.find((l) => l.n === cle.rang).etat, 'comme_avant', 'sa clé est revenue');
   const r = await lancer(m);
   assert.deepEqual(r.lots, []);
   assert.equal(nomDe(m, motCleRace), ancien, 'il garde son ancien nom');
-  assert.ok(r.ecartees.includes(`nom:${motCleRace}`), r.ecartees.join(', '));
-  assert.match(messageDeLAncrage(r), /ancien nom/);
-  assert.equal(ancre(m, 'page', race), motCleRace, 'l’ancre, elle, reste');
+  assert.ok(r.ecartees.includes(`page:${race}`), r.ecartees.join(', '));
+  assert.equal(ancre(m, 'page', race), null, 'la page reste sans ancre (B4-2)');
 });
 
 test('un lot passé « annulé » par ses lignes : la ligne gardée n’est pas écartée, son mot-clé suit encore un renommage de sa page (R291, R309)', async () => {
@@ -243,7 +251,8 @@ test('un lot passé « annulé » par ses lignes : la ligne gardée n’est pas 
   const [gardee, annulee] = m.monde.capacites;
   const motGarde = ancre(m, 'page', gardee);
   // le site a changé le mot-clé de la première : son groupe ne s'annule plus, et le lot passe « annulé » quand l'autre groupe part
-  m.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(nomInvente('description corrigée'), motGarde);
+  // (depuis la migration 0136, sa définition se lit sur sa page, que la ligne du lot ne porte pas : le changement est fait sur la ligne même du mot-clé)
+  m.db.prepare('UPDATE mot_cle SET verrou = 1 WHERE id = ?').run(motGarde);
   const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: ancre(m, 'page', annulee) });
   annulerUneLigne(m.db, lot, rang);
   const apres = m.db.prepare('SELECT etat, bilan FROM lot_de_changements WHERE id = ?').get(lot);
@@ -259,25 +268,28 @@ test('un lot passé « annulé » par ses lignes : la ligne gardée n’est pas 
   m.db.prepare('UPDATE page SET titre = ? WHERE id = ?').run(titre, gardee);
   const r = await lancer(m);
   assert.equal(r.arret, null, r.arret?.motif);
-  assert.equal(r.lots.length, 1, 'l’alignement du nom est déposé');
+  // depuis la migration 0136, le nom d'un mot-clé ancré se lit sur sa page : il suit le renommage sans lot d'alignement
+  assert.deepEqual(r.lots, [], 'aucun lot : le nom suit la page');
   assert.equal(nomDe(m, motGarde), titre);
   assert.ok(!r.ecartees.includes(`page:${gardee}`), r.ecartees.join(', '));
   assert.ok(r.ecartees.includes(`page:${annulee}`), r.ecartees.join(', '));
   assert.equal(ancre(m, 'page', annulee), null, 'la ligne annulée n’est pas refaite');
 });
 
-test('un renommage annulé seul, un autre nom donné ensuite, puis le lot entier annulé : la ligne reste écartée, la relance ne dépose rien, le nom choisi reste (R291, R309)', async () => {
+// (le renommage est l'ancre depuis la migration 0136 : voir le test précédent)
+test('une ancre qui renomme, annulée seule, un autre nom donné ensuite, puis le lot entier annulé : la ligne reste écartée, la relance ne dépose rien, le nom choisi reste (R291, R309)', async () => {
   const m = await apresLaChaine();
-  const { motCleRace } = m.monde;
-  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: motCleRace });
+  const { motCleRace, race } = m.monde;
+  const { lot, rang } = ligneDuLot(m, 'page', { id: race });
   annulerUneLigne(m.db, lot, rang);
   const choisi = nomInvente('nom choisi');
-  m.db.prepare('UPDATE mot_cle SET libelle = ? WHERE id = ?').run(choisi, motCleRace);
+  // (le nom se donne sur l'élément du mot-clé : son repère, revenu avec l'annulation de l'ancre)
+  m.db.prepare('UPDATE repere SET nom = ? WHERE mot_cle_id = ?').run(choisi, motCleRace);
   recalculerLesCles(m.db);
   for (const l of lotsR309(m).reverse()) annuler(m.db, l.id, {});
 
   const cles = lignesAnnuleesDeLAncrage(m.db);
-  assert.ok(cles.has(`nom:${motCleRace}`), [...cles].join(', '));
+  assert.ok(cles.has(`page:${race}`), [...cles].join(', '));
   const avant = lotsR309(m).length;
   const r = await lancer(m);
   assert.deepEqual(r.lots, [], 'rien n’est redéposé');
@@ -353,8 +365,10 @@ test('« à trancher » arrive dans le résultat', async () => {
   const m = nouvelle();
   const [page] = m.monde.capacites;
   // deux mots-clés à la même adresse : l'action ne devine pas lequel prend la page
-  const [a, b] = m.db.prepare('SELECT id FROM mot_cle WHERE url IS NULL AND verrou = 0 ORDER BY id LIMIT 2').all().map((l) => l.id);
-  for (const id of [a, b]) m.db.prepare('UPDATE mot_cle SET url = ? WHERE id = ?').run(adresseDeLaPage(page), id);
+  // (deux mots-clés à repère : l'adresse d'un mot-clé sans page ni sort se lit sur son repère, migration 0136)
+  const [a, b] = m.db.prepare('SELECT r.mot_cle_id AS id FROM repere r JOIN mot_cle k ON k.id = r.mot_cle_id WHERE r.adresse IS NULL AND k.verrou = 0 ORDER BY r.mot_cle_id LIMIT 2')
+    .all().map((l) => l.id);
+  for (const id of [a, b]) m.db.prepare('UPDATE repere SET adresse = ? WHERE mot_cle_id = ?').run(adresseDeLaPage(page), id);
   const r = await preparerLAncrage(m.base, { dossier: m.dossier, ...OUVERT });
   const cas = r.a_trancher.find((x) => x.id === page);
   assert.ok(cas, JSON.stringify(r.a_trancher));

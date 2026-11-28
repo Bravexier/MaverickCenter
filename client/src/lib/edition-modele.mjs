@@ -326,6 +326,11 @@ export const TABLES = {
       effets: { type: 'texte', libelle: 'Effets secondaires' },
       remarque: { type: 'texte', libelle: 'Remarque' },
       texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
+      // la définition, la couleur et l'icône du mot-clé que le sort ancre (migration 0136, décision R309 (14) et (17)), comme celles de la page : elles
+      // se corrigent par un lot, ou par le mot-clé (serveur/edition-mots-cles.mjs), qui les écrit ici
+      definition: { type: 'texte', libelle: 'Définition' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
   },
   // Bestiaire (/bestiaire/, components/bestiaire/ ; demande du propriétaire : créer, modifier, supprimer un monstre) : une espèce, une carte de monstre,
@@ -656,6 +661,20 @@ export const TABLES = {
       icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
   },
+  // le repère d'un mot-clé qui n'a ni page ni sort (migrations 0135 et 0136, docs/chantier-retrait-des-colonnes.md §2) : son nom, son adresse, sa
+  // définition (un texte simple, comme l'était mot_cle.description), sa couleur et son icône. Les champs de `mot_cle` ci-dessus restent ses champs
+  // LOGIQUES : le service les lit et les écrit sur l'élément du mot-clé (sa page, sinon son sort, sinon ce repère : serveur/edition-mots-cles.mjs
+  // #ecrireSurLElement) ; une écriture directe du repère suit les mêmes refus (serveur/edition.mjs#REPERE)
+  repere: {
+    libelle: 'Repère de mot-clé',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Mot-clé', requis: true },
+      definition: { type: 'texte', libelle: 'Définition' },
+      adresse: { type: 'adresse', libelle: 'Lien' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
+    },
+  },
   // les catégories des mots-clés (migration 0113, décision R232 (5) : « sur le site de dev, une catégorie s'ajoute, se renomme, et se supprime si elle
   // est vide ») : un libellé unique (deux catégories ne s'écrivent pas de la même façon : libelle_cle) ; renommée, elle recalcule la clé des
   // mots-clés homonymes qui la portent (serveur/edition-mots-cles.mjs)
@@ -696,6 +715,11 @@ export const TABLES = {
       // le résumé d'une page du guide (sommaires, recherche ; demandé à la création d'une page des Règles) : pas celui d'une page du Codex (sa première
       // phrase, tirée du document) ni d'une page typée (refait depuis ses tables) : serveur/edition.mjs#PAGE le refuse
       resume: { type: 'ligne', libelle: 'Résumé', requis: true },
+      // la définition, la couleur et l'icône du mot-clé que la page désigne (migration 0136, docs/chantier-retrait-des-colonnes.md §3) : toute page qui a
+      // un mot-clé, pas seulement le guide et le Codex ; aucune route ne les écrit, ils se corrigent par un lot (serveur/edition.mjs#PAGE)
+      definition: { type: 'texte', libelle: 'Définition' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
   },
   // Les onglets eux-mêmes (regles_onglet) : l'ordre et la page d'ouverture sont fixes (réponse « Non, fixe », R184), seul le TITRE se modifie (R319 (5),

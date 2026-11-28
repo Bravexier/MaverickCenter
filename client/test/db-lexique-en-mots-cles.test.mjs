@@ -21,7 +21,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cleDeLigne, historiqueSite, texteDeCle } from '../src/lib/historique-site.mjs';
 import { fautesDuSynonyme, formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
-import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
@@ -43,7 +43,8 @@ const registres = () => (lus ??= {
   r0115: JSON.parse(readFileSync(new URL('../../data/migrations/0115-mots-cles-synonymes.json', import.meta.url), 'utf8')),
 });
 const entier = (ancien) => idDuMotCleNomme(ancien);
-const motCle = (ancien) => (entier(ancien) === undefined ? undefined : db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(entier(ancien)));
+// le nom et la définition se lisent sur l'élément du mot-clé (migration 0136)
+const motCle = (ancien) => (entier(ancien) === undefined ? undefined : lireUnMotCle(db, entier(ancien)) ?? undefined);
 const historique = historiqueSite(db);
 // les lots déjà rapatriés quand la 0090 a été écrite (liste figée, fixtures/lots-avant-0090.json) : tout autre lot, quelle que soit sa date (fait_le
 // est l'heure du lot sur le site de dev, pas celle de son rapatriement : scripts/db-appliquer-edition.mjs), retouche ce qu'elle a écrit
@@ -55,9 +56,33 @@ function lectureDe0090(base, entrees) {
   const apres = entrees.filter((e) => !LOTS_AVANT_0090.has(e.lot));
   const opsApres = (table, texte) => apres.filter((e) => e.table === table && e.texte === texte);
   const actuelle = (table, cle) => base.prepare(`SELECT * FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(cle));
+  const ancienneStructure = base.prepare('PRAGMA table_info(mot_cle)').all().some((c) => c.name === 'libelle'); // avant la migration 0136
   const valeur = (table, cle, colonne) => {
+    if (table === 'mot_cle' && !ancienneStructure) return valeurDuMotCle(cle.id, colonne);
     const c = cleDeLigne(base, table, cle);
     return avantOps(opsApres(table, JSON.stringify(c)), actuelle(table, c) ?? null)?.[colonne];
+  };
+  /**
+   * Depuis la migration 0136, le nom, l'adresse, la définition, la couleur et l'icône d'un mot-clé se lisent sur son élément (lireUnMotCle) : la valeur
+   * d'aujourd'hui est celle de l'élément, et les modifications du site se défont sur mot_cle (traces d'avant la 0136), sur son repère (nom, adresse,
+   * définition, couleur, icône) et sur sa page depuis que le site l'y a ancré (titre, définition, couleur, icône).
+   */
+  const RENOMMEES = { repere: { nom: 'libelle', adresse: 'url', definition: 'description', couleur: 'couleur', icone: 'icone' },
+    page: { titre: 'libelle', definition: 'description', couleur: 'couleur', icone: 'icone' } };
+  const renommer = (valeurs, table) => valeurs && Object.fromEntries(Object.entries(valeurs).filter(([k]) => k in RENOMMEES[table]).map(([k, v]) => [RENOMMEES[table][k], v]));
+  const valeurDuMotCle = (id, colonne) => {
+    const lu = lireUnMotCle(base, id);
+    const { element = null, ...ligne } = lu ?? {};
+    // les modifications de sa page qui suivent son ancrage (la ligne qui donne ce mot-clé à la page), seules
+    const dePage = element?.table === 'page' ? apres.filter((e) => e.table === 'page' && e.texte === JSON.stringify({ id: element.id })) : [];
+    const pageApresLAncrage = new Set(dePage.slice(dePage.findLastIndex((e) => e.apres?.mot_cle_id === id) + 1));
+    const ops = apres.flatMap((e) => {
+      if (e.table === 'mot_cle' && e.texte === JSON.stringify({ id })) return [e];
+      if (e.table === 'repere' && e.texte === JSON.stringify({ mot_cle_id: id }) && e.operation !== 'inserer') return [{ ...e, operation: 'modifier', avant: renommer(e.avant, 'repere') }];
+      if (pageApresLAncrage.has(e)) return [{ ...e, operation: 'modifier', avant: renommer(e.avant, 'page') }];
+      return [];
+    });
+    return avantOps(ops, lu ? ligne : null)?.[colonne];
   };
   const lignes = (table) => {
     const vues = new Set();
@@ -162,7 +187,7 @@ testDeLaMixte('0090 : les renvois du Lexique citent leur mot-clé ; ses doublons
 });
 
 testDeLaMixte('0090 : les définitions venues du Lexique sont des textes de case — ni lien, ni gras, ni italique, ni mode complet ; balises sous forme canonique', () => {
-  const tous = db.prepare('SELECT id, libelle, cle, description FROM mot_cle').all();
+  const tous = db.prepare('SELECT id, libelle, cle, description FROM v_mot_cle').all();
   const vocabulaire = vocabulaireDesMotsCles(tous);
   const { CREES, FUSIONNES } = creesEtFusionnes();
   const venus = new Set([...CREES, ...FUSIONNES]);

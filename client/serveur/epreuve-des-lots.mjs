@@ -19,6 +19,7 @@ import { controlerLeLot, FORMAT_DU_LOT, tablesDeLEdition } from '../src/lib/lot-
 import { annuler, appliquer, deposer, lire, previsualiserLAnnulation, refuser, traduire } from './edition-lots.mjs';
 import { ErreurEdition } from './edition.mjs';
 import { structure } from './edition-journal.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // La base : lire, comparer
@@ -212,7 +213,9 @@ export function lotDeLaDifference(diff, db, { titre, nature, decision, auteur })
     for (const l of diff[table].inserees) {
       let k = cleDe_(table, l);
       let ligne = copieDe(l);
-      if (cle.length === 1 && estEntiere(types[cle[0]])) {
+      // une clé qui est aussi une clé étrangère (repere.mot_cle_id) n'a pas de numéro à elle : c'est celui de la ligne citée (boucle ci-dessous)
+      const cleEtrangere = clesEtrangeres(db, table).some((f) => f.colonne === cle[0]);
+      if (cle.length === 1 && estEntiere(types[cle[0]]) && !cleEtrangere) {
         const jeton = `${table}_${l[cle[0]]}`;
         if (!jetons.has(table)) jetons.set(table, new Map());
         jetons.get(table).set(l[cle[0]], jeton);
@@ -371,6 +374,43 @@ export function defaireLaMigration(db, operations) {
   return retirees;
 }
 
+/**
+ * Les migrations que l'épreuve refait (0122 à 0124) sont écrites pour la structure de leur temps : leur SQL et leurs lots écrivent le nom, l'adresse, la
+ * définition, la couleur et l'icône d'un mot-clé dans ses colonnes, que la migration 0136 a retirées (docs/chantier-retrait-des-colonnes.md). Traduire leur
+ * SQL vers l'élément n'est pas possible en général : l'épreuve se refait donc sur une copie remise à la structure d'avant ce retrait (la 135). Les cinq
+ * colonnes reviennent sur `mot_cle`, remplies de ce que son élément porte (lib/mots-cles-db.mjs#motsClesDeLaBase : sa page, son sort ou son repère) ;
+ * celles que la 0136 a ajoutées à la page et au sort partent ; le repère est vidé (à la 135, aucun n'était posé) ; v_mot_cle reprend sa forme d'alors.
+ * Le service lit et écrit une base à cette structure comme avant (serveur/edition-mots-cles.mjs#nomSurLElement faux). Sans effet sur une base qui a déjà
+ * les colonnes. Rend vrai si la base a été remise.
+ */
+export function remettreLesColonnesDuMotCle(db) {
+  const colonnesDe = (table) => db.prepare(`SELECT name FROM pragma_table_info('${table}')`).all().map((c) => c.name);
+  if (!colonnesDe('mot_cle').length || colonnesDe('mot_cle').includes('libelle')) return false;
+  const lus = motsClesDeLaBase(db, { elements: false });
+  db.exec('PRAGMA foreign_keys = OFF');
+  db.exec('BEGIN');
+  try {
+    db.exec('DROP VIEW IF EXISTS v_mot_cle');
+    for (const c of ['libelle', 'description', 'couleur', 'url', 'icone']) db.exec(`ALTER TABLE mot_cle ADD COLUMN ${c} TEXT`);
+    const ecrire = db.prepare('UPDATE mot_cle SET libelle = ?, description = ?, couleur = ?, url = ?, icone = ? WHERE id = ?');
+    for (const m of lus) ecrire.run(m.libelle, m.description ?? null, m.couleur ?? null, m.url ?? null, m.icone ?? null, m.id);
+    for (const table of ['page', 'sort']) {
+      for (const c of ['definition', 'couleur', 'icone']) if (colonnesDe(table).includes(c)) db.exec(`ALTER TABLE "${table}" DROP COLUMN ${c}`);
+    }
+    if (colonnesDe('repere').length) db.exec('DELETE FROM repere');
+    db.exec(`CREATE VIEW v_mot_cle AS
+  SELECT m.id, m.libelle, m.cle, (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages, m.description, m.couleur, m.url
+  FROM mot_cle m`);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON');
+  }
+  return true;
+}
+
 /** Rejoue une migration de données (son SQL) dans `db`, comme `db:migrate` : une transaction, clés étrangères suspendues puis contrôlées. */
 export function rejouerLaMigration(db, sql) {
   db.exec('PRAGMA foreign_keys = OFF');
@@ -485,7 +525,8 @@ export async function refaireLEpreuve({ chemin, dossier, migrations, sqlDe }) {
   copyFileSync(chemin, join(dossier, 'depart.db'));
   const ouvert = new DatabaseSync(join(dossier, 'depart.db'));
   ouvert.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
-  bilan.avant = { posterieur_retire: {} };
+  // la structure du temps des migrations refaites (remettreLesColonnesDuMotCle)
+  bilan.avant = { posterieur_retire: {}, colonnes_du_mot_cle_remises: remettreLesColonnesDuMotCle(ouvert) };
   for (const m of [...migrations].reverse()) {
     const retirees = defaireLaMigration(ouvert, operationsDeLaMigration(m.lot, m.complement));
     for (const [t, n] of Object.entries(retirees)) bilan.avant.posterieur_retire[t] = (bilan.avant.posterieur_retire[t] ?? 0) + n;

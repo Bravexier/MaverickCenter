@@ -15,6 +15,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { installerLePlan } from '../src/lib/livres.mjs';
 import { bilan, comparerBases, estUneTableAutre, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
 import { defaireLesLotsEnSuspens, journalExporte, lotGardeEnSuspens, lotsRetenus } from './edition-journal.mjs';
@@ -36,12 +37,29 @@ export const DUREE_MAX_RUN = 3 * 3_600_000;
 
 export class ErreurNotes extends ErreurHttp {}
 
-/** Les tables de `noms` qui existent dans la base, lues entières : { tables: { nom: lignes[] } }. */
+/**
+ * Les tables de `noms` qui existent dans la base, lues entières : { tables: { nom: lignes[] } }. La table `mot_cle` garde ses colonnes et reçoit
+ * les cinq champs que la note compare (`libelle`, `url`, `description`, `couleur`, `icone`) lus dans la structure de la base (motsClesDeLaBase) :
+ * colonnes du mot-clé avant la migration 0136 (la production), son élément (page, sinon sort, sinon repère) après (le site de dev). Une valeur
+ * seulement déplacée par la migration se lit donc pareil des deux côtés (docs/chantier-retrait-des-colonnes.md §4).
+ */
 export function lireTables(db, noms = TABLES_LUES, { autres = false } = {}) {
   const existantes = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
   const tables = {};
   for (const t of noms) if (existantes.has(t)) tables[t] = db.prepare(`SELECT * FROM "${t}"`).all().map((r) => ({ ...r }));
+  if (tables.mot_cle) tables.mot_cle = avecLesChampsDeLElement(db, tables.mot_cle);
   return autres ? { tables, autres: lireAutresTables(db, existantes) } : { tables };
+}
+
+/** Les champs d'un mot-clé que la migration 0136 a portés sur son élément. */
+const CHAMPS_DE_L_ELEMENT = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+/** Les lignes de `mot_cle`, chacune avec les champs de CHAMPS_DE_L_ELEMENT lus par motsClesDeLaBase (sans les textes des éléments). */
+function avecLesChampsDeLElement(db, lignes) {
+  const lus = new Map(motsClesDeLaBase(db, { elements: false }).map((m) => [m.id, m]));
+  return lignes.map((r) => {
+    const m = lus.get(r.id);
+    return { ...r, ...Object.fromEntries(CHAMPS_DE_L_ELEMENT.map((c) => [c, m ? (m[c] ?? null) : (r[c] ?? null)])) };
+  });
 }
 
 /** Les autres tables de contenu (que la comparaison ne décrit pas) : { <table>: { colonnes, cle, lignes } }. */

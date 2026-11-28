@@ -19,14 +19,17 @@ import { indexDesAdresses, pageDeLAdresse, slugsDAdresse } from './adresses-db.m
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { slugDAdresse } from './livres.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
-import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 import { buildIndex, extractLinks, resolve } from './wikilinks-resolution.mjs';
 
 /** Un lien écrit vers une page des onglets (/regles/<slug>/, /regles/avancees/<slug>/) ou vers son identifiant (guide/<slug>) : le slug. */
 const ADRESSE_ECRITE = /(?<![a-z0-9_-])(regles\/(?:avancees\/)?|guide\/)([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9_-])/g;
 
-/** Les colonnes de mot_cle qui ne sont pas un texte (migration 0098) : l'adresse et la couleur. */
-const COLONNES_DU_LIEN = ['url', 'couleur'];
+/**
+ * Les colonnes d'un mot-clé qui ne sont pas un texte : son adresse et sa couleur (migration 0098), son icône (0116). Sur la ligne du mot-clé avant la
+ * migration 0136 ; depuis, sur son élément : son repère (`adresse`), sa page (sans adresse écrite : elle se calcule).
+ */
+const COLONNES_DU_LIEN = Object.freeze({ mot_cle: ['url', 'couleur', 'icone'], repere: ['adresse', 'couleur', 'icone'], page: ['couleur', 'icone'] });
 
 /** Les colonnes de clé d'une table (primaire et étrangères) : jamais lues comme un texte. */
 function colonnesDeCle(db, table) {
@@ -73,6 +76,8 @@ export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = fals
   const slugDe = (id) => slugDAdresse(id, segments.get(id) ?? null);
   const parAdresse = new Map([...parSlug.values()].filter((id) => slugDe(id) !== id.slice('guide/'.length)).map((id) => [slugDe(id), id]));
   const vues = new Set();
+  const motsCles = motsClesDeLaBase(db, { elements: false });
+  const libelleDuMotCle = new Map(motsCles.map((m) => [m.id, m.libelle]));
   const ajouter = (id, { table, cle, colonne, comment, ligne = null }) => {
     if (!voulues.has(id)) return;
     if (table === 'page' && cle.id === id) return; // la page elle-même
@@ -83,14 +88,15 @@ export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = fals
     const libelle = page ? page.titre
       : table === 'evenement_extrait' ? `Chronologie › ${ligne?.evenement_titre ?? cle.evenement_id}`
         : table === 'mot_cle' && comment === 'mot-cle' ? `Mot-clé « ${ligne?.libelle ?? cle.id} » (son lien)`
-          : `${nomDeTable(table) ?? table} ${Object.values(cle).join(' › ')}`;
+          // le repère d'un mot-clé (migration 0136) : nommé par le mot-clé, dont il porte le nom et la définition
+          : table === 'repere' ? `Mot-clé « ${libelleDuMotCle.get(cle.mot_cle_id) ?? cle.mot_cle_id} »`
+            : `${nomDeTable(table) ?? table} ${Object.values(cle).join(' › ')}`;
     sortie.get(id).push({ table, cle, colonne, comment, page: page ? { id: page.id, titre: page.titre } : null, libelle, exemple: page?.statut === 'example' });
   };
 
   // les mots-clés qui mènent à une des pages demandées (migration 0098 : mot_cle.url ; aucun sur une base d'avant) ; une page absente entre dans
   // l'index à son adresse, sans quoi le mot-clé qui y mène, et ses balises, ne la citeraient plus (liensRompusParLeLot)
   const adresses = indexDesAdresses(db, { exemples: true, enPlus: enPlus.map((p) => p.id) });
-  const motsCles = motsClesDeLaBase(db, { elements: false });
   const vocabulaire = vocabulaireDesMotsCles(motsCles);
   const pageDuMotCle = new Map();
   const propres = new Map();
@@ -113,8 +119,9 @@ export function citationsDesPages(db, ids, { absentes = [], sansSonMotCle = fals
   for (const t of textesDeLaBase(db)) (parTable.get(t.table) ?? parTable.set(t.table, []).get(t.table)).push(t);
   for (const [table, textes] of parTable) {
     const cles = colonnesDeCle(db, table);
-    // l'adresse d'un mot-clé (mot_cle.url, migration 0098) cite sa page comme le mot-clé (plus haut), pas comme une adresse écrite dans un texte
-    const colonnes = textes.filter((t) => !cles.has(t.colonne) && !(table === 'mot_cle' && COLONNES_DU_LIEN.includes(t.colonne))).map((t) => t.colonne);
+    // l'adresse d'un mot-clé (mot_cle.url, migration 0098 ; repere.adresse depuis la 0136) cite sa page comme le mot-clé (plus haut), pas comme une
+    // adresse écrite dans un texte
+    const colonnes = textes.filter((t) => !cles.has(t.colonne) && !(COLONNES_DU_LIEN[table] ?? []).includes(t.colonne)).map((t) => t.colonne);
     if (!colonnes.length) continue;
     const pk = textes[0].cle;
     const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
@@ -172,14 +179,13 @@ export const citationsBloquantes = (citations) => citations.filter((c) => !c.exe
 /**
  * Décision R221 : les mots-clés verrouillés (mot_cle.verrou = 1, migration 0110 ; R218, R219) dont l'adresse mène à la page, parmi ses `citations`
  * (comment 'mot-cle', citationsDesPages) : [{ id, libelle }], dans l'ordre des citations. Leur adresse ne se change ni ne se vide depuis le site :
- * la page ne s'y supprime pas. Vide sur une base d'avant la 0110 (sans la colonne).
+ * la page ne s'y supprime pas. Vide sur une base d'avant la 0110 (sans la colonne). Le libellé est celui de l'élément du mot-clé depuis la migration
+ * 0136 (lib/mots-cles-db.mjs#lireUnMotCle).
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function motsClesVerrouillesQuiYMenent(db, citations) {
   const ids = [...new Set(citations.filter((c) => c.table === 'mot_cle' && c.comment === 'mot-cle').map((c) => c.cle.id))];
-  if (!ids.length || !db.prepare('PRAGMA table_info(mot_cle)').all().some((c) => c.name === 'verrou')) return [];
-  const lire = db.prepare('SELECT id, libelle FROM mot_cle WHERE id = ? AND verrou = 1');
-  return ids.map((id) => lire.get(id)).filter(Boolean).map((m) => ({ id: m.id, libelle: m.libelle }));
+  return ids.map((id) => lireUnMotCle(db, id)).filter((m) => m?.verrou === 1).map((m) => ({ id: m.id, libelle: m.libelle }));
 }
 
 /** Décision R221 : le refus de supprimer `nom` (une page, un métier, un don) vers lequel mènent les mots-clés verrouillés `motsCles` (non vide). */

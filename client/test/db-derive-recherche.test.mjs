@@ -10,9 +10,11 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const lancer = (script, args) => {
@@ -25,12 +27,12 @@ test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une 
   baseDeDepart(base);
   const db = new DatabaseSync(base);
   // le mot-clé de la race (migration 0098 : celui qui mène à sa page ; verrouillé, son libellé ne change pas sur le site), cité par sa clé (0113)
-  const orios = db.prepare("SELECT cle, libelle FROM mot_cle WHERE url = '/races/orios/'").get();
+  // (le nom et l'adresse se lisent sur l'élément du mot-clé : migration 0136)
+  const orios = motsClesDeLaBase(db, { elements: false }).find((m) => m.url === '/races/orios/');
   assert.equal(orios?.libelle, 'Orios', 'le mot-clé de la race');
   // un mot-clé d'essai dont la clé ne partage aucun mot avec son libellé, et un autre en mode complet (sa définition s'affiche)
-  const insMotCle = db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)');
-  insMotCle.run(9101, 'Zorglubienne écarlate', 'qxwv-lien', null);
-  insMotCle.run(9102, 'Essai complet', 'qxwv-complet', 'Définition qui cite la Brumolithe.');
+  poserUnMotCle(db, { id: 9101, libelle: 'Zorglubienne écarlate', cle: 'qxwv-lien' });
+  poserUnMotCle(db, { id: 9102, libelle: 'Essai complet', cle: 'qxwv-complet', description: 'Définition qui cite la Brumolithe.' });
   const page = db.prepare("SELECT id FROM page WHERE statut <> 'example' ORDER BY id LIMIT 1").get().id;
   db.prepare('UPDATE page SET titre = ?, titre_cle = ?, resume = ?, corps_md = ? WHERE id = ?').run(
     'Page d’essai', normalize('Page d’essai'), 'Résumé qui cite {{qxwv-lien|la Fulgurance}}.',

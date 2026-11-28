@@ -46,6 +46,29 @@ const structurePourLeLot = (db) => (table) => {
   }
 };
 
+/** Les colonnes du repère et les champs logiques du mot-clé qu'elles portent (migration 0136, docs/chantier-retrait-des-colonnes.md §1). */
+const CHAMPS_DU_REPERE = Object.freeze({ nom: 'libelle', adresse: 'url', definition: 'description', couleur: 'couleur', icone: 'icone' });
+
+/**
+ * Depuis la migration 0136, un mot-clé créé nu naît avec son repère (son nom, sa définition…) : la différence en fait deux insertions, `mot_cle` (sans nom)
+ * puis `repere`. Le lot dit la création en une seule, comme avant le retrait des colonnes : l'insertion du mot-clé reçoit les valeurs de son repère sous
+ * ses champs logiques (`libelle`, `url`, `description`, `couleur`, `icone` : ce qu'un lot `maverick-lot/1` écrit pour créer un mot-clé, dont le service
+ * crée le repère), et celle du repère part. Le repère d'un mot-clé qui existait déjà garde son opération. Le repère d'un mot-clé créé cite le numéro à
+ * donner de son mot-clé (serveur/epreuve-des-lots.mjs#lotDeLaDifference : sa clé est celle du mot-clé).
+ */
+function sansLeRepereDesCrees(operations) {
+  const id = (v) => JSON.stringify(v);
+  const crees = new Map(operations.filter((o) => o.table === 'mot_cle' && o.operation === 'inserer').map((o) => [id(o.cle.id), o]));
+  const fondus = new Set();
+  for (const o of operations) {
+    const m = o.table === 'repere' && o.operation === 'inserer' ? crees.get(id(o.cle.mot_cle_id)) : null;
+    if (!m) continue;
+    m.apres = { ...m.apres, ...Object.fromEntries(Object.entries(CHAMPS_DU_REPERE).filter(([c]) => (o.apres[c] ?? null) !== null).map(([c, champ]) => [champ, o.apres[c]])) };
+    fondus.add(o);
+  }
+  return operations.filter((o) => !fondus.has(o));
+}
+
 /**
  * Le lot de changements (« maverick-lot/1 ») de ce qui diffère entre `avant` et `apres` (tables de contenu), d'en-tête `entete` ({ titre, nature, decision?, auteur? }),
  * contrôlé comme au dépôt sur une base où le service est la source (toutes les tables ouvertes) : lève une Error qui dit les erreurs, avec leur rang, si le service
@@ -66,7 +89,7 @@ export function lotDesChangements(avant, apres, entete) {
     const colonnes = Object.keys(o.apres).filter((c) => !colonneDerivee(o.table, o.cle, c));
     return colonnes.length ? { ...o, avant: Object.fromEntries(colonnes.map((c) => [c, o.avant[c]])), apres: Object.fromEntries(colonnes.map((c) => [c, o.apres[c]])) } : null;
   };
-  const operations = lot.operations.map(sansDerivees).filter(Boolean);
+  const operations = sansLeRepereDesCrees(lot.operations.map(sansDerivees).filter(Boolean));
   lot.operations = [...operations.filter(motCle), ...operations.filter((o) => !motCle(o))];
   const { valide, erreurs } = controlerLeLot(lot, { structure: structurePourLeLot(apres), ouvertHorsEdition: true });
   if (!valide) throw new Error(`lot refusé : ${erreurs.map((e) => `${e.rang ?? 'en-tête'} : ${e.message}`).join(' ; ')}`);

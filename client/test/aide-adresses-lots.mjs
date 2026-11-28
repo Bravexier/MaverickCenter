@@ -10,6 +10,7 @@ import { enregistrer, ErreurEdition } from '../serveur/edition.mjs';
 import { decisionsCitees, deposerEtAppliquer } from '../serveur/edition-lots.mjs';
 import { nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ancrerUnMotCle, baseDAncrage, poserPageLisible, recalculerLesCles } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -29,7 +30,8 @@ export function poserUnePageDesRegles(db, titre) {
 export const photo = (db) => ({
   pages: db.prepare('SELECT id, titre, slug_adresse FROM page ORDER BY id').all().map((p) => ({ ...p })),
   anciennes: db.prepare('SELECT adresse, page_id FROM page_ancienne_adresse ORDER BY adresse').all().map((a) => ({ ...a })),
-  motsCles: db.prepare('SELECT id, libelle, url FROM mot_cle ORDER BY id').all().map((k) => ({ ...k })),
+  // le nom et l'adresse d'un mot-clé se lisent sur son élément (page, sort ou repère) depuis la migration 0136
+  motsCles: motsClesDeLaBase(db, { elements: false }).map(({ id, libelle, url }) => ({ id, libelle, url })),
 });
 
 /** Les numéros des lignes d'un lot appliqué (edition-lots.mjs#lire) qui sont de la table `table` (les lignes disent le nom lisible de leur table). */

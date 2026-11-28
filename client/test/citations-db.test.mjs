@@ -12,6 +12,7 @@ import { citationsBloquantes, citationsDe, citationsDesPages } from '../src/lib/
 import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { ADRESSES_RENOMMEES_DU_GUIDE } from '../src/lib/livres.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 /** Une base au schéma de data/schema.sql (clés étrangères non contrôlées : seules les lignes utiles à l'essai). */
 function baseDEssai() {
@@ -35,8 +36,9 @@ function baseDEssai() {
   p('races/doublon', 'Doublon', 'b');
   p('guide/ambigu', 'Ambigu', 'Voir [[Doublon]].');
   db.prepare("INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/la-cible', 0, 'Autre nom', 'autre-nom')").run();
-  // un autre texte de la base (la définition d'un mot-clé) et une colonne de clé qui porte l'identifiant (jamais lue comme un texte)
-  db.prepare("INSERT INTO mot_cle (id, libelle, cle, description) VALUES (9001, 'Essai', 'essai', 'Voir guide/la-cible.')").run();
+  // un autre texte de la base (la définition d'un mot-clé, sur son repère depuis la migration 0136) et une colonne de clé qui porte l'identifiant
+  // (jamais lue comme un texte)
+  poserUnMotCle(db, { id: 9001, libelle: 'Essai', cle: 'essai', description: 'Voir guide/la-cible.' });
   db.prepare("INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'guide/la-cible', 'guide/la-cible', 0, 'docs')").run();
   // la légende d'un bloc de la chronologie
   db.prepare("INSERT INTO evenement (id, rang, titre, titre_cle, epoque, origine, source_ref) VALUES ('fondation', 1, 'La fondation', 'la-fondation', 'debut', 'chronologie', 'essai')").run();
@@ -50,7 +52,7 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   const vues = citations.map((c) => `${c.table} ${JSON.stringify(c.cle)} ${c.colonne} ${c.comment}${c.exemple ? ' (exemple)' : ''}`);
   assert.deepEqual(vues.sort(), [
     'evenement_extrait {"evenement_id":"fondation","rang":1} page_id chronologie',
-    'mot_cle {"id":9001} description adresse',
+    'repere {"mot_cle_id":9001} definition adresse',
     'page {"id":"guide/par-l-adresse"} corps_md adresse',
     'page {"id":"guide/par-l-alias"} corps_md lien',
     'page {"id":"guide/par-l-id"} corps_md lien',
@@ -64,7 +66,7 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
   assert.equal(citations.find((c) => c.cle.id === 'guide/par-le-titre').libelle, 'Par le titre');
   assert.deepEqual(citations.find((c) => c.cle.id === 'guide/par-le-titre').page, { id: 'guide/par-le-titre', titre: 'Par le titre' });
   assert.equal(citations.find((c) => c.table === 'evenement_extrait').libelle, 'Chronologie › La fondation');
-  assert.equal(citations.find((c) => c.table === 'mot_cle').libelle, 'Mot-clé 9001');
+  assert.equal(citations.find((c) => c.table === 'repere').libelle, 'Mot-clé « Essai »', 'le repère d’un mot-clé : nommé par le mot-clé');
   // la page d'exemple en dernier, et elle seule ne bloque pas
   assert.equal(citations.at(-1).exemple, true);
   assert.equal(citationsBloquantes(citations).length, citations.length - 1);
@@ -74,9 +76,9 @@ test('citationsDe : lien du wiki (titre, alias, identifiant, résumé), adresse 
 test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (texte mis en forme ou de case, hors code), et le mot-clé lui-même par son lien', () => {
   const db = baseDEssai();
   const page = db.prepare("INSERT INTO page (id, type, slug, titre, titre_cle, resume, corps_md, statut, origine) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'docs')");
-  db.prepare('INSERT INTO mot_cle (id, libelle, cle, url) VALUES (?, ?, ?, ?)').run(9002, 'La cible', 'la-cible', `${adresseDeLaPage('guide/la-cible')}#une-ancre`);
-  db.prepare("INSERT INTO mot_cle (id, libelle, cle, url) VALUES (9003, 'Route', 'route', '/fiche/')").run();
-  db.prepare("INSERT INTO mot_cle (id, libelle, cle) VALUES (9004, 'Sans lien', 'sans-lien')").run();
+  poserUnMotCle(db, { id: 9002, libelle: 'La cible', cle: 'la-cible', url: `${adresseDeLaPage('guide/la-cible')}#une-ancre` });
+  poserUnMotCle(db, { id: 9003, libelle: 'Route', cle: 'route', url: '/fiche/' });
+  poserUnMotCle(db, { id: 9004, libelle: 'Sans lien', cle: 'sans-lien' });
   page.run('guide/par-balise', 'guide', 'par-balise', 'Par balise', 'par-balise', 'Voir {{la-cible}}, {{route}} et {{sans-lien}}.', 'draft');
   page.run('guide/balise-en-code', 'guide', 'balise-en-code', 'Balise en code', 'balise-en-code', 'Pas une balise : `{{la-cible}}`.', 'draft');
   page.run('lore/exemple-balise', 'lore', 'exemple-balise', 'Exemple balise', 'exemple-balise', 'Voir {{la-cible|ici}}.', 'example');
@@ -90,8 +92,9 @@ test('migration 0098 : la balise d’un mot-clé qui mène à la page la cite (t
     'page {"id":"lore/exemple-balise"} corps_md balise (exemple)',
   ].sort());
   assert.equal(citations.find((c) => c.comment === 'mot-cle').libelle, 'Mot-clé « La cible » (son lien)');
-  // l'adresse du mot-clé n'est pas lue comme une adresse écrite dans un texte ; un mot-clé vers une route sans page ne cite rien
-  assert.ok(!citations.some((c) => c.table === 'mot_cle' && c.cle.id === 9002 && c.comment === 'adresse'));
+  // l'adresse du mot-clé (celle de son repère, migration 0136) n'est pas lue comme une adresse écrite dans un texte ; un mot-clé vers une route sans
+  // page ne cite rien
+  assert.ok(!citations.some((c) => c.table === 'repere' && c.colonne === 'adresse'));
   assert.deepEqual(citationsBloquantes(citations).filter((c) => c.comment === 'balise').length, 2);
   db.close();
 });

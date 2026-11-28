@@ -16,7 +16,7 @@ import { poserDesFiches } from './aide-fiches-sentinelles.mjs';
 import { baseDesRegles, nouveauChemin, nouveauDossier } from './aide-structure-sur-place.mjs';
 
 const livre = lireLesMigrations({ avecSql: false });
-/** La version de la base refaite (celle des règles d'essai : la dernière migration, ou au-dessus quand les migrations mixtes sont sorties et que le schema.sql est le plancher). */
+/** La version de la base refaite (celle des règles d'essai : au-dessus du schema.sql, le plancher : test/aide-structure-sur-place.mjs#livraisonDesTests). */
 const V = (() => {
   const db = new DatabaseSync(baseDesRegles(), { readOnly: true });
   try {

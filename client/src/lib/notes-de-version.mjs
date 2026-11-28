@@ -17,7 +17,7 @@ import { adresseDeLaPage, adresseQuiSuit } from './adresses-db.mjs';
 import { lireBalises, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { cheminDeLAdresse } from './mots-cles-liens.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
-import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES, TABLES_PAS_ENCORE_LUES } from './tables-de-la-base.mjs';
+import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
@@ -83,7 +83,9 @@ export { TABLES_DES_NOTES };
 export const TABLES_LUES = [
   // `type_sort` (migration 0131) n'a pas de définition : elle ne dit que le mot-clé que chaque type ancre (R309), jamais listé ; la lire ici la retire des
   // « autres tables » (qui en feraient « Table type_sort ajoutée », puis une ligne `mot_cle_id` par type ancré) et dit à la ligne condensée des mots-clés
-  // ajoutés (comparerLesMotsClesAncres) quels types ancrent un mot-clé
+  // ajoutés (comparerLesMotsClesAncres) quels types ancrent un mot-clé. `repere` (migrations 0135 et 0136) n'a pas de ligne à lui non plus : son nom, son
+  // adresse, sa définition, sa couleur et son icône se lisent sur la ligne du mot-clé (serveur/notes-de-version.mjs#lireTables), qui dit leur changement ;
+  // le lire ici le retire des « autres tables » (« Table repere ajoutée », une ligne par repère déplacé du mot-clé)
   'sort', 'type_sort', 'magie', 'magie_role', 'magie_specialisation', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
@@ -91,7 +93,7 @@ export const TABLES_LUES = [
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'mot_cle_synonyme', 'mot_cle_categorie',
-  'panneau_regles', 'panneau_regles_bloc',
+  'repere', 'panneau_regles', 'panneau_regles_bloc',
   'composant_onglet', 'potion', 'niveau_alchimie', 'annonce', 'regles_onglet', 'regles_onglet_entree',
 ];
 
@@ -100,6 +102,14 @@ const GROUPES_DE_COMPOSANT = {
   materiau: 'Matériaux', gemme: 'Gemmes', bois: 'Bois', ingredient_alchimie: 'Ingrédients d’alchimie', produit: 'Produits non monétaires', materiel: 'Matos',
 };
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
+/**
+ * Les colonnes de la page et du sort qui portent la définition, la couleur et l'icône de leur mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md
+ * §3 et §4 ; R309 (14)) : elles n'ont pas de ligne à elles, leur changement se dit par la ligne du mot-clé (serveur/notes-de-version.mjs#lireTables les y
+ * lit, comme le nom et l'adresse), avec la même phrase qu'avant la migration.
+ */
+const COLONNES_DU_MOT_CLE_SUR_LA_PAGE = Object.freeze(['definition', 'couleur', 'icone']);
+const sansLesColonnesDuMotCle = (table) => colonnesDe(table).filter((c) => !COLONNES_DU_MOT_CLE_SUR_LA_PAGE.includes(c.colonne));
+const colonnesDeLaPage = () => sansLesColonnesDuMotCle('page');
 /**
  * Les colonnes d'une amélioration que le site de dev modifie, selon sa cible : le coût et l'effet écrits d'une amélioration d'arme ou d'armure, les quatre
  * cases d'une amélioration de bouclier (demande du propriétaire, 2026-10-17 : son coût et son effet écrits en sont refaits, ils ne sont pas listés).
@@ -158,7 +168,7 @@ const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.
  */
 const DEFINITIONS = [
   {
-    table: 'sort', domaine: 'sorts', cle: ['id'], colonnes: colonnesDe('sort'), genre: 'Sort',
+    table: 'sort', domaine: 'sorts', cle: ['id'], colonnes: sansLesColonnesDuMotCle('sort'), genre: 'Sort',
     groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => r.nom,
     ordre: (r, x) => [x.ordre('magie', r.magie_id), r.niveau ?? 0, r.ordre ?? 0, r.nom],
   },
@@ -232,7 +242,7 @@ const DEFINITIONS = [
     valeur: (colonne, v, x) => (colonne.startsWith('test_carac_') && v ? x.nom('caracteristique', v) : v),
   },
   {
-    table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
+    table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDeLaPage(), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
     // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », les onglets des Règles — « Fiche de personnage », « Mécaniques générales »,
     // « Les combats », « Exploration » : le plan de la base, R184 et R185 —, « Guide du MJ »), dans l'ordre du plan
@@ -257,7 +267,7 @@ const DEFINITIONS = [
   },
   {
     // les pages du Codex (lore tiré du Google Doc « CODEX Maverick », famille docs : lib/edition-modele.mjs#texteDePageModifiable)
-    table: 'page', domaine: 'codex', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du Codex',
+    table: 'page', domaine: 'codex', cle: ['id'], colonnes: colonnesDeLaPage(), genre: 'Page du Codex',
     filtre: (r) => r.type === 'lore' && r.origine === 'docs' && r.statut !== 'example',
     groupe: () => null, entite: (r) => r.titre, ordre: (r) => [r.titre], resume: (n) => `${n} pages du Codex`,
   },
@@ -465,7 +475,10 @@ const DEFINITIONS = [
   // suit le nom), il est dit par celui de l'élément (`dejaDit`) ; renommé sans que son élément change, ou sans élément, il garde sa ligne. R316 (choix 9) : son
   // adresse qui suit celle d'une page renommée (ancré ou menant à une section de la page) est dite par la ligne de la page. Chantier 3 : un mot-clé de
   // notion (sans élément dans la production) qui reçoit sa page voit son adresse devenir celle de la page : une ligne « Lien » par notion serait une
-  // répétition de la ligne condensée (`dejaDit`, colonne `url`) ; sa définition corrigée par un lot (R309 (17)) garde sa ligne.
+  // répétition de la ligne condensée (`dejaDit`, colonne `url`) ; sa définition corrigée par un lot (R309 (17)) garde sa ligne. Chantier 4 (migration 0136) :
+  // `libelle`, `url`, `description`, `couleur` et `icone` sont lus dans la structure de chaque base (colonnes du mot-clé en production, élément du mot-clé
+  // sur le site de dev : serveur/notes-de-version.mjs#lireTables) ; une valeur seulement déplacée du mot-clé vers sa page ou son repère est la même des
+  // deux côtés et ne fait pas de ligne.
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
     groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
@@ -1079,10 +1092,9 @@ const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle', 'page_ancienne_
 /**
  * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
  * lien_candidat), traces techniques (TRACES_TECHNIQUES) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute
- * ou retire d'elle-même ; et les tables pas encore lues (lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES : un repère n'est que la copie des colonnes de son
- * mot-clé, que la note dit déjà par la ligne du mot-clé).
+ * ou retire d'elle-même.
  */
-export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES, ...TABLES_PAS_ENCORE_LUES]);
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES]);
 export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
   && !/^(page|entite)_fts(_|$)/.test(nom);
 

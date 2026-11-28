@@ -10,16 +10,17 @@ import { test } from 'node:test';
 import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
 import { motsClesPropres } from '../serveur/edition-ancrage.mjs';
-import { appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
+import { ClesCroisees, clesTenues, laCleSuitLeNom } from '../serveur/edition-mots-cles.mjs';
+import { ancienneEcritureDesColonnesDuMotCle, appliquerUnLot, ErreurEdition, enregistrer, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, deposerEtAppliquer, lire, netsDuLot, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDeLaPageEnBase, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { mentionsDe } from '../src/lib/mentions-des-mots-cles.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { baseDAncrage, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
+import { ancrerUnMotCle, baseDAncrage, poserMagie, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
 import { copieDeLaBaseLegere } from './aide-base-legere.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -59,7 +60,8 @@ function poserLaCategorieGuide(m) {
   return id;
 }
 const ancre = (m, table, id) => m.db.prepare(`SELECT mot_cle_id AS a FROM "${table}" WHERE id = ?`).get(id)?.a ?? null;
-const motCle = (m, id) => m.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
+// le nom, l’adresse et la définition se lisent sur l’élément du mot-clé (page, sort ou repère : migration 0136)
+const motCle = (m, id) => lireUnMotCle(m.db, id) ?? undefined;
 const categoriesDe = (m, id) => m.db.prepare('SELECT categorie_id AS c FROM mot_cle_categorie WHERE mot_cle_id = ? ORDER BY c').all(id).map((l) => l.c);
 const nombreDeMotsCles = (m) => m.db.prepare('SELECT count(*) AS n FROM mot_cle').get().n;
 const nombreDeLots = (m) => m.db.prepare('SELECT count(*) AS n FROM modification_lot').get().n;
@@ -68,9 +70,12 @@ const corpsDe = (m, id) => m.db.prepare('SELECT corps_md FROM page WHERE id = ?'
 const unePageDuGuide = (m) => m.db.prepare("SELECT id FROM page WHERE type = 'guide' AND statut <> 'example' ORDER BY id LIMIT 1").get().id;
 const citer = (m, pageId, cle) => m.db.prepare("UPDATE page SET corps_md = corps_md || ? WHERE id = ?").run(`\n\nVoir {{${cle}}}.\n`, pageId);
 
-/** Chaque clé de la base est celle que la règle donne (R232, R309). */
-function clesJustes(m) {
-  const vocabulaire = motsClesDeLaBase(m.db);
+/**
+ * Chaque clé de la base est celle que la règle donne (R232, R309). `aTrancher` : les mots-clés dont la clé a gardé sa valeur parce que la règle ne savait
+ * pas la calculer (nom homonyme, cycle d'échange : décision 1 de B3, var/chantier4/contrats-B.md), hors du calcul.
+ */
+function clesJustes(m, aTrancher = []) {
+  const vocabulaire = motsClesDeLaBase(m.db).filter((x) => !aTrancher.includes(x.id));
   const attendues = clesDesMotsCles(vocabulaire, new Map(categoriesDesMotsCles(m.db).map((c) => [c.id, c.libelle])));
   for (const x of vocabulaire) assert.equal(x.cle, attendues.get(x.id), `clé du mot-clé ${x.id}`);
 }
@@ -176,20 +181,24 @@ test('renommer une page renomme le mot-clé, sa clé et ses balises ; son adress
   }
 });
 
-test('un renommage que la règle refuse laisse le mot-clé tel quel, la page est renommée', () => {
+// Depuis la migration 0136, le nom du mot-clé se lit sur sa page : il suit toujours (un renommage n'est jamais refusé) ; la règle des clés ne sachant pas
+// distinguer le nouveau nom, la clé garde sa valeur (décision 1 de B3, var/chantier4/contrats-B.md ; choix 7 du chantier 1).
+test('un renommage que la règle des clés refuse garde la clé du mot-clé ; la page est renommée, le nom suit', () => {
   const m = reelle();
   try {
     poserLaCategorieGuide(m);
     const titre = nom('garde');
     const id = creerPageDesRegles(m, titre);
     const motCleId = ancre(m, 'page', id);
+    const cle = motCle(m, motCleId).cle;
     // un autre mot-clé du même type porte déjà le nom voulu
     const pris = nom('pris');
     ecrire(m, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: pris, categories: [categorie(m, 'Guide')] } }]);
     ecrire(m, [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { titre: pris } }]);
     assert.equal(m.db.prepare('SELECT titre FROM page WHERE id = ?').get(id).titre, pris);
-    assert.equal(motCle(m, motCleId).libelle, titre);
-    clesJustes(m);
+    assert.equal(motCle(m, motCleId).libelle, pris, 'le nom se lit sur la page');
+    assert.equal(motCle(m, motCleId).cle, cle, 'la clé garde sa valeur');
+    clesJustes(m, [motCleId]);
   } finally {
     m.db.close();
   }
@@ -198,10 +207,11 @@ test('un renommage que la règle refuse laisse le mot-clé tel quel, la page est
 test('renommer un sort renomme son mot-clé', () => {
   const m = reelle();
   try {
-    const sort = m.db.prepare('SELECT id, nom FROM sort WHERE lower(nom) NOT IN (SELECT lower(libelle) FROM mot_cle) ORDER BY id LIMIT 1').get();
+    const sort = m.db.prepare('SELECT id, nom FROM sort WHERE lower(nom) NOT IN (SELECT lower(libelle) FROM v_mot_cle) ORDER BY id LIMIT 1').get();
     const type = m.db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id LIMIT 1').get().id;
     const motCleId = ecrire(m, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: sort.nom, categories: [type] } }]).crees[0].id;
     m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(motCleId, sort.id);
+    m.db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(motCleId); // un repère ne double jamais un sort (migration 0136)
     const nouveau = nom('sort');
     ecrire(m, [{ op: 'modifier', table: 'sort', cle: { id: sort.id }, valeurs: { nom: nouveau } }]);
     const mc = motCle(m, motCleId);
@@ -226,9 +236,7 @@ test('renommer une magie recalcule la clé de ses sorts homonymes, db:check pass
     const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
     // posés en SQL : un seul dépôt, le renommage (un dépôt copie toute la base)
     const [sien, autre] = [s1, s2].map((s) => {
-      const id = poserMotCle(m.db, { libelle: titre, url: adresseDuSort(s.id), categories: [type] });
-      m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(id, s.id);
-      return id;
+      return ancrerUnMotCle(m.db, 'sort', s.id, { categories: [type] });
     });
     recalculerLesCles(m.db);
     const cleDeLAutre = motCle(m, autre).cle;
@@ -261,8 +269,7 @@ test('un renommage annulé ne revient pas au lot suivant sur la même page', asy
   const m = petite((db) => {
     const id = poserPage(db, 'guide/zephyrion', nom('titre'), { resume: 'Résumé.' });
     db.prepare("UPDATE page SET corps_md = 'Texte.', origine = 'docs' WHERE id = ?").run(id);
-    const motCleId = poserMotCle(db, { libelle: nom('titre'), url: adresseDeLaPage(id), categories: ['Règles'] });
-    db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(motCleId, id);
+    const motCleId = ancrerUnMotCle(db, 'page', id, { categories: ['Règles'] });
     return { id, motCleId };
   });
   try {
@@ -439,9 +446,7 @@ test('un lot qui supprime un sort retire son mot-clé, sauf s’il est cité', (
     const magie = poserMagie(db, 'magies/zephyrion', nom('magie'));
     const [libre, cite] = ['libre', 'cité'].map((s) => poserSort(db, magie, nom(`sort ${s}`)));
     const motsCles = [libre, cite].map((id) => {
-      const mc = poserMotCle(db, { libelle: db.prepare('SELECT nom FROM sort WHERE id = ?').get(id).nom, url: adresseDuSort(id), categories: ['Sort'] });
-      db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(mc, id);
-      return mc;
+      return ancrerUnMotCle(db, 'sort', id, { categories: ['Sort'] });
     });
     db.prepare("UPDATE sort SET effets = ? WHERE id = ?").run(`Voir {{${normalize(nom('sort cité'))}}}.`, libre);
     for (const id of [libre, cite]) db.prepare('DELETE FROM sort_type WHERE sort_id = ?').run(id);
@@ -483,7 +488,7 @@ function unSortSansCitation(db) {
   const citantes = tables.flatMap((t) => db.prepare(`PRAGMA foreign_key_list("${t}")`).all().filter((f) => f.table === 'sort' && !FILLES_D_UN_SORT.includes(t))
     .map((f) => `NOT EXISTS (SELECT 1 FROM "${t}" x WHERE x."${f.from}" = s.id)`));
   const sansNote = "NOT EXISTS (SELECT 1 FROM note_cellule x WHERE x.entite_table = 'sort' AND x.entite_id = s.id)";
-  const nomLibre = 'lower(s.nom) NOT IN (SELECT lower(libelle) FROM mot_cle)';
+  const nomLibre = 'lower(s.nom) NOT IN (SELECT lower(libelle) FROM v_mot_cle)';
   return db.prepare(`SELECT s.id, s.nom FROM sort s WHERE s.mot_cle_id IS NULL AND ${[...citantes, sansNote, nomLibre].join(' AND ')} ORDER BY s.id LIMIT 1`).get();
 }
 const entiteDuSort = (db, id) => db.prepare("SELECT * FROM page_entite WHERE entite_table = 'sort' AND entite_id = ?").all(id);
@@ -506,6 +511,7 @@ function photo(db, s) {
     entiteDuSort: entiteDuSort(db, s.sort).map((l) => ({ ...l })),
     fillesDuSort: FILLES_D_UN_SORT.map((t) => toutes(`SELECT * FROM ${t} WHERE sort_id = ? ORDER BY 1, 2`, s.sort)),
     motsCles: toutes('SELECT * FROM mot_cle WHERE id IN (?, ?) ORDER BY id', s.motCleMetier, s.motCleSort),
+    reperes: toutes('SELECT * FROM repere WHERE mot_cle_id IN (?, ?) ORDER BY mot_cle_id', s.motCleMetier, s.motCleSort),
     categories: toutes('SELECT * FROM mot_cle_categorie WHERE mot_cle_id IN (?, ?) ORDER BY 1, 2', s.motCleMetier, s.motCleSort),
   };
 }
@@ -520,10 +526,9 @@ async function supprimesParUnLot() {
   try {
     const metier = creerMetier(m, nom('métier retiré'));
     // son nom reste le sien : le tableau de sa page de magie le cite, un renommage en SQL le perdrait
-    const { id: sort, nom: titreDuSort } = unSortSansCitation(m.db);
+    const { id: sort } = unSortSansCitation(m.db);
     const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
-    const motCleSort = poserMotCle(m.db, { libelle: titreDuSort, url: adresseDuSort(sort), categories: [type] });
-    m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(motCleSort, sort);
+    const motCleSort = ancrerUnMotCle(m.db, 'sort', sort, { categories: [type] });
     recalculerLesCles(m.db);
     const ids = { metier, sort, motCleMetier: ancre(m, 'page', metier), motCleSort };
     const avant = photo(m.db, ids);
@@ -618,12 +623,16 @@ test('R291 : annuler la ligne d’un mot-clé retiré remet son élément, ses c
   const m = copieApresLeLot(s);
   try {
     const lignes = lire(m.db, s.lot).lignes;
-    const ligne = lignes.find((l) => l.table === 'Mot-clé' && String(l.ligne).includes('métier retiré'));
+    // la ligne du mot-clé du métier, par sa clé dans le journal du lot (le rang du journal est son numéro)
+    const lotDuJournal = m.db.prepare('SELECT lot_id FROM lot_de_changements WHERE id = ?').get(s.lot).lot_id;
+    const rang = netsDuLot(m.db, lotDuJournal).find((x) => x.table === 'mot_cle' && x.cle.id === s.motCleMetier)?.rang;
+    const ligne = lignes.find((l) => l.n === rang);
     assert.ok(ligne, JSON.stringify(lignes.map((l) => [l.n, l.table, l.ligne])));
     assert.equal(ligne.annulable_seule, true, ligne.motif);
     annulerUneLigne(m.db, s.lot, ligne.n);
     assert.equal(ancre(m, 'page', s.metier), s.motCleMetier);
-    assert.deepEqual({ ...motCle(m, s.motCleMetier) }, s.avant.motsCles.find((x) => x.id === s.motCleMetier));
+    assert.deepEqual({ ...m.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(s.motCleMetier) }, s.avant.motsCles.find((x) => x.id === s.motCleMetier));
+    assert.equal(motCle(m, s.motCleMetier).libelle, m.db.prepare('SELECT titre FROM page WHERE id = ?').get(s.metier).titre, 'son nom se lit de nouveau sur sa page');
     assert.deepEqual(categoriesDe(m, s.motCleMetier), s.avant.categories.filter((c) => c.mot_cle_id === s.motCleMetier).map((c) => c.categorie_id));
     assert.equal(motCle(m, s.motCleSort), undefined, 'l’autre élément du lot reste retiré');
   } finally {
@@ -676,7 +685,8 @@ const rangDe = (m, s, trouver) => netsDuLot(m.db, s.lotDuJournal).find(trouver).
 
 for (const [quoi, trouver] of [
   ['la page', (s) => (x) => x.table === 'page' && x.cle.id === s.garde],
-  ['le mot-clé', (s) => (x) => x.table === 'mot_cle' && x.cle.id === s.motCleGarde],
+  // depuis la migration 0136, le mot-clé gardé ne change pas de ligne : il reçoit un repère au nom de la page partie (décision 3 de B3)
+  ['le repère du mot-clé', (s) => (x) => (x.table === 'mot_cle' && x.cle.id === s.motCleGarde) || (x.table === 'repere' && x.cle.mot_cle_id === s.motCleGarde)],
 ]) {
   test(`R289 : annuler la ligne de ${quoi} remet ensemble la page et l’adresse de son mot-clé gardé`, async () => {
     const s = await groupesParUnLot();
@@ -799,23 +809,25 @@ test('un lot qui reclasse un homonyme et retire un élément entre les deux pass
 /** Trois sorts de magies différentes, de noms différents, chacun ancré à son mot-clé (posés en SQL : le service les renomme ensuite). */
 function troisSortsAncres(m) {
   const vus = new Set();
-  const sorts = m.db.prepare('SELECT min(id) AS id, nom, nom_cle, magie_id FROM sort WHERE lower(nom) NOT IN (SELECT lower(libelle) FROM mot_cle) GROUP BY magie_id ORDER BY magie_id').all()
+  const sorts = m.db.prepare('SELECT min(id) AS id, nom, nom_cle, magie_id FROM sort WHERE lower(nom) NOT IN (SELECT lower(libelle) FROM v_mot_cle) GROUP BY magie_id ORDER BY magie_id').all()
     .filter((s) => !vus.has(s.nom_cle) && vus.add(s.nom_cle)).slice(0, 3).map((s) => ({ ...s }));
   assert.equal(sorts.length, 3);
   const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
   for (const s of sorts) {
-    s.motCle = poserMotCle(m.db, { libelle: s.nom, url: adresseDuSort(s.id), categories: [type] });
-    m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(s.motCle, s.id);
+    s.motCle = ancrerUnMotCle(m.db, 'sort', s.id, { categories: [type] });
   }
   recalculerLesCles(m.db);
   return sorts;
 }
 const nomDuSort = (m, id) => m.db.prepare('SELECT nom FROM sort WHERE id = ?').get(id).nom;
 
-test('un échange de noms : ces deux mots-clés gardent leur nom, les autres renommages suivent', () => {
+// Depuis la migration 0136, le nom d'un mot-clé de sort se lit sur le sort : il suit toujours ; c'est la clé des deux mots-clés du cycle qui est écartée du
+// recalcul et garde sa valeur (décision 1 de B3, var/chantier4/contrats-B.md).
+test('un échange de noms : ces deux mots-clés gardent leur clé, les autres renommages suivent', () => {
   const m = reelle();
   try {
     const [a, b, c] = troisSortsAncres(m);
+    const [cleA, cleB] = [a, b].map((s) => motCle(m, s.motCle).cle);
     const neuf = nom('sort neuf');
     ecrire(m, [
       { op: 'modifier', table: 'sort', cle: { id: a.id }, valeurs: { nom: b.nom } },
@@ -825,9 +837,10 @@ test('un échange de noms : ces deux mots-clés gardent leur nom, les autres ren
     assert.deepEqual([a, b, c].map((s) => nomDuSort(m, s.id)), [b.nom, a.nom, neuf], 'les sorts sont renommés');
     assert.equal(motCle(m, c.motCle).libelle, neuf, 'le troisième suit');
     assert.equal(motCle(m, c.motCle).cle, normalize(neuf));
-    assert.equal(motCle(m, a.motCle).libelle, a.nom, 'le cycle est écarté');
-    assert.equal(motCle(m, b.motCle).libelle, b.nom, 'le cycle est écarté');
-    clesJustes(m);
+    assert.deepEqual([motCle(m, a.motCle).libelle, motCle(m, b.motCle).libelle], [b.nom, a.nom], 'les noms se lisent sur les sorts');
+    assert.equal(motCle(m, a.motCle).cle, cleA, 'le cycle est écarté : la clé reste');
+    assert.equal(motCle(m, b.motCle).cle, cleB, 'le cycle est écarté : la clé reste');
+    clesJustes(m, [a.motCle, b.motCle]);
   } finally {
     m.db.close();
   }
@@ -839,6 +852,7 @@ test('un échange de noms dans un lot qui renomme aussi une magie : le lot passe
   m.dossier = join(racine, `essais${(n += 1)}`);
   try {
     const [a, b, c] = troisSortsAncres(m);
+    const [cleA, cleB] = [a, b].map((s) => motCle(m, s.motCle).cle);
     const neuf = nom('sort neuf du lot');
     const magie = { ...m.db.prepare('SELECT id, nom, nom_cle FROM magie WHERE id = ?').get(c.magie_id) };
     const nouvelle = nom('magie du lot');
@@ -849,9 +863,10 @@ test('un échange de noms dans un lot qui renomme aussi une magie : le lot passe
     ]);
     assert.equal(m.db.prepare('SELECT nom FROM magie WHERE id = ?').get(magie.id).nom, nouvelle);
     assert.equal(motCle(m, c.motCle).libelle, neuf);
-    assert.equal(motCle(m, a.motCle).libelle, a.nom);
-    assert.equal(motCle(m, b.motCle).libelle, b.nom);
-    clesJustes(m);
+    // les noms se lisent sur les sorts (migration 0136) ; les clés du cycle restent
+    assert.deepEqual([motCle(m, a.motCle).libelle, motCle(m, b.motCle).libelle], [b.nom, a.nom]);
+    assert.deepEqual([motCle(m, a.motCle).cle, motCle(m, b.motCle).cle], [cleA, cleB]);
+    clesJustes(m, [a.motCle, b.motCle]);
   } finally {
     m.db.close();
   }
@@ -865,8 +880,7 @@ test('deux magies qui échangent leur nom croisent les clés de leurs sorts : sa
     const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
     for (const s of [s1, s2]) {
       m.db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run(titre, s.id);
-      const k = poserMotCle(m.db, { libelle: titre, url: adresseDuSort(s.id), categories: [type] });
-      m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(k, s.id);
+      ancrerUnMotCle(m.db, 'sort', s.id, { categories: [type] });
     }
     recalculerLesCles(m.db);
     const [m1, m2] = [s1, s2].map((s) => ({ ...m.db.prepare('SELECT id, nom, nom_cle FROM magie WHERE id = ?').get(s.magie_id) }));
@@ -888,4 +902,85 @@ test('deux magies qui échangent leur nom croisent les clés de leurs sorts : sa
   } finally {
     m.db.close();
   }
+});
+
+// Ce qui distingue les deux cas précédents : un croisement n'attend que pour un mot-clé renommé, dont la clé n'est plus faite de son nom (laCleSuitLeNom).
+test('laCleSuitLeNom : le nom normalisé, puis une part de ses catégories (par id) et de son parent, dans l’ordre ; un nom changé ne suit plus', () => {
+  const categories = new Map([[1, 'Sort'], [2, 'Race'], [3, 'Arme à feu']]);
+  const m = (libelle, cle, cats = [], parent = null) => ({ libelle, cle, categories: cats, parent });
+  assert.equal(laCleSuitLeNom(m('Boule de feu', 'boule-de-feu'), categories), true);
+  assert.equal(laCleSuitLeNom(m('Namazu', 'namazu-race', [2, 1]), categories), true);
+  assert.equal(laCleSuitLeNom(m('Contre-sort', 'contre-sort-sort-arcane', [1], 'Arcane'), categories), true, 'catégorie puis parent');
+  assert.equal(laCleSuitLeNom(m('Canon', 'canon-arme-a-feu', [3]), categories), true, 'un libellé de catégorie à tiret');
+  assert.equal(laCleSuitLeNom(m('Trait', 'trait-eau', [1], 'Feu'), categories), true, 'la magie renommée depuis : la part du parent est libre');
+  assert.equal(laCleSuitLeNom(m('Namazu', 'namazu-race-sort', [2, 1]), categories), false, 'pas dans l’ordre de la règle');
+  assert.equal(laCleSuitLeNom(m('Gel', 'boule-de-feu'), categories), false, 'renommé, la clé gardée');
+  assert.equal(laCleSuitLeNom(m('Feu', 'feu-sacre', [1]), categories), false, 'une clé plus longue que le nom n’est pas faite de ses catégories');
+  assert.equal(laCleSuitLeNom(m('¿ ?', 'ancienne'), categories), false, 'un nom sans lettre ni chiffre');
+  // sans homonyme dans le vocabulaire, la règle ne donne que le nom : un sort renommé en un préfixe de son nom ne suit plus
+  assert.equal(laCleSuitLeNom(m('Boule', 'boule-de-feu', [1], 'Feu'), categories, { homonyme: false }), false, '« Boule de feu » renommé « Boule »');
+  assert.equal(laCleSuitLeNom(m('Contre-sort', 'contre-sort-sort-arcane', [1], 'Arcane'), categories, { homonyme: false }), false, 'plus d’homonyme : la suite n’est plus celle de la règle');
+  assert.equal(laCleSuitLeNom(m('Boule', 'boule', [1], 'Feu'), categories, { homonyme: false }), true);
+  assert.equal(laCleSuitLeNom(m('Trait', 'trait-eau', [1], 'Feu'), categories, { homonyme: true }), true, 'avec un homonyme, la part du parent reste libre');
+});
+
+test('clesTenues : un mot-clé renommé en un préfixe de son nom, sans homonyme, attend au lieu de croiser les clés', () => {
+  const categories = new Map([[1, 'Sort']]);
+  // deux sorts qui échangent leurs noms : « Boule de feu » devient « Boule », « Boule » devient « Boule de feu » ; aucun autre homonyme
+  const motsCles = [
+    { id: 1, libelle: 'Boule', cle: 'boule-de-feu', categories: [1], parent: 'Feu' },
+    { id: 2, libelle: 'Boule de feu', cle: 'boule', categories: [1], parent: 'Feu' },
+  ];
+  const { cles, tenus, aTrancher } = clesTenues(motsCles, categories, { attendent: new Set([1, 2]) });
+  assert.deepEqual([...tenus].sort(), [1, 2], 'les deux gardent leur clé');
+  assert.deepEqual([cles.get(1), cles.get(2)], ['boule-de-feu', 'boule']);
+  assert.ok(aTrancher.some((t) => t.raison === 'croisees' && t.ids.includes(1)), 'le renommé en préfixe est « à trancher »');
+});
+
+test('rejeu : une modification d’un repère dont le mot-clé a, depuis, une page ou un sort vise l’élément ; son nom et son adresse sans effet', () => {
+  const m = reelle();
+  try {
+    const type = m.db.prepare('SELECT libelle FROM categorie_mot_cle ORDER BY id LIMIT 1').get().libelle;
+    const sort = m.db.prepare('SELECT id FROM sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1').get().id;
+    const deSort = ancrerUnMotCle(m.db, 'sort', sort, { categories: [type] });
+    const pageId = m.db.prepare("SELECT id FROM page WHERE mot_cle_id IS NULL AND statut <> 'example' ORDER BY id LIMIT 1").get().id;
+    const page = { id: pageId, mot_cle_id: ancrerUnMotCle(m.db, 'page', pageId, { categories: [type] }) };
+    const aRepere = ecrire(m, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: nom('repère gardé'), categories: [categorie(m, type)] } }]).crees[0].id;
+    const adapte = ancienneEcritureDesColonnesDuMotCle(m.db);
+    const ligne = (id, avant, apres) => ({ lot_id: 'x', rang: 1, table_nom: 'repere', operation: 'modifier', cle: JSON.stringify({ mot_cle_id: id }), avant: JSON.stringify(avant), apres: JSON.stringify(apres) });
+    const pourLaPage = adapte(ligne(page.mot_cle_id, { nom: 'a', couleur: null, definition: null }, { nom: 'b', couleur: '#112233', definition: 'Déf.' }));
+    assert.deepEqual([pourLaPage.table_nom, JSON.parse(pourLaPage.cle), JSON.parse(pourLaPage.avant), JSON.parse(pourLaPage.apres)],
+      ['page', { id: page.id }, { couleur: null, definition: null }, { couleur: '#112233', definition: 'Déf.' }], 'définition et couleur vers la page, le nom laissé');
+    assert.equal(adapte(ligne(page.mot_cle_id, { nom: 'a', adresse: null }, { nom: 'b', adresse: '/x/' })).sansEffet, true, 'nom et adresse : sans effet');
+    assert.equal(adapte(ligne(deSort, { nom: 'a' }, { nom: 'b' })).sansEffet, true, 'un sort : son nom, sans effet');
+    // un sort porte la définition, la couleur et l'icône de son mot-clé, comme la page (R309 (14))
+    const pourLeSort = adapte(ligne(deSort, { nom: 'a', couleur: null }, { nom: 'b', couleur: '#112233' }));
+    assert.deepEqual([pourLeSort.conflit, pourLeSort.table_nom, JSON.parse(pourLeSort.cle), JSON.parse(pourLeSort.apres)], [undefined, 'sort', { id: sort }, { couleur: '#112233' }], 'la couleur vers le sort');
+    assert.ok(m.db.prepare('SELECT 1 AS x FROM repere WHERE mot_cle_id = ?').get(aRepere), 'un mot-clé nu a son repère');
+    const inchangee = ligne(aRepere, { nom: 'a' }, { nom: 'b' });
+    assert.equal(adapte(inchangee), inchangee, 'un mot-clé qui a toujours son repère : la ligne telle quelle');
+  } finally {
+    m.db.close();
+  }
+});
+
+test('clesTenues : un nom sans lettre ni chiffre garde sa clé, à trancher, s’il est celui d’une page ou d’un sort ; sinon la règle le refuse', () => {
+  const motsCles = [{ id: 1, libelle: '¿ ? !', cle: 'ancien-titre', categories: [] }, { id: 2, libelle: 'Gel', cle: 'gel', categories: [] }];
+  const r = clesTenues(motsCles, new Map(), { attendent: new Set([1]) });
+  assert.deepEqual([...r.cles], [[2, 'gel'], [1, 'ancien-titre']]);
+  assert.deepEqual(r.aTrancher, [{ ids: [1], raison: 'sans-lettre' }]);
+  assert.throws(() => clesTenues(motsCles, new Map()), /sans lettre ni chiffre/);
+  assert.throws(() => clesTenues(motsCles, new Map(), { attendent: new Set([1]), exiges: [1] }), /sans lettre ni chiffre/, 'exigé : la règle juge');
+});
+
+test('clesTenues : des clés qui se croisent attendent si leurs mots-clés sont renommés ; sans renommage, ClesCroisees', () => {
+  const categories = new Map([[1, 'Sort']]);
+  // renommés : chacun porte le nom de l'autre, sa clé est l'ancienne
+  const renommes = [{ id: 1, libelle: 'Gel', cle: 'feu', categories: [1] }, { id: 2, libelle: 'Feu', cle: 'gel', categories: [1] }];
+  const r = clesTenues(renommes, categories, { attendent: new Set([1, 2]) });
+  assert.deepEqual([r.cles.get(1), r.cles.get(2)], ['feu', 'gel']);
+  assert.deepEqual(r.aTrancher, [{ ids: [1, 2], raison: 'croisees' }]);
+  // deux sorts homonymes dont les magies échangent leur nom : les noms n'ont pas changé, le croisement est refusé
+  const parents = [{ id: 1, libelle: 'Trait', cle: 'trait-eau', categories: [1], parent: 'Feu' }, { id: 2, libelle: 'Trait', cle: 'trait-feu', categories: [1], parent: 'Eau' }];
+  assert.throws(() => clesTenues(parents, categories, { attendent: new Set([1, 2]) }), (e) => e instanceof ClesCroisees && e.ids.length === 2);
 });

@@ -77,6 +77,8 @@ test('catalogue : chaque ressource du registre, ses capacités, ses colonnes (mo
     assert.deepEqual(r.capacites, capacitesDe(registre), r.cle);
     assert.equal(r.adresse, `/api/v1/${r.cle}/`);
     const colonnes = lignes(`PRAGMA table_info("${r.table}")`).map((x) => x.name);
+    // puis les champs lus sur l'élément de la ligne (migration 0136 : le nom, l'adresse… d'un mot-clé, `champsDeLElement` du registre)
+    colonnes.push(...(registre.champsDeLElement?.champs ?? []).filter((x) => !colonnes.includes(x)));
     assert.deepEqual(r.colonnes.map((x) => x.nom), colonnes, `${r.cle} : colonnes`);
     // modifiable : une colonne de TABLES (sauf figée pour toutes les lignes : colonnesFigees), ou un champ du PATCH traduit en opération du lot
     const parOperation = registre.operations?.PATCH ? TRADUCTIONS[registre.operations.PATCH].PATCH.champs : null;
@@ -721,7 +723,7 @@ test('POST /api/v1/mots-cles/ crée la notion et sa page (docs/chantier-pages-de
   const refus = appel('POST', '/api/v1/mots-cles/', { libelle, url: '/regles/' });
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.equal(refus.corps.champ, 'url');
-  assert.equal(ligne('SELECT 1 FROM mot_cle WHERE libelle = ?', libelle), null, 'rien d’écrit');
+  assert.equal(ligne('SELECT 1 FROM v_mot_cle WHERE libelle = ?', libelle), null, 'rien d’écrit');
   const cree = ok(appel('POST', '/api/v1/mots-cles/', { libelle }), 201);
   const page = ligne('SELECT id, titre, resume FROM page WHERE mot_cle_id = ?', cree.element.id);
   assert.ok(page, 'sa page de notion le relie');
@@ -753,14 +755,15 @@ test('R196 : DELETE d’un mot-clé mentionné (une balise dans la définition d
   const a = motCleNu({ libelle: `Mot-clé cité de l’API ${Date.now()}` });
   // la balise cite la clé (migration 0113)
   const b = motCleNu({ libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.cle}}}.` });
-  const definition = ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description;
+  const definition = ligne('SELECT description FROM v_mot_cle WHERE id = ?', b.element.id).description;
   assert.ok(definition.includes(`{{${a.element.cle}`), definition);
   const refus = appel('DELETE', a.adresse);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.match(refus.corps.erreur, /R196/);
-  assert.deepEqual(refus.corps.mentions.map((m) => [m.table, m.cle, m.colonne, m.comment]), [['mot_cle', { id: b.element.id }, 'description', 'balise']]);
+  // la définition d'un mot-clé nu est dans son repère (migration 0136)
+  assert.deepEqual(refus.corps.mentions.map((m) => [m.table, m.cle, m.colonne, m.comment]), [['repere', { mot_cle_id: b.element.id }, 'definition', 'balise']]);
   assert.ok(ligne('SELECT 1 FROM mot_cle WHERE id = ?', a.element.id), 'rien d’écrit');
-  assert.equal(ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description, definition, 'la balise reste, plus de cascade');
+  assert.equal(ligne('SELECT description FROM v_mot_cle WHERE id = ?', b.element.id).description, definition, 'la balise reste, plus de cascade');
   ok(appel('DELETE', b.adresse));
   ok(appel('DELETE', a.adresse));
   assert.equal(appel('GET', a.adresse).statut, 404);

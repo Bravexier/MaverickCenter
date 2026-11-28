@@ -6,9 +6,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ErreurEdition } from '../serveur/edition.mjs';
-import { annulerUneLigne, lire } from '../serveur/edition-lots.mjs';
+import { annulerUneLigne, lire, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { adresseDesRegles, nom, numerosDe, outilsDesCas, photo, poserUnePageDesRegles } from './aide-adresses-lots.mjs';
-import { poserMotCle } from './aide-ancrage.mjs';
+import { DECOUVRIR } from '../src/lib/livres.mjs';
+import { ancrerUnMotCle, poserMotCle, poserPageLisible } from './aide-ancrage.mjs';
 
 const { cas, renommerParUnLot, renommerSurLeSite } = outilsDesCas('edition-adresses-lots-groupes');
 
@@ -61,12 +63,43 @@ test('R316 : annuler la ligne de la page rend aussi l’adresse d’un mot-clé 
     const depart = photo(m.db);
     const fait = await renommerParUnLot(m, id, nom('Feu'), nom('Flamme'));
     assert.equal(fait.etat, 'applique', JSON.stringify(fait.refus ?? null));
-    const url = (k) => m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(k).url;
+    const url = (k) => lireUnMotCle(m.db, k).url; // lue sur l'élément du mot-clé (migration 0136)
     assert.equal(url(section), `${adresseDesRegles(nom('Flamme'))}#braise`);
-    assert.equal(numerosDe(lignesDuLot(m, fait.id), 'mot_cle').length, 2, 'le mot-clé ancré et celui de la section');
+    // le mot-clé ancré (sa clé suit le titre) et celui de la section, dont l'adresse se lit sur son repère (migration 0136)
+    assert.equal(numerosDe(lignesDuLot(m, fait.id), 'mot_cle').length, 1, 'la clé du mot-clé ancré');
+    assert.equal(numerosDe(lignesDuLot(m, fait.id), 'repere').length, 1, 'l’adresse du mot-clé de la section');
     const [numero] = numerosDe(lignesDuLot(m, fait.id), 'page');
     annulerUneLigne(m.db, fait.id, numero);
     assert.deepEqual(photo(m.db), depart, 'la page, son ancienne adresse et les deux mots-clés reviennent');
+  },
+));
+
+// La page Bienvenue est servie par une route fixe (lib/metiers.mjs#pageARouteFixe) : son titre change sans que son adresse bouge, aucun groupe d'adresse. Son
+// mot-clé lit son nom sur elle (migration 0136) : annuler la ligne du titre doit en recalculer la clé, sans quoi les contrôles du contenu refusent l'annulation.
+test('annuler seule la ligne du titre d’une page ancrée dont l’adresse ne bouge pas : acceptée, le nom et la clé du mot-clé reviennent', () => cas(
+  (db) => {
+    const id = poserPageLisible(db, DECOUVRIR.accueil, nom('Accueil'));
+    return { id, motCle: ancrerUnMotCle(db, 'page', id, { categories: ['Règles'] }) };
+  },
+  async (m) => {
+    const { id, motCle } = m.monde;
+    const depart = photo(m.db);
+    const cleDAvant = lireUnMotCle(m.db, motCle).cle;
+    const fait = await renommerParUnLot(m, id, nom('Accueil'), nom('Seuil'));
+    assert.equal(fait.etat, 'applique', JSON.stringify(fait.refus ?? null));
+    assert.equal(lireUnMotCle(m.db, motCle).libelle, nom('Seuil'));
+    assert.notEqual(lireUnMotCle(m.db, motCle).cle, cleDAvant, 'la clé a suivi le titre');
+    assert.deepEqual(photo(m.db).anciennes, [], 'l’adresse n’a pas bougé');
+    // la ligne du mot-clé, dans les lignes du lot et dans l'aperçu de son annulation, se nomme par le nom qu'il lit sur sa page
+    const [ligneDeCle] = numerosDe(lignesDuLot(m, fait.id), 'mot_cle');
+    assert.ok(lignesDuLot(m, fait.id).find((l) => l.n === ligneDeCle).ligne.includes(nom('Seuil')), JSON.stringify(lignesDuLot(m, fait.id).map((l) => l.ligne)));
+    const vu = await previsualiserLAnnulation(m.base, fait.id, { enArrierePlan: false, dossier: m.dossier });
+    const apercu = vu.operations.find((o) => o.rang_du_lot === ligneDeCle)?.apercu;
+    assert.match(apercu?.ligne ?? '', /Zephyrion/, JSON.stringify(apercu ?? vu.operations)); // son nom (celui du moment de la remise), pas son numéro
+    const [numero] = numerosDe(lignesDuLot(m, fait.id), 'page');
+    annulerUneLigne(m.db, fait.id, numero);
+    assert.equal(lireUnMotCle(m.db, motCle).cle, cleDAvant, 'la clé est revenue');
+    assert.deepEqual(photo(m.db), depart, 'le titre et le nom sont revenus');
   },
 ));
 

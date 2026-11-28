@@ -58,7 +58,11 @@ test('15 magies, aucun rôle (R237 (7)), 29 variantes Mode Hyper (onglet de magi
 
 test('les colonnes suivies sont celles que le site modifie (lib/edition-modele.mjs#TABLES)', () => {
   assert.deepEqual([...COLONNES_DE_MAGIE].sort(), Object.keys(TABLES.magie.colonnes).sort());
-  assert.deepEqual([...COLONNES_DE_SORT].sort(), Object.keys(TABLES.sort.colonnes).sort());
+  // la définition, la couleur et l'icône du mot-clé que le sort ancre (migration 0136, R309 (14) et (17)) se modifient sur le sort mais ne sont écrites
+  // nulle part dans la page de sa magie : le corps ne les suit pas ; toutes les autres colonnes modifiables du sort, si
+  const DE_L_ELEMENT = ['couleur', 'definition', 'icone'];
+  assert.ok(DE_L_ELEMENT.every((c) => !COLONNES_DE_SORT.includes(c)), 'le corps ne suit pas l’élément du mot-clé');
+  assert.deepEqual([...COLONNES_DE_SORT, ...DE_L_ELEMENT].sort(), Object.keys(TABLES.sort.colonnes).sort());
   assert.deepEqual(Object.keys(TABLES.magie_role.colonnes), ['role_brut']);
   // mode_hyper_effet.nom n'est écrit dans aucune page de magie (NULL pour les 29 variantes, et la page ne l'affiche pas) : seul `effet` y a sa place
   assert.ok(hypers.every((h) => h.nom === null));

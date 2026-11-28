@@ -12,7 +12,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { categorieDuType, estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase, pagesDesLiens, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
@@ -32,7 +32,8 @@ function base() {
   // aide-mot-cle-nu.mjs) ; un refus lu ici est celui de la règle des clés du service, pas celui du site
   const nu = (operations) => lotHorsRoute(db, operations, 'regles/glossaire/');
   const ligne = (sql, ...p) => db.prepare(sql).get(...p);
-  return { db, appel, lot, nu, ligne, motCle: (id) => ligne('SELECT * FROM mot_cle WHERE id = ?', id) };
+  // le mot-clé, ses champs lus sur son élément (page, sort ou repère : migration 0136)
+  return { db, appel, lot, nu, ligne, motCle: (id) => lireUnMotCle(db, id) };
 }
 const ok = (r) => assert.equal(r.statut, 200, JSON.stringify(r.corps));
 /** Le refus attendu : son statut et le champ que le détail nomme. */

@@ -13,6 +13,7 @@ import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { ligneDeMateriau, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { sourcesDeLaClasse, sourcesDuDon, famillesDuLecteur } from '../serveur/edition-maitrises.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
@@ -37,6 +38,8 @@ const imp = () => baseDImport();
 const NOUVELLES = Object.keys(REGISTRE.classes.nouvelles);
 const PI = 'magies/potentiel-illimite';
 const ARCHIMAGE = 'classes/archimage';
+// les colonnes que la migration 0136 a retirées de mot_cle : elles se lisent sur l'élément du mot-clé
+const COLONNES_RETIREES_DU_MOT_CLE = ['libelle', 'url', 'description', 'couleur', 'icone'];
 const tri = (lignes) => lignes.map((l) => JSON.stringify(Object.fromEntries(Object.keys(l).sort().map((k) => [k, l[k]])))).sort();
 // La 0121 balise des fragments que la 0119 a écrits (R258 (7) : « contre les {{non-mort|non-morts}} »…), lus dans son registre `textes` : à l'import,
 // une cellule intacte porte la réécriture ; une cellule touchée par le site garde la valeur d'avant la 0121 (son `avant` d'historique), l'une ou l'autre.
@@ -212,7 +215,10 @@ testDeLaMixte('R238, R241 (3), R252 : chaque fragment du registre est remplacé 
   for (const t of REGISTRE.textes) {
     for (const d of t.decision.match(/R\d+/g)) assert.ok(decisions.has(d), `${d} listée`);
     const ou = Object.keys(t.cle).map((k) => `${k} = ?`).join(' AND ');
-    const v = b.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE ${ou}`).get(...Object.values(t.cle))?.v;
+    // depuis la migration 0136, la définition d'un mot-clé se lit sur son élément (lireUnMotCle)
+    const v = t.table === 'mot_cle' && COLONNES_RETIREES_DU_MOT_CLE.includes(t.col)
+      ? (lireUnMotCle(b, t.cle.id) ?? undefined)?.[t.col]
+      : b.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE ${ou}`).get(...Object.values(t.cle))?.v;
     // une ligne que le site de dev a créée (le mot-clé « Barrière ») n'existe pas à l'import : la migration l'a réécrite dans la base courante
     if (v === undefined && historiqueSite(db).creee(t.table, t.cle)) continue;
     assert.equal(typeof v, 'string', JSON.stringify(t.cle));
