@@ -9,13 +9,15 @@
 // reçue (une seule demande par page, zone-menu) ; sans niveau lisible, aucun menu. Contrat avec scripts/compte.mjs, sans module commun : ce script publie la
 // réponse dans `window.maverickMoi` (undefined tant qu'elle n'est pas arrivée, null si la demande a échoué) puis émet `maverick:moi` sur `document`
 // (`detail` : la réponse, ou null) ; ici, on lit la propriété si l'événement a déjà eu lieu, sinon on l'attend, et on ne fait jamais la requête soi-même.
+// R320 : sous chaque prétiré, pour une session Joueur, MJ ou Créateur, « Copier le prétiré » (POST /api/personnages/<id>/copie/ : une fiche de joueur privée au compte,
+// puis /fiche/?id=<copie>) ; c'est un réglage de la ligne, sous elle comme les menus, pas un bouton de création de la page.
 // La liste s'affiche sans l'attendre, les réglages et « Mes personnages » viennent avec elle. Les
 // contrôles sont sous la ligne, pas dedans : toute la ligne est un lien, et un menu ne se met pas dans un lien. Le service reste juge de chaque droit.
 // Script de page (navigateur) : il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé ; il n'importe pas
 // lib/compte.mjs, que seul scripts/compte.mjs importe).
 import {
-  COLONNES, FILTRES_PAR_DEFAUT, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, classesDeBordure, comptesRangeables, filtrer, filtresDepuisAdresse,
-  messageDEchec, niveauDeLaSession, optionsDeVisibilite, peutRanger, peutRegler, sectionsDeLaListe, trier,
+  COLONNES, FILTRES_PAR_DEFAUT, adresseDeLaCopie, adresseDesFiltres, adresseDuPortrait, choixDeFiltres, classesDeBordure, comptesRangeables, filtrer, filtresDepuisAdresse,
+  messageDEchec, niveauDeLaSession, optionsDeVisibilite, peutCopier, peutRanger, peutRegler, sectionsDeLaListe, trier,
 } from '../lib/personnages-liste.mjs';
 
 const racine = document.getElementById('personnages');
@@ -30,6 +32,7 @@ const couleurs = JSON.parse(racine.dataset.couleurs || '{}');
 let personnages = [];
 let niveau = null; // le niveau de la session (réponse de GET /api/moi/ publiée par scripts/compte.mjs) : null sans session lisible
 let utilisateurs = null; // les comptes où ranger une fiche (GET /api/utilisateurs/, Créateur) : null tant qu'ils ne sont pas lus, [] s'ils n'ont pas pu l'être
+const copiesEnCours = new Set(); // les prétirés dont la copie est demandée : leur bouton reste grisé, même si la liste est redessinée
 let charge = false; // la liste reçue du service : avant (ou s'il ne répond pas), ni tri ni filtre n'affichent quoi que ce soit
 let filtres = filtresDepuisAdresse(location.search);
 
@@ -94,11 +97,11 @@ const message = (id, texte) => {
 };
 const dire = (erreur, ok) => { message('reglage-erreur', erreur); message('reglage-ok', ok); };
 
-/** Une écriture du service (PUT, JSON) : `{ ok, statut, corps }`, jamais d'exception (`statut` null si le service ne répond pas). */
-async function ecrire(chemin, corps) {
+/** Une écriture du service (PUT par défaut, JSON) : `{ ok, statut, corps }`, jamais d'exception (`statut` null si le service ne répond pas). */
+async function ecrire(chemin, corps, methode = 'PUT') {
   try {
     const reponse = await fetch(`${racine.dataset.api}${chemin}`, {
-      method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(corps),
+      method: methode, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(corps),
     });
     return { ok: reponse.ok, statut: reponse.status, corps: await reponse.json().catch(() => null) };
   } catch {
@@ -166,6 +169,32 @@ function menuRangement(p) {
   return select;
 }
 
+/** « Copier le prétiré » (R320) : la copie se crée au compte de la session, puis s'ouvre dans le générateur ; un refus le dit, le bouton se dégrise. */
+function boutonCopier(p) {
+  const bouton = element('button', 'perso-reglages__copier', 'Copier le prétiré');
+  bouton.type = 'button';
+  bouton.dataset.copier = p.id;
+  bouton.setAttribute('aria-label', `Copier le prétiré : ${p.nom}`);
+  bouton.disabled = copiesEnCours.has(p.id);
+  bouton.addEventListener('click', async () => {
+    if (copiesEnCours.has(p.id)) return;
+    copiesEnCours.add(p.id);
+    bouton.disabled = true;
+    dire('', '');
+    const r = await ecrire(`personnages/${encodeURIComponent(p.id)}/copie/`, {}, 'POST');
+    const adresse = r.ok ? adresseDeLaCopie(racine.dataset.fiche, r.corps) : null;
+    if (adresse) {
+      location.assign(adresse);
+      return;
+    }
+    copiesEnCours.delete(p.id);
+    for (const b of racine.querySelectorAll('button[data-copier]')) if (b.dataset.copier === p.id) b.disabled = false; // la liste a pu être redessinée entre-temps
+    dire(r.ok ? messageDEchec('copie', 500, { erreur: 'réponse inattendue' }) : messageDEchec('copie', r.statut, r.corps));
+    if (r.statut === 404) await recharger();
+  });
+  return bouton;
+}
+
 /** Sous la ligne d'une fiche : son propriétaire (fiche d'un autre joueur), « Visible par » et « Ranger au compte » selon ce que la session peut faire ; null s'il n'y a rien à dire. */
 function reglages(p) {
   const bloc = element('div', 'perso-reglages');
@@ -175,6 +204,7 @@ function reglages(p) {
   const champ = (titre, menu) => { const l = element('label', 'perso-reglages__champ', `${titre} `); l.append(menu); bloc.append(l); };
   if (peutRegler(p, niveau)) champ('Visible par', menuVisibilite(p));
   if (peutRanger(niveau)) champ('Ranger au compte', menuRangement(p));
+  if (peutCopier(niveau, p)) bloc.append(boutonCopier(p));
   return bloc.childElementCount ? bloc : null;
 }
 

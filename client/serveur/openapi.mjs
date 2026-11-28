@@ -470,6 +470,14 @@ function cheminsDuService() {
         responses: { 200: reponse('Rangée : { id, nature, proprietaire: { id, nom_affichage }, visibilite }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 415: ref('responses', 'TypeDeCorps') },
       },
     },
+    '/personnages/{id}/copie/': {
+      parameters: [idFiche],
+      post: {
+        operationId: 'copier_le_pretire', tags: [SERVICE], summary: 'Copier un prétiré', description: 'Décision R320 : copie complète du prétiré (ligne, parties, portrait) sous un nouvel identifiant, en fiche de joueur privée du compte de la session. Corps JSON sans contenu utile. Une session de niveau Joueur, MJ ou Créateur (403 sinon, une clé comprise) ; 404 fiche absente ou fiche de joueur non vue ; 400 si la fiche n’est pas un prétiré. La page l’ouvre par /fiche/?id=<id>.',
+        requestBody: { required: true, ...json(objet, { example: {} }) },
+        responses: { 201: reponse('Copiée : { id, nature, proprietaire: { id, nom_affichage }, visibilite, copie_de }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 415: ref('responses', 'TypeDeCorps') },
+      },
+    },
     '/personnages/{id}/visibilite/': {
       parameters: [idFiche],
       put: {

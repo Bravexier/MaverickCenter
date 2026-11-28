@@ -49,6 +49,9 @@ const TABLE = [
   // le propriétaire ou un Créateur pour la visibilité), et la liste des comptes du menu de transfert (la lecture à la porte ; le service exige une session Créateur)
   [['PUT'], /^\/api\/personnages\/[^/]+\/(proprietaire|visibilite)$/, 'ecriture'],
   [LECTURE, /^\/api\/utilisateurs$/, 'lecture'],
+  // R320 et R310 (3) : « Copier le prétiré » est faite par un Joueur, un MJ ou un Créateur en production (sans porte : le service exige la session et son niveau, jamais une clé) ;
+  // sur le site de dev, seul le Créateur écrit, copie comprise (le MJ y lit seulement) : la porte la classe `ecriture`, comme toute écriture de fiche
+  [['POST'], /^\/api\/personnages\/[^/]+\/copie$/, 'ecriture'],
   // édition : ce que les pages lisent au chargement pour montrer la base vivante (surcouche), puis les écritures
   [LECTURE, /^\/api\/edition\/(en-attente|listes|pages|mots-cles|chronologie|plan|page-de-l-adresse)$/, 'lecture'],
   [['POST'], /^\/api\/edition\/(lignes|race|classe|bestiaire|portrait|evenement)$/, 'lecture'],

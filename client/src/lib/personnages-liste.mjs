@@ -167,6 +167,20 @@ export function peutRegler(p, niveau) {
 /** Peut-on ranger une fiche au compte de quelqu'un ? Une session de niveau Créateur seulement (R318 (4) ; `GET /api/utilisateurs/` et la route propriétaire). */
 export const peutRanger = (niveau) => niveau === 'createur';
 
+/** Les niveaux qui copient un prétiré (R320 (2) : Joueur, MJ et Créateur, comme « Mes personnages », R319) ; un Observateur, un visiteur et une clé de lecture, non. */
+export const NIVEAUX_QUI_COPIENT = Object.freeze(['joueur', 'mj', 'createur']);
+
+/**
+ * « Copier le prétiré » est-il proposé pour cette fiche (R320 (1), (2)) ? Sur un prétiré seulement (jamais sur une fiche de joueur : le service répond 400) et
+ * pour une session de niveau Joueur, MJ ou Créateur (`niveau` : `niveauDeLaSession`, null sans session lisible). Le service reste juge (403 sinon).
+ * La fiche (`scripts/fiche.mjs`) a sa copie de la règle (`lib/fiche-copie.mjs`) : deux scripts de page n'importent jamais le même module ;
+ * `test/copie-du-pretire.test.mjs` vérifie l'accord.
+ */
+export const peutCopier = (niveau, fiche) => fiche?.nature === 'pretire' && NIVEAUX_QUI_COPIENT.includes(niveau);
+
+/** L'adresse de la fiche qu'une copie vient de créer (R320 : « elle s'ouvre ensuite dans le générateur »), `adresseFiche` étant celle de `/fiche/` ; null sans identifiant. */
+export const adresseDeLaCopie = (adresseFiche, copie) => (typeof copie?.id === 'string' && copie.id ? `${adresseFiche}?id=${encodeURIComponent(copie.id)}` : null);
+
 /**
  * Les options du menu « Visible par » d'une fiche de joueur pour cette session (R318 (2)) : les trois, dans l'ordre, avec `choisissable`. « MJ » n'est
  * choisissable que d'une session de niveau MJ ou Créateur (le service refuse sinon, 403) ; une fiche déjà en « mj » l'affiche quand même (non choisissable
@@ -207,17 +221,27 @@ export function sectionsDeLaListe(personnages) {
 }
 
 /**
- * Le message d'un réglage qui n'a pas abouti. `statut` : le code HTTP (null si le service n'a pas répondu), `corps` : la réponse JSON (`erreur`, `acces`),
- * `action` : 'visibilite' ou 'proprietaire'. Dit toujours que rien n'a été changé.
+ * La porte du site de dev (403 `acces: 'niveau'`) : le niveau que la porte demande est celui de `niveau_requis` dans la réponse (`serveur/acces.mjs#refus`) ;
+ * sans lui, ou d'un niveau inconnu, la phrase ne nomme aucun niveau. Même formule que `lib/fiche-copie.mjs#phraseDeLaPorte` (test/copie-du-pretire.test.mjs).
+ */
+export function phraseDeLaPorte(corps) {
+  const requis = typeof corps?.niveau_requis === 'string' && Object.hasOwn(LIBELLES_DE_NIVEAU, corps.niveau_requis) ? corps.niveau_requis : null;
+  if (requis === null) return 'votre niveau ne suffit pas pour cette action sur ce site.';
+  return `votre niveau ne suffit pas sur ce site (niveau ${LIBELLES_DE_NIVEAU[requis]}${requis === 'createur' ? '' : ' au moins'} nécessaire).`;
+}
+
+/**
+ * Le message d'un réglage qui n'a pas abouti. `statut` : le code HTTP (null si le service n'a pas répondu), `corps` : la réponse JSON (`erreur`, `acces`,
+ * `niveau_requis`), `action` : 'visibilite', 'proprietaire' ou 'copie' (R320). Dit toujours que rien n'a été changé.
  */
 export function messageDEchec(action, statut, corps = null) {
-  const debut = action === 'proprietaire' ? 'La fiche n’a pas été rangée' : 'La visibilité n’a pas été changée';
+  const debut = action === 'proprietaire' ? 'La fiche n’a pas été rangée' : action === 'copie' ? 'Le prétiré n’a pas été copié' : 'La visibilité n’a pas été changée';
   const service = typeof corps?.erreur === 'string' && corps.erreur ? ` (${corps.erreur})` : '';
   if (statut === null || statut === undefined) return `${debut} : le service ne répond pas.`;
   if (statut === 401) return `${debut} : votre session a expiré, reconnectez-vous.`;
   if (statut === 403) {
     return corps?.acces === 'niveau'
-      ? `${debut} : sur ce site, seul le niveau Créateur peut écrire.`
+      ? `${debut} : ${phraseDeLaPorte(corps)}`
       : `${debut} : votre compte n’a pas le droit de faire ce changement${service}.`;
   }
   if (statut === 404) return `${debut} : la fiche n’existe plus ou n’est plus visible pour vous. La liste est rechargée.`;

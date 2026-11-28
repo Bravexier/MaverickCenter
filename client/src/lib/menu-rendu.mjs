@@ -23,10 +23,13 @@ const attributsDuNiveau = (e) => (typeof e.niveau === 'string' && e.niveau ? ` d
 /** `html` (celui d'un lien ou d'un `strong`) avec `attributs` posés juste après le nom de la balise. */
 const avecAttributs = (html, attributs) => (attributs ? html.replace(/^<(a|strong)\b/, `<$1${attributs}`) : html);
 
-/** L'attribut `aria-current` d'une entrée : « page » pour la page courante, « true » pour l'onglet du plan qui y mène, rien sinon. */
+/**
+ * L'attribut `aria-current` d'une entrée : « page » pour la page courante (son ancre ne compte pas : « Personnages prétirés » mène à `personnages/#pretires`,
+ * R320), « true » pour l'onglet du plan qui y mène, rien sinon.
+ */
 export function courantDe(entree, { ici, entree: onglet, adresse }) {
   if (entree.href === null || entree.href === undefined) return null;
-  if (ici !== undefined && ici === adresse(entree.href)) return 'page';
+  if (ici !== undefined && ici === adresse(entree.href).split('#')[0]) return 'page';
   if (onglet !== undefined && onglet === entree.href) return 'true';
   return null;
 }

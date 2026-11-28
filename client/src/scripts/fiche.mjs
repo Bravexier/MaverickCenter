@@ -14,6 +14,7 @@
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
 import { controlesParGravite, libelleDuControle } from '../lib/fiche-controles.mjs';
+import { adresseDeLaCopie, messageDeCopie, niveauDeLaSession, peutCopier } from '../lib/fiche-copie.mjs';
 import {
   CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, ligneDeRetrait, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees,
 } from '../lib/fiche-format.mjs';
@@ -66,6 +67,10 @@ let version = null;
 let controles = null;
 let modifie = false;
 let serviceJoignable = true;
+/** Le niveau de la session (réponse de GET /api/moi/ que scripts/compte.mjs publie : aucune requête ici) : null tant qu'il n'est pas connu, et sans compte (R320). */
+let niveauDeSession = null;
+/** Une copie du prétiré (R320) en cours : « Copier le prétiré » attend. */
+let copieEnCours = false;
 /**
  * Le service a refusé le dernier enregistrement de la fiche à l'écran (toute réponse non OK : version changée entre-temps 409, requête trop volumineuse
  * 413, fiche refusée 400…) : Télécharger et Exporter redeviennent actifs pour ne rien perdre (etatDesBoutons). Oublié quand une autre fiche est à
@@ -4025,6 +4030,11 @@ function infobulle(e, texte) {
 function etatDesBoutons() {
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
+  // R320 : la copie reprend la fiche enregistrée, pas l'écran ; une fiche modifiée s'enregistre d'abord
+  const boutonCopier = $('fiche-copier');
+  boutonCopier.hidden = !peutCopier(niveauDeSession, id === null ? null : fiche);
+  boutonCopier.disabled = copieEnCours || modifie;
+  infobulle(boutonCopier, modifie ? 'Enregistrez d’abord : la copie reprend la fiche enregistrée.' : 'Crée une fiche de joueur privée à votre compte, copie de ce prétiré.');
   const etat = etatDesExports({ id, modifie, serviceJoignable, enregistrementRefuse, client: $('fiche-exporter').dataset.clientGoogle ?? '', occupe });
   for (const [cle, bouton] of [['telecharger', $('fiche-telecharger')], ['exporter', $('fiche-exporter')]]) {
     bouton.disabled = !etat[cle].actif;
@@ -4246,6 +4256,35 @@ async function supprimer() {
     message('Non supprimée : service injoignable.', 'erreur');
     etatDesBoutons();
   }
+}
+
+/** « Copier le prétiré » (R320) : une fiche de joueur privée au compte de la session (POST /api/personnages/<id>/copie/), qui s'ouvre aussitôt ; un refus le dit. */
+async function copier() {
+  if (copieEnCours || !id || !peutCopier(niveauDeSession, fiche)) return;
+  copieEnCours = true;
+  etatDesBoutons();
+  message('Copie…', 'attente');
+  try {
+    const reponse = await fetch(`${API}personnages/${encodeURIComponent(id)}/copie/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const donnees = await reponse.json().catch(() => null);
+    const adresse = reponse.ok ? adresseDeLaCopie(racine.dataset.fiche, donnees) : null;
+    if (adresse) {
+      location.assign(adresse);
+      return;
+    }
+    message(messageDeCopie(reponse.ok ? 500 : reponse.status, donnees), 'erreur');
+  } catch {
+    message(messageDeCopie(null), 'erreur');
+  }
+  copieEnCours = false;
+  etatDesBoutons();
+}
+
+/** Le niveau de la session, lu dans la réponse de `compte.mjs` (`window.maverickMoi`, ou l'événement `maverick:moi` s'il n'est pas encore arrivé) ; sans compte, il ne vient jamais. */
+function lireLeNiveau() {
+  const prendre = (moi) => { niveauDeSession = niveauDeLaSession(moi ?? null); etatDesBoutons(); };
+  if (window.maverickMoi !== undefined) prendre(window.maverickMoi);
+  else document.addEventListener('maverick:moi', (e) => prendre(e.detail), { once: true });
 }
 
 function nouvelle() {
@@ -4712,6 +4751,8 @@ async function demarrer() {
   }
   preparerImportEnLigne();
   $('fiche-supprimer').addEventListener('click', supprimer);
+  $('fiche-copier').addEventListener('click', copier);
+  lireLeNiveau();
   const fichier = $('fiche-importer');
   fichier.addEventListener('change', () => {
     if (fichier.files?.[0]) importer(fichier.files[0]);

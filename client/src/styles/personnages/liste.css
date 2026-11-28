@@ -138,3 +138,4 @@
 .perso-reglages__proprietaire { font-weight: 600; }
 .perso-reglages__champ { display: flex; align-items: center; gap: 0.4rem; }
 .perso-reglages select { max-width: 16rem; color: var(--text); }
+.perso-reglages__copier { padding: 0.15rem 0.7rem; font-size: inherit; }

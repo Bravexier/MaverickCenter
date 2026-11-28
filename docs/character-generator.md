@@ -8,7 +8,7 @@ Deux pages (demande du propriétaire), branchées sur le service des personnages
 | `/personnages/` | **Rechercher** les personnages : filtres, puis une liste (portrait, nom, race, magies, niveau) triée par la colonne choisie, chaque ligne étant le lien vers la fiche | `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs` |
 
 L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Le générateur n'a pas d'entrée au menu (R319 (6),
-jusqu'à E8) : on y arrive par « Personnages prétirés » (`/personnages/`, rubrique Le Jeu : chaque ligne mène à `/fiche/?id=…`) et par l'onglet « Fiche de personnage »
+jusqu'à E8) : on y arrive par « Personnages prétirés » (`/personnages/#pretires`, la section Prétirés, R320 (4) ; rubrique Le Jeu : chaque ligne mène à `/fiche/?id=…`) et par l'onglet « Fiche de personnage »
 des Règles ; sa page ouvre tout de même la rubrique Le Jeu (`autres` de `lib/nav.mjs`).
 
 ## La page `/fiche/`
@@ -1182,6 +1182,11 @@ juge de chaque droit) :
   ne peut pas s'en servir (`peutRegler`).
 - **« Ranger au compte »**, sur chaque fiche (prétiré compris) pour une session Créateur seulement (`peutRanger`) : un menu des comptes de `GET /api/utilisateurs/`
   (nom d'affichage et niveau, sans le propriétaire actuel : `comptesRangeables`), une confirmation, `PUT /api/personnages/<id>/proprietaire/`, puis la liste est relue.
+- **« Copier le prétiré »** (R320), sous chaque prétiré (`peutCopier(niveau, fiche)` : nature `pretire` et session Joueur, MJ ou Créateur ; un Observateur ou un visiteur ne le voit pas, et le
+  service refuse) : un réglage de la ligne, sous le lien comme les menus, pas un bouton de création de la page. Il envoie `POST /api/personnages/<id>/copie/` (corps `{}`), grisé pendant l'appel ;
+  la copie est une fiche de joueur privée du compte, que la page ouvre aussitôt (`/fiche/?id=<copie>`, `adresseDeLaCopie`). Un refus (400, 403, 404, service muet) le dit et que rien n'est copié
+  (`messageDEchec('copie', …)`). La page `/fiche/` a le même bouton (`#fiche-copier`, barre de la fiche) sur un prétiré enregistré, aux mêmes niveaux ; sa règle est recopiée dans `lib/fiche-copie.mjs`
+  (deux scripts de page n'importent jamais le même module), `test/copie-du-pretire.test.mjs` vérifie l'accord. Sans compte (version portable), il ne se montre jamais.
 
 ## Fiches dans la base
 
@@ -1226,7 +1231,7 @@ pas, et la note datée est le seul signal.
   (avec le groupe) ou `partage`. Un utilisateur voit une fiche s'il y a au moins une ligne. Le prétiré n'est pas dans la vue : le service l'ouvre à tout visiteur (R307).
 - **Ranger une fiche** (R318) : une session Créateur la range au compte de son choix (`PUT /api/personnages/<id>/proprietaire/`) ; elle devient une fiche de joueur et garde sa
   visibilité. Les six fiches du site, qui ne sont pas des prétirés mais celles du propriétaire, passent ainsi à son profil, en « Tous ». Hors de ce lot : partage, création d'une
-  fiche à son nom par un joueur, copie d'un prétiré, fiches détachées (R313 (2)).
+  fiche neuve à son nom par un joueur, fiches détachées (R313 (2)). La copie d'un prétiré est faite (R320).
 
 ### Les tables
 
