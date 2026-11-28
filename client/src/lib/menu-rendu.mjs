@@ -7,13 +7,18 @@
 //   - `externe` : un lien hors du site (le menu du profil) ;
 //   - avec un mot-clé : le lien d'un mot-clé d'un texte (htmlDeLEntree : `a.mot-cle`, couleur, icône, infobulle), la seule logique de ce lien ;
 //   - sinon : un lien simple vers son adresse.
+// Les niveaux (R319 (3), lot 4) : une entrée à `niveau` porte `data-niveau-menu="<niveau>"` et `hidden` (le menu d'un Observateur sans JavaScript, sans réponse du service ou hors
+// ligne) ; scripts/compte.mjs la montre selon le niveau du compte. Un lien caché reste servi : cacher un lien ne protège pas la page (R310 (3), la porte du serveur).
 // La page courante : `aria-current="page"` sur son entrée ; l'onglet du plan d'une page qui n'est pas une entrée (`entree` de layouts/Base.astro) :
 // `aria-current="true"`. L'infobulle d'un mot-clé s'ouvre sur le côté (`data-placement="cote"`) : dessous, elle couvrirait l'entrée suivante.
 import { htmlDeLEntree } from './menu-db.mjs';
-import { categorieDeLEntreeDuProfil } from './compte.mjs';
+import { LIBELLES_DES_NIVEAUX, categorieDeLEntreeDuProfil, niveauxProposes } from './compte.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const echapper = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
+
+/** Les attributs d'une entrée à niveau : `data-niveau-menu` et `hidden` (le menu d'un Observateur, avant que le script du compte ne l'applique) ; rien sans niveau. */
+const attributsDuNiveau = (e) => (typeof e.niveau === 'string' && e.niveau ? ` data-niveau-menu="${echapper(e.niveau)}" hidden` : '');
 
 /** `html` (celui d'un lien ou d'un `strong`) avec `attributs` posés juste après le nom de la balise. */
 const avecAttributs = (html, attributs) => (attributs ? html.replace(/^<(a|strong)\b/, `<$1${attributs}`) : html);
@@ -44,32 +49,35 @@ export function htmlDesEntrees(entrees, contexte) {
 export function htmlDeLEntreeDuMenu(e, contexte) {
   const { rubrique, adresse, base } = contexte;
   const enfants = e.enfants ?? [];
+  const niveau = attributsDuNiveau(e);
   if (enfants.length > 0) {
     const cle = String(e.cle ?? e.libelle);
     const id = `menu-du-site-${rubrique}-${cle}`;
     const dedans = contientLaPage(e, contexte);
-    return `<li class="menu-site__groupe" data-cle="${echapper(`${rubrique}/${cle}`)}"${dedans ? ' data-contient-la-page' : ''}>`
+    return `<li class="menu-site__groupe" data-cle="${echapper(`${rubrique}/${cle}`)}"${dedans ? ' data-contient-la-page' : ''}${attributsDuNiveau(e)}>`
       + `<button type="button" class="menu-site__replier" aria-expanded="true" aria-controls="${echapper(id)}" data-menu-replier="${echapper(`${rubrique}/${cle}`)}">`
       + `<span>${echapper(e.libelle)}</span><span class="menu-site__chevron" aria-hidden="true"></span></button>`
       + `<div class="menu-site__sous" id="${echapper(id)}"><ul class="menu-site__sous-liste">${htmlDesEntrees(enfants, contexte)}</ul></div></li>`;
   }
   if (e.externe) {
-    return `<li><a class="menu-site__lien" href="${echapper(e.externe)}" rel="noopener">${echapper(e.libelle)}</a></li>`;
+    return `<li${niveau}><a class="menu-site__lien" href="${echapper(e.externe)}" rel="noopener">${echapper(e.libelle)}</a></li>`;
   }
   if (e.bientot) {
-    return `<li><span class="nav-soon">${echapper(e.libelle)} <small>(bientôt)</small></span></li>`;
+    return `<li${niveau}><span class="nav-soon">${echapper(e.libelle)} <small>(bientôt)</small></span></li>`;
   }
   const courant = courantDe(e, contexte);
   const aria = courant ? ` aria-current="${courant}"` : '';
   const motCle = htmlDeLEntree(e, { base });
-  if (motCle) return `<li>${avecAttributs(motCle.html, `${aria} data-placement="cote"`)}</li>`;
-  return `<li><a class="menu-site__lien" href="${echapper(adresse(e.href))}"${aria}>${echapper(e.libelle)}</a></li>`;
+  if (motCle) return `<li${niveau}>${avecAttributs(motCle.html, `${aria} data-placement="cote"`)}</li>`;
+  return `<li${niveau}><a class="menu-site__lien" href="${echapper(adresse(e.href))}"${aria}>${echapper(e.libelle)}</a></li>`;
 }
 
 /**
  * Le menu du profil (R319 (1), components/Compte.astro) : des blocs (`<div class="site-compte__bloc">`, un filet entre deux blocs montrés) d'entrées. Chaque entrée porte sa
- * catégorie (lib/compte.mjs#categorieDeLEntreeDuProfil) ; seules celles du public sont montrées au départ : le script du compte (scripts/compte.mjs) montre les autres selon l'état
- * du compte (`hidden` ôté), et un bloc sans entrée montrée est caché. `publicSeulement` : la version portable, sans compte, ne porte que les entrées du public.
+ * catégorie (lib/compte.mjs#categorieDeLEntreeDuProfil) et, s'il en a un, son niveau (`data-niveau-menu`, lot 4) ; seules les entrées du public sont montrées au départ : le script du
+ * compte (scripts/compte.mjs) montre les autres selon l'état du compte et le niveau (`hidden` ôté), et un bloc sans entrée montrée est caché. « Voir le site en tant que… »
+ * (`action: 'voir-en-tant-que'`) est un choix de niveau (`<select data-voir-en-tant-que>`, les niveaux de lib/compte.mjs#niveauxProposes) qui se lit au niveau RÉEL du compte
+ * (`data-niveau-reel`), non au niveau vu : un Créateur qui se voit Joueur le garde. `publicSeulement` : la version portable, sans compte, ne porte que les entrées du public.
  * `blocs` : les blocs de MENU_DU_PROFIL, entrées résolues (lib/menu-db.mjs) et filtrées (lib/nav.mjs#entreesVisibles). Une entrée : « Se déconnecter » est un bouton
  * (`data-deconnexion`) ; une adresse hors du site (`externe`), un lien (jamais « bientôt ») ; une entrée sans adresse, « bientôt » ; sinon un lien, `aria-current="page"` pour la page courante.
  */
@@ -80,9 +88,13 @@ export function htmlDuMenuDuProfil(blocs, { adresse, ici, publicSeulement = fals
     const montre = gardees.some((e) => categorieDeLEntreeDuProfil(e) === 'public');
     const lis = gardees.map((e) => {
       const categorie = categorieDeLEntreeDuProfil(e);
-      const attributs = ` data-categorie="${categorie}"${categorie === 'public' ? '' : ' hidden'}`;
+      const niveau = typeof e.niveau === 'string' && e.niveau ? ` data-niveau-menu="${echapper(e.niveau)}"${e.action === 'voir-en-tant-que' ? ' data-niveau-reel' : ''}` : '';
+      const attributs = ` data-categorie="${categorie}"${niveau}${categorie === 'public' ? '' : ' hidden'}`;
       let contenu;
-      if (e.action === 'deconnexion') contenu = `<button type="button" class="site-compte__entree" data-deconnexion>${echapper(e.libelle)}</button>`;
+      if (e.action === 'voir-en-tant-que') {
+        const options = niveauxProposes('createur').map((n) => `<option value="${n}">${echapper(LIBELLES_DES_NIVEAUX[n])}</option>`).join('');
+        contenu = `<label class="site-compte__choix">${echapper(e.libelle)}<select class="site-compte__niveau" data-voir-en-tant-que>${options}</select></label>`;
+      } else if (e.action === 'deconnexion') contenu = `<button type="button" class="site-compte__entree" data-deconnexion>${echapper(e.libelle)}</button>`;
       else if (e.externe) contenu = `<a class="site-compte__entree" href="${echapper(e.externe)}" rel="noopener">${echapper(e.libelle)}</a>`;
       else if (e.bientot) contenu = `<span class="nav-soon">${echapper(e.libelle)} <small>(bientôt)</small></span>`;
       else {

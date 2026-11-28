@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { resoudreLesEntrees } from '../src/lib/menu-db.mjs';
 import { contientLaPage, courantDe, htmlDesEntrees, htmlDuMenuDuProfil } from '../src/lib/menu-rendu.mjs';
+import { niveauxProposes } from '../src/lib/compte.mjs';
 import { MENU_DU_PROFIL, entreesVisibles } from '../src/lib/nav.mjs';
 import { entreesDeLaListe } from './aide-menu-html.mjs';
 
@@ -69,7 +70,30 @@ test('la page courante : aria-current="page" sur son entrée, aria-current="true
   assert.equal(contientLaPage(entrees[1], { ici: '/base/premier/', adresse: (r) => `/base/${r}` }), false);
 });
 
-test('les entrées du site de dev seulement sont retirées avant le rendu (R319 (3) : rien d’autre ne l’est : ni le niveau ni la production)', () => {
+test('R319 (3) : une entrée à niveau porte data-niveau-menu et hidden (le menu d’un Observateur), de toute forme : lien, mot-clé, « bientôt », externe, groupe ; une entrée sans niveau, rien', () => {
+  const resolues = resoudreLesEntrees([
+    { label: 'Simple', path: 'simple/', niveau: 'joueur' },
+    { label: 'Royaume', motCle: 9001, libelleArbo: true, path: 'royaume/', niveau: 'mj' },
+    { label: 'Bientôt', niveau: 'joueur' },
+    { label: 'Dehors', externe: 'https://exemple.test/', niveau: 'createur' },
+    { cle: 'g', label: 'Groupe', niveau: 'mj', enfants: [{ label: 'Libre', path: 'libre/' }, { label: 'Fille', path: 'fille/', niveau: 'joueur' }] },
+    { label: 'Libre', path: 'ouvert/' },
+  ], { motsCles });
+  const html = htmlDesEntrees(resolues, { rubrique: 'x', adresse: (r) => `/${r}`, base: '/', ici: '/', entree: undefined });
+  assert.ok(html.includes('<li data-niveau-menu="joueur" hidden><a class="menu-site__lien" href="/simple/">Simple</a></li>'));
+  assert.match(html, /<li data-niveau-menu="mj" hidden><a data-placement="cote" class="mot-cle" href="\/royaume\/"/);
+  assert.ok(html.includes('<li data-niveau-menu="joueur" hidden><span class="nav-soon">Bientôt <small>(bientôt)</small></span></li>'));
+  assert.ok(html.includes('<li data-niveau-menu="createur" hidden><a class="menu-site__lien" href="https://exemple.test/" rel="noopener">Dehors</a></li>'));
+  assert.match(html, /<li class="menu-site__groupe" data-cle="x\/g" data-niveau-menu="mj" hidden><button/);
+  assert.ok(html.includes('<ul class="menu-site__sous-liste"><li><a class="menu-site__lien" href="/libre/">Libre</a></li><li data-niveau-menu="joueur" hidden><a class="menu-site__lien" href="/fille/">Fille</a></li></ul>'), 'jusque dans les sous-pages');
+  assert.ok(html.endsWith('<li><a class="menu-site__lien" href="/ouvert/">Libre</a></li>'), 'sans niveau : ni data-niveau-menu ni hidden');
+  // le niveau est lu par scripts/compte.mjs : le tableau d'un observateur, jamais un attribut `hidden` sans `data-niveau-menu`
+  assert.ok(![...html.matchAll(/<li( [^>]*)?>/g)].some((m) => /\bhidden\b/.test(m[1] ?? '') && !/data-niveau-menu/.test(m[1])));
+  // les liens se lisent malgré `hidden` (aide-menu-html : tests *-html)
+  assert.deepEqual(entreesDeLaListe(html).map((e) => e.libelle).slice(0, 2), ['Simple', 'Royaume']);
+});
+
+test('les entrées du site de dev seulement sont retirées avant le rendu ([Dev] ; ni le niveau ni la production ne retirent une entrée au build : le niveau s’applique dans le navigateur)', () => {
   const resolues = resoudreLesEntrees([
     { label: 'Debug', path: 'debug/', devSeulement: true },
     { label: 'Guide', path: 'mj/', niveau: 'mj' },
@@ -86,15 +110,22 @@ test('R319 (1) : le menu du profil, en blocs ; seules les entrées du public son
   const rendu = (o = {}, contexte = {}) => htmlDuMenuDuProfil(blocs(o), { adresse: (r) => `/base/${r}`, ici: '/base/recherche/', ...contexte });
   const html = rendu({ dev: true, prod: true });
   assert.equal(html.match(/<div class="site-compte__bloc"/g).length, MENU_DU_PROFIL.length, 'un bloc par bloc de MENU_DU_PROFIL');
-  const entrees = [...html.matchAll(/<li data-categorie="([a-z]+)"( hidden)?>/g)].map((m) => `${m[1]}${m[2] ? ' caché' : ''}`);
+  const entrees = [...html.matchAll(/<li data-categorie="([a-z]+)"(?: data-niveau-menu="[a-z]+")?(?: data-niveau-reel)?( hidden)?>/g)].map((m) => `${m[1]}${m[2] ? ' caché' : ''}`);
   assert.deepEqual(entrees, ['connecte caché', 'connecte caché', 'connecte caché', 'connecte caché', 'public', 'public', 'connecte caché', 'connecte caché', 'connecte caché']);
+  // chaque entrée à niveau porte `data-niveau-menu` (lu par scripts/compte.mjs avec sa catégorie) ; « Voir le site en tant que… » se lit au niveau réel
+  assert.deepEqual([...html.matchAll(/<li data-categorie="[a-z]+" data-niveau-menu="([a-z]+)"( data-niveau-reel)? hidden>/g)].map((m) => `${m[1]}${m[2] ? ' réel' : ''}`), MENU_DU_PROFIL.flat().filter((e) => e.niveau).map((e) => `${e.niveau}${e.action === 'voir-en-tant-que' ? ' réel' : ''}`));
   // les blocs sans entrée du public sont cachés au départ
   assert.deepEqual([...html.matchAll(/<div class="site-compte__bloc"( hidden)?>/g)].map((m) => !m[1]), MENU_DU_PROFIL.map((b) => b.some((e) => !e.niveau && !e.connecte && !e.action && !e.prodSeulement && !e.externe)));
   assert.ok(html.includes('<a class="site-compte__entree" href="/base/recherche/" aria-current="page">'), 'la page courante');
   assert.ok(html.includes('<a class="site-compte__entree" href="/base/regles/glossaire/">'));
   assert.ok(html.includes('<button type="button" class="site-compte__entree" data-deconnexion>'), 'Se déconnecter : un bouton, jamais « bientôt »');
   assert.match(html, /<a class="site-compte__entree" href="https:\/\/[^"]+" rel="noopener">/, 'Site de dev : une adresse hors du site, jamais « bientôt »');
-  assert.equal([...html.matchAll(/<span class="nav-soon">/g)].length, 3, 'Mes groupes, Mes scénarios, Voir le site en tant que : « bientôt » (Mes personnages est un lien : la section de /personnages/)');
+  assert.equal([...html.matchAll(/<span class="nav-soon">/g)].length, 2, 'Mes groupes, Mes scénarios : « bientôt » (Mes personnages est un lien : la section de /personnages/ ; « Voir le site en tant que… » est un choix)');
+  // « Voir le site en tant que… » (Créateur) : un <select> des niveaux qu'un Créateur peut voir, jamais « bientôt »
+  const choix = html.match(/<label class="site-compte__choix">([^<]+)<select class="site-compte__niveau" data-voir-en-tant-que>(.*?)<\/select><\/label>/);
+  assert.ok(choix, 'le choix de niveau');
+  assert.equal(choix[1], MENU_DU_PROFIL.flat().find((e) => e.action === 'voir-en-tant-que').label);
+  assert.deepEqual([...choix[2].matchAll(/<option value="([a-z]+)">/g)].map((m) => m[1]), niveauxProposes('createur'));
   assert.ok(html.includes('href="/base/personnages/#mes-personnages"'), 'Mes personnages : un lien');
   // Site de dev : seulement de la production ; ni le niveau ni autre chose n'en retire
   assert.ok(!rendu({ dev: true, prod: false }).includes('rel="noopener"'), 'sur le site de dev : pas de lien vers lui-même');
@@ -104,4 +135,5 @@ test('R319 (1) : le menu du profil, en blocs ; seules les entrées du public son
   assert.deepEqual([...portable.matchAll(/href="([^"]+)"/g)].map((m) => m[1]), ['/base/regles/glossaire/', '/base/recherche/']);
   assert.equal(portable.match(/<div class="site-compte__bloc"/g).length, 1);
   assert.ok(!portable.includes('hidden') && !portable.includes('data-deconnexion'));
+  assert.ok(!portable.includes('data-niveau-menu') && !portable.includes('<select'), 'la version portable, sans service : le menu d’un Observateur, aucune entrée à niveau');
 });

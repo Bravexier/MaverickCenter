@@ -66,7 +66,7 @@ test('cinq pages, chacune à son adresse : son titre, son panneau (`section.equi
       assert.ok(entree, `${p.id} : l’entrée du menu ${q.nom}`);
       assert.equal(entree.courant, q === p ? 'page' : null, `${p.id} : ${q.nom}, courante seulement sur sa page`);
     }
-    assert.deepEqual(rubriquesDeLEntete(html[p.id]).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], `${p.id} : la rubrique Ressources, ouverte`);
+    assert.deepEqual(rubriquesDeLEntete(html[p.id]).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, false], ['ressources', false, true]], `${p.id} : la rubrique Ressources [J] est la courante (le build montre le menu d’un Observateur : Le Jeu)`);
     // un seul lien vers /ressources/ : l'entrée Autres du menu Ressources (« sous menu-autres », 2026-10-29), la dernière, aucun dans la page
     assert.equal(html[p.id].split('href="/ressources/"').length - 1, 1, 'un seul lien vers /ressources/');
     assert.equal(entrees.at(-1).href, '/ressources/', 'celui de l’entrée Autres du menu');

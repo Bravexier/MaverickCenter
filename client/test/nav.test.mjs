@@ -42,7 +42,7 @@ test('R319 (1) : cinq rubriques, dans l’ordre voulu par le propriétaire, leur
   assert.ok(!NAV.flatMap((g) => g.autres ?? []).includes('tags/'), 'plus de pages /tags/ dans le menu');
 });
 
-test('R319 (3) : les niveaux sont portés par les données, jamais appliqués avant le lot 4 ; seul `devSeulement` retire une entrée', () => {
+test('R319 (3) : les niveaux sont portés par les données ; entreesVisibles retire `devSeulement` ([Dev]), `prodSeulement` ([Prod]) et, pour la version portable, tout `niveau` ; le niveau du compte, lui, s’applique dans le navigateur', () => {
   const champs = ['label', 'path', 'motCle', 'libelleArbo', 'onglet', 'enfants', 'cle', 'niveau', 'devSeulement', 'prodSeulement'];
   for (const e of NAV.flatMap((g) => entreesAPlat(g.items))) {
     assert.ok(Object.keys(e).every((k) => champs.includes(k)), `${e.label} : un champ que lib/menu-db.mjs ne connaît pas`);
@@ -54,16 +54,19 @@ test('R319 (3) : les niveaux sont portés par les données, jamais appliqués av
   const parNiveau = (g) => g.items.filter((i) => i.niveau).map((i) => `${i.label} ${i.niveau}`);
   assert.deepEqual(parNiveau(rubrique('regles')), ['Guide du MJ mj', 'Mise à jour joueur', 'Statistiques joueur']);
   assert.deepEqual(parNiveau(rubrique('monde')), ['Bestiaire mj']);
-  // rien n'est caché selon le niveau : toutes les entrées, sauf celles du site de dev seulement hors du site de dev
+  // sans `sansNiveau`, le niveau n'est pas filtré au build (le navigateur le montre ou le cache) : toutes les entrées, sauf celles du site de dev seulement hors du site de dev
   for (const g of NAV) {
     assert.deepEqual(entreesVisibles(g.items), g.items, `${g.key} : sur le site de dev, tout`);
     assert.deepEqual(entreesVisibles(g.items, { dev: false }), g.items.filter((i) => !i.devSeulement), `${g.key} : seul devSeulement est retiré`);
+    // la version portable (sans service) : le menu d'un Observateur, sans aucune entrée à niveau
+    assert.deepEqual(entreesVisibles(g.items, { dev: false, sansNiveau: true }), g.items.filter((i) => !i.devSeulement && !i.niveau), `${g.key} : sans les entrées à niveau`);
   }
   assert.ok(NAV.every((g) => g.items.every((i) => !i.prodSeulement)), 'prodSeulement : porté (le menu du profil), pas appliqué');
   // jusque dans les sous-pages
   const arbre = [{ label: 'A', enfants: [{ label: 'a1' }, { label: 'a2', devSeulement: true }] }, { label: 'B', devSeulement: true, niveau: 'createur' }];
   assert.deepEqual(entreesVisibles(arbre, { dev: false }), [{ label: 'A', enfants: [{ label: 'a1' }] }]);
   assert.deepEqual(entreesVisibles(arbre), arbre);
+  assert.deepEqual(entreesVisibles([{ label: 'A', enfants: [{ label: 'a1' }, { label: 'a2', niveau: 'mj' }] }, { label: 'B', niveau: 'joueur' }], { sansNiveau: true }), [{ label: 'A', enfants: [{ label: 'a1' }] }], 'jusque dans les sous-pages');
   assert.deepEqual(entreesAPlat(arbre).map((e) => e.label), ['A', 'a1', 'a2', 'B']);
   // prodSeulement : filtré seulement quand `prod` est faux (le menu du profil : « Site de dev » n'est que de la production) ; les rubriques ne le passent pas
   const profil = [{ label: 'Prod', prodSeulement: true }, { label: 'Niveau', niveau: 'mj' }, { label: 'Dev', devSeulement: true }];
@@ -71,12 +74,17 @@ test('R319 (3) : les niveaux sont portés par les données, jamais appliqués av
   assert.deepEqual(entreesVisibles(profil, { dev: false, prod: true }).map((e) => e.label), ['Prod', 'Niveau']);
   assert.deepEqual(entreesVisibles(profil).map((e) => e.label), ['Prod', 'Niveau', 'Dev'], 'sans option : tout (les rubriques)');
   assert.deepEqual(NAV.flatMap((g) => entreesAPlat(g.items).filter((i) => i.devSeulement).map((i) => `${g.key} ${i.label} ${i.path}`)), ['taverne Debug debug/'], 'la seule entrée du site de dev seulement');
-  // le menu (layouts/Base.astro) n'affiche que entreesVisibles, sans les entrées du site de dev en production (SITE_MODE=prod) ni dans la version portable
+  // le menu (layouts/Base.astro) n'affiche que entreesVisibles, sans les entrées du site de dev en production (SITE_MODE=prod) ni dans la version portable, qui n'a pas non plus
+  // les rubriques ni les entrées à niveau (le menu d'un Observateur : pas de service pour lire le niveau)
   const base = readFileSync(new URL('../src/layouts/Base.astro', import.meta.url), 'utf8');
   assert.match(base, /const dev = !site\.prod && !portable;/);
-  assert.match(base, /entreesVisibles\(menuDuSite\(g\.items\), \{ dev \}\)/);
+  assert.match(base, /entreesVisibles\(menuDuSite\(g\.items\), \{ dev, sansNiveau: portable \}\)/);
+  assert.match(base, /NAV\.filter\(\(g\) => !\(portable && g\.niveau\)\)/, 'la version portable retire les rubriques à niveau');
+  assert.match(base, /data-niveau-menu=\{group\.niveau\} hidden=\{group\.niveau \? true : undefined\}/, 'le bouton d’une rubrique à niveau : data-niveau-menu et hidden');
   const code = base.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\/\*\*[\s\S]*?\*\//g, '');
-  assert.doesNotMatch(code, /\.niveau|prodSeulement/, 'ni le niveau ni prodSeulement ne sont lus par l’en-tête avant le lot 4');
+  assert.doesNotMatch(code, /prodSeulement/, 'prodSeulement ne se lit pas dans l’en-tête : le menu du profil (components/MenuDuProfil.astro) le passe à entreesVisibles');
+  // la rubrique montrée au départ n'est jamais une rubrique à niveau (le menu d'un Observateur)
+  assert.match(code, /const montree = courante && !courante\.niveau \? courante : rubriquesDUnObservateur\[0\];/);
 });
 
 test('R319 (4) : les entrées à mot-clé citent un mot-clé qui existe ; les huit entrées au nom de l’arborescence ; les onglets des Règles sont ceux de la table', () => {
@@ -175,8 +183,9 @@ test('R319 (1) : le menu du profil, ses niveaux portés (J, MJ, C, production se
   assert.deepEqual([e('Site de dev').prodSeulement, e('Site de dev').niveau], [true, 'mj']);
   assert.ok(e('Mon profil').connecte && e('Se déconnecter').connecte, 'tout compte connecté, quel que soit son niveau');
   assert.equal(e('Se déconnecter').action, 'deconnexion', 'rendu par le compte');
+  assert.equal(e('Voir le site en tant que…').action, 'voir-en-tant-que', 'un choix de niveau, rendu par lib/menu-rendu.mjs, montré au niveau réel Créateur');
   for (const x of entreesAPlat(MENU_DU_PROFIL.flat())) assert.ok(x.niveau === undefined || NIVEAUX_DU_MENU.includes(x.niveau), x.label);
-  // « Mes personnages » : la section de /personnages/ (R318, étape E8), son niveau porté sans être appliqué ; les autres : pas de page encore, « bientôt » ; Glossaire et Recherche : des pages (pas d'une rubrique)
+  // « Mes personnages » : la section de /personnages/ (R318, étape E8), son niveau appliqué par le navigateur (lot 4) ; les autres : pas de page encore, « bientôt » ; Glossaire et Recherche : des pages (pas d'une rubrique)
   assert.equal(e('Mes personnages').path, 'personnages/#mes-personnages');
   assert.deepEqual(['Mes groupes', 'Mes scénarios', 'Voir le site en tant que…'].filter((l) => e(l).path), []);
   assert.deepEqual([e('Glossaire').path, e('Recherche').path, e('Mon profil').path], ['regles/glossaire/', 'recherche/', 'profil/']);

@@ -98,6 +98,10 @@
 .site-compte__entree { color: var(--text); text-decoration: none; cursor: pointer; }
 .site-compte__entree:hover { color: var(--accent); text-decoration: underline; }
 .site-compte__entree[aria-current='page'] { color: var(--accent); font-weight: 700; }
+/* « Voir le site en tant que… » (Créateur, R319 (1)) : le libellé et, dessous, le choix du niveau ; la marque du bouton du compte dit qu'un niveau inférieur est vu */
+.site-compte__choix { display: block; padding: 0.3rem 0; }
+.site-compte__niveau { display: block; box-sizing: border-box; width: 100%; margin-top: 0.2rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; }
+.site-compte__vue { flex: none; padding: 0 0.35rem; border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent); font-size: 0.7rem; font-weight: 700; line-height: 1.4; white-space: nowrap; }
 .site-compte__erreur { margin: 0 0 0.5rem; color: var(--danger); font-weight: 600; }
 @media (max-width: 75.99rem) {
   .site-compte__nom, .site-compte__libelle {

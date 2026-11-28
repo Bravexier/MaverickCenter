@@ -140,15 +140,66 @@ export function messageDErreur(code) {
 
 /**
  * Ce qu'une entrée du menu du profil demande (lib/nav.mjs#MENU_DU_PROFIL, R319 (1)) : 'public' (Glossaire, Recherche : tout visiteur) ou 'connecte' (tout le reste : Mon
- * profil, les espaces, Site de dev, Voir le site en tant que…, Se déconnecter). Un compte connecté, membre ou non, voit le même menu : rien n'est masqué selon le niveau
- * avant le lot 4 (R319 (3)), et « Se déconnecter » vaut pour tout compte connecté (la page /profil/ dit au non-membre qu'il n'a aucun niveau).
+ * profil, les espaces, Site de dev, Voir le site en tant que…, Se déconnecter). Un compte connecté, membre ou non, a la catégorie 'connecte' ; le niveau d'une entrée (`niveau`,
+ * R319 (3)) se lit à part (niveauSuffit : lot 4), et « Se déconnecter » vaut pour tout compte connecté (la page /profil/ dit au non-membre qu'il n'a aucun niveau).
  * @returns {'public'|'connecte'}
  */
 export function categorieDeLEntreeDuProfil(entree) {
   return entree?.action || entree?.niveau || entree?.prodSeulement || entree?.externe || entree?.connecte ? 'connecte' : 'public';
 }
 
-/** Les catégories d'entrées du menu du profil que montre un état du compte (etatDuCompte) : un compte connecté (membre ou non-membre), tout ; sinon le public. */
+/** Les catégories d'entrées du menu du profil que montre un état du compte (etatDuCompte) : un compte connecté (membre ou non-membre), les deux ; sinon le public. */
 export function categoriesVisibles(etat) {
   return etat === 'connecte' || etat === 'non_membre' ? ['public', 'connecte'] : ['public'];
+}
+
+// --- Les niveaux d'accès appliqués au menu (R319 (3), lot 4) -----------------------------------------------------------------------------------------------
+// Masquer un lien du menu ne protège pas la page : l'accès aux pages et au service reste celui du serveur (R310 (3)). Le niveau ne change que ce que le menu montre.
+
+/** Les quatre niveaux, du plus bas au plus haut (R310 (2)) : Créateur ⊃ MJ ⊃ Joueur ⊃ Observateur. `lib/nav.mjs#NIVEAUX_DU_MENU` en est la suite sans Observateur (`test/compte.test.mjs`). */
+export const ORDRE_DES_NIVEAUX = Object.freeze(['observateur', 'joueur', 'mj', 'createur']);
+
+/** La clé du stockage local où un Créateur garde le niveau sous lequel il voit le menu (« Voir le site en tant que… »), déclarée sur la page Confidentialité. */
+export const CLE_DU_NIVEAU_VU = 'menu-du-profil:niveau-vu';
+
+/** Le nom de l'événement par lequel scripts/compte.mjs annonce à la page le niveau sous lequel le menu est vu (`detail` : ce niveau) ; le script du menu latéral l'écoute. */
+export const EVENEMENT_DU_NIVEAU = 'maverick:niveau';
+
+const rangDuNiveau = (niveau) => (typeof niveau === 'string' ? ORDRE_DES_NIVEAUX.indexOf(niveau) : -1);
+
+/**
+ * Le niveau réel du visiteur d'après `GET /api/moi/` : celui du compte connecté ; Observateur sans réponse, hors ligne, non connecté, non-membre (R313 (1)), banni ou
+ * niveau inconnu.
+ * @returns {'observateur'|'joueur'|'mj'|'createur'}
+ */
+export function niveauDuCompte(moi) {
+  if (etatDuCompte(moi) !== 'connecte') return 'observateur';
+  const niveau = moi.utilisateur.niveau;
+  return rangDuNiveau(niveau) >= 0 ? niveau : 'observateur';
+}
+
+/**
+ * Un lecteur de niveau `niveau` voit-il ce qui demande `requis` ? Rien de demandé (absent, null, vide) : oui ; un niveau demandé inconnu : non (on n'ouvre pas sur une
+ * faute de frappe) ; un lecteur de niveau inconnu est un Observateur. Accès cumulatif : un niveau voit tout ce que voient les niveaux au-dessous.
+ */
+export function niveauSuffit(requis, niveau) {
+  if (requis === undefined || requis === null || requis === '') return true;
+  const demande = rangDuNiveau(requis);
+  if (demande < 0) return false;
+  return Math.max(rangDuNiveau(niveau), 0) >= demande;
+}
+
+/** Les niveaux sous lesquels un compte de niveau réel `reel` peut voir le menu, du plus haut au plus bas, le sien compris : seul un Créateur en choisit un (« Voir le site en tant que… »). */
+export function niveauxProposes(reel) {
+  return reel === 'createur' ? [...ORDRE_DES_NIVEAUX].reverse() : [];
+}
+
+/**
+ * Le niveau sous lequel le menu est vu : le choix gardé (`choix`) quand le compte est Créateur et que ce niveau est connu et strictement plus bas que le sien, sinon le
+ * niveau réel (un choix périmé ou inventé ne donne jamais plus que le niveau réel, ni quoi que ce soit à un autre qu'un Créateur).
+ */
+export function niveauVu(reel, choix) {
+  if (reel !== 'createur') return reel;
+  const rang = rangDuNiveau(choix);
+  return rang >= 0 && rang < rangDuNiveau(reel) ? choix : reel;
 }

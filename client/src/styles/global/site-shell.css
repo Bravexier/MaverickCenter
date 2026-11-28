@@ -17,6 +17,8 @@
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
 .site-nav__groups { padding-block: 0.3rem 0.4rem !important; }
 .nav-group__toggle { background: none; border: 0; border-radius: var(--radius); padding: 0.3rem 0.8rem; cursor: pointer; font-weight: bold; }
+/* une rubrique cachée selon le niveau du compte (R319 (3), lot 4 : `data-niveau` et `hidden`, scripts/compte.mjs) : ni bouton ni case vide dans la ligne */
+.nav-group__toggle[hidden], .site-nav__groups li:has(> .nav-group__toggle[hidden]) { display: none; }
 .nav-group__toggle:hover { background: var(--border); }
 .nav-group__toggle[aria-current='true'] { color: var(--accent); }
 .nav-group__toggle[aria-pressed='true'] { background: var(--border); box-shadow: inset 0 -3px 0 var(--accent); }

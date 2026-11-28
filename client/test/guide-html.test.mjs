@@ -129,7 +129,7 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   // le titre d'un onglet se modifie sur le site de dev (R319 (5)) : celui du plan de la base, jamais un texte figé
   const titreDeLOnglet = (id) => ongletsDesRegles().find((o) => o.id === id).titre;
   assert.equal(fil('regles/combats'), `<a href="/">Accueil</a> › <a href="/regles/combats/">${titreDeLOnglet('combats')}</a>`, '/regles/combats/ : le fil de sa page d’ouverture');
-  assert.equal(fil('regles'), '<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">Fiche de personnage</a>', '/regles/ : le premier onglet');
+  assert.equal(fil('regles'), `<a href="/">Accueil</a> › <a href="/regles/fiche-de-personnage/">${titreDeLOnglet('fiche-de-personnage')}</a>`, '/regles/ : le premier onglet');
   assert.equal(fil('mj/campagne-ou-scenario-one-shot'), '<a href="/">Accueil</a> › <a href="/mj/">Guide du MJ</a>');
   const vocabulaire = chargerVocabulaire(db);
   for (const p of pagesConstruites) {
@@ -412,7 +412,7 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'regles')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/exploration/', 'true']], 'l’onglet Exploration, marqué au menu');
-  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], 'R319 : l’Artisanat est une entrée des Ressources');
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, false], ['ressources', false, true]], 'R319 : l’Artisanat est une entrée des Ressources [J] (menu d’un Observateur au build : Le Jeu montré)');
   // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)
   assert.match(html, /<div data-edition data-api="\/api\/" data-page="regles\/artisanat"/, 'le mode modification');
   assert.match(main, /<ol class="lateral-menu__liste" data-ed-menu="onglet:exploration">/);

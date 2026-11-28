@@ -44,7 +44,7 @@ test('R234 : le Glossaire — au menu du profil ; le tableau de tous les mots-cl
   assert.match(html, /<div class="tableau glossaire-tableau">\s*<div class="tableau__defile">\s*<table class="table-donnees glossaire-table"[^>]* id="liste-mots-cles"/);
   assert.match(html, /<thead><tr><th scope="col">Icône<\/th><th scope="col">Mot-clé<\/th><th scope="col">Type<\/th><th scope="col">Lien<\/th><th scope="col">Pages<\/th><\/tr><\/thead>/);
   // le filtre par type (R234 (4), R309) : tous, « Sans catégorie » seulement s'il y a un mot-clé à classer (R234 (7)), puis chaque catégorie, dans l'ordre de leur id
-  const choix = html.slice(html.indexOf('<select id="filtre-categorie"'), html.indexOf('</select>'));
+  const choix = html.slice(html.indexOf('<select id="filtre-categorie"'), html.indexOf('</select>', html.indexOf('<select id="filtre-categorie"')));
   assert.match(choix, /aria-label="Filtrer par type"/);
   assert.deepEqual([...choix.matchAll(/<option value="(\d*|sans)">([^<]*)<\/option>/g)].map((o) => [o[1], decoder(o[2])]),
     [['', 'Tous les types'], ...(vocabulaire.some((m) => !m.categories.length) ? [['sans', 'Sans catégorie']] : []), ...categories.map((c) => [String(c.id), c.libelle])]);

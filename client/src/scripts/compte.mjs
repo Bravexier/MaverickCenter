@@ -10,10 +10,20 @@
 // site-version-portable) : `window.maverickMoi` garde la réponse de `GET /api/moi/` (undefined avant son arrivée, null si la demande a échoué), puis
 // l'événement `maverick:moi` est émis sur `document` avec la même réponse en `detail`. Un script de page lit la propriété si l'événement a déjà eu lieu,
 // sinon il attend l'événement.
+// Les niveaux du menu (R319 (3), lot 4) : après cette unique réponse, le niveau du compte (Observateur sans réponse, hors ligne, non connecté ou non-membre) donne le niveau VU,
+// qui s'applique aux seuls éléments du menu à `data-niveau-menu` (boutons des rubriques de l'en-tête, entrées du menu latéral, entrées du menu du profil croisées avec leur
+// `data-categorie`) : montré quand le niveau vu suffit. Aucun autre élément du document n'est touché (d'autres pages ont leurs `data-niveau` et `data-categorie`) ; les listes et
+// titres du menu latéral ne sont pas touchés non plus : le script en ligne de components/MenuDuSite.astro en décide seul. Le build a écrit le menu d'un Observateur (ces éléments `hidden`). « Voir le site en tant que… » : un Créateur choisit un niveau inférieur (`<select>`
+// du menu du profil, gardé en localStorage sous `CLE_DU_NIVEAU_VU`, déclaré sur la page Confidentialité) ; l'entrée se lit au niveau réel (`data-niveau-reel`), le bouton du compte
+// porte une marque quand un niveau inférieur est vu. Le niveau vu est annoncé : `window.maverickNiveau` et l'événement `maverick:niveau` sur `document` (le script en ligne du menu
+// latéral l'écoute, sans module commun). Cela ne change que ce que le menu montre : une page cachée du menu reste servie comme avant (R310 (3), la porte du serveur).
 // Les images (avatar, bannière) sont chargées depuis cdn.discordapp.com par le navigateur (R310 (5)), jamais copiées. La logique (choix du menu, `retour`
 // filtré, messages, dates) est dans lib/compte.mjs, que ce script est seul à importer (skill site-version-portable). Absent de la version portable (le
 // composant n'est pas posé) et de la page de maintenance.
-import { MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, categoriesVisibles, choixDuMenu, etatDuCompte, messageDErreur, profilAAfficher, retourDeLaPage } from '../lib/compte.mjs';
+import {
+  CLE_DU_NIVEAU_VU, EVENEMENT_DU_NIVEAU, LIBELLES_DES_NIVEAUX, MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, categoriesVisibles, choixDuMenu, etatDuCompte, messageDErreur, niveauDuCompte,
+  niveauSuffit, niveauVu, profilAAfficher, retourDeLaPage,
+} from '../lib/compte.mjs';
 
 const zone = document.querySelector('[data-compte]');
 
@@ -25,6 +35,68 @@ async function lireMoi(api) {
   } catch {
     return null;
   }
+}
+
+/** Le niveau gardé par un Créateur (localStorage) ; null sans stockage ou sans valeur. */
+function niveauGarde() {
+  try {
+    return globalThis.localStorage?.getItem(CLE_DU_NIVEAU_VU) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Garde le niveau choisi (`null` : l'oublie : on revoit le niveau réel) ; un stockage absent ou refusé est toléré. */
+function garderLeNiveau(niveau) {
+  try {
+    if (niveau === null) globalThis.localStorage?.removeItem(CLE_DU_NIVEAU_VU);
+    else globalThis.localStorage?.setItem(CLE_DU_NIVEAU_VU, niveau);
+  } catch {
+    // le choix ne survit pas à la page : toléré
+  }
+}
+
+/**
+ * Montre les éléments du menu que `etat` (catégorie) et les niveaux permettent : une entrée du menu du profil, selon sa catégorie ET son niveau (celui de `reel` pour « Voir le site
+ * en tant que… », `vu` pour les autres) ; les boutons de rubrique et les entrées du menu latéral à `data-niveau-menu`, selon `vu` ; puis les blocs du menu du profil sans entrée montrée
+ * sont cachés. Rien d'autre dans le document.
+ */
+function appliquerLesNiveaux(etat, { reel, vu }) {
+  const visibles = new Set(categoriesVisibles(etat));
+  const parNiveau = (e) => niveauSuffit(e.getAttribute('data-niveau-menu'), e.hasAttribute('data-niveau-reel') ? reel : vu);
+  for (const e of document.querySelectorAll('.nav-group__toggle[data-niveau-menu], [data-menu-site] [data-niveau-menu]')) e.hidden = !parNiveau(e);
+  for (const li of zone.querySelectorAll('[data-categorie]')) li.hidden = !visibles.has(li.getAttribute('data-categorie')) || !parNiveau(li);
+  for (const bloc of zone.querySelectorAll('.site-compte__bloc')) bloc.hidden = ![...bloc.querySelectorAll('[data-categorie]')].some((li) => !li.hidden);
+}
+
+/** Annonce le niveau vu : propriété `window.maverickNiveau`, puis événement `maverick:niveau` (`detail`) sur `document`. */
+function annoncerLeNiveau(vu) {
+  globalThis.maverickNiveau = vu;
+  document.dispatchEvent(new CustomEvent(EVENEMENT_DU_NIVEAU, { detail: vu }));
+}
+
+/** La marque du bouton du compte : le niveau vu quand il est inférieur au niveau réel, sinon rien. */
+function marquerLeNiveauVu({ reel, vu }) {
+  const marque = zone.querySelector('.site-compte__vue');
+  if (!marque) return;
+  marque.hidden = vu === reel;
+  marque.textContent = LIBELLES_DES_NIVEAUX[vu] ?? '';
+  marque.title = vu === reel ? '' : `Menu vu en tant que : ${LIBELLES_DES_NIVEAUX[vu]}`;
+}
+
+/** « Voir le site en tant que… » : le choix d'un Créateur s'applique aussitôt, se garde, et se retrouve d'une page à l'autre. */
+function brancherLeChoixDuNiveau(etat, niveaux) {
+  const choix = zone.querySelector('[data-voir-en-tant-que]');
+  if (!choix) return;
+  choix.value = niveaux.vu;
+  choix.addEventListener('change', () => {
+    niveaux.vu = niveauVu(niveaux.reel, choix.value);
+    choix.value = niveaux.vu;
+    garderLeNiveau(niveaux.vu === niveaux.reel ? null : niveaux.vu);
+    appliquerLesNiveaux(etat, niveaux);
+    marquerLeNiveauVu(niveaux);
+    annoncerLeNiveau(niveaux.vu);
+  });
 }
 
 /** Publie la réponse de `GET /api/moi/` (ou null) : propriété `window.maverickMoi`, puis événement `maverick:moi` (`detail`) sur `document`. */
@@ -48,10 +120,8 @@ function image(src, classe) {
  * du petit bouton ; sinon le bouton « Connexion via Discord » s'ajoute au petit bouton ; la requête échoue ou la connexion n'est pas réglée : le petit menu seul,
  * pas de bouton mort. Le script en ligne du composant ouvre et ferme le panneau (`[data-profil-ouvrir]`, délégué : ce bouton-ci est créé ici).
  */
-function afficherLeMenu(choix, etat, config) {
-  const visibles = new Set(categoriesVisibles(etat));
-  for (const li of zone.querySelectorAll('[data-categorie]')) li.hidden = !visibles.has(li.getAttribute('data-categorie'));
-  for (const bloc of zone.querySelectorAll('.site-compte__bloc')) bloc.hidden = ![...bloc.querySelectorAll('[data-categorie]')].some((li) => !li.hidden);
+function afficherLeMenu(choix, etat, config, niveaux) {
+  appliquerLesNiveaux(etat, niveaux);
   zone.setAttribute('data-etat', etat);
   brancherLaDeconnexion(zone, config, (texte) => { const e = zone.querySelector('[data-profil-erreur]'); if (e) { e.textContent = texte; e.hidden = false; } });
   zone.removeAttribute('data-attente');
@@ -75,8 +145,11 @@ function afficherLeMenu(choix, etat, config) {
     const chevron = document.createElement('span');
     chevron.className = 'site-compte__chevron';
     chevron.setAttribute('aria-hidden', 'true');
-    bouton.append(rond, nom, chevron);
+    const marque = document.createElement('span');
+    marque.className = 'site-compte__vue';
+    bouton.append(rond, nom, marque, chevron);
     zone.prepend(bouton);
+    marquerLeNiveauVu(niveaux);
     if (petit) petit.hidden = true;
   } else {
     const lien = document.createElement('a');
@@ -183,7 +256,12 @@ async function demarrer() {
   };
   const moi = await lireMoi(config.api);
   publier(moi);
-  afficherLeMenu(choixDuMenu(moi, { ...config, chemin: location.pathname, recherche: location.search ?? '' }), etatDuCompte(moi), config);
+  const etat = etatDuCompte(moi);
+  const reel = niveauDuCompte(moi);
+  const niveaux = { reel, vu: niveauVu(reel, niveauGarde()) };
+  afficherLeMenu(choixDuMenu(moi, { ...config, chemin: location.pathname, recherche: location.search ?? '' }), etat, config, niveaux);
+  brancherLeChoixDuNiveau(etat, niveaux);
+  annoncerLeNiveau(niveaux.vu);
   const profil = document.querySelector('[data-profil-page]');
   if (profil) afficherLeProfil(profil, moi, config);
   const connexion = document.querySelector('[data-connexion-page]');

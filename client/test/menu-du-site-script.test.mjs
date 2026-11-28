@@ -4,7 +4,9 @@
 //   - une entrée à sous-pages se plie et se déplie, ouverte d'office si la page courante est dedans ;
 //   - l'état (réduit, entrées repliées) est gardé en localStorage (`menu-du-site:etat`), le stockage absent ou illisible est toléré ;
 //   - le menu démarre réduit, sans l'écrire, sur une page qui a déjà son menu de gauche et sur un écran étroit ;
-//   - les animations ne commencent qu'après le premier affichage.
+//   - les animations ne commencent qu'après le premier affichage ;
+//   - les niveaux (R319 (3), lot 4) : une fois le niveau du compte annoncé (`maverick:niveau`), la rubrique de la page est montrée si elle est devenue visible et que le visiteur n'a
+//     pas choisi de rubrique, une rubrique devenue cachée est quittée.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -39,7 +41,7 @@ class Element {
  * Un menu : deux rubriques (jeu, regles), une entrée à sous-pages `jeu/introduction` (contient la page quand `dedans`), une autre `regles/avancees` ; `proprePage` : la
  * page a son menu de gauche ; `etroit` : écran étroit ; `stockage` : le contenu de localStorage (`null` : absent, 'casse' : illisible, 'refuse' : il lève).
  */
-function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = false } = {}) {
+function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = false, ressourcesCourante = false, niveauConnu = undefined, ressourcesLevee = false } = {}) {
   const document = { activeElement: null };
   const nouveau = (attributs, parent) => Object.assign(new Element(attributs, parent), { document });
   const menu = nouveau({ 'data-menu-site': '' });
@@ -67,6 +69,13 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
   const courante = nouveau({ 'aria-current': 'page' }, menu);
   const rubriqueJeu = nouveau({ 'data-group': 'jeu', 'aria-pressed': 'true' });
   const rubriqueRegles = nouveau({ 'data-group': 'regles', 'aria-pressed': 'false' });
+  // une rubrique à niveau : cachée au départ (le menu d'un Observateur), la courante de la page quand `ressourcesCourante`
+  const rubriqueRessources = nouveau({ 'data-group': 'ressources', 'aria-pressed': 'false', 'data-niveau-menu': 'joueur', ...(ressourcesCourante ? { 'aria-current': 'true' } : {}) });
+  rubriqueRessources.hidden = !ressourcesLevee; // `ressourcesLevee` : scripts/compte.mjs a déjà annoncé le niveau avant ce script
+  const titreRessources = nouveau({ 'data-group': 'ressources' }, menu);
+  titreRessources.hidden = true;
+  const listeRessources = nouveau({ 'data-group': 'ressources' }, menu);
+  listeRessources.hidden = true;
   const entete = nouveau({});
   entete.getBoundingClientRect = () => ({ bottom: 133 });
   entete.querySelectorAll = () => [burger, rubriqueJeu];
@@ -76,7 +85,7 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
     const m = sel.match(/^\[data-cle="([^"]+)"\]$/);
     return m ? groupes.find((g) => g.li.getAttribute('data-cle') === m[1])?.li ?? null : null;
   };
-  menu.querySelectorAll = (sel) => (sel === '[data-menu-replier]' ? groupes.map((g) => g.b) : sel === '[data-group]' ? [titreJeu, titreRegles, listeJeu, listeRegles] : []);
+  menu.querySelectorAll = (sel) => (sel === '[data-menu-replier]' ? groupes.map((g) => g.b) : sel === '[data-group]' ? [titreJeu, titreRegles, titreRessources, listeJeu, listeRegles, listeRessources] : []);
   menu.getBoundingClientRect = () => ({ bottom: 800 });
   // le reste de la page, que le tiroir rend inerte
   const principal = nouveau({});
@@ -90,6 +99,7 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
   const changements = [];
   const mq = { matches: etroit, addEventListener: (type, f) => changements.push(f) };
   const fenetre = {
+    maverickNiveau: niveauConnu,
     localStorage: stockage === null ? undefined : {
       getItem: (k) => {
         if (stockage === 'refuse') throw new Error('stockage refusé');
@@ -113,7 +123,7 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
       if (sel === '.site-header') return entete;
       return sel.includes('main >') ? (proprePage ? nouveau({}) : null) : null;
     },
-    querySelectorAll: (sel) => (sel === '.nav-group__toggle' ? [rubriqueJeu, rubriqueRegles] : sel.startsWith('.site-corps') ? [principal, pied] : []),
+    querySelectorAll: (sel) => (sel === '.nav-group__toggle' ? [rubriqueJeu, rubriqueRegles, rubriqueRessources] : sel.startsWith('.site-corps') ? [principal, pied] : []),
     addEventListener: (type, f) => { (document.ecouteurs ??= {})[type] ??= []; document.ecouteurs[type].push(f); },
     dispatchEvent: (e) => { evenements.push(e.type); for (const f of document.ecouteurs?.[e.type] ?? []) f(e); },
     emettre: (type, e = {}) => { for (const f of document.ecouteurs?.[type] ?? []) f(e); },
@@ -122,7 +132,7 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
   const etat = () => JSON.parse(memoire[CLE] ?? 'null');
   const affiche = () => ({ reduit: menu.getAttribute('data-reduit'), bouton: [bouton.getAttribute('aria-expanded'), bouton.getAttribute('aria-label')] });
   return {
-    menu, bouton, burger, voile, intro, avancees, rubriqueJeu, rubriqueRegles, titreJeu, titreRegles, listeJeu, listeRegles, ecrits, etat, affiche, frames, principal, pied,
+    menu, bouton, burger, voile, intro, avancees, rubriqueJeu, rubriqueRegles, rubriqueRessources, titreJeu, titreRegles, titreRessources, listeJeu, listeRegles, listeRessources, ecrits, etat, affiche, frames, principal, pied,
     document, classes, proprietes, evenements, changements, mq, lienDuMenu, courante, entete,
   };
 }
@@ -308,4 +318,70 @@ test('le profil du compte s’ouvre : le tiroir se referme ; passage à un écra
   m.mq.matches = true;
   for (const f of m.changements) f();
   assert.equal(m.affiche().reduit, 'oui', 'étroit : le tiroir fermé');
+});
+
+// --- Les niveaux (R319 (3), lot 4) -------------------------------------------------------------------------------------------------------------------
+// scripts/compte.mjs montre ou cache les éléments à `data-niveau-menu` (les rubriques ici : `hidden` ôté), puis annonce le niveau (`maverick:niveau`) : le script du menu s'y fie.
+
+/** Le niveau est connu et la rubrique Ressources est visible (un Joueur ou plus) : ce que scripts/compte.mjs fait avant d'annoncer. */
+function annoncer(m, { ressourcesVisible = true } = {}) {
+  m.rubriqueRessources.hidden = !ressourcesVisible; // le bouton seul : compte.mjs ne touche ni la liste ni le titre
+  m.document.emettre('maverick:niveau', { detail: ressourcesVisible ? 'joueur' : 'observateur' });
+}
+const montree = (m) => [m.rubriqueJeu, m.rubriqueRegles, m.rubriqueRessources].filter((r) => r.getAttribute('aria-pressed') === 'true').map((r) => r.getAttribute('data-group'));
+const listesMontrees = (m) => [m.listeJeu, m.listeRegles, m.listeRessources].filter((l) => !l.hidden).map((l) => l.getAttribute('data-group'));
+
+test('R319 (3) : le niveau du compte rend visible la rubrique de la page, et l’on n’a rien choisi : son menu est montré (le build montrait Le Jeu)', () => {
+  const m = ouvrir({ ressourcesCourante: true });
+  assert.deepEqual([montree(m), listesMontrees(m)], [['jeu'], ['jeu']], 'le menu d’un Observateur au départ');
+  annoncer(m);
+  assert.deepEqual([montree(m), listesMontrees(m)], [['ressources'], ['ressources']], 'la liste de la rubrique de la page, les autres cachées');
+  assert.deepEqual([m.titreJeu.hidden, m.titreRessources.hidden], [true, false], 'son titre aussi');
+  assert.deepEqual(m.ecrits, [], 'rien n’est écrit : ce n’est pas un choix du visiteur');
+});
+
+test('R319 (3) : un Observateur garde le menu du build (la rubrique de la page lui est cachée), sans erreur', () => {
+  const m = ouvrir({ ressourcesCourante: true });
+  annoncer(m, { ressourcesVisible: false });
+  assert.deepEqual([montree(m), listesMontrees(m)], [['jeu'], ['jeu']]);
+  assert.equal(m.rubriqueRessources.hidden, true);
+});
+
+test('R319 (3) : une rubrique que le visiteur a choisie n’est pas quittée quand le niveau arrive ; une page sans rubrique (accueil) ne change rien', () => {
+  const choisi = ouvrir({ ressourcesCourante: true });
+  choisi.rubriqueRegles.clic();
+  annoncer(choisi);
+  assert.deepEqual(montree(choisi), ['regles'], 'son choix l’emporte sur la rubrique de la page');
+  const accueil = ouvrir();
+  annoncer(accueil);
+  assert.deepEqual([montree(accueil), listesMontrees(accueil)], [['jeu'], ['jeu']], 'aucune rubrique courante : Le Jeu reste montré');
+});
+
+test('R319 (3) : une rubrique montrée qui devient cachée (un Créateur se voit Observateur) est quittée pour celle de la page si elle est visible, sinon la première visible ; revenir la rend', () => {
+  const m = ouvrir({ ressourcesCourante: true });
+  annoncer(m);
+  m.rubriqueRessources.clic();
+  assert.deepEqual(montree(m), ['ressources']);
+  annoncer(m, { ressourcesVisible: false });
+  assert.deepEqual([montree(m), listesMontrees(m)], [['jeu'], ['jeu']], 'la première visible (celle de la page est cachée)');
+  // la rubrique choisie par clic puis cachée : même sans choix, la première visible
+  const autre = ouvrir({ ressourcesCourante: false });
+  autre.rubriqueRessources.hidden = false;
+  autre.rubriqueRegles.clic();
+  autre.rubriqueRegles.hidden = true;
+  autre.document.emettre('maverick:niveau', { detail: 'observateur' });
+  assert.deepEqual(montree(autre), ['jeu']);
+  // choisir ensuite la rubrique de la page : elle reste montrée
+  m.rubriqueRessources.hidden = false;
+  m.rubriqueRessources.clic();
+  assert.deepEqual(montree(m), ['ressources']);
+});
+
+test('R319 (3) : le niveau annoncé avant le chargement du menu (propriété `maverickNiveau`) s’applique aussitôt ; sans niveau annoncé, rien ne change', () => {
+  const sans = ouvrir({ ressourcesCourante: true });
+  assert.deepEqual(montree(sans), ['jeu']);
+  const deja = ouvrir({ ressourcesCourante: true, niveauConnu: 'joueur', ressourcesLevee: true });
+  assert.deepEqual([montree(deja), listesMontrees(deja)], [['ressources'], ['ressources']], 'la rubrique de la page, sans attendre l’événement');
+  const cachee = ouvrir({ ressourcesCourante: true, niveauConnu: 'observateur' });
+  assert.deepEqual(montree(cachee), ['jeu']);
 });

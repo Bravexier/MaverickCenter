@@ -46,11 +46,15 @@ const site = modeDuSite(process.env, packageInfo.version);
 const dev = !site.prod && !portable;
 // Le menu : cinq rubriques dans l'en-tête, les entrées de la rubrique montrée dans le menu latéral (components/MenuDuSite.astro). Les entrées sont résolues d'après
 // la base (lib/menu-db.mjs : adresse, libellé et habillage du mot-clé ; titre d'un onglet des Règles), sans celles du site de dev seulement hors du site de dev.
-// La rubrique courante (accent) est celle de la page, `null` pour l'accueil, la page 404 et les pages du menu du profil ; le menu montré au départ est le sien,
-// sinon celui de la première rubrique.
+// Les niveaux (R319 (3), lot 4) : le build écrit le menu d'un Observateur — le bouton d'une rubrique ou une entrée à `niveau` porte `data-niveau-menu` et `hidden` — et scripts/compte.mjs le
+// montre selon le niveau du compte (un seul `GET /api/moi/`). La version portable, sans service, n'a que ce menu : rubriques et entrées à `niveau` y sont retirées. Cacher un
+// lien ne protège pas la page.
+// La rubrique courante (accent) est celle de la page, `null` pour l'accueil, la page 404 et les pages du menu du profil ; le menu montré au départ est le sien quand un
+// Observateur la voit, sinon celui de la première rubrique qu'il voit (le script du menu latéral montre celle de la page si le niveau du compte la rend visible).
 const courante = rubriqueCourante(Astro.url.pathname, base, NAV, entree);
-const montree = courante ?? NAV[0];
-const rubriques = NAV.map((g) => ({ key: g.key, label: g.label, entrees: entreesVisibles(menuDuSite(g.items), { dev }) }));
+const rubriquesDUnObservateur = NAV.filter((g) => !g.niveau);
+const montree = courante && !courante.niveau ? courante : rubriquesDUnObservateur[0];
+const rubriques = NAV.filter((g) => !(portable && g.niveau)).map((g) => ({ key: g.key, label: g.label, niveau: g.niveau, entrees: entreesVisibles(menuDuSite(g.items), { dev, sansNiveau: portable }) }));
 // Balise des pages (métriques du navigateur, page Debug) : dans tous les builds, production comprise (décision du propriétaire du 2026-10-15 :
 // « Active-le aussi en prod dans un premier temps ») ; SITE_METRIQUES_PAGES=0 au build la retire (l'interrupteur pour plus tard, comme
 // MAVERICK_METRIQUES_PAGES=0 côté service). Ni dans la version portable (pas de service) ni sur la page de maintenance.
@@ -148,7 +152,7 @@ const adressesRenommees = jsonDesAdressesRenommees();
               {
                 rubriques.map((group) => (
                   <li>
-                    <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === montree.key ? 'true' : 'false'} aria-current={courante && group.key === courante.key ? 'true' : undefined}>
+                    <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === montree.key ? 'true' : 'false'} aria-current={courante && group.key === courante.key ? 'true' : undefined} data-niveau-menu={group.niveau} hidden={group.niveau ? true : undefined}>
                       {group.label}
                     </button>
                   </li>
