@@ -4,6 +4,10 @@
 // JavaScript, c'est elle qu'on voit). Les entrées sont celles que lib/menu-db.mjs résout d'après la base, leur HTML celui de lib/menu-rendu.mjs (le lien d'une
 // entrée à mot-clé est un lien de mot-clé : R319 (4)).
 //
+// Les niveaux (R319 (3), lot 4) : le build écrit le menu d'un Observateur ; le bouton d'une rubrique à `niveau` (en-tête) et une entrée à `niveau` portent `data-niveau-menu` et `hidden` ; scripts/compte.mjs
+// les montre selon le niveau du compte (jamais les listes ni les titres : ce script en décide seul), puis annonce ce niveau (événement `maverick:niveau` sur `document`, propriété `window.maverickNiveau`) : le script ci-dessous montre alors la
+// rubrique de la page si elle est devenue visible et que le visiteur n'a pas encore choisi une rubrique, et quitte une rubrique devenue cachée. Cacher un lien ne protège pas la page.
+//
 // Le bouton en tête réduit le menu en une bande étroite à la mesure du bouton, qui ne bouge pas (styles/global/menu-site.css) ; le nom de la rubrique
 // est à côté de lui. L'état (réduit, entrées repliées) est gardé d'une page à l'autre dans localStorage (`menu-du-site:etat`, tolérant à son absence). Le menu
 // démarre réduit sur une page qui a déjà son menu de gauche (le guide, les races, les classes, les magies, les armes, la chronologie) et sur un écran étroit,
@@ -15,8 +19,8 @@ import { htmlDesEntrees } from '../lib/menu-rendu.mjs';
 import { url } from '../lib/wiki';
 
 interface Props {
-  /** Les rubriques : { key, label, entrees } (entrées résolues et filtrées). */
-  rubriques: { key: string; label: string; entrees: any[] }[];
+  /** Les rubriques : { key, label, niveau?, entrees } (entrées résolues et filtrées ; `niveau` : la rubrique entière est cachée au départ, R319 (3)). */
+  rubriques: { key: string; label: string; niveau?: string; entrees: any[] }[];
   /** La clé de la rubrique dont le menu est montré. */
   montree: string;
   /** L'adresse de la page, avec barre finale. */
@@ -70,6 +74,8 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
       var groupes = menu.querySelectorAll('[data-menu-replier]');
       var racine = document.documentElement;
       var etat = { reduit: false, replie: [] };
+      // le visiteur a-t-il choisi une rubrique lui-même ? (alors le niveau connu ne la change plus que si elle est devenue cachée)
+      var choisie = false;
 
       // le stockage du navigateur, quand il existe et répond
       function lire() {
@@ -197,12 +203,33 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
         var lien = e.target && e.target.closest ? e.target.closest('a[href]') : null;
         if (tiroir && lien) basculer(false);
       });
+      // la rubrique `cle` montrée : son bouton enfoncé, sa liste et son titre, ceux des autres cachés
+      function montrer(cle) {
+        Array.prototype.forEach.call(rubriques, function (o) { o.setAttribute('aria-pressed', o.getAttribute('data-group') === cle ? 'true' : 'false'); });
+        Array.prototype.forEach.call(menu.querySelectorAll('[data-group]'), function (x) { x.hidden = x.getAttribute('data-group') !== cle; });
+      }
+      // le niveau du compte est connu (scripts/compte.mjs a montré ou caché les boutons des rubriques et les entrées) : la rubrique de la page si elle est visible et que le visiteur n'a rien
+      // choisi, la rubrique montrée si elle l'est encore, sinon la page ou la première visible ; les listes et titres, que ce script seul règle, suivent la rubrique montrée
+      function surLeNiveau() {
+        var montree = null, courante = null, premiere = null;
+        Array.prototype.forEach.call(rubriques, function (r) {
+          if (r.hidden) return;
+          if (!premiere) premiere = r;
+          if (r.getAttribute('aria-pressed') === 'true') montree = r;
+          if (r.getAttribute('aria-current') === 'true') courante = r;
+        });
+        var cible = montree;
+        if (!cible || (!choisie && courante && courante !== montree)) cible = courante || premiere;
+        if (cible) montrer(cible.getAttribute('data-group'));
+      }
+      document.addEventListener('maverick:niveau', surLeNiveau);
+      if (window.maverickNiveau !== undefined) surLeNiveau();
       // cliquer une rubrique change le menu sans changer de page, et le rouvre s'il était réduit
       Array.prototype.forEach.call(rubriques, function (r) {
         r.addEventListener('click', function () {
           var cle = r.getAttribute('data-group');
-          Array.prototype.forEach.call(rubriques, function (o) { o.setAttribute('aria-pressed', o === r ? 'true' : 'false'); });
-          Array.prototype.forEach.call(menu.querySelectorAll('[data-group]'), function (x) { x.hidden = x.getAttribute('data-group') !== cle; });
+          choisie = true;
+          montrer(cle);
           var etaitReduit = reduit;
           reduit = false;
           if (etaitReduit && !sansMemoire()) garder();

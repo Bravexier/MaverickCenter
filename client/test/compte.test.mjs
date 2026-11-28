@@ -8,12 +8,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { CODES_D_ERREUR, NIVEAUX, RETOUR_PAR_DEFAUT, retourValide as retourDuService } from '../serveur/discord.mjs';
 import {
-  LIBELLES_DES_NIVEAUX, MESSAGES_DES_ERREURS, MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, adresseDImage, choixDuMenu, dateFrancaise, etatDuCompte, libelleDuNiveau, messageDErreur,
-  profilAAfficher, retourDeLaPage, retourValide, categorieDeLEntreeDuProfil, categoriesVisibles,
+  CLE_DU_NIVEAU_VU, EVENEMENT_DU_NIVEAU, LIBELLES_DES_NIVEAUX, MESSAGES_DES_ERREURS, MESSAGE_DU_NON_MEMBRE, ORDRE_DES_NIVEAUX, adresseDeConnexion, adresseDImage, choixDuMenu, dateFrancaise,
+  etatDuCompte, libelleDuNiveau, messageDErreur, niveauDuCompte, niveauSuffit, niveauVu, niveauxProposes, profilAAfficher, retourDeLaPage, retourValide, categorieDeLEntreeDuProfil,
+  categoriesVisibles,
 } from '../src/lib/compte.mjs';
-import { MENU_DU_PROFIL, entreesVisibles } from '../src/lib/nav.mjs';
+import { MENU_DU_PROFIL, NAV, NIVEAUX_DU_MENU, entreesAPlat, entreesVisibles } from '../src/lib/nav.mjs';
 import { resoudreLesEntrees } from '../src/lib/menu-db.mjs';
-import { htmlDuMenuDuProfil } from '../src/lib/menu-rendu.mjs';
+import { htmlDesEntrees, htmlDuMenuDuProfil } from '../src/lib/menu-rendu.mjs';
 import { attendre, cliquer, el, fauxDocument } from './aide-faux-dom.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
@@ -145,12 +146,27 @@ function balisesDeLaPage(fichier) {
  * Une page avec sa zone de compte et le service factice `moi` (la réponse de GET /api/moi/ : [statut, corps], ou une exception).
  * `contenu` : les balises de la page (profil, connexion). Rend les appels faits et ce que la page a remplacé.
  */
-async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', zone = true, deconnexion = [200, { connecte: false }] }) {
+async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', zone = true, deconnexion = [200, { connecte: false }], site = 'dev', menuLateral = false, stockage = {} }) {
   const appels = [];
   const document = fauxDocument(el('main', {}));
   const publications = []; // les `detail` de l'événement `maverick:moi`, dans l'ordre
+  const niveaux = []; // les `detail` de l'événement `maverick:niveau`, dans l'ordre
   document.addEventListener('maverick:moi', (e) => publications.push(e.detail));
+  document.addEventListener(EVENEMENT_DU_NIVEAU, (e) => niveaux.push(e.detail));
   delete globalThis.maverickMoi;
+  delete globalThis.maverickNiveau;
+  // le menu tel que le build l'écrit pour un Observateur (en-tête et menu latéral : components/MenuDuSite.astro, layouts/Base.astro), sans la base : entrées non résolues
+  if (menuLateral) {
+    const tete = el('header', {});
+    tete.innerHTML = `<ul>${NAV.map((g) => `<li><button type="button" class="nav-group__toggle" data-group="${g.key}"${g.niveau ? ` data-niveau-menu="${g.niveau}" hidden` : ''}>${g.label}</button></li>`).join('')}</ul>`;
+    const lateral = el('nav', { 'data-menu-site': '' });
+    lateral.innerHTML = NAV.map((g) => `<p class="menu-site__titre" data-group="${g.key}" hidden>${g.label}</p>`
+      + `<ul class="menu-site__liste" data-group="${g.key}" hidden>${htmlDesEntrees(entreesVisibles(resoudreLesEntrees(g.items), { dev: site === 'dev' }), { rubrique: g.key, adresse: (r) => `/${r}`, base: '/', ici: '/' })}</ul>`).join('');
+    document.body.append(tete, lateral);
+  }
+  const refuse = stockage === 'refuse'; // un stockage qui lève (navigation privée, cookies refusés)
+  const memoire = new Map(refuse ? [] : Object.entries(stockage));
+  const sur = (f) => (...args) => { if (refuse) throw new Error('stockage refusé'); return f(...args); };
   // la page d'abord (ses boutons « Se déconnecter » se trouvent avant ceux du menu), puis la zone de compte avec le balisage de components/MenuDuProfil.astro
   if (contenu) {
     const page = el('div', {});
@@ -158,7 +174,7 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
     document.body.append(page);
   }
   if (zone) {
-    const blocs = MENU_DU_PROFIL.map((bloc) => entreesVisibles(resoudreLesEntrees(bloc), { dev: true, prod: true }));
+    const blocs = MENU_DU_PROFIL.map((bloc) => entreesVisibles(resoudreLesEntrees(bloc), { dev: site !== 'prod', prod: site === 'prod' }));
     const z = el('div', { class: 'site-compte', 'data-compte': '', 'data-attente': '', 'data-api': '/api/', 'data-page-profil': '/profil/', 'data-page-connexion': '/connexion/', 'data-accueil': '/' });
     z.innerHTML = '<button type="button" class="site-compte__petit" aria-expanded="false" aria-controls="menu-du-profil" data-profil-ouvrir></button>'
       + `<div class="site-compte__panneau" id="menu-du-profil" hidden>${htmlDuMenuDuProfil(blocs, { adresse: (r) => `/${r}`, ici: '/' })}<p class="site-compte__erreur" role="alert" hidden data-profil-erreur></p></div>`;
@@ -167,6 +183,7 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
   const allers = [];
   Object.assign(globalThis, {
     document,
+    localStorage: { getItem: sur((k) => memoire.get(k) ?? null), setItem: sur((k, v) => memoire.set(k, String(v))), removeItem: sur((k) => memoire.delete(k)) },
     location: { pathname: chemin, search: recherche, href: `http://site${chemin}${recherche}`, assign: (adresse) => allers.push(adresse) },
     fetch: async (entree, init) => {
       const adresse = typeof entree === 'string' ? entree : entree.url;
@@ -185,11 +202,12 @@ async function ouvrir({ moi, chemin = '/regles/', recherche = '', contenu = '', 
   const module = await import(`${SOURCE.href}?page=${(numero += 1)}`);
   await module.pret;
   await attendre();
-  return { document, appels, allers, publications, zone: document.querySelector('[data-compte]') };
+  return { document, appels, allers, publications, niveaux, memoire, zone: document.querySelector('[data-compte]') };
 }
 
-/** Les entrées montrées du menu du profil, leur texte, dans l'ordre. */
-const visibles = (zone) => [...zone.querySelectorAll('[data-categorie]')].filter((li) => !li.hidden).map((li) => li.textContent.trim().replace(/\s+/g, ' '));
+/** Les entrées montrées du menu du profil, leur texte (sans les choix d'un `<select>`), dans l'ordre. */
+const visibles = (zone) => [...zone.querySelectorAll('[data-categorie]')].filter((li) => !li.hidden)
+  .map((li) => li.textContent.replace(li.querySelector('select')?.textContent ?? '', '').trim().replace(/\s+/g, ' ').replace(' (bientôt)', ''));
 const entree = (zone, libelle) => [...zone.querySelectorAll('[data-categorie]')].find((li) => li.textContent.includes(libelle));
 
 test('menu connecté : l’avatar rond et le pseudo ouvrent le menu du profil (bouton, plus de lien) ; tout le menu y est ; une seule demande à /api/moi/', async () => {
@@ -205,10 +223,11 @@ test('menu connecté : l’avatar rond et le pseudo ouvrent le menu du profil (b
   assert.match(bouton.textContent, /Aria/);
   assert.equal(p.zone.querySelector('.site-compte__petit').hidden, true, 'le petit bouton cède la place');
   assert.equal(p.zone.getAttribute('data-etat'), 'connecte');
-  // le menu complet (R319 (1)) : le profil, les trois espaces « bientôt », Glossaire, Recherche, Site de dev (la production seulement : ici le balisage l'a), l'autre vue, se déconnecter
-  const tout = [...MENU_DU_PROFIL.flat()].map((e) => e.label);
-  assert.deepEqual(visibles(p.zone).map((t) => t.replace(' (bientôt)', '')), tout, 'dans l’ordre de MENU_DU_PROFIL');
-  assert.equal(p.zone.querySelector('a[href="/profil/"]').textContent.trim(), tout[0], 'Mon profil : un lien vers /profil/');
+  // le menu d'un Joueur (R319 (1), lot 4) : les entrées de MENU_DU_PROFIL (site de dev : sans « Site de dev », de la production seulement) que son niveau permet, dans l'ordre
+  const duJoueur = MENU_DU_PROFIL.flat().filter((e) => !e.prodSeulement && niveauSuffit(e.niveau, 'joueur')).map((e) => e.label);
+  assert.ok(duJoueur.length > 4, 'le menu d’un Joueur a plusieurs entrées');
+  assert.deepEqual(visibles(p.zone), duJoueur, 'dans l’ordre de MENU_DU_PROFIL');
+  assert.equal(p.zone.querySelector('a[href="/profil/"]').textContent.trim(), duJoueur[0], 'Mon profil : un lien vers /profil/');
   assert.deepEqual(p.appels.map((a) => `${a.methode} ${a.adresse}`), ['GET /api/moi/']);
 });
 
@@ -230,11 +249,11 @@ test('menu non connecté : le bouton de connexion avec la page courante en `reto
   assert.equal(entree(p.zone, 'Se déconnecter').hidden, true, 'pas de déconnexion sans compte');
 });
 
-test('R319 (1) : un compte connecté non membre garde « Connexion via Discord » et voit le même menu qu’un membre (Mon profil, les entrées à niveau, Se déconnecter) : rien n’est masqué selon le niveau', async () => {
-  const membre = visibles((await ouvrir({ moi: [200, connecte()] })).zone);
+test('R319 (1), R313 (1) : un compte connecté non membre garde « Connexion via Discord » et voit le menu d’un Observateur (Mon profil, Glossaire, Recherche, Se déconnecter), sans entrée à niveau', async () => {
   const p = await ouvrir({ moi: [200, nonMembre] });
   assert.ok(p.zone.querySelector('.site-compte__connexion'));
-  assert.deepEqual(visibles(p.zone), membre, 'le même menu qu’un membre');
+  assert.deepEqual(visibles(p.zone), MENU_DU_PROFIL.flat().filter((e) => !e.niveau && !e.prodSeulement).map((e) => e.label), 'aucun niveau : aucune entrée à niveau');
+  assert.equal(p.niveaux.at(-1), 'observateur');
   assert.equal(p.zone.getAttribute('data-etat'), 'non_membre');
   cliquer(entree(p.zone, 'Se déconnecter').querySelector('[data-deconnexion]'));
   await attendre();
@@ -465,4 +484,195 @@ test('la réponse de /api/moi/ est publiée : propriété globale et événement
   assert.equal(globalThis.maverickMoi, null);
   assert.deepEqual(sansZone.publications, [null]);
   assert.deepEqual(sansZone.appels, [], 'sans zone de compte, aucune demande');
+});
+
+// --- Les niveaux d'accès appliqués au menu (R319 (3), lot 4) ---------------------------------------------------------------------------------------
+
+const connecteDe = (niveau) => connecte({ niveau });
+const SITES = ['dev', 'prod'];
+
+test('R310 (2), R319 (3) : Créateur ⊃ MJ ⊃ Joueur ⊃ Observateur ; l’ordre est celui du service, des libellés et de nav.mjs (qui n’importe rien et le recopie)', () => {
+  assert.deepEqual([...ORDRE_DES_NIVEAUX], [...NIVEAUX], 'celui du service (serveur/discord.mjs#NIVEAUX)');
+  assert.deepEqual(Object.keys(LIBELLES_DES_NIVEAUX), [...ORDRE_DES_NIVEAUX]);
+  assert.deepEqual(ORDRE_DES_NIVEAUX.slice(1), [...NIVEAUX_DU_MENU], 'les niveaux que porte `niveau`, sans Observateur');
+  assert.equal(ORDRE_DES_NIVEAUX[0], 'observateur');
+  assert.match(CLE_DU_NIVEAU_VU, /^[a-z-]+:[a-z-]+$/);
+});
+
+test('niveauSuffit : cumulatif ; rien de demandé, oui ; niveau demandé inconnu, non ; lecteur de niveau inconnu, Observateur', () => {
+  for (const [i, niveau] of ORDRE_DES_NIVEAUX.entries()) {
+    for (const [j, requis] of ORDRE_DES_NIVEAUX.entries()) assert.equal(niveauSuffit(requis, niveau), i >= j, `${niveau} voit ce qui demande ${requis}`);
+    for (const rien of [undefined, null, '']) assert.equal(niveauSuffit(rien, niveau), true, `${niveau} : rien de demandé`);
+    for (const inconnu of ['admin', 'MJ', 3, {}]) assert.equal(niveauSuffit(inconnu, niveau), false, `${niveau} : ${JSON.stringify(inconnu)} demandé`);
+  }
+  for (const inconnu of ['admin', null, undefined, 7]) {
+    assert.equal(niveauSuffit('observateur', inconnu), true);
+    assert.equal(niveauSuffit('joueur', inconnu), false);
+  }
+});
+
+test('niveauDuCompte : le niveau d’un compte connecté ; Observateur sans réponse, hors ligne, non connecté, non-membre (R313 (1)), niveau absent ou inconnu', () => {
+  for (const niveau of ORDRE_DES_NIVEAUX) assert.equal(niveauDuCompte(connecteDe(niveau)), niveau);
+  for (const niveau of [null, undefined, 'admin', 3]) assert.equal(niveauDuCompte(connecteDe(niveau)), 'observateur', String(niveau));
+  for (const moi of [null, undefined, 'x', deconnecte, nonMembre, { connexion_disponible: false, connecte: false, utilisateur: null }, { ...connecte(), connexion_disponible: false }, connecte({ nom: '' })]) {
+    assert.equal(niveauDuCompte(moi), 'observateur', JSON.stringify(moi));
+  }
+});
+
+test('« Voir le site en tant que… » : un Créateur choisit parmi tous les niveaux ; le niveau vu est le choix valide strictement inférieur, sinon le réel ; un autre qu’un Créateur ne se voit jamais plus bas', () => {
+  assert.deepEqual(niveauxProposes('createur'), ['createur', 'mj', 'joueur', 'observateur']);
+  for (const reel of ['mj', 'joueur', 'observateur', null, undefined, 'x']) assert.deepEqual(niveauxProposes(reel), [], String(reel));
+  for (const bas of ['mj', 'joueur', 'observateur']) assert.equal(niveauVu('createur', bas), bas);
+  for (const invalide of ['createur', 'admin', '', null, undefined, 4]) assert.equal(niveauVu('createur', invalide), 'createur', `choix ${String(invalide)}`);
+  for (const reel of ['mj', 'joueur', 'observateur']) for (const choix of ORDRE_DES_NIVEAUX) assert.equal(niveauVu(reel, choix), reel, `${reel} ne se voit pas ${choix}`);
+});
+
+// R319 (1) et (3) : les marques [J] [MJ] [C] [Prod] [Dev] du plan du menu, chaque niveau sur chaque site
+const PROFIL_ATTENDU = {
+  observateur: ['Mon profil', 'Glossaire', 'Recherche', 'Se déconnecter'],
+  joueur: ['Mon profil', 'Mes personnages', 'Mes groupes', 'Glossaire', 'Recherche', 'Se déconnecter'],
+  mj: (site) => ['Mon profil', 'Mes personnages', 'Mes groupes', 'Mes scénarios', 'Glossaire', 'Recherche', ...(site === 'prod' ? ['Site de dev'] : []), 'Se déconnecter'],
+  createur: (site) => ['Mon profil', 'Mes personnages', 'Mes groupes', 'Mes scénarios', 'Glossaire', 'Recherche', ...(site === 'prod' ? ['Site de dev'] : []), 'Voir le site en tant que…', 'Se déconnecter'],
+};
+const REGLES_ATTENDU = {
+  observateur: ['Mécaniques générales', 'Les combats', 'Exploration'],
+  joueur: ['Mécaniques générales', 'Les combats', 'Exploration', 'Mise à jour', 'Statistiques'],
+  mj: ['Mécaniques générales', 'Les combats', 'Exploration', 'Guide du MJ', 'Mise à jour', 'Statistiques'],
+};
+REGLES_ATTENDU.createur = REGLES_ATTENDU.mj;
+const MONDE_ATTENDU = { joueur: ['Chronologie', 'Lieux', 'Mythologie', 'Factions'], mj: ['Chronologie', 'Lieux', 'Mythologie', 'Bestiaire', 'Factions'] };
+MONDE_ATTENDU.createur = MONDE_ATTENDU.mj;
+
+/** Les rubriques montrées de l'en-tête (clés) et les entrées montrées d'une rubrique (texte, sans « (bientôt) »), telles que le script du compte les a laissées. */
+const rubriquesMontrees = (document) => [...document.querySelectorAll('.nav-group__toggle')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-group'));
+const entreesMontrees = (document, cle) => [...document.querySelector(`ul[data-group="${cle}"]`).querySelectorAll('li')]
+  .filter((li) => !li.hidden && !li.querySelector('li')).map((li) => li.textContent.trim().replace(/\s+/g, ' ').replace(' (bientôt)', ''));
+
+test('R319 (1), (3) : le menu du profil, chaque niveau sur chaque site : Joueur [J], MJ [MJ], Créateur [C], Site de dev [Prod][MJ] ; Mon profil, Se déconnecter, Glossaire et Recherche pour tous', async () => {
+  for (const site of SITES) {
+    for (const niveau of ORDRE_DES_NIVEAUX) {
+      const attendu = typeof PROFIL_ATTENDU[niveau] === 'function' ? PROFIL_ATTENDU[niveau](site) : PROFIL_ATTENDU[niveau];
+      const p = await ouvrir({ moi: [200, connecteDe(niveau)], site });
+      assert.deepEqual(visibles(p.zone), attendu, `${niveau}, ${site}`);
+      // la même règle lue dans les données de nav.mjs : une entrée est montrée quand son niveau suffit (et « Site de dev » seulement sur la production)
+      assert.deepEqual(visibles(p.zone), MENU_DU_PROFIL.flat().filter((e) => !(e.prodSeulement && site !== 'prod') && niveauSuffit(e.niveau, niveau)).map((e) => e.label), `${niveau}, ${site} : les données`);
+      assert.equal(p.appels.length, 1, 'un seul GET /api/moi/');
+      assert.deepEqual(p.niveaux, [niveau], 'le niveau vu est annoncé une fois');
+      assert.equal(globalThis.maverickNiveau, niveau);
+      // un bloc sans entrée montrée est caché
+      for (const bloc of p.zone.querySelectorAll('.site-compte__bloc')) assert.equal(bloc.hidden, ![...bloc.querySelectorAll('[data-categorie]')].some((li) => !li.hidden));
+    }
+  }
+});
+
+test('R319 (3) : le menu du site, chaque niveau sur chaque site : les rubriques Ressources, Le monde et Taverne [J] disparaissent avec leurs entrées sous Joueur ; Guide du MJ et Bestiaire [MJ] ; Debug [Dev]', async () => {
+  for (const site of SITES) {
+    for (const niveau of ORDRE_DES_NIVEAUX) {
+      const p = await ouvrir({ moi: [200, connecteDe(niveau)], site, menuLateral: true });
+      const contexte = `${niveau}, ${site}`;
+      const sansNiveau = niveau === 'observateur';
+      assert.deepEqual(rubriquesMontrees(p.document), sansNiveau ? ['jeu', 'regles'] : NAV.map((g) => g.key), contexte);
+      // les listes et les titres ne sont pas à `compte.mjs` : le script du menu latéral en décide seul (ils restent cachés ici)
+      for (const g of NAV) for (const e of [p.document.querySelector(`ul[data-group="${g.key}"]`), p.document.querySelector(`p[data-group="${g.key}"]`)]) assert.equal(e.hidden, true, `${contexte} : ${g.key}`);
+      assert.deepEqual(entreesMontrees(p.document, 'regles'), REGLES_ATTENDU[niveau], `${contexte} : les Règles`);
+      if (!sansNiveau) {
+        assert.deepEqual(entreesMontrees(p.document, 'monde'), MONDE_ATTENDU[niveau], `${contexte} : Le monde`);
+        assert.equal(entreesMontrees(p.document, 'ressources').length, NAV.find((g) => g.key === 'ressources').items.length, `${contexte} : toutes les Ressources`);
+        assert.equal(entreesMontrees(p.document, 'taverne').includes('Debug'), site === 'dev', `${contexte} : Debug sur le site de dev seulement`);
+      }
+      // aucune entrée du Jeu n'est à niveau : les mêmes pour tous
+      assert.deepEqual(entreesMontrees(p.document, 'jeu').length, entreesAPlat(NAV[0].items).filter((e) => !e.enfants).length, `${contexte} : Le Jeu`);
+    }
+  }
+});
+
+test('R319 (3) : sans réponse du service, hors ligne, non connecté ou non-membre : le menu d’un Observateur, comme le build l’a écrit ; la réponse n’est demandée qu’une fois', async () => {
+  for (const moi of [new Error('réseau'), [500, {}], [200, deconnecte], [200, nonMembre], [200, { connexion_disponible: false, connecte: false, utilisateur: null }]]) {
+    const p = await ouvrir({ moi, menuLateral: true });
+    assert.deepEqual(rubriquesMontrees(p.document), ['jeu', 'regles'], JSON.stringify(moi));
+    assert.deepEqual(entreesMontrees(p.document, 'regles'), REGLES_ATTENDU.observateur);
+    assert.deepEqual(p.niveaux, ['observateur'], 'annoncé même sans réponse : le menu latéral s’y fie');
+    assert.equal(p.appels.filter((a) => a.adresse === '/api/moi/').length, 1);
+  }
+});
+
+test('« Voir le site en tant que… » : réservé au niveau RÉEL Créateur ; le choix s’applique aussitôt, se garde, se défait, et ne change que le menu', async () => {
+  const CHOIX = '[data-voir-en-tant-que]';
+  const choisir = async (p, niveau) => { const c = p.zone.querySelector(CHOIX); c.value = niveau; c.dispatchEvent(new Event('change')); await attendre(); };
+  const p = await ouvrir({ moi: [200, connecteDe('createur')], site: 'prod', menuLateral: true });
+  assert.deepEqual(visibles(p.zone), PROFIL_ATTENDU.createur('prod'));
+  assert.equal(p.zone.querySelector(CHOIX).value, 'createur');
+  assert.equal(p.zone.querySelector('.site-compte__vue').hidden, true, 'pas de marque au niveau réel');
+  // un niveau inférieur : le menu de ce niveau, la marque sur le bouton du compte, le choix toujours là (niveau réel)
+  await choisir(p, 'joueur');
+  assert.deepEqual(visibles(p.zone), [...PROFIL_ATTENDU.joueur.slice(0, -1), 'Voir le site en tant que…', 'Se déconnecter'], 'le menu d’un Joueur, plus le choix (niveau réel)');
+  assert.deepEqual(rubriquesMontrees(p.document), NAV.map((g) => g.key));
+  assert.deepEqual(entreesMontrees(p.document, 'monde'), MONDE_ATTENDU.joueur, 'sans Bestiaire [MJ]');
+  const marque = p.zone.querySelector('.site-compte__vue');
+  assert.equal(marque.hidden, false);
+  assert.equal(marque.textContent, LIBELLES_DES_NIVEAUX.joueur);
+  assert.equal(p.memoire.get(CLE_DU_NIVEAU_VU), 'joueur', 'gardé dans le navigateur');
+  assert.deepEqual(p.niveaux, ['createur', 'joueur']);
+  assert.equal(globalThis.maverickNiveau, 'joueur');
+  await choisir(p, 'observateur');
+  assert.deepEqual(rubriquesMontrees(p.document), ['jeu', 'regles']);
+  assert.deepEqual(visibles(p.zone), ['Mon profil', 'Glossaire', 'Recherche', 'Voir le site en tant que…', 'Se déconnecter']);
+  assert.equal(p.zone.querySelector(CHOIX).value, 'observateur');
+  // retour au niveau réel : plus rien de gardé, plus de marque
+  await choisir(p, 'createur');
+  assert.deepEqual(visibles(p.zone), PROFIL_ATTENDU.createur('prod'));
+  assert.equal(p.memoire.has(CLE_DU_NIVEAU_VU), false);
+  assert.equal(marque.hidden, true);
+  assert.deepEqual(p.niveaux, ['createur', 'joueur', 'observateur', 'createur']);
+  // une autre page : le choix gardé est retrouvé, la marque posée, sans seconde demande ni écriture
+  const suite = await ouvrir({ moi: [200, connecteDe('createur')], menuLateral: true, stockage: { [CLE_DU_NIVEAU_VU]: 'mj' } });
+  assert.equal(suite.zone.querySelector(CHOIX).value, 'mj');
+  assert.deepEqual(suite.niveaux, ['mj']);
+  assert.equal(suite.zone.querySelector('.site-compte__vue').textContent, LIBELLES_DES_NIVEAUX.mj);
+  assert.deepEqual(entreesMontrees(suite.document, 'monde'), MONDE_ATTENDU.mj);
+  assert.deepEqual(suite.appels.map((a) => `${a.methode} ${a.adresse}`), ['GET /api/moi/']);
+  // « Voir le site en tant que… » n'est qu'au niveau réel Créateur : jamais pour un MJ, même sous un choix gardé quand il l'était
+  for (const niveau of ['mj', 'joueur', 'observateur']) {
+    const autre = await ouvrir({ moi: [200, connecteDe(niveau)], stockage: { [CLE_DU_NIVEAU_VU]: 'observateur' } });
+    assert.equal(entree(autre.zone, 'Voir le site en tant que').hidden, true, niveau);
+    assert.deepEqual(autre.niveaux, [niveau], 'un choix gardé ne baisse que le niveau d’un Créateur');
+  }
+});
+
+test('« Voir le site en tant que… » : un choix gardé périmé ou inventé ne donne rien de plus ; un stockage refusé est toléré (le choix vaut pour la page)', async () => {
+  for (const garde of ['createur', 'admin', '']) {
+    const p = await ouvrir({ moi: [200, connecteDe('createur')], stockage: { [CLE_DU_NIVEAU_VU]: garde } });
+    assert.deepEqual(p.niveaux, ['createur'], garde);
+  }
+  const p = await ouvrir({ moi: [200, connecteDe('createur')], stockage: 'refuse', menuLateral: true });
+  assert.deepEqual(p.niveaux, ['createur']);
+  const c = p.zone.querySelector('[data-voir-en-tant-que]');
+  c.value = 'joueur';
+  c.dispatchEvent(new Event('change'));
+  assert.deepEqual(p.niveaux, ['createur', 'joueur']);
+  assert.deepEqual(entreesMontrees(p.document, 'monde'), MONDE_ATTENDU.joueur);
+});
+
+test('le script du compte annonce le niveau par un événement et une propriété, sans module partagé ; le choix du niveau n’ajoute aucun autre import ni aucune demande', () => {
+  const script = sansCommentaires(lire('../src/scripts/compte.mjs'));
+  assert.equal([...script.matchAll(/\bfetch\(/g)].length, 2, 'GET /api/moi/ et POST /api/deconnexion/ : aucune autre demande');
+  assert.match(script, /EVENEMENT_DU_NIVEAU/);
+  const menu = lire('../src/components/MenuDuSite.astro');
+  assert.ok(menu.includes(`'${EVENEMENT_DU_NIVEAU}'`), 'le script en ligne du menu latéral écoute le même événement (il n’importe rien)');
+  assert.doesNotMatch(menu.match(/<script is:inline>[\s\S]*?<\/script>/)[0], /\bimport\b|\bfetch\(/);
+});
+
+test('seuls les éléments du menu sont touchés : un `data-niveau` (nombre) ou un `data-categorie` d’une autre page, hors du menu, reste visible', async () => {
+  const contenu = '<table><tr data-niveau="1" id="ligne"><td>x</td></tr><tr data-categorie="x" id="categorie"><td>y</td></tr><tr data-niveau="3" data-categorie="connecte" id="les-deux"><td>z</td></tr></table>';
+  for (const moi of [[200, connecteDe('createur')], [200, connecteDe('observateur')], [200, deconnecte], new Error('hors ligne')]) {
+    const p = await ouvrir({ moi, contenu, menuLateral: true });
+    for (const id of ['ligne', 'categorie', 'les-deux']) assert.equal(p.document.querySelector(`#${id}`).hidden, false, `${id} : hors du menu, jamais caché`);
+    assert.equal(p.document.querySelector('[data-voir-en-tant-que]') !== null, true, 'le menu du profil est bien là');
+  }
+  // un choix de niveau ne les touche pas non plus
+  const p = await ouvrir({ moi: [200, connecteDe('createur')], contenu });
+  const c = p.zone.querySelector('[data-voir-en-tant-que]');
+  c.value = 'observateur';
+  c.dispatchEvent(new Event('change'));
+  for (const id of ['ligne', 'categorie', 'les-deux']) assert.equal(p.document.querySelector(`#${id}`).hidden, false, id);
 });

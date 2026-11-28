@@ -52,7 +52,7 @@ test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, ge
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
   // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat ; la rubrique Équipement ouverte
   // (toute page de ressources/ l'ouvre, lib/nav.mjs ; R319 : la rubrique Ressources, où Composants est une entrée)
-  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], 'la page ouvre les Ressources');
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, false], ['ressources', false, true]], 'la page est des Ressources [J] (le build montre le menu d’un Observateur : Le Jeu)');
   assert.match(readFileSync(join(dist, 'regles', 'artisanat', 'index.html'), 'utf8'), /<a href="\/ressources\/composants\/">Composants<\/a>/, 'dans l’Artisanat');
   // l'Artisanat, son sommaire, est son fil d'Ariane ; il n'est plus une entrée du menu du site (R184 : une entrée du menu latéral de l'onglet
   // Exploration des Règles) : aucune entrée marquée

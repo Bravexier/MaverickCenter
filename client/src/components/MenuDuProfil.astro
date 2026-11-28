@@ -4,7 +4,8 @@
 // (le menu réduit à Glossaire et Recherche : celui du visiteur non connecté, de la version portable et d'un service absent) et le panneau du menu (lib/nav.mjs#
 // MENU_DU_PROFIL, rendu par lib/menu-rendu.mjs#htmlDuMenuDuProfil ; seules les entrées du public sont montrées au départ). src/scripts/compte.mjs (qui importe lib/compte.mjs,
 // seul, posé par Compte.astro) demande UN `GET /api/moi/`, puis : connecté, remplace le petit bouton par l'avatar et le pseudo, qui ouvrent le menu complet ; sinon le bouton « Connexion via
-// Discord » s'ajoute au petit bouton ; sans réponse ou sans connexion réglée, le petit menu reste. Un petit script en ligne (sans import) ouvre et ferme le panneau : bouton
+// Discord » s'ajoute au petit bouton ; sans réponse ou sans connexion réglée, le petit menu reste. Les niveaux (R319 (3), lot 4) : une entrée à `niveau` porte `data-niveau-menu` (et reste cachée
+// tant que le script du compte ne l'a pas montrée selon le niveau du compte) ; « Voir le site en tant que… » est un choix de niveau réservé au Créateur. Cacher une entrée ne protège pas la page. Un petit script en ligne (sans import) ouvre et ferme le panneau : bouton
 // (`aria-expanded`), Échap, clic dehors, focus qui sort ; il se ferme quand le tiroir du menu latéral s'ouvre (et inversement). Dans la version
 // portable (`portable` : pas de service, pas de compte), seulement le petit menu et son script en ligne. Le même script du compte remplit aussi /profil/ et /connexion/ (jamais
 // deux scripts de page sur le même module : skill site-version-portable).

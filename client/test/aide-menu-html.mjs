@@ -1,11 +1,20 @@
 // Lire le menu d'une page construite (dist/) : les cinq rubriques de l'en-tête et le menu latéral (components/MenuDuSite.astro, lib/menu-rendu.mjs ; R319).
 // Les tests `*-html` s'en servent pour ne pas recopier le balisage : la forme exacte reste ici.
+// Niveaux (R319 (3), lot 4) : une rubrique ou une entrée à `niveau` porte `data-niveau-menu` et `hidden` dans le HTML construit (le menu d'un Observateur, avant scripts/compte.mjs) ;
+// ces lectures les comptent comme les autres (le lien est dans la page), et `rubriquesAuNiveau` dit lesquelles sont à niveau.
 
-/** Les rubriques de l'en-tête : [{ cle, libelle, montree (aria-pressed), courante (aria-current) }], dans l'ordre. */
+const BOUTON_DE_RUBRIQUE = /<button type="button" class="nav-group__toggle" data-group="([^"]+)" aria-pressed="(true|false)"( aria-current="true")?(?: data-niveau-menu="([a-z]+)")?( hidden)?>([^<]*)</g;
+
+/** Les rubriques de l'en-tête : [{ cle, libelle, montree (aria-pressed), courante (aria-current) }], dans l'ordre. `montree` : celle que le build montre (le menu d'un Observateur). */
 export function rubriquesDeLEntete(html) {
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
-  return [...entete.matchAll(/<button type="button" class="nav-group__toggle" data-group="([^"]+)" aria-pressed="(true|false)"( aria-current="true")?>([^<]*)</g)]
-    .map((m) => ({ cle: m[1], libelle: m[4].trim(), montree: m[2] === 'true', courante: Boolean(m[3]) }));
+  return [...entete.matchAll(BOUTON_DE_RUBRIQUE)].map((m) => ({ cle: m[1], libelle: m[6].trim(), montree: m[2] === 'true', courante: Boolean(m[3]) }));
+}
+
+/** Les rubriques de l'en-tête et leur niveau : [{ cle, niveau (null sans), cachee (`hidden` : le build la cache) }], dans l'ordre. */
+export function rubriquesAuNiveau(html) {
+  const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  return [...entete.matchAll(BOUTON_DE_RUBRIQUE)].map((m) => ({ cle: m[1], niveau: m[4] ?? null, cachee: Boolean(m[5]) }));
 }
 
 /** Le HTML du menu latéral (de `<nav class="menu-site"` à sa fin), '' sans menu. */
@@ -25,17 +34,18 @@ export function listeDeLaRubrique(html, cle) {
 
 /**
  * Les entrées d'une liste, sous-pages comprises, dans l'ordre : { href (null si « bientôt »), libelle (le texte, sans balise), courant ('page' | 'true' | null),
- * motCle (la clé du mot-clé, ou null : le lien est celui d'un mot-clé d'un texte), bientot }.
+ * motCle (la clé du mot-clé, ou null : le lien est celui d'un mot-clé d'un texte), bientot, niveau (le `data-niveau-menu` de l'entrée, caché au build, ou null) }.
  */
 export function entreesDeLaListe(liste) {
   const texte = (h) => h.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  return [...liste.matchAll(/<li>(?:<a ([^>]*)>([\s\S]*?)<\/a>|<span class="nav-soon">([^<]*)<small>)/g)].map((m) => (m[1] === undefined
-    ? { href: null, libelle: m[3].trim(), courant: null, motCle: null, bientot: true }
+  return [...liste.matchAll(/<li(?: data-niveau-menu="([a-z]+)" hidden)?>(?:<a ([^>]*)>([\s\S]*?)<\/a>|<span class="nav-soon">([^<]*)<small>)/g)].map((m) => (m[2] === undefined
+    ? { href: null, libelle: m[4].trim(), courant: null, motCle: null, bientot: true, niveau: m[1] ?? null }
     : {
-      href: m[1].match(/href="([^"]*)"/)?.[1] ?? null,
-      libelle: texte(m[2]),
-      courant: m[1].match(/aria-current="([^"]*)"/)?.[1] ?? null,
-      motCle: m[1].match(/data-mot-cle="([^"]*)"/)?.[1] ?? null,
+      href: m[2].match(/href="([^"]*)"/)?.[1] ?? null,
+      libelle: texte(m[3]),
+      courant: m[2].match(/aria-current="([^"]*)"/)?.[1] ?? null,
+      motCle: m[2].match(/data-mot-cle="([^"]*)"/)?.[1] ?? null,
       bientot: false,
+      niveau: m[1] ?? null,
     }));
 }

@@ -11,10 +11,12 @@
 //   - `onglet`        l'id d'un onglet des Règles (regles_onglet.id) : son libellé est le titre de l'onglet dans la base (sauf `libelleArbo`), son adresse regles/<id>/ ;
 //   - `enfants`       les sous-pages d'une entrée qui se déplie (Introduction : Découvrir, L'univers) ; une entrée à enfants n'a pas de lien. `cle` la nomme (l'état
 //                     replié ou déplié se garde par `cle`) ;
-//   - `niveau`        « joueur », « mj » ou « createur » : le niveau d'accès voulu ([J], [MJ], [C] de R319). Porté par les données, JAMAIS appliqué avant le lot 4
-//                     (« Structure d'abord ») : rien n'est caché selon le niveau, `entreesVisibles` ne filtre que `devSeulement` (et `prodSeulement` quand `prod` est faux : le menu du profil) ; une rubrique peut le porter ;
-//   - `devSeulement`  une entrée du site de dev seulement, absente du menu d'un build de production et de la version portable (entreesVisibles) ;
-//   - `prodSeulement` une entrée de la production seulement ([Prod]) : portée, pas encore appliquée non plus ;
+//   - `niveau`        « joueur », « mj » ou « createur » : le niveau d'accès voulu ([J], [MJ], [C] de R319 (3)) ; une rubrique peut le porter (elle disparaît alors avec ses
+//                     entrées). Appliqué par le lot 4 (R319) : le build l'écrit sur l'élément du menu (`data-niveau-menu`, caché : le menu d'un Observateur sans JavaScript ni
+//                     réponse du service) et scripts/compte.mjs le montre selon le niveau du compte ; la version portable (pas de service) le retire (`sansNiveau`). Ne cache qu'un
+//                     lien : la page, elle, reste servie comme avant (R310 (3), la porte du serveur) ;
+//   - `devSeulement`  une entrée du site de dev seulement ([Dev]), absente du menu d'un build de production et de la version portable (entreesVisibles) ;
+//   - `prodSeulement` une entrée de la production seulement ([Prod]), absente du menu du site de dev (entreesVisibles, `prod`) ;
 //   - `autres`        (rubrique) débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu : une page ouvre la rubrique dont une entrée ou un début
 //                     d'adresse est le plus long début de la sienne (l'ancre d'une entrée ne compte pas).
 // Cinq rubriques (R319 (1)) : Le Jeu, Règles, Ressources, Le monde, Taverne. Le compte est à droite de l'en-tête (components/Compte.astro) ; le menu du profil
@@ -23,7 +25,7 @@
 // Les chemins de Découvrir (decouvrir/…) et du Guide du MJ (mj/) sont ceux de lib/livres.mjs, ceux des onglets des Règles (regles/<onglet>/) ceux de la table
 // regles_onglet, écrits ici à part (nav.mjs n'importe rien) ; test/livres.test.mjs et test/nav.test.mjs vérifient qu'ils s'accordent.
 
-/** Les niveaux que porte `niveau` (R319 (3)), du plus bas au plus haut : joueur [J], MJ [MJ], créateur [C]. */
+/** Les niveaux que porte `niveau` (R319 (3)), du plus bas au plus haut : joueur [J], MJ [MJ], créateur [C]. Avec Observateur au-dessous, l'ordre de lib/compte.mjs#ORDRE_DES_NIVEAUX (nav.mjs n'importe rien : test/compte.test.mjs compare). */
 export const NIVEAUX_DU_MENU = Object.freeze(['joueur', 'mj', 'createur']);
 
 /** L'adresse du site de dev (entrée « Site de dev » du menu du profil) : celle de scripts/db-extrait.mjs#ADRESSE_DU_SITE_DE_DEV, que test/nav.test.mjs compare. */
@@ -128,13 +130,14 @@ export const NAV = [
 /**
  * Le menu du profil (R319 (1)), à droite de l'en-tête, rendu par le compte : des blocs d'entrées séparés par un filet. `connecte` : tout compte connecté, quel
  * que soit son niveau (R319 : « Se déconnecter (tout compte connecté) »). `externe` : une adresse complète, hors du site. `action: 'deconnexion'` : l'entrée
- * que le compte rend lui-même (script du compte), sans adresse. Les niveaux sont portés, pas appliqués (comme ceux de NAV). Un visiteur non connecté garde
- * « Connexion via Discord » et un petit menu Glossaire et Recherche.
+ * que le compte rend lui-même (script du compte), sans adresse ; `action: 'voir-en-tant-que'` : un choix de niveau (lib/menu-rendu.mjs), montré selon le niveau RÉEL du
+ * compte (Créateur). Les autres niveaux s'appliquent comme ceux de NAV, au niveau vu (scripts/compte.mjs). Un visiteur non connecté garde « Connexion via Discord » et
+ * un petit menu Glossaire et Recherche.
  */
 export const MENU_DU_PROFIL = [
   [{ label: 'Mon profil', path: 'profil/', connecte: true }],
   [
-    // R318 (étape E8) : la section « Mes personnages » de /personnages/ (les fiches rangées au compte de la session) ; le niveau est porté, pas appliqué (R319 (3))
+    // R318 (étape E8) : la section « Mes personnages » de /personnages/ (les fiches rangées au compte de la session)
     { label: 'Mes personnages', path: 'personnages/#mes-personnages', niveau: 'joueur' },
     { label: 'Mes groupes', niveau: 'joueur' },
     { label: 'Mes scénarios', niveau: 'mj' },
@@ -145,7 +148,8 @@ export const MENU_DU_PROFIL = [
   ],
   [
     { label: 'Site de dev', externe: ADRESSE_DU_SITE_DE_DEV, prodSeulement: true, niveau: 'mj' },
-    { label: 'Voir le site en tant que…', niveau: 'createur' },
+    // R319 (1) : un Créateur choisit un niveau inférieur et voit le menu de ce niveau (le choix, un <select>, est rendu par lib/menu-rendu.mjs)
+    { label: 'Voir le site en tant que…', niveau: 'createur', action: 'voir-en-tant-que' },
   ],
   [{ label: 'Se déconnecter', action: 'deconnexion', connecte: true }],
 ];
@@ -156,12 +160,16 @@ export function entreesAPlat(entrees) {
 }
 
 /**
- * Les entrées de `entrees` à afficher : sans celles du site de dev seulement (`devSeulement`) quand `dev` est faux (build de production, version portable), sans
+ * Les entrées de `entrees` à afficher au build : sans celles du site de dev seulement (`devSeulement`) quand `dev` est faux (build de production, version portable), sans
  * celles de la production seulement (`prodSeulement`) quand `prod` est faux (le site de dev : « Site de dev » du menu du profil), jusque dans les `enfants`. Les
- * rubriques ne passent pas `prod` (vrai par défaut : rien n'y est de la production seulement). Rien d'autre n'est filtré : ni `niveau` (R319 (3), lot 4).
+ * rubriques ne passent pas `prod` (vrai par défaut : rien n'y est de la production seulement). `sansNiveau` : sans celles qui portent un `niveau` (la version portable,
+ * sans service : le menu d'un Observateur, que tout `niveau` de R319 (3) dépasse). Sans lui, le `niveau` n'est pas filtré ici : le build écrit le menu d'un Observateur
+ * (`data-niveau-menu`, `hidden`) et scripts/compte.mjs le montre selon le niveau du compte.
  */
-export function entreesVisibles(entrees, { dev = true, prod = true } = {}) {
-  return (entrees ?? []).filter((e) => (dev || !e.devSeulement) && (prod || !e.prodSeulement)).map((e) => (e.enfants ? { ...e, enfants: entreesVisibles(e.enfants, { dev, prod }) } : e));
+export function entreesVisibles(entrees, { dev = true, prod = true, sansNiveau = false } = {}) {
+  return (entrees ?? [])
+    .filter((e) => (dev || !e.devSeulement) && (prod || !e.prodSeulement) && !(sansNiveau && e.niveau))
+    .map((e) => (e.enfants ? { ...e, enfants: entreesVisibles(e.enfants, { dev, prod, sansNiveau }) } : e));
 }
 
 /** Tous les chemins référencés par le menu (rubriques, sous-pages comprises ; pas le menu du profil). */

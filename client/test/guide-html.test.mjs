@@ -412,7 +412,7 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'regles')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/exploration/', 'true']], 'l’onglet Exploration, marqué au menu');
-  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], 'R319 : l’Artisanat est une entrée des Ressources');
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, false], ['ressources', false, true]], 'R319 : l’Artisanat est une entrée des Ressources [J] (menu d’un Observateur au build : Le Jeu montré)');
   // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)
   assert.match(html, /<div data-edition data-api="\/api\/" data-page="regles\/artisanat"/, 'le mode modification');
   assert.match(main, /<ol class="lateral-menu__liste" data-ed-menu="onglet:exploration">/);

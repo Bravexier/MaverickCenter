@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { CLE_DU_NIVEAU_VU } from '../src/lib/compte.mjs';
 
 const CONTACT = 'contact@maverick-jdr.com';
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -52,4 +53,15 @@ test('R319 : la page dit le stockage local du menu latéral, sous la clé que le
   assert.ok(source.includes(`<code>${cle}</code>`), 'la clé du stockage local, telle que le script l’écrit');
   assert.match(lire('confidentialite'), new RegExp(`<code>${cle}</code>`), 'rendue dans la page');
   assert.ok(/localStorage/.test(source), 'le commentaire de tenue à jour de la page cite le stockage local');
+});
+
+test('R319 (1) : la page dit le stockage local du niveau choisi par un Créateur (« Voir le site en tant que… »), sous la clé que scripts/compte.mjs écrit (jamais envoyée au serveur)', () => {
+  const script = readFileSync(fileURLToPath(new URL('../src/scripts/compte.mjs', import.meta.url)), 'utf8');
+  assert.ok(/setItem\(CLE_DU_NIVEAU_VU,/.test(script), 'le script écrit sous la clé du module');
+  const source = readFileSync(fileURLToPath(new URL('../src/pages/confidentialite.astro', import.meta.url)), 'utf8');
+  assert.ok(source.includes(`<code>${CLE_DU_NIVEAU_VU}</code>`), 'la clé du stockage local, telle que le script l’écrit');
+});
+
+test('/confidentialite/ construite : la clé du niveau choisi est rendue dans la page', options, () => {
+  assert.match(lire('confidentialite'), new RegExp(`<code>${CLE_DU_NIVEAU_VU}</code>`));
 });

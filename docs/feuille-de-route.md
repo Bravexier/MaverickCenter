@@ -313,10 +313,10 @@ de dev, table `annonce`).
 2. **Visibilité** : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
    onglets » ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic ; le site n'est utilisé que par deux personnes avant une
    version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que les deux premières rubriques : **Règles et Personnage**
-   depuis le menu en sept rubriques (réponse du propriétaire du 2026-10-29), avant **Découvrir** et **Règles** ; aujourd'hui, rien n'est caché ni
-   filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
-   **Depuis R319 (2026-11-27)** : les niveaux ([J] joueur, [MJ], [C] créateur, [Prod], [Dev]) sont portés par les données du menu (`lib/nav.mjs`) ; rien n'est encore masqué selon le niveau, ce
-   masquage est le **lot 4** (« Structure d'abord »), sauf [Dev] (Debug), déjà appliqué.
+   depuis le menu en sept rubriques (réponse du propriétaire du 2026-10-29), avant **Découvrir** et **Règles** ; à l'époque, rien n'était caché ni
+   filtré, Espace joueur et Espace MJ compris (les niveaux s'appliquent depuis R319, lot 4 : ci-dessous). C'est la réponse à la question ouverte 1 (« Lecture en surface »).
+   **Depuis R319 (2026-11-27)** : les niveaux ([J] joueur, [MJ], [C] créateur, [Prod], [Dev]) sont portés par les données du menu (`lib/nav.mjs`) ; le
+   masquage a été fait au **lot 4** (le navigateur applique le niveau du compte, un Créateur peut voir le menu sous un niveau inférieur ; [Dev] (Debug) et [Prod] au build) : docs/content-guide.md, « Menu du site ».
 3. **Ressources** : « Composants en Artisanat ok. Pieces élémentaires seront ammenée directement dans armes et armures . Livre et parchemin seront dans
    la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous
    Artisanat (`/regles/artisanat/`). **Fait le 2026-10-29** : les Pièces élémentaires sont fusionnées dans Armes et Armures (« Fusionner dans Armes et
@@ -352,7 +352,7 @@ en tête du sommaire `/regles/`), après Découvrir ; « Créer son personnage �
 ### Questions encore ouvertes
 
 1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ? — *Répondue le 2026-10-18* (ci-dessus) :
-   à terme, Règles et Personnage seulement (menu en sept rubriques, 2026-10-29 ; Découvrir et Règles avant) ; rien n'est caché aujourd'hui. Depuis R319, le menu a cinq rubriques et les niveaux sont portés par ses données : le masquage est le lot 4.
+   à terme, Règles et Personnage seulement (menu en sept rubriques, 2026-10-29 ; Découvrir et Règles avant) ; depuis R319, le menu a cinq rubriques et ses niveaux sont appliqués (lot 4) : un non-membre ou un Observateur ne voit que Le Jeu et Règles (sans leurs entrées [J] ni [MJ]).
 2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
 3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
 4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les fiches

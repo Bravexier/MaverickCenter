@@ -25,8 +25,8 @@ import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
-import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesDeLEntete } from './aide-menu-html.mjs';
-import { NAV, entreesAPlat } from '../src/lib/nav.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesAuNiveau, rubriquesDeLEntete } from './aide-menu-html.mjs';
+import { MENU_DU_PROFIL, NAV, entreesAPlat } from '../src/lib/nav.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
@@ -203,6 +203,18 @@ test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual(rubriquesDeLEntete(html).map((r) => `${r.cle} ${r.libelle}`), NAV.map((g) => `${g.key} ${g.label}`));
+  // R319 (3), lot 4 : le build écrit le menu d'un Observateur ; le bouton d'une rubrique à niveau et une entrée à niveau portent data-niveau-menu et hidden (jamais la liste ni le titre : le script du menu latéral les règle seul), que scripts/compte.mjs lève selon le niveau du compte
+  assert.deepEqual(rubriquesAuNiveau(html), NAV.map((g) => ({ cle: g.key, niveau: g.niveau ?? null, cachee: Boolean(g.niveau) })));
+  assert.ok(!/<(?:p|ul) class="menu-site__(?:titre|liste)"[^>]*data-niveau-menu/.test(menuLateral(html)), 'ni les listes ni les titres du menu latéral : ils suivent la rubrique montrée');
+  for (const g of NAV) {
+    const voulues = g.items.filter((i) => i.niveau);
+    const lues = entreesDeLaListe(listeDeLaRubrique(html, g.key)).filter((e) => e.niveau);
+    assert.deepEqual(lues.map((e) => e.niveau), voulues.map((i) => i.niveau), `${g.key} : les entrées à niveau, cachées au départ`);
+    assert.deepEqual(lues.map((e) => e.href), voulues.map((i) => (i.path ? `/${i.path}` : null)), `${g.key} : leurs liens sont dans la page (cachés, jamais retirés : le navigateur les montre)`);
+  }
+  // le menu du profil : ses entrées à niveau, et le choix du Créateur (niveau réel)
+  assert.match(html, /<li data-categorie="connecte" data-niveau-menu="createur" data-niveau-reel hidden><label class="site-compte__choix">[^<]+<select class="site-compte__niveau" data-voir-en-tant-que>/);
+  assert.equal([...html.matchAll(/<li data-categorie="connecte" data-niveau-menu="(?:joueur|mj|createur)"/g)].length, MENU_DU_PROFIL.flat().filter((e) => e.niveau && !(e.prodSeulement && !lire('debug/index.html').includes('class="debug-reservee"'))).length, 'chaque entrée à niveau du profil (« Site de dev » : la production seulement)');
   // l'accueil et les pages du menu du profil : aucune rubrique courante, le menu du Jeu montré
   for (const rel of ['index.html', 'recherche/index.html', 'regles/glossaire/index.html']) {
     assert.deepEqual(rubriquesDeLEntete(lire(rel)).filter((r) => r.montree || r.courante), [{ cle: 'jeu', libelle: 'Le Jeu', montree: true, courante: false }], rel);
@@ -227,7 +239,8 @@ test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique
   assert.match(jeu, /<a data-placement="cote" class="mot-cle[^"]*" href="\/races\/" data-mot-cle="[^"]+"/);
   assert.match(jeu, /<a class="menu-site__lien" href="\/personnages\/">/);
   // une ressource hors menu ouvre les Ressources ; Autres en dernière entrée
-  assert.deepEqual(rubriquesDeLEntete(lire('ressources/alchimie/index.html')).filter((r) => r.montree || r.courante), [{ cle: 'ressources', libelle: 'Ressources', montree: true, courante: true }]);
+  // R319 (3) : Ressources est une rubrique [J] : le build écrit le menu d'un Observateur (Le Jeu montré) ; scripts/compte.mjs montre celle de la page à un Joueur
+  assert.deepEqual(rubriquesDeLEntete(lire('ressources/alchimie/index.html')).filter((r) => r.montree || r.courante), [{ cle: 'jeu', libelle: 'Le Jeu', montree: true, courante: false }, { cle: 'ressources', libelle: 'Ressources', montree: false, courante: true }]);
   const autres = lire('ressources/index.html');
   assert.deepEqual(rubriquesDeLEntete(autres).filter((r) => r.courante).map((r) => r.cle), ['ressources'], 'la liste des pages de ressources ouvre les Ressources');
   const ressources = entreesDeLaListe(listeDeLaRubrique(autres, 'ressources'));
