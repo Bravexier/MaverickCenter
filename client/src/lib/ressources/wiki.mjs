@@ -462,6 +462,7 @@ const JOURNAL = 'journal de l’édition du site de dev (section 14), servi par 
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
 export const HORS_RESSOURCE = {
+  repere: 'Repère d’un mot-clé sans page ni sort (migration 0135, docs/chantier-retrait-des-colonnes.md) : son nom, son adresse, sa définition, sa couleur et son icône. Écrit par un lot de changements ; rien ne le lit encore, la ressource `mots-cles` rend toujours les colonnes du mot-clé ; pas un élément de l’API.',
   page_ancienne_adresse: 'Registre technique des renvois : l’adresse quittée d’une page renommée (décision R316, migration 0133), écrite par le service au renommage, qui sert à la page 404 ; pas un élément de l’API.',
   utilisateur: `Compte utilisateur (identifiant Discord, nom affiché, niveau : observateur, joueur, mj ou créateur, R310), écrit à chaque connexion par Discord ; le niveau dit aussi qui voit quelle fiche (R318) : ${FICHES}.`,
   utilisateur_role: `Rôles cumulables d’un compte (mj, editeur, admin) : table laissée vide, rien ne l’écrit ni ne la lit depuis R318 (la visibilité des fiches suit \`utilisateur.niveau\`) : ${FICHES}.`,

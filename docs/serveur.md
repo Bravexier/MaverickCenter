@@ -861,7 +861,7 @@ qu'une ligne a portés) lit toutes les natures. Tests : `historique-site`, `aide
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`), sans les tables du vocabulaire (`mot_cle`, `mot_cle_categorie`, `mot_cle_synonyme`, `mot_cle_ancienne_cle`, `categorie_mot_cle` : `GET edition/listes/` et `edition/mots-cles/`) ni les lignes de `page`, `sort`, `type_sort` dont toutes les modifications ne font qu'écrire `mot_cle_id` (R309) |
+| `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`), sans les tables du vocabulaire (`mot_cle`, `mot_cle_categorie`, `mot_cle_synonyme`, `mot_cle_ancienne_cle`, `categorie_mot_cle`, `repere` : `GET edition/listes/` et `edition/mots-cles/`) ni les lignes de `page`, `sort`, `type_sort` dont toutes les modifications ne font qu'écrire `mot_cle_id` (R309) |
 | `POST /api/edition/lignes/` | `{ lignes: [{ table, cle }] }` → la ligne actuelle de chacune (passage en mode modification) |
 | `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale, onglets des Règles `onglets: [{ valeur, libelle }]`…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
@@ -918,7 +918,8 @@ d'un bloc et les numéros sont le service (section suivante) ; l'annulation d'un
 - **Numéro à donner** : la clé entière d'une insertion (table à clé simple de type entier) s'écrit `{ "$numero": "a" }` ; le même jeton se réutilise ensuite
   dans `apres` (ou dans la clé d'une insertion à clé composée) d'une opération **suivante** du même lot. Un jeton se donne une fois, n'entre jamais dans `avant`
   ni dans la clé d'une modification ou d'une suppression. `donnerLesNumeros(lot, depart)` rend le lot résolu : numéros consécutifs par table et colonne, dans
-  l'ordre des opérations ; `depart` est le plus haut numéro connu (le service le calcule : ci-dessous).
+  l'ordre des opérations ; `depart` est le plus haut numéro connu (le service le calcule : ci-dessous). Seule exception : une clé entière qui **cite une autre
+  table** (`repere.mot_cle_id`) s'écrit telle quelle, c'est l'id d'une ligne qui existe.
 
 Tests : `lot-de-changements`, `lot-de-changements-numeros`, `serveur-edition-nature-des-traces`.
 
@@ -1075,6 +1076,19 @@ la ligne. Il n'y a plus d'« Annuler ce lot » sur la page (la route reste). Un 
 donne une alerte (`[data-nv-retraits]`) avant « Effectuer la mise à jour » quand une race, une classe ou une magie citée par une fiche de la production serait retirée. La connexion d'un Créateur est demandée par
 `scripts/acces.mjs` (rien à faire dans la page). Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai
 service), `serveur-edition-lots-ecart-production` (l'écart avec la production), `notes-de-version-retraits`.
+
+**Repères des mots-clés** (table `repere`, migration 0135 ; chantier 4 des mots-clés, `docs/chantier-retrait-des-colonnes.md`, §2 et §7). Un repère est l'élément
+d'un mot-clé que ne désigne ni une page ni un sort : son nom, son adresse, sa définition, sa couleur, son icône. Seul un lot de changements l'écrit, par la voie
+générique du journal (table hors édition : sur la base source seulement) : `{ "table": "repere", "cle": { "mot_cle_id": 12 }, "operation": "inserer", "apres":
+{ "mot_cle_id": 12, "nom": "…", "adresse": "/classes/", "definition": null, "couleur": null, "icone": null } }` ; `modifier` et `supprimer` comme pour toute table,
+et l'annulation du lot ou d'une ligne (R291) retire le repère inséré. Le service refuse (409, sans numéro de décision : une session Créateur ne l'ouvre pas) le
+repère d'un mot-clé qui n'existe pas, ou qui a déjà une page ou un sort (`serveur/edition-mots-cles.mjs#refusDuRepere`, aussi quand une annulation remettrait un
+repère retiré). Un mot-clé supprimé ou fusionné emporte son repère, noté au journal avant sa ligne (`FILLES_DU_MOT_CLE`, recopiée par
+`scripts/mise-a-jour-github.mjs#TABLES_DES_FILLES_DU_MOT_CLE`). Le lot des mots-clés sans élément se fabrique par `node scripts/lot-des-reperes.mjs <base.db>`
+(`lib/lot-des-reperes.mjs` : nature `decision`, R309 ; il n'envoie rien). **Tant que les colonnes de `mot_cle` font foi, rien ne lit cette table** : un repère n'est
+que leur copie, exclue des textes à balises (mentions, citations, contrôles du contenu, réécriture des clés) et de la note de version par
+`lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES`, liste à vider quand les colonnes partent. Tests : `db-0135-reperes`, `serveur-edition-lots-reperes`,
+`serveur-edition-mots-cles-fusion`.
 
 **Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
 

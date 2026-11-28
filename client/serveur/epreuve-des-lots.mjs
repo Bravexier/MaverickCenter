@@ -149,14 +149,15 @@ export function comparerLesBases(a, b, { renumeroter = {}, tables = tablesDeCont
 /**
  * Ce que le service retire LUI-MÊME avec une entité qu'il supprime : une page des Règles (edition-plan.mjs#page.supprimer, edition.mjs#supprimerPage) emporte
  * son entrée de menu, ses alias, ses étiquettes, ses sources de page et d'entité, puis la source que plus aucune page ne cite ; un mot-clé
- * (edition-chronologie.mjs#mot_cle.supprimer, edition-mots-cles.mjs#retirerLesFillesDuMotCle) emporte ses catégories, ses synonymes et ses clés quittées.
+ * (edition-chronologie.mjs#mot_cle.supprimer, edition-mots-cles.mjs#retirerLesFillesDuMotCle) emporte ses catégories, ses synonymes, ses clés quittées et son repère.
  * Une opération de lot qui retire une de ces lignes DOUBLERAIT l'écriture du service (la ligne est déjà partie : 404) : le lot ne la porte pas, elle est
  * rendue à part (`couvertes`, le complément du lot) et l'épreuve vérifie que la base obtenue est la même. table de l'entité → [table, colonne vers l'entité].
  */
 export const COUVERT_PAR_L_ENTITE = Object.freeze({
   page: Object.freeze([['regles_onglet_entree', 'page_id'], ['alias', 'page_id'], ['page_tag', 'page_id'], ['page_source', 'page_id'], ['page_entite', 'page_id'],
     ['page_ancienne_adresse', 'page_id']]),
-  mot_cle: Object.freeze([['mot_cle_categorie', 'mot_cle_id'], ['mot_cle_synonyme', 'mot_cle_id'], ['mot_cle_ancienne_cle', 'mot_cle_id']]),
+  mot_cle: Object.freeze([['mot_cle_categorie', 'mot_cle_id'], ['mot_cle_synonyme', 'mot_cle_id'], ['mot_cle_ancienne_cle', 'mot_cle_id'],
+    ['repere', 'mot_cle_id']]),
 });
 
 const estEntiere = (type) => /INT/.test(type ?? '');

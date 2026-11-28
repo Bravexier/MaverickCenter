@@ -14,7 +14,7 @@ import { adresseDeLaPage, adresseDuSort, indexDesAdresses, pageDeLAdresse, slugs
 import { typeDeTexte } from './edition-modele.mjs';
 import { parLibelle } from './mots-cles.mjs';
 import { motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
-import { TABLES_DERIVEES, TABLES_HORS_REGLES, TRACES_TELLES_QUELLES } from './tables-de-la-base.mjs';
+import { TABLES_DERIVEES, TABLES_HORS_REGLES, TABLES_PAS_ENCORE_LUES, TRACES_TELLES_QUELLES } from './tables-de-la-base.mjs';
 
 const caches = new WeakMap(); // base -> { vocabulaire, pret }
 
@@ -160,7 +160,8 @@ export function idDuMotCle(db, ecriture) {
  * Les colonnes de texte de la base où une balise du glossaire peut s'écrire : toutes les colonnes TEXT des tables de règles et des pages (sections 1 à
  * 10 et 12 de data/schema.sql), sauf (lib/tables-de-la-base.mjs, la seule source) les tables hors des règles (sections 13 à 15 : fiches, journal, notes de
  * version), les tables dérivées (section 11 : `lien.ancre` reprend le texte d'un lien du Markdown, que le build recalcule), les traces gardées telles
- * quelles (notes de cellule, écarts, corrections, commentaires orphelins, alias, sources) et les tables de recherche plein texte (FTS5 et leurs tables
+ * quelles (notes de cellule, écarts, corrections, commentaires orphelins, alias, sources), les tables pas encore lues (`repere`, copie des colonnes du
+ * mot-clé jusqu'à leur retrait : TABLES_PAS_ENCORE_LUES) et les tables de recherche plein texte (FTS5 et leurs tables
  * internes) : ce que db:check contrôle et que le rejeu du journal réécrit. Rend [{ table, colonne, cle (colonnes de la clé primaire, ou rowid), markdown
  * (lib/edition-modele.mjs#typeDeTexte : un texte mis en forme) }], dans l'ordre des tables.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -179,7 +180,7 @@ export function textesDeLaBase(db) {
 const textesParBase = new WeakMap(); // db -> { version, sortie }
 
 function lireLesTextesDeLaBase(db) {
-  const exclues = new Set([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TELLES_QUELLES]);
+  const exclues = new Set([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TELLES_QUELLES, ...TABLES_PAS_ENCORE_LUES]);
   const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
   const virtuelles = tables.filter((t) => /^\s*CREATE\s+VIRTUAL\s+TABLE/i.test(t.sql ?? '')).map((t) => t.name);
   const sortie = [];

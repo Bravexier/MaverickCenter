@@ -183,8 +183,9 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
       const nulles = s.cle.filter((c) => c in o.cle && (o.cle[c] === null || !(valeurSimple(o.cle[c]) || (o.operation === 'inserer' && estUnJeton(o.cle[c])))));
       if (nulles.length) dit(`cle : ${liste(nulles)} doit être un texte ou un nombre${o.operation === 'inserer' ? ' (ou un numéro à donner : { "$numero": "a" })' : ''}`);
       cleValide = !manque.length && !enTrop.length && !nulles.length;
-      // la clé entière simple d'une insertion se donne à l'application : jamais un numéro écrit à la main (un numéro n'est jamais redonné)
-      if (cleValide && o.operation === 'inserer' && s.cle.length === 1 && s.types && /INT/.test(s.types[s.cle[0]] ?? '') && !estUnJeton(o.cle[s.cle[0]])) {
+      // la clé entière simple d'une insertion se donne à l'application : jamais un numéro écrit à la main (un numéro n'est jamais redonné) ; sauf la clé qui
+      // cite une autre table (`repere.mot_cle_id`, migration 0135 : l'id d'un mot-clé qui existe, pas un numéro à donner)
+      if (cleValide && o.operation === 'inserer' && s.cle.length === 1 && s.types && /INT/.test(s.types[s.cle[0]] ?? '') && !s.etrangeres?.[s.cle[0]] && !estUnJeton(o.cle[s.cle[0]])) {
         return dit(`cle : la clé entière « ${s.cle[0]} » de « ${o.table} » se donne à l'application (un numéro n'est jamais redonné) : écrivez { "$numero": "a" } à la place de ${JSON.stringify(o.cle[s.cle[0]])}`);
       }
       if (cleValide) {

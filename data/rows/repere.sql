@@ -1,0 +1,1 @@
+-- data/rows/repere.sql : export déterministe, une instruction par ligne, triée par (mot_cle_id). NE PAS ÉDITER À LA MAIN.

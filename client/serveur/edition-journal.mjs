@@ -1061,7 +1061,7 @@ export function rompuesDuLot(db, entrees, { horsControle = [], tables: autres = 
 }
 
 /** Les tables du vocabulaire : les pages et le Glossaire les lisent en direct (GET edition/listes/, GET edition/mots-cles/), la surcouche des pages ne les rejoue pas. */
-const TABLES_DU_VOCABULAIRE = new Set(['mot_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle', 'categorie_mot_cle']);
+const TABLES_DU_VOCABULAIRE = new Set(['mot_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle', 'categorie_mot_cle', 'repere']);
 /** Les anciennes adresses des pages renommées (R316, migration 0133) : la page 404 les lit au build, aucune page ne les montre. */
 const TABLES_DES_ADRESSES = new Set(['page_ancienne_adresse']);
 /**

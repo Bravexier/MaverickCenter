@@ -17,7 +17,7 @@ import { adresseDeLaPage, adresseQuiSuit } from './adresses-db.mjs';
 import { lireBalises, texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { cheminDeLAdresse } from './mots-cles-liens.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
-import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
+import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES, TABLES_PAS_ENCORE_LUES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
@@ -1079,9 +1079,10 @@ const TRACES_TECHNIQUES = Object.freeze(['mot_cle_ancienne_cle', 'page_ancienne_
 /**
  * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
  * lien_candidat), traces techniques (TRACES_TECHNIQUES) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute
- * ou retire d'elle-même.
+ * ou retire d'elle-même ; et les tables pas encore lues (lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES : un repère n'est que la copie des colonnes de son
+ * mot-clé, que la note dit déjà par la ligne du mot-clé).
  */
-export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES]);
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES, ...TRACES_TECHNIQUES, ...TABLES_PAS_ENCORE_LUES]);
 export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
   && !/^(page|entite)_fts(_|$)/.test(nom);
 

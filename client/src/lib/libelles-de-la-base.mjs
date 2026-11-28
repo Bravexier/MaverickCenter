@@ -32,6 +32,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   mot_cle_categorie: 'Catégorie du mot-clé',
   mot_cle_synonyme: 'Synonyme du mot-clé',
   mot_cle_ancienne_cle: 'Ancienne clé du mot-clé',
+  // le repère d'un mot-clé sans page ni sort (migration 0135, chantier 4 des mots-clés)
+  repere: 'Repère',
   source: 'Source',
   // magies et sorts (section 3)
   sort_bonus_maitrise: 'Bonus de maîtrise du sort',
@@ -323,6 +325,8 @@ export const NOMS_DES_COLONNES = geler({
   mot_cle: { verrou: 'Verrou', cle: 'Clé', monnaie_id: 'Monnaie' },
   mot_cle_synonyme: { libelle: 'Synonyme', ordre: 'Rang' },
   mot_cle_ancienne_cle: { cle: 'Ancienne clé' },
+  // le repère d'un mot-clé (migration 0135) : « Nom » et « Mot-clé » sont des noms communs
+  repere: { adresse: 'Adresse', definition: 'Définition', couleur: 'Couleur', icone: 'Icône' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
   page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut', slug_adresse: 'Segment d’adresse' },
   page_ancienne_adresse: { adresse: 'Ancienne adresse' },
