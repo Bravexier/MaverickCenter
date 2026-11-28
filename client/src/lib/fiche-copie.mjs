@@ -33,6 +33,66 @@ export function phraseDeLaPorte(corps) {
   return `votre niveau ne suffit pas sur ce site (niveau ${LIBELLES_DE_NIVEAU[requis]}${requis === 'createur' ? '' : ' au moins'} nécessaire).`;
 }
 
+// « Nouvelle fiche de joueur » (R322) : `/fiche/?nouvelle=joueur` ouvre le générateur vierge ; la fiche n'existe au compte qu'au premier « Enregistrer »
+// (`POST /api/personnages/?nature=joueur`), puis la page bascule sur `?id=<id>` et les enregistrements suivants sont des PUT. Même module que la copie :
+// la règle des niveaux est la même (R322 : Joueur, MJ, Créateur) et seul `scripts/fiche.mjs` l'importe.
+
+/** La valeur de `?nouvelle=` qui ouvre une fiche de joueur vierge (R322). */
+export const NATURE_NOUVELLE_FICHE = 'joueur';
+
+/** Le mode « nouvelle fiche de joueur » d'après la chaîne de requête de la page : 'joueur', ou null (un `?id=` l'emporte : la fiche existe déjà). */
+export function nouvelleFicheDemandee(recherche) {
+  const demande = new URLSearchParams(recherche ?? '');
+  return !demande.get('id') && demande.get('nouvelle') === NATURE_NOUVELLE_FICHE ? NATURE_NOUVELLE_FICHE : null;
+}
+
+/** Le niveau peut-il créer une fiche de joueur (R322) ? Les mêmes que pour copier un prétiré ; `personnages-liste.mjs#peutCreerUneFiche` en a la copie (test/nouvelle-fiche-de-joueur.test.mjs). */
+export const peutCreerUneFiche = (niveau) => NIVEAUX_QUI_COPIENT.includes(niveau);
+
+/** L'avis posé à l'ouverture de `?nouvelle=joueur` quand le niveau de la session est connu et ne suffit pas (un Observateur) ; null sinon, et tant que le niveau est inconnu. Le service reste juge. */
+export const avisDeNouvelleFiche = (niveau) => (typeof niveau === 'string' && !peutCreerUneFiche(niveau)
+  ? 'Seul un compte de niveau Joueur, MJ ou Créateur peut créer une fiche : vous pouvez la remplir et la télécharger, mais pas l’enregistrer.'
+  : null);
+
+/**
+ * Le mode d'une fiche vierge ouverte par « Nouveau » (R322) : un joueur parti du « + » (mode en cours, ou fiche à l'écran de nature 'joueur' : enregistrée depuis le
+ * « + », ouverte par `?id=`) ne crée jamais un prétiré par mégarde ; sinon null (prétiré, comme avant). `mode` : le mode en cours, `ficheAffichee` : la fiche à l'écran.
+ */
+export const modeDeLaFicheVierge = (mode, ficheAffichee) => (mode === NATURE_NOUVELLE_FICHE || ficheAffichee?.nature === NATURE_NOUVELLE_FICHE ? NATURE_NOUVELLE_FICHE : null);
+
+/** Ce que dit le message après l'import d'un classeur : « Enregistrez pour mettre à jour « X » », ou pour créer la fiche (le prétiré, ou la fiche de joueur en mode R322). */
+export const suiteDeLImport = (cible, nom, mode = null) => `Enregistrez pour ${cible === 'creer' ? (mode ? 'créer la fiche' : 'créer le prétiré') : `mettre à jour « ${nom} »`}.`;
+
+/** Le libellé du choix « créer » du dialogue d'import : un nouveau prétiré, ou, en mode fiche de joueur (R322), une nouvelle fiche de joueur. */
+export const libelleDuChoixCreer = (mode) => (mode ? 'Créer une nouvelle fiche de joueur' : 'Créer un nouveau prétiré');
+
+/** L'adresse de la page après « Nouveau » : `/fiche/?nouvelle=joueur` dans le mode de fiche de joueur, `/fiche/` sinon (`adresseFiche` : celle de `/fiche/`). */
+export const adresseDeLaFicheVierge = (adresseFiche, mode) => (mode ? `${adresseFiche}?nouvelle=${encodeURIComponent(mode)}` : adresseFiche);
+
+/**
+ * La requête d'« Enregistrer » : un PUT sur la fiche enregistrée (`id`), sinon un POST de création, qui porte `?nature=joueur` dans le mode « nouvelle fiche de
+ * joueur » (`nouvelle`), et rien de plus pour un prétiré. `api` : la racine de l'API (`/api/`).
+ */
+export function requeteDEnregistrement(api, id, nouvelle = null) {
+  if (id) return { methode: 'PUT', adresse: `${api}personnages/${encodeURIComponent(id)}/` };
+  return { methode: 'POST', adresse: `${api}personnages/${nouvelle ? `?nature=${encodeURIComponent(nouvelle)}` : ''}` };
+}
+
+/**
+ * Le message d'un enregistrement refusé par la porte ou par le droit (401, 403) en mode « nouvelle fiche de joueur » : la saisie reste à l'écran, rien n'est
+ * créé. `corps` : la réponse JSON (`erreur`, `acces`, `niveau_requis`) ; null pour tout autre statut (les autres refus gardent le message de l'enregistrement).
+ */
+export function messageDeNouvelleFiche(statut, corps = null) {
+  const debut = 'Fiche non créée';
+  const fin = 'Votre saisie reste à l’écran : téléchargez la fiche pour ne rien perdre.';
+  const service = typeof corps?.erreur === 'string' && corps.erreur ? ` (${corps.erreur})` : '';
+  if (statut === 401) return `${debut} : votre session a expiré, reconnectez-vous. ${fin}`;
+  if (statut !== 403) return null;
+  return corps?.acces === 'niveau'
+    ? `${debut} : ${phraseDeLaPorte(corps)} ${fin}`
+    : `${debut} : seul un compte de niveau Joueur, MJ ou Créateur peut créer une fiche${service}. ${fin}`;
+}
+
 /**
  * Le message d'une copie qui n'a pas abouti. `statut` : le code HTTP (null si le service n'a pas répondu), `corps` : la réponse JSON (`erreur`, `acces`,
  * `niveau_requis`). Dit toujours que rien n'a été copié.

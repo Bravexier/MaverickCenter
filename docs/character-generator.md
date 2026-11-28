@@ -907,6 +907,16 @@ du personnage. Grisé tant que la fiche n'a pas été enregistrée ; [Exporter(J
 (PC)**, **Importer (en ligne)**, Supprimer. Plus d'export ni d'import en JSON (un ancien `.json` choisi par « Importer (PC) » est refusé en le
 disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page d'impression ne change pas).
 
+**Nouvelle fiche de joueur** (décision R322, 2026-11-28) : `/fiche/?nouvelle=joueur` (le « + » de « Mes personnages ») ouvre le générateur **vierge**, sans rien créer (« Créée au 1er
+enregistrement » : aucune fiche vide ne traîne). Au premier **Enregistrer**, la page envoie `POST /api/personnages/?nature=joueur` (corps : la fiche, comme une création de prétiré ;
+`requeteDEnregistrement` de `lib/fiche-copie.mjs`) : le service la range au compte de la session, **privée** (« Comme une copie de prétiré (R320) : visible du joueur et du Créateur, jusqu'à ce qu'il
+l'ouvre aux autres. »). Il répond 201 avec `personnage.id`, `nature: 'joueur'` et `visibilite: 'privee'` ; la page bascule sur `/fiche/?id=<id>` (`history.replaceState`) et les enregistrements
+suivants sont des `PUT` avec `version`. Un refus (401 : session expirée ; 403 : niveau insuffisant, ou, au site de dev, la porte qui ne laisse créer qu'un Créateur, `acces: 'niveau'`)
+se dit sans perdre la saisie (`messageDeNouvelleFiche`) : la fiche reste à l'écran, et Télécharger redevient possible. Un `?id=` l'emporte sur `?nouvelle=` ; « Nouveau » **reste en mode fiche de joueur** (demande du propriétaire : un joueur parti du « + » ne crée jamais un prétiré par mégarde) :
+l'adresse devient `/fiche/?nouvelle=joueur` et le prochain premier Enregistrer fait le POST `?nature=joueur`, aussi après un premier enregistrement ou à l'ouverture d'une fiche de joueur par `?id=`
+(`modeDeLaFicheVierge` : mode en cours, ou fiche à l'écran de nature `joueur`). Sans paramètre (prétiré), la création d'un prétiré est inchangée (`POST /api/personnages/`). Droits : Joueur, MJ et Créateur en production, le Créateur seul au site de dev ;
+le service est juge, la page ne fait que le dire (le niveau lu dans `window.maverickMoi` ne sert pas à bloquer l'ouverture).
+
 - **Télécharger** : le classeur `.xlsx` au modèle ci-dessous, nommé d'après le personnage seul (`nomDuFichier` de `lib/fiche-tableur-export.mjs` :
   chaque suite de caractères qu'un système de fichiers refuse remplacée par « - », 120 caractères au plus, « Personnage » s'il ne reste rien ;
   « Kaël/Nox » → `Kaël-Nox.xlsx`). **Grisé** tant que la fiche n'est pas enregistrée telle qu'elle est (jamais enregistrée, ou modifiée depuis ;
@@ -1169,8 +1179,7 @@ le reste en minuscules, « ÉPÉISTE » → « Épéiste », `classesDe`, `casse
 et sa bordure prend la couleur de la magie innée, en dégradé vers celle de l'acquise en bi-magie (celles des pages de magie : les classes de la palette
 de chaque magie, `data-couleurs`, posées au build ; le script pose sur la ligne la classe de l'innée et la classe de second rang de l'acquise,
 `classesDeBordure`, jamais une couleur). Chaque colonne sauf le portrait **se trie** dans les deux sens (bouton dans l'en-tête) ; filtres : texte (nom, surnom, origine,
-sans accents), race, magie (innée ou acquise), classe (1ʳᵉ ou 2ᵉ), niveaux, règles à revoir. Ni phrase d'introduction ni bouton de création (la fiche
-se crée depuis le menu, « Fiche de personnage »). Filtres et tri vivent dans l'adresse de la page : une recherche se garde et se partage. Logique pure
+sans accents), race, magie (innée ou acquise), classe (1ʳᵉ ou 2ᵉ), niveaux, règles à revoir. Pas de phrase d'introduction ; le seul bouton de création est le « + » de « Mes personnages » (R322, plus bas). Filtres et tri vivent dans l'adresse de la page : une recherche se garde et se partage. Logique pure
 et testée : `lib/personnages-liste.mjs`.
 
 **Réglages sous la ligne** (R318 ; hors du lien, qui est la ligne entière ; `scripts/personnages.mjs`, le niveau de la session vient de la réponse de `GET /api/moi/` que `scripts/compte.mjs` publie (`window.maverickMoi` et événement `maverick:moi` sur `document` : une seule demande par page, jamais une seconde ici), et le service reste
@@ -1187,6 +1196,13 @@ juge de chaque droit) :
   la copie est une fiche de joueur privée du compte, que la page ouvre aussitôt (`/fiche/?id=<copie>`, `adresseDeLaCopie`). Un refus (400, 403, 404, service muet) le dit et que rien n'est copié
   (`messageDEchec('copie', …)`). La page `/fiche/` a le même bouton (`#fiche-copier`, barre de la fiche) sur un prétiré enregistré, aux mêmes niveaux ; sa règle est recopiée dans `lib/fiche-copie.mjs`
   (deux scripts de page n'importent jamais le même module), `test/copie-du-pretire.test.mjs` vérifie l'accord. Sans compte (version portable), il ne se montre jamais.
+- **Le « + »** (R322, demande du propriétaire du 2026-11-28 : « Un bouton + en bas de la section « Mes personnages » de `/personnages/` : crée une nouvelle fiche vide, liée automatiquement
+  au compte connecté, puis l'ouvre. Réservé aux niveaux Joueur et plus (pas les Observateurs ni les non-membres) ; absent de la version portable. »), en bas de la section
+  `#mes-personnages` : un lien rond (`#nouvelle-fiche`, `aria-label` et `title` « Créer une nouvelle fiche de personnage ») vers `/fiche/?nouvelle=joueur`
+  (`adresseDeLaNouvelleFiche`). Aucune requête n'est faite par la liste : la fiche se crée au premier « Enregistrer » du générateur (voir « Nouvelle fiche de joueur », plus haut). Visible aux mêmes
+  niveaux que « Copier le prétiré » (`peutCreerUneFiche`, qui lit `NIVEAUX_QUI_COPIENT` : Joueur, MJ, Créateur ; `test/nouvelle-fiche-de-joueur.test.mjs` épingle l'accord avec `peutCopier`),
+  caché tant que le niveau n'est pas connu, jamais montré sans compte (version portable). Le service reste juge ; au site de dev, seul le Créateur crée une fiche (la porte répond 403,
+  `acces: 'niveau'`).
 
 ## Fiches dans la base
 

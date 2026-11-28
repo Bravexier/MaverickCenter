@@ -373,7 +373,7 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   const palette = classesDeLaPalette();
   assert.ok(Object.values(couleurs).flat().every((c) => palette.has(c)), 'des classes de la palette');
   assert.doesNotMatch(racine[1], /#[0-9a-f]{3,6}\b/i, 'aucune couleur');
-  // le titre, puis directement les filtres : plus de phrase d'introduction ni de bouton de création
+  // le titre, puis directement les filtres : plus de phrase d'introduction ni de bouton « Nouveau prétiré » (le seul lien de création est le « + » de « Mes personnages », R322)
   assert.match(html, /<h1>Personnages<\/h1>\s*<form class="personnages-filtres" id="filtres" role="search" aria-label="Filtres">/);
   assert.ok(!html.includes('personnages-nouveau') && !html.includes('Nouveau prétiré'), 'plus de bouton « + Nouveau prétiré »');
   assert.ok(!html.includes('Cliquez sur un en-tête') && !html.includes('des personnages qui ne sont à personne'), 'plus de phrase d’introduction');
@@ -391,13 +391,21 @@ test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la l
   assert.ok(!/data-cle="statut"/.test(html) && !/<th scope="col"/.test(html), 'ni colonne de statut ni tableau');
   // les lignes, remplies par le script de la page (chacune tout entière un lien vers la fiche), rangées en trois sections (R318) : une liste par section, nommée
   // par son titre ; « Mes personnages » porte l'ancre (id) que vise l'entrée du menu Espace joueur
-  const sections = [...html.matchAll(/<section class="personnages-section" id="([a-z-]+)" aria-labelledby="([a-z-]+)" hidden>\s*<h2 id="([a-z-]+)">[^<]+<\/h2>\s*<ol class="personnages-lignes" id="([a-z-]+)" aria-labelledby="([a-z-]+)"><\/ol>\s*<\/section>/g)];
+  const sections = [...html.matchAll(/<section class="personnages-section" id="([a-z-]+)" aria-labelledby="([a-z-]+)" hidden>\s*<h2 id="([a-z-]+)">[^<]+<\/h2>\s*<ol class="personnages-lignes" id="([a-z-]+)" aria-labelledby="([a-z-]+)"><\/ol>(?:\s*<a class="personnages-nouvelle" id="nouvelle-fiche"[^>]*>[\s\S]*?<\/a>)?\s*<\/section>/g)];
   assert.deepEqual(sections.map((m) => m[1]), ['mes-personnages', 'pretires', 'fiches-des-joueurs'], 'les trois sections de sectionsDeLaListe, dans l’ordre');
   assert.equal(Object.keys(sectionsDeLaListe([])).length, sections.length, 'une section par clé de sectionsDeLaListe');
   for (const m of sections) assert.ok(m[2] === m[3] && m[5] === m[3], `la liste de ${m[1]} est nommée par son titre`);
   assert.equal(new Set(sections.map((m) => m[4])).size, sections.length, 'une liste (id) par section');
   assert.ok(html.includes('id="mes-personnages"'), 'l’ancre #mes-personnages, que vise le menu Espace joueur');
   assert.ok(!html.includes('id="lignes"'), 'plus de liste unique');
+  // R322 : le « + » est le dernier élément de « Mes personnages » seulement, caché au HTML (le script le montre selon le niveau), nommé pour les lecteurs d'écran
+  assert.equal(html.match(/id="nouvelle-fiche"/g)?.length, 1, 'un seul « + »');
+  const plus = html.match(/<section class="personnages-section" id="mes-personnages"[\s\S]*?(<a class="personnages-nouvelle" id="nouvelle-fiche"[^>]*>)[\s\S]*?<\/a>\s*<\/section>/)?.[1];
+  assert.ok(plus, 'le « + » en bas de la section « Mes personnages »');
+  assert.match(plus, /\shidden(?=[\s>])/, 'caché tant que le niveau n’est pas connu');
+  assert.match(plus, /aria-label="[^"]+"/, 'un libellé accessible');
+  assert.match(plus, /title="[^"]+"/, 'une infobulle');
+  assert.ok(!/\shref=/.test(plus), 'l’adresse est posée par le script (adresseDeLaNouvelleFiche), pas écrite en dur');
 });
 
 test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; le générateur n’a pas d’entrée au menu (R319 (6)), mais sa page est du Jeu', options, () => {

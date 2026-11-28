@@ -8,6 +8,9 @@
 //   GET  /api/personnages/          résumé de chaque prétiré et des fiches de joueur que la session voit (R318 ; nature, proprietaire, visibilite, a_moi ; du portrait,
 //                                   son empreinte et son cadrage seulement) : sans session (clé de lecture comprise), les prétirés seuls
 //   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire }
+//   POST /api/personnages/?nature=joueur   crée une fiche de joueur (R322 : « + » de « Mes personnages »), même corps et même réponse (201) : nature 'joueur', au compte de la
+//                                   session, visibilite 'privee' ; session Joueur, MJ ou Créateur en production, le Créateur seul au site de dev (porte : classe `ecriture`) ; 403 sans
+//                                   session (clé comprise), Observateur ou compte absent, avant toute lecture du corps ; 400 pour toute autre `nature`
 //   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire } ; 404 pour une fiche de joueur que la session ne voit pas
 //   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau, proprietaire, a_moi, peut_ecrire } ; 409 si elle a changé entre-temps ;
 //                                   fiche de joueur : son propriétaire ou une session Créateur, sinon 403 (404 si elle n'est pas vue) ; ni nature, ni propriétaire, ni visibilité
@@ -176,7 +179,7 @@ import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { lireLActivation } from './paquets-de-la-production.mjs';
 import { creerLesInterrupteursDeGithub, estUnDossier, etatDeLaBascule2 } from './bascule-2-etat.mjs';
 import {
-  ErreurFiche, NIVEAUX_QUI_COPIENT, appelantDe, controlesDe, copierUnPretire, droitsSurLaFiche, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, proprietaireDe, reglerLaVisibilite, supprimerFiche, transfererFiche,
+  ErreurFiche, MESSAGE_CREATION_AU_COMPTE, appelantDe, controlesDe, copierUnPretire, droitsSurLaFiche, enregistrerFiche, lireFiche, listerFiches, niveauDe, peutSeRattacher, portraitDeFiche, proprietaireDe, reglerLaVisibilite, supprimerFiche, transfererFiche,
 } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -329,12 +332,18 @@ export function traiter(requete, service) {
   }
   const refus = id === null ? permis('GET', 'POST') : permis('GET', 'PUT', 'DELETE');
   if (refus) return refus;
+  // R322 : `POST /api/personnages/?nature=joueur` crée une fiche de joueur au compte de la session ; sans `nature`, un prétiré ; toute autre valeur : 400
+  const naturesDemandees = methode === 'POST' && id === null ? params.getAll('nature') : [];
+  const natureDemandee = naturesDemandees.length ? naturesDemandees.join('&') : null; // plusieurs valeurs : jamais « joueur » seul
+  if (natureDemandee !== null && natureDemandee !== 'joueur') return erreur(400, 'La nature d’une fiche neuve est « joueur » (ou absente : un prétiré).');
 
   const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
 
   // R318 : qui appelle (la session du cookie ; sans session, y compris avec la clé de lecture, les prétirés seulement)
   const appelant = appelantDeLaRequete(service, entetes);
+  // R322 : le niveau passe avant la lecture du corps, comme pour la copie : un visiteur ou un Observateur reçoit 403, jamais une erreur de forme
+  if (natureDemandee === 'joueur' && !peutSeRattacher(appelant)) return erreur(403, MESSAGE_CREATION_AU_COMPTE);
   // la fiche et ce que l'appelant en fait (le propriétaire, « à moi », « je peux l'écrire »), pour les pages
   const avecLesDroits = (corps, ficheId) => {
     const droits = droitsSurLaFiche(db, ficheId, appelant);
@@ -362,7 +371,7 @@ export function traiter(requete, service) {
       service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: 'suppression' } });
       return json(200, { supprime: id });
     }
-    const resultat = enregistrerFiche(db, valeur, { id, appelant });
+    const resultat = enregistrerFiche(db, valeur, { id, appelant, auCompte: natureDemandee === 'joueur' });
     service.journal?.(nom(id === null ? 'création' : 'modification', resultat.personnage.id));
     service.evenement?.('fiche', { duree_ms: performance.now() - t0, detail: { action: id === null ? 'creation' : 'modification' } });
     if (id === null) return json(201, avecLesDroits(resultat, resultat.personnage.id), { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });
@@ -422,7 +431,7 @@ function traiterCopie(requete, service, brut, permis) {
   const refus = permis('POST');
   if (refus) return refus;
   const appelant = appelantDeLaRequete(service, requete.entetes ?? {});
-  if (!NIVEAUX_QUI_COPIENT.includes(appelant.niveau) || !appelant.utilisateur) return erreur(403, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
+  if (!peutSeRattacher(appelant)) return erreur(403, 'Copier un prétiré demande une session de niveau Joueur, MJ ou Créateur.');
   const id = idDeFiche(brut);
   if (id === null) return erreur(404, 'Fiche introuvable.');
   const { db, refus: indisponible } = baseOuRefus(service, 'La base des fiches n’est pas disponible pour le moment.');

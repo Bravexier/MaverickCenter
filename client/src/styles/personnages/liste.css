@@ -139,3 +139,7 @@
 .perso-reglages__champ { display: flex; align-items: center; gap: 0.4rem; }
 .perso-reglages select { max-width: 16rem; color: var(--text); }
 .perso-reglages__copier { padding: 0.15rem 0.7rem; font-size: inherit; }
+/* R322 : le « + » en bas de « Mes personnages » (lien vers le générateur vierge) */
+.personnages-nouvelle { display: inline-flex; align-items: center; justify-content: center; justify-self: start; inline-size: 2.4rem; block-size: 2.4rem; border-radius: 50%; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-size: 1.6rem; line-height: 1; font-weight: 700; text-decoration: none; }
+.personnages-nouvelle:hover, .personnages-nouvelle:focus-visible { background: var(--accent); color: var(--surface); }
+.personnages-nouvelle[hidden] { display: none; }

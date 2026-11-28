@@ -12,6 +12,7 @@ import { url } from '../lib/wiki';
 // (portrait, nom, race, magies, classes avec leur spécialité, niveau, rien d'autre) est tout entière le lien vers la fiche, bordée de la couleur de la magie innée, en dégradé vers
 // l'acquise en bi-magie. Les données viennent du service des personnages (GET /api/personnages/, docs/serveur.md) ; les couleurs des magies, de la
 // base au build : les classes de la palette de chaque magie (celles des pages de magie, lib/palette-css.mjs) ; filtres et tri : lib/personnages-liste.mjs ;
+// R322 : un « + » en bas de « Mes personnages », lien vers /fiche/?nouvelle=joueur, caché ici et montré par le script aux seuls Joueur, MJ et Créateur (absent de la version portable : sans compte) ;
 // le reste : src/scripts/personnages.mjs.
 // CSS : styles/personnages/liste.css, inséré ici (?raw).
 const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM magie ORDER BY ordre').all().map((m) => [m.id, classesDeDeuxMagies(String(m.nom))]));
@@ -58,6 +59,7 @@ const couleurs = Object.fromEntries(ouvrirBase().prepare('SELECT id, nom FROM ma
       <section class="personnages-section" id="mes-personnages" aria-labelledby="titre-mes-personnages" hidden>
         <h2 id="titre-mes-personnages">Mes personnages</h2>
         <ol class="personnages-lignes" id="lignes-mes" aria-labelledby="titre-mes-personnages"></ol>
+        <a class="personnages-nouvelle" id="nouvelle-fiche" aria-label="Créer une nouvelle fiche de personnage" title="Créer une nouvelle fiche de personnage" hidden><span aria-hidden="true">+</span></a>
       </section>
       <section class="personnages-section" id="pretires" aria-labelledby="titre-pretires" hidden>
         <h2 id="titre-pretires">Prétirés</h2>

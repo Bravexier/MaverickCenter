@@ -43,7 +43,7 @@ const TABLE = [
   [LECTURE, /^\/api\/personnages$/, 'lecture'],
   [LECTURE, /^\/api\/personnages\/[^/]+$/, 'lecture'],
   [LECTURE, /^\/api\/personnages\/[^/]+\/portrait$/, 'lecture'],
-  [['POST'], /^\/api\/personnages$/, 'ecriture'],
+  [['POST'], /^\/api\/personnages$/, 'ecriture'], // aussi `?nature=joueur` (R322 : la chaîne de requête est retirée avant le classement) : au site de dev, le Créateur seul
   [['PUT', 'DELETE'], /^\/api\/personnages\/[^/]+$/, 'ecriture'],
   // R318 : ranger une fiche à un compte et régler son « Visible par » (écritures : un Créateur à la porte ; le service exige en plus le Créateur pour le transfert,
   // le propriétaire ou un Créateur pour la visibilité), et la liste des comptes du menu de transfert (la lecture à la porte ; le service exige une session Créateur)
