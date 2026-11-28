@@ -37,7 +37,8 @@ import {
 } from './edition-journal.mjs';
 import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, raisonDuGel, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
-import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
+import { CHAMPS_DE_L_ELEMENT, retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { tenirLIndexDesPages } from './index-des-pages.mjs';
 import {
   detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
@@ -270,6 +271,52 @@ function versionDuSite(e) {
 }
 /** Le nom (ou titre, libellé) d'une ligne, s'il en a un non vide. */
 const nomDe = (ligne) => [ligne?.nom, ligne?.titre, ligne?.libelle].find((v) => typeof v === 'string' && v) ?? null;
+
+/**
+ * Une ligne brute de mot_cle complétée des champs logiques qu'elle n'a pas (libelle, url, description, couleur, icone : depuis la migration 0136 ils se
+ * lisent sur son élément) depuis `lu`, l'objet de lib/mots-cles-db.mjs#lireUnMotCle ; une autre table, une ligne absente ou un mot-clé sans élément
+ * (`lu` null) : telle quelle. Pour la page seulement (libelleDeLigne, les versions d'un conflit), jamais pour écrire (décision B3-7 du chantier 4 :
+ * libelleDeLigne reste inchangé, ses appelants lui passent l'objet).
+ */
+export function ligneDuMotCle(table, ligne, lu) {
+  if (table !== 'mot_cle' || !ligne || !lu?.element) return ligne;
+  return { ...ligne, ...Object.fromEntries(CHAMPS_DE_L_ELEMENT.filter((c) => !(c in ligne)).map((c) => [c, lu[c] ?? null])) };
+}
+
+/** Le mot-clé `id` lu sur la base telle qu'elle est (lireUnMotCle), ou null (absent, id qui n'est pas un entier, base sans table mot_cle). */
+function motCleLu(db, id) {
+  if (!Number.isInteger(id)) return null;
+  try {
+    return lireUnMotCle(db, id);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Les mots-clés des lignes de mot_cle d'un lot (`lignes` : celles du journal), lus AVANT que son examen ne les touche (la suppression de son repère, saine,
+ * ferait perdre son nom) : Map(id → objet de lireUnMotCle). `vue(e)` : une entrée du parcours, sa ligne des règles (`ligne`) et sa ligne supprimée
+ * (`avant`) complétées (ligneDuMotCle) ; ses valeurs écrites (`apres`) telles quelles.
+ */
+function motsClesDuLot(db, lignes) {
+  const lus = new Map();
+  for (const m of lignes) {
+    if (m.table_nom !== 'mot_cle') continue;
+    let id;
+    try {
+      id = JSON.parse(m.cle)?.id;
+    } catch {
+      continue;
+    }
+    if (!lus.has(id)) lus.set(id, motCleLu(db, id));
+  }
+  const vue = (e) => {
+    if (e?.table !== 'mot_cle') return e;
+    const lu = lus.get(e.cle?.id);
+    return { ...e, ligne: ligneDuMotCle('mot_cle', e.ligne, lu), avant: e.operation === 'supprimer' ? ligneDuMotCle('mot_cle', e.avant, lu) : e.avant };
+  };
+  return vue;
+}
 
 /**
  * Les clés étrangères d'une table dont toutes les colonnes sont dans la clé `cle` : [{ parent, colonnes (de la table), cle (de la ligne citée) }],
@@ -613,12 +660,14 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   // du rejeu : serveur/edition.mjs#motsClesEncoreMentionnes) n'a que le choix 2 — sinon le choix 1, ou la suppression saine, referait la cascade ; une
   // suppression forcée n'y est pas (décision R223 (6) : elle se rejoue forcée, ses balises remplacées par leur texte affiché)
   const mentionnes = new Map(OUTILS.motsClesEncoreMentionnes(db, lignes.filter((m) => !abandons.has(m.rang))).map((r) => [r.id, r.raison]));
+  // une ligne de mot_cle, nommée et montrée avec ses champs lus sur son élément tel que le lot le trouve (B3-7)
+  const vue = motsClesDuLot(db, lignes);
   const { entrees, differees } = parcourir(ctx, lignes, new Set(abandons.keys()));
-  const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db));
+  const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(vue(e), db));
   const idsDuParcours = duParcours.map((c) => c.id);
   const sortants = new Map(abandons);
   for (const e of entrees) {
-    if (e.issue !== 'saute' && e.table === 'mot_cle' && e.operation === 'supprimer' && mentionnes.has(e.cle?.id)) sortants.set(e.rang, abandon(e, mentionnes.get(e.cle.id), db));
+    if (e.issue !== 'saute' && e.table === 'mot_cle' && e.operation === 'supprimer' && mentionnes.has(e.cle?.id)) sortants.set(e.rang, abandon(vue(e), mentionnes.get(e.cle.id), db));
   }
   for (const c of duParcours) if (c.genre === 'sans_valeur') sortants.set(c.rang, c);
   let conflits = duParcours.filter((c) => !sortants.has(c.rang));
@@ -676,8 +725,17 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
     const rangs = parcourues.filter((e) => e.table === 'mot_cle' && e.operation === 'supprimer').map((e) => e.rang);
     for (const rang of rangs.length ? rangs : parcourues.slice(0, 1).map((e) => e.rang)) raisons.set(rang, [...(raisons.get(rang) ?? []), `après le lot : ${apres.message}`]);
   }
-  for (const [rang, rs] of raisons) sortants.set(rang, abandon(entrees.find((x) => x.rang === rang), [...new Set(rs)].join(' ; '), db));
-  conflits = [...conflits.filter((c) => !sortants.has(c.rang)), ...sortants.values()];
+  for (const [rang, rs] of raisons) sortants.set(rang, abandon(vue(entrees.find((x) => x.rang === rang)), [...new Set(rs)].join(' ; '), db));
+  // le repère d'un mot-clé que ce lot supprime (migration 0136) part avec lui, jamais seul : sa suppression notée suit celle du mot-clé. Quand celle-ci
+  // attend un choix ou est abandonnée, la ligne du repère est laissée de côté (le choix 1 le retire avec le mot-clé : avantLaSuppression →
+  // retirerLesFillesDuMotCle ; le choix 2 garde les deux), sans conflit à elle : le mot-clé gardé garde son nom (C0, rien ne change pour le lecteur)
+  const enSuspens = new Set([...sortants.keys(), ...conflits.map((c) => c.rang)]);
+  const motsClesGardes = new Set(entrees.filter((e) => e.table === 'mot_cle' && e.operation === 'supprimer' && enSuspens.has(e.rang)).map((e) => e.cle?.id));
+  for (const e of entrees) {
+    if (e.issue === 'saute' || e.table !== 'repere' || e.operation !== 'supprimer' || !motsClesGardes.has(e.cle?.mot_cle_id) || sortants.has(e.rang)) continue;
+    sortants.set(e.rang, { ...abandon(e, 'suit la suppression de son mot-clé', db), suitLeMotCle: true });
+  }
+  conflits = [...conflits.filter((c) => !sortants.has(c.rang)), ...[...sortants.values()].filter((c) => !c.suitLeMotCle)];
   conflits.sort((a, b) => a.rang - b.rang || String(a.colonne ?? '').localeCompare(String(b.colonne ?? '')));
   // une règle en données d'un don (TABLES_DES_REGLES_DU_DON) que ce lot retire aussi : pas de choix à elle, elle suit celui du don (réponse du chef
   // technique, lot « Défauts du code » : jamais une règle sans son don ni un don sans sa règle). Le don supprimé (modification saine, ou choix 1) la retire,
@@ -687,7 +745,7 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   conflits = conflits.filter((c) => !suivent.has(c.rang));
   const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && !suivent.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
     .map((e) => ({
-      rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
+      rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, vue(e).ligne ?? e.apres ?? vue(e).avant, e.cle, db),
       issue: e.issue === 'conflit' ? 'reappliquee' : ISSUES[e.issue],
       ...(e.issue === 'conflit' ? { colonnes: e.ecrites, colonnes_libelles: e.ecrites.map((c) => libelleDeColonne(e.table, c)) } : {}),
     }));
@@ -922,7 +980,8 @@ function examinerUnLotGarde(db, lot, reprises, instant) {
       } catch {
         ligne = null;
       }
-      const libelle = libelleDeLigne(table, ligne ?? reprise.apres ?? reprise.avant, cle, db);
+      // une ligne de mot_cle, par son nom lu sur son élément (B3-7)
+      const libelle = libelleDeLigne(table, ligneDuMotCle(table, ligne, table === 'mot_cle' ? motCleLu(db, cle?.id) : null) ?? reprise.apres ?? reprise.avant, cle, db);
       const gardees = reprise.gardees ?? {};
       for (const [c, g] of Object.entries(gardees)) {
         const champ = TABLES[table]?.colonnes[c];

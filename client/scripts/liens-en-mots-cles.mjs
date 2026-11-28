@@ -416,7 +416,11 @@ export function migrationSql({ motsCles, remplacements }) {
   return `${lignes.join('\n')}\n`;
 }
 
-/** La vue v_mot_cle de la migration (et de data/schema.sql, au caractère près). */
+/**
+ * La vue v_mot_cle telle que la migration 0098 l'écrit, sur la structure 97 que lit ce générateur (generer refuse toute autre base) : les colonnes du
+ * mot-clé d'alors. Refaite depuis par les migrations 0113, 0115 et 0136 (cette dernière la lit sur l'élément du mot-clé, data/schema.sql) ; ni elle ni
+ * les UPDATE et INSERT de migrationSql ne suivent la structure d'aujourd'hui : ils écrivent une migration passée, qui ne change plus.
+ */
 export const VUE = `CREATE VIEW v_mot_cle AS
   SELECT m.id, m.libelle, m.libelle_cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,

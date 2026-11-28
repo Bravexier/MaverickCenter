@@ -15,6 +15,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 import { MOTS_CLES_DE_LA_0120 } from './aide-races-0120.mjs';
 import { fonduParLa0122 } from './aide-migration-0122.mjs';
@@ -126,15 +127,16 @@ testDuRegistre('import : les clés que la migration a changées sont celles de l
 });
 
 test('import : la règle de la clé, stricte, donne exactement les clés de l’état d’import (R232 : plus d’écart admis)', { skip: sansPython }, () => {
-  const h = historiqueSite(db);
-  const motsCles = h.lignesDImport('mot_cle');
-  const r = clesDeLaRegle(motsCles, h.lignesDImport('mot_cle_categorie'), h.lignesDImport('categorie_mot_cle'));
+  // le nom se lit sur l'élément du mot-clé (migration 0136) : la vue v_mot_cle de la base d'import
+  const imp = baseDImport();
+  const motsCles = imp.prepare('SELECT id, libelle, cle FROM v_mot_cle').all();
+  const r = clesDeLaRegle(motsCles, imp.prepare('SELECT mot_cle_id, categorie_id FROM mot_cle_categorie').all(), imp.prepare('SELECT id, libelle FROM categorie_mot_cle').all());
   assert.deepEqual(r.refus, undefined, 'aucun homonyme sans catégorie propre, aucune clé prise');
   for (const m of motsCles) assert.equal(m.cle, r.cles[String(m.id)], `mot-clé ${m.id}`);
 });
 
 test('état courant (R232 (2), (9), (10)) : chaque clé est celle de la règle stricte ; aucun homonyme sans catégorie propre', { skip: sansPython }, () => {
-  const motsCles = db.prepare('SELECT id, libelle, cle FROM mot_cle').all();
+  const motsCles = db.prepare('SELECT id, libelle, cle FROM v_mot_cle').all(); // le nom se lit sur l'élément (migration 0136)
   const r = clesDeLaRegle(motsCles, db.prepare('SELECT mot_cle_id, categorie_id FROM mot_cle_categorie').all(),
     db.prepare('SELECT id, libelle FROM categorie_mot_cle').all(), Object.fromEntries(motsClesDeLaBase(db).filter((m) => m.parent).map((m) => [m.id, m.parent])));
   assert.deepEqual(r.refus, undefined);

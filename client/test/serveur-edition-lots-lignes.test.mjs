@@ -219,8 +219,11 @@ test('une ligne qu’une autre ligne du lot tient ne s’annule pas seule : le m
   const avant = comptes(m.db);
   const vu = ok(await m.appel('GET', adresseDeLaLigne(applique.id, motCle.n, 'annulation')));
   assert.equal(vu.verdict, 'refusee');
-  assert.match(vu.operations[0].message, /ne s’annule pas seule/);
-  assert.deepEqual(vu.operations[0].depend_de, [citante.n]);
+  // depuis la migration 0136, l'aperçu groupe le mot-clé et son repère (le nom) : l'opération refusée est celle du mot-clé
+  const refusee = vu.operations.find((o) => o.table === 'mot_cle');
+  assert.equal(refusee.etat, 'refusee');
+  assert.match(refusee.message, /ne s’annule pas seule/);
+  assert.deepEqual(refusee.depend_de, [citante.n]);
   const r = refus(await m.appel('POST', adresseDeLaLigne(applique.id, motCle.n, 'annuler'), {}), 409);
   assert.match(r.erreur, /ne s’annule pas seule/);
   assert.deepEqual(r.depend_de, [citante.n]);

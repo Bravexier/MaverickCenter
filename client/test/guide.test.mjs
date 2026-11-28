@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { idDuMotCleNomme, lireUnMotCle } from './aide-mots-cles.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import GithubSlugger from 'github-slugger';
 import { adresseDesAnciensLiens, avecPrefixe, BLOCS, morceauxDuChapitre, remarkAnciensLiensDuGuide, sansMarqueurs } from '../src/lib/guide.mjs';
@@ -275,12 +275,27 @@ test('décision R17 : l’exemple 2 des dégâts donne 18', () => {
 // (le tarif 2 de R18, l'ancien plan du Mode Hyper d'avant R184 ; undefined pour le mot-clé). Seuls les lots rapatriés APRÈS la 0093 (absents de
 // fixtures/lots-avant-0093.json, liste figée : fait_le est l'heure du lot sur le site de dev) se défont (skill tests-conventions).
 const LOTS_AVANT_0093 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0093.json', import.meta.url), 'utf8')).lots);
+// Depuis la migration 0136, la définition d'un mot-clé (colonne logique `description`) se lit sur son élément (lireUnMotCle) : les lots du site écrits
+// depuis sur son repère ou sa page (`definition`) se défont avec ceux, plus anciens, écrits sur mot_cle.
+const COLONNES_LOGIQUES = { repere: { definition: 'description', nom: 'libelle', adresse: 'url' }, page: { definition: 'description' } };
 function valeurDe0093(table, ligne, colonne) {
   const cle = cleDeLigne(db, table, ligne);
   const texte = JSON.stringify(cle);
-  const ops = historique.entrees.filter((e) => !LOTS_AVANT_0093.has(e.lot) && e.table === table && e.texte === texte);
-  const actuelle = db.prepare(`SELECT * FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(cle));
-  const avant = ops.reduceRight((l, o) => (o.operation === 'inserer' ? null : o.operation === 'supprimer' ? { ...o.avant } : l && { ...l, ...o.avant }), actuelle ? { ...actuelle } : null);
+  const element = table === 'mot_cle' ? lireUnMotCle(db, cle.id)?.element ?? null : null;
+  const texteDeLElement = element && element.table !== 'sort'
+    ? JSON.stringify(cleDeLigne(db, element.table, element.table === 'repere' ? { mot_cle_id: element.id } : { id: element.id })) : null;
+  const logique = (o) => (o.table === table ? o.avant : o.avant && Object.fromEntries(Object.entries(o.avant)
+    .filter(([c]) => c in COLONNES_LOGIQUES[o.table]).map(([c, v]) => [COLONNES_LOGIQUES[o.table][c], v])));
+  const ops = historique.entrees.filter((e) => !LOTS_AVANT_0093.has(e.lot)
+    && ((e.table === table && e.texte === texte) || (texteDeLElement && e.table === element.table && e.texte === texteDeLElement && e.operation === 'modifier')));
+  let actuelle;
+  if (table === 'mot_cle') {
+    const lu = lireUnMotCle(db, cle.id);
+    actuelle = lu && (({ element: _e, ...m }) => m)(lu);
+  } else {
+    actuelle = db.prepare(`SELECT * FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(cle));
+  }
+  const avant = ops.reduceRight((l, o) => (o.operation === 'inserer' ? null : o.operation === 'supprimer' ? { ...logique(o) } : l && { ...l, ...logique(o) }), actuelle ? { ...actuelle } : null);
   return avant?.[colonne];
 }
 
@@ -361,7 +376,8 @@ test('décision R149 (G40) : le plafond de maîtrise d’arme, 4 points, donc 5 
   // est la définition du mot-clé `maitrise-darme`.
   for (const [id, texte] of [['guide/caracteristiques-et-competences', texteDImport('page', { id: 'guide/caracteristiques-et-competences' }, 'corps_md')],
     ['guide/l-equipement', texteDImport('page', { id: 'guide/l-equipement' }, 'corps_md')],
-    ['mot_cle maitrise-darme', texteDImport('mot_cle', { id: idDuMotCleNomme('maitrise-darme') }, 'description')]]) {
+    // (la définition d'un mot-clé se lit sur son élément depuis la migration 0136 : lireUnMotCle dans la base d'import)
+    ['mot_cle maitrise-darme', lireUnMotCle(baseDImport(), idDuMotCleNomme('maitrise-darme'))?.description]]) {
     assert.ok(texte, `${id} : le texte (à l’import)`);
     const desDeMaitrise = texte.split('\n').filter((ligne) => /point de maîtrise/.test(ligne) && /\bdés?\b/.test(ligne));
     assert.ok(desDeMaitrise.length > 0, `${id} : la phrase des dés de maîtrise`);

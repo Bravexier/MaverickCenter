@@ -1062,8 +1062,14 @@ describe('fonctions pures', () => {
       'la cascade de page_tag et des lignes filles, et les pages typées refaites depuis les lignes dont les balises sont retirées');
     // une monnaie supprimée (un lot ancien, R220 (1)) : son ON DELETE SET NULL vide mot_cle.monnaie_id (migration 0113)
     assert.deepEqual(tablesDuLot(lot({ table: 'monnaie', operation: 'supprimer', avant: { id: 'po' }, apres: null })), ['monnaie', 'mot_cle']);
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
-    assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
+    // une ligne de mot_cle d'avant la migration 0136 qui note une colonne retirée : le rejeu l'écrit sur l'élément du mot-clé (sa page ou son repère)
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle', 'page', 'repere']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { verrou: 0 }, apres: { verrou: 1 } })), ['mot_cle']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag', 'repere']);
+    // une page ou un sort qui reçoit ou perd un mot-clé reprend ou laisse son repère
+    assert.deepEqual(tablesDuLot(lot({ table: 'page', operation: 'modifier', avant: { mot_cle_id: null }, apres: { mot_cle_id: 7 } })), ['page', 'repere']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'sort', operation: 'supprimer', avant: { id: 's', mot_cle_id: 7 }, apres: null })), ['repere', 'sort']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'page', operation: 'modifier', avant: { titre: 'a' }, apres: { titre: 'b' } })), ['page']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
     // les sources de maîtrise d'arme d'une classe ou d'un don touchés, refaites par le lecteur après le lot (sourcesRefaitesParLeLot : un lot noté avant
     // la migration 0076 ne les écrit pas ; décisions R148 à R151, R154), la même liste que le service
@@ -1083,7 +1089,7 @@ describe('fonctions pures', () => {
     };
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null }), { tablesAvecBalises: balises }),
       ['arme', 'mot_cle', ...TABLES_DES_FILLES_DU_MOT_CLE, 'page', 'page_tag'].sort());
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } }), { tablesAvecBalises: balises }), ['mot_cle']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { verrou: 0 }, apres: { verrou: 1 } }), { tablesAvecBalises: balises }), ['mot_cle']);
     assert.equal(lues, 1, 'git grep seulement pour un lot qui retire un mot-clé');
     const appels = [];
     const g = (args, o) => {

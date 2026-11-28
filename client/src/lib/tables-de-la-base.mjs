@@ -5,8 +5,9 @@
 //     version et l'historique des modifications du site (section 15 : TABLES_DES_NOTES) — jamais modifiées par l'édition
 //     (serveur/edition-journal.mjs#TABLES_INTERDITES) ;
 //   - dérivées (TABLES_DERIVEES : section 11, `-- @derivee`, hors tables de recherche plein texte) : recalculées par le build depuis les autres ;
-//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (skill base-orthographe) ;
-//   - les tables de contenu pas encore lues (TABLES_PAS_ENCORE_LUES) : `repere`, copie des colonnes du mot-clé jusqu'à leur retrait.
+//   - les traces gardées telles quelles (TRACES_TELLES_QUELLES) : l'écriture d'une source, jamais corrigée ni réécrite (skill base-orthographe).
+// Le repère d'un mot-clé (`repere`, migrations 0135 et 0136) est un texte de règles comme un autre : il porte le nom, l'adresse et la définition du
+// mot-clé qui n'a ni page ni sort, et se lit donc (mentions, balises réécrites, note de version).
 // Aucune n'est lue comme un texte de règles par les balises du glossaire des mots-clés (lib/mots-cles-db.mjs#textesDeLaBase : ni contrôlée par
 // db:check, ni réécrite au rejeu du journal).
 // Le classement en trois classes (contenu, propre au site, calculée) est en bas de ce fichier. Sans dépendance (sauf lib/fiche-format.mjs, pur).
@@ -35,15 +36,6 @@ export const TABLES_DERIVEES = Object.freeze(['lien', 'lien_candidat']);
  * texte), alias des pages, dictionnaire des sources.
  */
 export const TRACES_TELLES_QUELLES = Object.freeze(['note_cellule', 'ecart_source', 'correction', 'commentaire_orphelin', 'alias', 'source']);
-
-/**
- * Les tables de contenu que rien ne lit encore : `repere` (migration 0135), tant que les colonnes du mot-clé font foi (docs/chantier-retrait-des-colonnes.md,
- * §7, « PR A » : « rien ne la lit »). Un repère n'y est que la copie du nom, de l'adresse, de la définition, de la couleur et de l'icône de son mot-clé : lu
- * comme un texte de règles (lib/mots-cles-db.mjs#textesDeLaBase), il compterait deux fois chaque mention d'un mot-clé et chaque page citée, et la note de
- * version (lib/notes-de-version.mjs#TABLES_SANS_COMPARAISON) redirait ce que dit déjà la ligne du mot-clé. À VIDER quand les colonnes du mot-clé partent
- * (« PR B » du même chantier) : le repère devient alors le texte qu'on lit.
- */
-export const TABLES_PAS_ENCORE_LUES = Object.freeze(['repere']);
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 // Le classement de TOUTES les tables (lot 5 du chantier « la base du site de dev devient la source de vérité » : docs/chantier-base-de-dev.md, R274,

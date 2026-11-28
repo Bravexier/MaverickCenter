@@ -21,7 +21,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES as ID } from '../src/lib/mots-cles-proteges.mjs';
 import { avecLesMotsCles, lirePages, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { classeDUneClasse } from '../src/lib/palette-css.mjs';
@@ -44,6 +44,8 @@ const ok = (r) => {
   return r.corps;
 };
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
+/** Le libellé du mot-clé `id`, lu sur son élément (page, sort ou repère : migration 0136). */
+const libelleDe = (id) => lireUnMotCle(db, id).libelle;
 /** Une écriture qu'aucun mot-clé, aucune race ni aucune classe n'a. */
 const libre = (base) => {
   let t = base;
@@ -51,7 +53,7 @@ const libre = (base) => {
   for (let i = 2; prise(normalize(t)) || ligne('SELECT 1 FROM page WHERE titre_cle = ?', normalize(t)) || ligne('SELECT 1 FROM peuple WHERE nom_cle = ?', normalize(t)); i += 1) t = `${base} ${i}`;
   return t;
 };
-const renommer = (id, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle } });
+const renommer = (id, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: libelleDe(id) } });
 /** Les écritures d'origine des mots-clés renommés par le premier test (id → libellé). */
 const quittes = new Map();
 
@@ -87,12 +89,12 @@ test('R195 : chaque mot-clé dont le site se sert se renomme ; aucune page ne ch
   assert.ok(sansElement.length >= 2, 'des mots-clés dont le site se sert, sans élément');
   const nouveaux = new Map();
   for (const id of sansElement) {
-    quittes.set(id, ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle);
+    quittes.set(id, libelleDe(id));
     const libelle = libre(`Renommé ${id}`);
     ok(enregistrer([renommer(id, libelle)]));
     nouveaux.set(id, libelle);
   }
-  for (const [id, libelle] of nouveaux) assert.equal(ligne('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle, libelle, id);
+  for (const [id, libelle] of nouveaux) assert.equal(libelleDe(id), libelle, id);
   // le `tags:` des pages construites montre les nouveaux libellés (le renommage a bien eu lieu)…
   const nom = ['magique', 'hybride-animal', 'classe'].find((n) => nouveaux.has(ID[n]));
   assert.ok(nom, 'un mot-clé renommé que portent des classes');
@@ -109,7 +111,7 @@ test('R195 : l’écriture qu’un mot-clé dont le site se sert a quittée se r
   const avant = lecture();
   // deux écritures quittées par le test précédent (des mots-clés sans élément : un ancré ne se renomme plus, R309)
   const [[premier, ecriture], [, secondeEcriture]] = [...quittes];
-  assert.notEqual(normalize(ligne('SELECT libelle FROM mot_cle WHERE id = ?', premier).libelle), normalize(ecriture), 'renommé par le test précédent');
+  assert.notEqual(normalize(libelleDe(premier)), normalize(ecriture), 'renommé par le test précédent');
   // un mot-clé créé sous la première : un autre id, non protégé ; nu, hors route (par une route, il naîtrait avec sa page : test/aide-mot-cle-nu.mjs)
   const cree = ok(lotHorsRoute(db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: ecriture } }])).crees[0].id;
   assert.notEqual(cree, premier);
@@ -153,12 +155,14 @@ test('R309 remplace R195 (1) : un mot-clé dont le site se sert, relié à un é
     // un contenu d'avant l'ancrage : l'ancre est posée dans la copie, sur une page qui n'en a pas
     ancre = presents[0];
     db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = (SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(ancre);
+    // un mot-clé ancré n'a pas de repère (migration 0136 : son élément est sa page)
+    db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(ancre);
   }
-  const avant = ligne('SELECT libelle, cle FROM mot_cle WHERE id = ?', ancre);
+  const avant = ligne('SELECT libelle, cle FROM v_mot_cle WHERE id = ?', ancre);
   const refus = enregistrer([renommer(ancre, libre('Essai R309'))]);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.match(refus.corps.erreur, /relié à un élément/);
-  assert.deepEqual({ ...ligne('SELECT libelle, cle FROM mot_cle WHERE id = ?', ancre) }, { ...avant });
+  assert.deepEqual({ ...ligne('SELECT libelle, cle FROM v_mot_cle WHERE id = ?', ancre) }, { ...avant });
   const sansElement = presents.find((id) => !estAncre(db, id));
   ok(enregistrer([renommer(sansElement, libre('Essai R309 sans élément'))]));
 });

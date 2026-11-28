@@ -14,7 +14,7 @@ import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { retireeParLa0122 } from './aide-migration-0122.mjs';
-import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { idDuMotCleNomme, lireUnMotCle } from './aide-mots-cles.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
@@ -32,7 +32,9 @@ const apresLa0107 = () => baseDImport({ garder: lotsAvant('0107') });
 // 0113 (ancien id texte -> id entier, jamais réécrite : sa référence, aide-mots-cles.mjs#idDuMotCleNomme).
 const ID_ENTIER = { get: idDuMotCleNomme };
 const idDe = (table, id) => (table === 'mot_cle' ? ID_ENTIER.get(id) : id);
-const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v;
+// une colonne d'un mot-clé (`description`…) se lit sur son élément depuis la migration 0136 (lireUnMotCle)
+const valeur = (db, t) => (t.table === 'mot_cle' ? lireUnMotCle(db, idDe(t.table, t.cle.id))?.[t.col]
+  : db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v);
 // La migration 0111 (relecture des Règles contre les décisions), postérieure, réécrit des fragments que la 0104 a écrits (C20, R226 (2) : la Vigilance
 // anticipe en action rapide) : le fragment de la 0104 est admis tel quel ou tel que la 0111 l'a réécrit (registre `textes`, test/aide-textes-reecrits.mjs)
 // (registres des migrations postérieures, lus à la demande : seuls les tests des remplacements de la 0104, retirés avec les mixtes, les lisent)
@@ -89,7 +91,7 @@ testDeLaMixte('0104 : chaque remplacement est en place dans l’état de la migr
 test('R199 (3) : plus aucune « attaque gratuite » dans les pages du guide ; le mot-clé attaque-gratuite garde son identifiant et renvoie à l’attaque d’opportunité, sans adresse', () => {
   const imp = apresLa0104();
   assert.deepEqual(imp.prepare("SELECT id FROM page WHERE id LIKE 'guide/%' AND corps_md LIKE '%attaque gratuite%'").all(), []);
-  const m = imp.prepare('SELECT url, description FROM mot_cle WHERE id = ?').get(ID_ENTIER.get('attaque-gratuite'));
+  const m = lireUnMotCle(imp, ID_ENTIER.get('attaque-gratuite')); // adresse et définition : sur l'élément (migration 0136)
   assert.ok(m, 'identifiant figé : le mot-clé reste');
   // une seconde adresse vers la page des attaques d'opportunité rendrait ambigu un lien saisi vers elle (lib/mots-cles-liens.mjs#motsClesDeLAdresse)
   assert.equal(m.url, null);
@@ -115,7 +117,7 @@ test('R207 : les mots-clés maroquinier et armurier mènent à leur métier, com
   const imp = apresLa0104();
   assert.deepEqual(registre.mots_cles_crees.map((m) => m.id).sort(), ['armurier', 'maroquinier']);
   for (const { id, page } of [...registre.mots_cles_crees, { id: 'forgeron', page: 'metiers/forgeron' }, { id: 'couturier', page: 'metiers/couturier' }]) {
-    const m = imp.prepare('SELECT url FROM mot_cle WHERE id = ?').get(ID_ENTIER.get(id));
+    const m = lireUnMotCle(imp, ID_ENTIER.get(id)); // l'adresse : sur l'élément (migration 0136)
     assert.ok(m, id);
     assert.ok(imp.prepare('SELECT 1 FROM page WHERE id = ?').get(page), `${page} existe`);
     assert.equal(m.url, `/${cheminDePage(page)}`, id);

@@ -5,9 +5,11 @@
 //     édition), son essai à blanc n'écrit rien, son application écrit les lignes au journal ; une ligne s'annule seule, puis le lot entier (R291) ;
 //   - le service refuse (409, sans numéro de décision : ce n'est pas un verrou) le repère d'un mot-clé que désigne une page ou un sort, ou qui n'existe pas ;
 //   - un lot modifie et supprime un repère ; l'annulation d'une suppression le remet, sauf si le mot-clé a reçu une page entre-temps ;
-//   - tant que les colonnes du mot-clé font foi, rien ne lit la table (lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES) ;
 //   - un mot-clé supprimé emporte son repère, noté au journal (serveur/edition-mots-cles.mjs#FILLES_DU_MOT_CLE).
-// Aucune valeur du site n'est figée : les mots-clés se prennent par ordre d'id, un repère se compare aux colonnes de son mot-clé, les textes écrits sont ceux du test.
+// Depuis la migration 0136 (retrait des colonnes du mot-clé), la migration pose elle-même le repère de chaque mot-clé sans page ni sort : le lot du script
+// n'a plus rien à poser et ne sert que de contrôle (un mot-clé resté sans élément est nommé, en erreur) ; sa copie des colonnes s'éprouve sur une base à
+// l'ancienne structure. Le repère est un texte lu (mentions, citations, contrôles), et un mot-clé nu créé par le service naît avec le sien.
+// Aucune valeur du site n'est figée : les mots-clés se prennent par ordre d'id, les textes écrits sont ceux du test.
 //   node --test test/serveur-edition-lots-reperes.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -22,13 +24,14 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { decisionsCitees } from '../serveur/edition-lots.mjs';
 import { refusDuRepere, TABLES_DES_FILLES_DU_MOT_CLE } from '../serveur/edition-mots-cles.mjs';
 import { controlerLeLot } from '../src/lib/lot-de-changements.mjs';
-import { AUTEUR_DU_LOT_DES_REPERES, COLONNES_DU_REPERE, lotDesReperes, operationsDesReperes } from '../src/lib/lot-des-reperes.mjs';
-import { estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
+import { AUTEUR_DU_LOT_DES_REPERES, COLONNES_DU_REPERE, lotDesReperes } from '../src/lib/lot-des-reperes.mjs';
+import { DECISION_DE_L_ANCRAGE, estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { estUneTableAutre } from '../src/lib/notes-de-version.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
+import { lireUnMotCle, poserUnMotCle } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('edition-lots-reperes');
 const SCRIPT = fileURLToPath(new URL('../scripts/lot-des-reperes.mjs', import.meta.url));
@@ -56,35 +59,45 @@ const ok = (r, statut = 200) => {
 const adresse = (id, suite = '') => `/api/edition/lots/${id}/${suite}`;
 const SANS_ELEMENT = 'NOT EXISTS (SELECT 1 FROM page p WHERE p.mot_cle_id = m.id) AND NOT EXISTS (SELECT 1 FROM sort s WHERE s.mot_cle_id = m.id)';
 const sansElement = (m) => m.tous(`SELECT m.id FROM mot_cle m WHERE ${SANS_ELEMENT} ORDER BY m.id`).map((l) => l.id);
-const reperes = (m) => m.tous('SELECT mot_cle_id FROM repere ORDER BY mot_cle_id').map((l) => l.mot_cle_id);
+const tousLesReperes = (m) => m.tous('SELECT * FROM repere ORDER BY mot_cle_id');
+/** Ceux des mots-clés `ids` qui ont un repère, par id. */
+const reperes = (m, ids) => tousLesReperes(m).map((l) => l.mot_cle_id).filter((id) => ids.includes(id));
 const repere = (m, id) => m.un('SELECT * FROM repere WHERE mot_cle_id = ?', id);
-/** Les repères qui ne sont pas la copie des colonnes de leur mot-clé (attendu : aucun). */
-const ecarts = (m) => m.tous(`SELECT r.mot_cle_id FROM repere r JOIN mot_cle m ON m.id = r.mot_cle_id
-  WHERE ${Object.entries(COLONNES_DU_REPERE).map(([r, c]) => `r."${r}" IS NOT m."${c}"`).join(' OR ')}`);
 const unLot = (operations) => ({ format: 'maverick-lot/1', titre: `Repères d’essai ${(n += 1)}`, nature: 'code', operations });
-const insertion = (m, id) => operationsDesReperes(m.db).find((o) => o.cle.mot_cle_id === id);
+/** L'insertion d'un repère, ligne `r` de la table. */
+const insertion = (r) => ({ table: 'repere', cle: { mot_cle_id: r.mot_cle_id }, operation: 'inserer', apres: { ...r } });
 
-/** Donne une page à un mot-clé sans élément, un sort à un autre (les deux premiers par id) : { dePage, deSort }, écrits en base comme le ferait l'ancrage. */
+/**
+ * Donne une page à un mot-clé sans élément, un sort à un autre (les deux premiers par id) : { dePage, deSort }, écrits en base comme le ferait l'ancrage,
+ * qui leur retire leur repère (migration 0136 : un mot-clé a un repère si et seulement s'il n'a ni page ni sort).
+ */
 function ancrerDeuxMotsCles(m) {
   const [dePage, deSort] = sansElement(m);
   m.db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = (SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(dePage);
   m.db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = (SELECT id FROM sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(deSort);
+  m.db.prepare('DELETE FROM repere WHERE mot_cle_id IN (?, ?)').run(dePage, deSort);
   return { dePage, deSort };
 }
+/** Donne au mot-clé `id` une page (la première sans mot-clé), comme le ferait l'ancrage. */
+const donnerUnePage = (m, id) => m.db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = (SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(id);
 /** Dépose le lot par la route, vérifie son essai à blanc (rien n'est écrit), puis l'applique d'un clic. */
 async function appliquer(m, lot) {
-  const avant = reperes(m);
+  const avant = tousLesReperes(m);
   const proposition = ok(await m.appel('POST', '/api/edition/lots/', lot), 201);
   assert.equal(proposition.verdict, 'applicable', JSON.stringify(proposition.essai?.operations?.filter((o) => o.etat !== 'applicable').slice(0, 5)));
-  assert.deepEqual(reperes(m), avant, 'l’essai à blanc n’écrit rien dans la base');
+  assert.deepEqual(tousLesReperes(m), avant, 'l’essai à blanc n’écrit rien dans la base');
   const applique = ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), {}));
   assert.equal(applique.etat, 'applique');
   return applique;
 }
 
 test('module pur : un repère par mot-clé qui n’en a pas, valeurs recopiées telles quelles (NULL compris) ; le lot passe le contrôle du format sans numéro à donner', () => {
+  // une base à l'ancienne structure (d'avant la migration 0136 : les colonnes du mot-clé font foi), la seule où le lot a des repères à recopier
   const db = new DatabaseSync(':memory:', { enableForeignKeyConstraints: true });
   db.exec(SCHEMA);
+  db.exec(`DROP VIEW v_mot_cle; PRAGMA foreign_keys = OFF; DROP TABLE mot_cle; PRAGMA foreign_keys = ON;
+    CREATE TABLE mot_cle (id INTEGER NOT NULL PRIMARY KEY, libelle TEXT NOT NULL, cle TEXT NOT NULL UNIQUE, description TEXT, couleur TEXT, url TEXT,
+      verrou INTEGER NOT NULL DEFAULT 0, monnaie_id TEXT UNIQUE, icone TEXT) STRICT;`);
   db.prepare('INSERT INTO mot_cle (id, libelle, cle, url, description, couleur, icone) VALUES (?, ?, ?, ?, ?, ?, ?)').run(3, 'Essai trois', 'essai-trois', '/essai/', 'Un texte d’essai.', '#a1b2c3', 'monnaie:rf');
   db.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(5, 'Essai cinq', 'essai-cinq');
   db.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(8, 'Essai huit', 'essai-huit');
@@ -94,6 +107,7 @@ test('module pur : un repère par mot-clé qui n’en a pas, valeurs recopiées 
     { table: 'repere', cle: { mot_cle_id: 3 }, operation: 'inserer', apres: { mot_cle_id: 3, nom: 'Essai trois', adresse: '/essai/', definition: 'Un texte d’essai.', couleur: '#a1b2c3', icone: 'monnaie:rf' } },
     { table: 'repere', cle: { mot_cle_id: 5 }, operation: 'inserer', apres: { mot_cle_id: 5, nom: 'Essai cinq', adresse: null, definition: null, couleur: null, icone: null } },
   ]);
+  assert.deepEqual(Object.keys(lot.operations[0].apres), Object.keys(COLONNES_DU_REPERE), 'les colonnes du repère');
   assert.equal(lot.format, 'maverick-lot/1');
   assert.equal(lot.nature, 'decision');
   assert.match(lot.decision, /^R[0-9]+$/);
@@ -110,11 +124,9 @@ test('module pur : un repère par mot-clé qui n’en a pas, valeurs recopiées 
       etrangeres: Object.fromEntries(db.prepare(`PRAGMA foreign_key_list("${table}")`).all().map((f) => [f.from, f.table])) };
   };
   assert.deepEqual(controlerLeLot(lot, { structure, ouvertHorsEdition: true }).erreurs, []);
-  assert.equal(controlerLeLot(lot, { structure }).valide, false, 'hors de la base source, la table reste fermée aux lots');
+  assert.deepEqual(controlerLeLot(lot, { structure }).erreurs, [], 'le repère est une entité de l’édition (lib/edition-modele.mjs) : ouvert aux lots, base source ou non');
   const motCle = unLot([{ table: 'mot_cle', cle: { id: 99 }, operation: 'inserer', apres: { id: 99, libelle: 'Essai', cle: 'essai' } }]);
   assert.equal(controlerLeLot(motCle, { structure, ouvertHorsEdition: true }).valide, false, 'un id de mot-clé écrit à la main reste refusé');
-
-  assert.ok(!textesDeLaBase(db).some((t) => t.table === 'repere') && textesDeLaBase(db).some((t) => t.table === 'mot_cle' && t.colonne === 'description'));
 
   // rien à poser : pas de lot
   for (const o of lot.operations) db.prepare('INSERT INTO repere (mot_cle_id, nom) VALUES (?, ?)').run(o.cle.mot_cle_id, o.apres.nom);
@@ -123,50 +135,87 @@ test('module pur : un repère par mot-clé qui n’en a pas, valeurs recopiées 
   assert.throws(() => lotDesReperes(db), /0135/, 'une base d’avant la migration est refusée');
   db.close();
 
-  // les déclarations de la table : elle part avec son mot-clé ; tant que les colonnes du mot-clé font foi, rien ne la lit (ni les textes à balises : mentions,
-  // citations, contrôles ; ni la note de version)
+  // la structure d'aujourd'hui (migration 0136) : le repère de chaque mot-clé sans page ni sort est déjà posé, rien à poser ; un mot-clé resté sans
+  // élément (base incohérente) est nommé, en erreur, puisque plus rien ne dit son nom
+  const neuve = new DatabaseSync(':memory:', { enableForeignKeyConstraints: true });
+  neuve.exec(SCHEMA);
+  for (const [id, libelle] of [[3, 'Essai trois'], [5, 'Essai cinq']]) poserUnMotCle(neuve, { id, libelle });
+  assert.equal(lotDesReperes(neuve), null);
+  neuve.prepare("INSERT INTO mot_cle (id, cle) VALUES (8, 'essai-huit')").run();
+  assert.throws(() => lotDesReperes(neuve), (e) => /0136/.test(e.message) && /\b8\b/.test(e.message));
+  // le repère est un texte lu (mentions, citations, contrôles) : sa définition, à la place de celle du mot-clé
+  assert.ok(textesDeLaBase(neuve).some((t) => t.table === 'repere' && t.colonne === 'definition'));
+  assert.ok(!textesDeLaBase(neuve).some((t) => t.table === 'mot_cle' && t.colonne === 'description'));
+  neuve.close();
+
+  // les déclarations de la table : elle part avec son mot-clé ; la note de version la lit comme les tables des mots-clés
   assert.ok(TABLES_DES_FILLES_DU_MOT_CLE.includes('repere'));
   assert.equal(estUneTableAutre('repere'), false);
 });
 
-test('le lot du script : une ligne par mot-clé sans page ni sort, copie de ses colonnes ; essai à blanc sans écriture, journal ; une ligne puis le lot s’annulent (R291)', async () => {
+test('le lot du script : sur la base d’aujourd’hui, rien à poser ; un mot-clé resté sans élément est nommé, en erreur ; un lot de repères s’applique, journal ; une ligne puis le lot s’annulent (R291) une fois que leurs mots-clés ont un autre élément', async () => {
   const m = nouvelle();
   const { dePage, deSort } = ancrerDeuxMotsCles(m);
   const attendus = sansElement(m);
   assert.ok(attendus.length >= 2 && !attendus.includes(dePage) && !attendus.includes(deSort));
+  // la migration 0136 a posé le repère de chacun : un repère si et seulement si ni page ni sort
+  assert.deepEqual(tousLesReperes(m).map((l) => l.mot_cle_id), attendus);
+  assert.deepEqual(m.tous("SELECT * FROM pragma_foreign_key_check('repere')"), []);
 
-  // la ligne de commande écrit le même lot que la fonction, sur la sortie standard
-  const lot = lotDeLaBase(m.chemin);
+  // la ligne de commande : rien sur la sortie standard, code 0 ; sans base : usage
+  assert.equal(lotDeLaBase(m.chemin), null);
   const sortie = spawnSync(process.execPath, ['--no-warnings', SCRIPT, m.chemin], { encoding: 'utf8' });
   assert.equal(sortie.status, 0, sortie.stderr);
-  assert.deepEqual(JSON.parse(sortie.stdout), lot);
+  assert.equal(sortie.stdout, '');
   assert.equal(spawnSync(process.execPath, ['--no-warnings', SCRIPT], { encoding: 'utf8' }).status, 2, 'sans base : usage');
-  assert.deepEqual(lot.operations.map((o) => o.cle.mot_cle_id), attendus);
-  assert.ok(lot.operations.every((o) => o.table === 'repere' && o.operation === 'inserer'));
 
+  // des repères retirés hors du journal (base incohérente ; ceux dont la définition n'a pas de balise, pour que l'essai ne relève que ce que le lot
+  // change) : le lot nomme chaque mot-clé resté sans élément, la ligne de commande sort en erreur (code 1)
+  const remis = tousLesReperes(m).filter((r) => !r.definition?.includes('{{')).slice(0, 5);
+  const ids = remis.map((r) => r.mot_cle_id);
+  assert.ok(ids.length >= 2);
+  m.db.prepare(`DELETE FROM repere WHERE mot_cle_id IN (${ids.join(', ')})`).run();
+  assert.throws(() => lotDeLaBase(m.chemin), (e) => ids.every((id) => new RegExp(`\\b${id}\\b`).test(e.message)));
+  const refus = spawnSync(process.execPath, ['--no-warnings', SCRIPT, m.chemin], { encoding: 'utf8' });
+  assert.equal(refus.status, 1, refus.stderr);
+  assert.match(refus.stderr, new RegExp(`\\b${ids[0]}\\b`));
+  assert.equal(refus.stdout, '');
+
+  // un lot de la nature du lot du script les remet : essai à blanc sans écriture, journal
+  const lot = { ...unLot(remis.map(insertion)), nature: 'decision', decision: DECISION_DE_L_ANCRAGE, auteur: AUTEUR_DU_LOT_DES_REPERES };
   const applique = await appliquer(m, lot);
-  assert.equal(applique.operations, attendus.length);
-  assert.deepEqual(reperes(m), attendus);
-  assert.deepEqual(ecarts(m), [], 'chaque repère est la copie des colonnes de son mot-clé');
+  assert.equal(applique.operations, ids.length);
+  assert.deepEqual(ids.map((id) => repere(m, id)), remis);
   assert.deepEqual(m.tous("SELECT * FROM pragma_foreign_key_check('repere')"), []);
-  assert.equal(m.un("SELECT count(*) AS n FROM modification WHERE table_nom = 'repere' AND operation = 'inserer' AND lot_id = ?", applique.lot_id).n, attendus.length);
+  assert.equal(m.un("SELECT count(*) AS n FROM modification WHERE table_nom = 'repere' AND operation = 'inserer' AND lot_id = ?", applique.lot_id).n, ids.length);
   assert.deepEqual(m.un('SELECT nature, decision FROM modification_lot WHERE id = ?', applique.lot_id), { nature: lot.nature, decision: lot.decision });
   assert.equal(lotDeLaBase(m.chemin), null, 'chaque mot-clé sans élément a son repère : plus rien à poser');
 
-  // une ligne s'annule seule : son repère part, les autres restent
+  // une ligne ne s'annule pas tant que son mot-clé n'a ni page ni sort (sans repère, son nom ne se lirait nulle part : contrôles du contenu) ; le lot
+  // reste appliqué
   const { lignes } = ok(await m.appel('GET', adresse(applique.id)));
-  assert.equal(lignes.length, attendus.length);
+  assert.equal(lignes.length, ids.length);
   assert.ok(lignes.every((l) => l.genre === 'inserer' && l.etat === 'en_place' && l.annulable_seule), JSON.stringify(lignes.find((l) => !l.annulable_seule)));
-  const rang = lot.operations.findIndex((o) => o.cle.mot_cle_id === attendus[1]);
+  const rang = lot.operations.findIndex((o) => o.cle.mot_cle_id === ids[1]);
+  const refusee = await m.appel('POST', adresse(applique.id, `lignes/${lignes[rang].n}/annuler/`), {});
+  assert.notEqual(refusee.statut, 200);
+  assert.ok(refusee.corps.problemes.some((p) => p.startsWith(`mot_cle ${ids[1]} :`)), JSON.stringify(refusee.corps));
+  assert.deepEqual(reperes(m, ids), ids);
+
+  // son mot-clé reçoit une page : la ligne s'annule seule, son repère part, les autres restent
+  donnerUnePage(m, ids[1]);
   const apres = ok(await m.appel('POST', adresse(applique.id, `lignes/${lignes[rang].n}/annuler/`), {}));
   assert.equal(apres.etat, 'applique');
-  assert.deepEqual(reperes(m), attendus.filter((id) => id !== attendus[1]));
+  assert.deepEqual(reperes(m, ids), ids.filter((id) => id !== ids[1]));
 
-  // puis le lot entier : plus aucun repère, les mots-clés sont intacts
+  // puis le lot entier, une fois que chacun de ses mots-clés a reçu une page : plus aucun repère, les mots-clés sont intacts
   const motsCles = m.un('SELECT count(*) AS n FROM mot_cle').n;
+  assert.notEqual((await m.appel('POST', adresse(applique.id, 'annuler/'), {})).statut, 200, 'refusé tant qu’un mot-clé n’a pas d’autre élément');
+  assert.deepEqual(reperes(m, ids), ids.filter((id) => id !== ids[1]));
+  for (const id of ids) if (id !== ids[1]) donnerUnePage(m, id);
   const annule = ok(await m.appel('POST', adresse(applique.id, 'annuler/'), {}));
   assert.equal(annule.etat, 'annule');
-  assert.deepEqual(reperes(m), []);
+  assert.deepEqual(reperes(m, ids), []);
   assert.equal(m.un('SELECT count(*) AS n FROM mot_cle').n, motsCles);
   m.db.close();
 });
@@ -194,48 +243,55 @@ test('refus : le repère d’un mot-clé que désigne une page ou un sort, ou d�
     ok(await m.appel('POST', adresse(proposition.id, 'appliquer/'), { verrous_ouverts: ['R218', 'R219', 'R232', 'R309'] }), 409);
   }
   assert.equal(messages.size, 3, 'trois refus distincts : une page, un sort, un mot-clé absent');
-  assert.deepEqual(reperes(m), []);
+  assert.deepEqual(reperes(m, [dePage, deSort, absent]), []);
   m.db.close();
 });
 
-test('un lot modifie et supprime des repères ; annuler une suppression remet le repère, sauf si le mot-clé a reçu une page entre-temps', async () => {
+test('un lot modifie et supprime des repères ; le repère d’un mot-clé sans page ni sort ne part pas ; annuler une suppression ne remet pas le repère d’un mot-clé qui a reçu une page', async () => {
   const m = nouvelle();
   const [a, b, c] = sansElement(m);
-  await appliquer(m, unLot([insertion(m, a), insertion(m, b), insertion(m, c)]));
-  assert.deepEqual(reperes(m), [a, b, c]);
+  // la migration 0136 leur a posé leur repère
+  assert.deepEqual(reperes(m, [a, b, c]), [a, b, c]);
 
   const definition = `Définition d’essai ${process.pid}`;
-  const avant = { [b]: repere(m, b), [c]: repere(m, c) };
-  const applique = await appliquer(m, unLot([
-    { table: 'repere', cle: { mot_cle_id: a }, operation: 'modifier', avant: { definition: repere(m, a).definition }, apres: { definition } },
-    { table: 'repere', cle: { mot_cle_id: b }, operation: 'supprimer', avant: avant[b] },
-    { table: 'repere', cle: { mot_cle_id: c }, operation: 'supprimer', avant: avant[c] },
-  ]));
+  const avant = { [a]: repere(m, a), [b]: repere(m, b), [c]: repere(m, c) };
+  const modifierA = { table: 'repere', cle: { mot_cle_id: a }, operation: 'modifier', avant: { definition: avant[a].definition }, apres: { definition } };
+
+  // b n'a ni page ni sort : sans son repère, son nom ne se lirait nulle part ; le lot est à corriger et rien n'entre
+  const refuse = ok(await m.appel('POST', '/api/edition/lots/', unLot([modifierA, { table: 'repere', cle: { mot_cle_id: b }, operation: 'supprimer', avant: avant[b] }])), 201);
+  assert.equal(refuse.verdict, 'a_corriger');
+  assert.ok(refuse.essai.problemes_nouveaux.some((p) => p.startsWith(`mot_cle ${b} :`)), JSON.stringify(refuse.essai.problemes_nouveaux));
+  ok(await m.appel('POST', adresse(refuse.id, 'appliquer/'), {}), 409);
+  assert.deepEqual([repere(m, a), repere(m, b)], [avant[a], avant[b]]);
+
+  // c reçoit une page (comme par l'ancrage) : son repère part par un lot, avec la modification de a
+  donnerUnePage(m, c);
+  const applique = await appliquer(m, unLot([modifierA, { table: 'repere', cle: { mot_cle_id: c }, operation: 'supprimer', avant: avant[c] }]));
   assert.equal(repere(m, a).definition, definition);
-  assert.notEqual(m.un('SELECT description FROM mot_cle WHERE id = ?', a).description, definition, 'le repère seul est écrit : les colonnes du mot-clé ne changent pas');
-  assert.deepEqual(reperes(m), [a]);
+  assert.equal(lireUnMotCle(m.db, a).description, definition, 'la définition du mot-clé se lit sur son repère');
+  assert.deepEqual(reperes(m, [a, b, c]), [a, b]);
 
-  // les lignes du lot, dans l'ordre de ses opérations : la suppression de b s'annule seule, son repère revient à l'identique
+  // les lignes du lot, dans l'ordre de ses opérations : la suppression de c ne s'annule pas (409), ni par sa ligne ni avec le lot entier
   const { lignes } = ok(await m.appel('GET', adresse(applique.id)));
-  assert.deepEqual(lignes.map((l) => l.genre), ['modifier', 'supprimer', 'supprimer']);
-  ok(await m.appel('POST', adresse(applique.id, `lignes/${lignes[1].n}/annuler/`), {}));
-  assert.deepEqual(repere(m, b), avant[b]);
-
-  // c reçoit une page : son repère ne revient pas (409), ni par sa ligne ni avec le lot entier
-  m.db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = (SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1)').run(c);
-  ok(await m.appel('POST', adresse(applique.id, `lignes/${lignes[2].n}/annuler/`), {}), 409);
+  assert.deepEqual(lignes.map((l) => l.genre), ['modifier', 'supprimer']);
+  ok(await m.appel('POST', adresse(applique.id, `lignes/${lignes[1].n}/annuler/`), {}), 409);
   ok(await m.appel('POST', adresse(applique.id, 'annuler/'), {}), 409);
-  assert.deepEqual(reperes(m), [a, b], 'un mot-clé qui a reçu une page ne retrouve pas son repère');
+  assert.deepEqual(reperes(m, [a, b, c]), [a, b], 'un mot-clé qui a reçu une page ne retrouve pas son repère');
   assert.equal(repere(m, a).definition, definition, 'une annulation refusée n’écrit rien');
+
+  // la modification de a s'annule seule : son repère revient à l'identique
+  ok(await m.appel('POST', adresse(applique.id, `lignes/${lignes[0].n}/annuler/`), {}));
+  assert.deepEqual(repere(m, a), avant[a]);
   m.db.close();
 });
 
 test('un mot-clé supprimé emporte son repère, noté au journal avant sa ligne', async () => {
   const m = nouvelle();
   // un mot-clé d'essai, nu (hors route : sans page de notion), que rien ne cite
-  const id = ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: `Zq repère d’essai ${process.pid}` } }], 'regles/glossaire/')).crees[0].id;
-  await appliquer(m, unLot([insertion(m, id)]));
-  assert.equal(repere(m, id).nom, m.un('SELECT libelle FROM mot_cle WHERE id = ?', id).libelle);
+  // il naît avec son repère, qui porte son nom
+  const libelle = `Zq repère d’essai ${process.pid}`;
+  const id = ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle } }], 'regles/glossaire/')).crees[0].id;
+  assert.equal(repere(m, id).nom, libelle);
   ok(await m.appel('POST', '/api/edition/', { page: 'regles/glossaire/', operations: [{ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true }] }));
   assert.equal(m.un('SELECT 1 AS x FROM mot_cle WHERE id = ?', id), undefined);
   assert.equal(repere(m, id), undefined);

@@ -384,7 +384,8 @@ export function verifierSimulation(donnees, essai) {
  * du calcul des armures et des boucliers (décision R207 (1) : TABLES_DES_ENTREES_DU_CALCUL) peut réécrire armures, boucliers et pages
  * (TABLES_DES_VALEURS_CALCULEES). Un mot-clé supprimé ou fusionné par un lot noté avant que le service ne note ses lignes filles retire aussi, par la
  * cascade, ses catégories, synonymes, clés quittées et son repère (TABLES_DES_FILLES_DU_MOT_CLE) ; une monnaie supprimée vide mot_cle.monnaie_id (ON DELETE SET
- * NULL, migration 0113).
+ * NULL, migration 0113). Depuis la migration 0136 (docs/chantier-retrait-des-colonnes.md, §6) : une ligne de mot_cle qui note une colonne retirée est écrite
+ * sur l'élément du mot-clé (`page`, `repere`) ; une page ou un sort qui reçoit ou perd un mot-clé reprend ou laisse son repère (`repere`).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
@@ -402,9 +403,13 @@ export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(['mot_cle_categorie', 
 // serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
 export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 
+// les colonnes de mot_cle retirées par la migration 0136 (lib/lot-de-changements.mjs#COLONNES_LOGIQUES_DU_MOT_CLE, recopiée : ce job n'importe rien d'autre)
+const COLONNES_RETIREES_DU_MOT_CLE = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+
 export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
   const tables = new Set();
   const ancienne = (v) => Boolean(v && typeof v === 'object' && 'libelle' in v);
+  const porte = (v, colonnes) => Boolean(v && typeof v === 'object' && colonnes.some((c) => c in v));
   let motCleRetire = false;
   for (const l of donnees?.journal?.lots ?? []) {
     for (const m of l.modifications ?? []) {
@@ -415,7 +420,12 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
         motCleRetire = true;
       }
       if (m.table === 'monnaie' && m.operation === 'supprimer') tables.add('mot_cle');
-      if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
+      // une étiquette notée avant la migration 0043 peut faire créer son mot-clé, qui naît avec son repère (migration 0136)
+      if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) for (const t of ['mot_cle', 'repere']) tables.add(t);
+      // une ligne de mot_cle d'avant la migration 0136 qui note une colonne retirée : le rejeu l'écrit sur l'élément du mot-clé (sa page ou son repère)
+      if (m.table === 'mot_cle' && (porte(m.avant, COLONNES_RETIREES_DU_MOT_CLE) || porte(m.apres, COLONNES_RETIREES_DU_MOT_CLE))) for (const t of ['page', 'repere']) tables.add(t);
+      // une page ou un sort qui reçoit un mot-clé reprend son repère ; qui le perd (retiré, ou son ancre levée), lui en laisse un s'il survit
+      if (['page', 'sort'].includes(m.table) && [m.avant, m.apres].some((v) => (v?.mot_cle_id ?? null) !== null)) tables.add('repere');
       if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
       if (m.table === 'capacite' && m.operation === 'supprimer') for (const t of TABLES_DES_REGLES_DU_DON) tables.add(t);
       if (TABLES_DES_ENTREES_DU_CALCUL.includes(m.table)) for (const t of TABLES_DES_VALEURS_CALCULEES) tables.add(t);

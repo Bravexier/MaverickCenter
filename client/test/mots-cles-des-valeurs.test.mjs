@@ -14,13 +14,15 @@ import { chargerInvocations, chargerMonstres } from '../src/lib/bestiaire-db.mjs
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { lienDeLaMagie, lienDuTypeDeDegats, liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { htmlDeLaCible, htmlDeLaDefenseDeCreature } from '../src/lib/valeurs-fermees-rendu.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const liens = liensDesValeursFermees(db);
-const motCle = (id) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
+// le libellé, la définition, la couleur, l'adresse et l'icône se lisent sur l'élément du mot-clé (migration 0136)
+const motCle = (id) => lireUnMotCle(db, id);
 
 /** Ce qu'une balise a besoin de savoir du mot-clé : lu par son id, jamais figé. */
 function verifierLeLien(lien, id, quoi) {
@@ -56,7 +58,7 @@ function verifierLesTypes(base, liensDeLaBase) {
       assert.deepEqual(lien, lienDeLaMagie(liensDeLaBase, t.magie_id), `${t.id} : le lien de sa magie`);
       assert.ok(lien === null || lien.texte === base.prepare('SELECT nom FROM magie WHERE id = ?').get(t.magie_id).nom, `${t.id} : le nom court de la magie`);
     } else if (t.mot_cle_id !== null) {
-      const m = base.prepare('SELECT * FROM mot_cle WHERE id = ?').get(t.mot_cle_id);
+      const m = lireUnMotCle(base, t.mot_cle_id);
       assert.ok(m, `${t.id} : le mot-clé existe`);
       assert.equal(lien.id, m.id, `${t.id} : le mot-clé de sa ligne`);
       assert.equal(lien.cle, m.cle);

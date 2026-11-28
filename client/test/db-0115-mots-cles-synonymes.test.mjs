@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
@@ -66,7 +67,9 @@ test('contraintes (base neuve) : écriture normalisée unique sur toute la table
   const essai = new DatabaseSync(':memory:');
   essai.exec(SCHEMA);
   essai.exec('PRAGMA foreign_keys = ON');
-  essai.exec("INSERT INTO mot_cle (id, libelle, cle) VALUES (1, 'Essai un', 'essai-un'), (2, 'Essai deux', 'essai-deux')");
+  // depuis la migration 0136, le nom d'un mot-clé sans page ni sort est dans son repère
+  poserUnMotCle(essai, { id: 1, libelle: 'Essai un', cle: 'essai-un' });
+  poserUnMotCle(essai, { id: 2, libelle: 'Essai deux', cle: 'essai-deux' });
   const ajouter = essai.prepare('INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (?, ?, ?, ?, ?)');
   ajouter.run(1, 1, 'ZQ', 'zq', 0);
   ajouter.run(2, 1, 'Zq bis', 'zq-bis', 0); // même ordre : admis (pas d'UNIQUE, l'id départage)
@@ -137,7 +140,7 @@ test('état courant : la clé d’un mot-clé fondu mène à sa cible (mot_cle_a
 test('état courant (R233 (4)) : l’écriture normalisée est normalize(libelle), et n’égale ni le libellé ni la clé d’un autre mot-clé, ni son propre libellé', { skip: sansPython }, () => {
   const synonymes = db.prepare('SELECT id, mot_cle_id, libelle, libelle_cle FROM mot_cle_synonyme ORDER BY id').all();
   assert.deepEqual(synonymes.map((s) => s.libelle_cle), normaliser(synonymes.map((s) => s.libelle)));
-  const motsCles = db.prepare('SELECT id, libelle, cle FROM mot_cle').all();
+  const motsCles = db.prepare('SELECT id, libelle, cle FROM v_mot_cle').all(); // le nom se lit sur l'élément (migration 0136)
   const libelles = normaliser(motsCles.map((m) => m.libelle));
   const fautes = [];
   for (const s of synonymes) {

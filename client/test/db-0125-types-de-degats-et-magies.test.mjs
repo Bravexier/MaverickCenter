@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
@@ -121,8 +122,10 @@ test('état de la migration : Taille 440, Estoc 441, Frappe 439 ; physique et so
 
 test('état de la migration : magie.mot_cle_id est le mot-clé qui mène à la page de la magie', () => {
   const base = baseDImport({ garder: lotsAvant('0125') });
+  // l'adresse d'un mot-clé se lit sur son élément (migration 0136)
+  const motsCles = motsClesDeLaBase(base, { elements: false });
   for (const m of base.prepare('SELECT id, mot_cle_id FROM magie ORDER BY id').all()) {
-    const versLaPage = base.prepare('SELECT id FROM mot_cle WHERE url = ?').get(`/${m.id}/`);
+    const versLaPage = motsCles.find((k) => k.url === `/${m.id}/`);
     assert.ok(versLaPage, `${m.id} : un mot-clé mène à sa page`);
     assert.equal(m.mot_cle_id, versLaPage.id, `${m.id} : le mot-clé de sa page`);
   }

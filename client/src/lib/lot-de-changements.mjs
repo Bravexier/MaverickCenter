@@ -10,7 +10,7 @@
 //     "decision": "R275",                             // le numéro de la décision : présent si et seulement si nature = « decision »
 //     "auteur": "…",                                  // libre, facultatif
 //     "operations": [                                 // ordonnée ; le rang d'une opération (1, 2…) est sa place dans cette liste
-//       { "table": "mot_cle", "cle": { "id": 12 }, "operation": "modifier", "avant": { "couleur": "rouge" }, "apres": { "couleur": "violet" } },
+//       { "table": "page", "cle": { "id": "magies/magie-de-la-corruption" }, "operation": "modifier", "avant": { "couleur": "rouge" }, "apres": { "couleur": "violet" } },
 //       { "table": "page_tag", "cle": { "page_id": "a", "tag_id": 12 }, "operation": "inserer", "apres": { "page_id": "a", "tag_id": 12 } },
 //       { "table": "alias", "cle": { "alias": "x" }, "operation": "supprimer", "avant": { "alias": "x", "page_id": "a" } }
 //     ]
@@ -21,11 +21,19 @@
 // `cle` : l'objet de la clé primaire (toutes ses colonnes). `avant` : les valeurs attendues des colonnes touchées (la ligne entière pour « supprimer »,
 // absent pour « inserer »). `apres` : les valeurs écrites (absent pour « supprimer »). Même forme que `avant` / `apres` d'une ligne de `modification`
 // (serveur/edition-journal.mjs) : les colonnes touchées seulement pour « modifier », la ligne entière pour « inserer ».
+// Un mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md, §1 et §5) : la table `mot_cle` ne garde que `id`, `cle`, `verrou` et `monnaie_id`. Son nom,
+// son adresse, sa définition, sa couleur et son icône sont ceux de son élément : sa page (`page.titre`, `definition`, `couleur`, `icone`), sinon son sort
+// (`sort.nom`), sinon son repère (`repere.nom`, `adresse`, `definition`, `couleur`, `icone`), et un lot les corrige là. Une opération sur `mot_cle` garde
+// pourtant `libelle`, `url`, `description`, `couleur` et `icone` comme colonnes LOGIQUES (COLONNES_LOGIQUES_DU_MOT_CLE), dans `avant` comme dans `apres` : un
+// lot écrit avant la migration reste valide, le service compare ces valeurs à celles de l'élément et les écrit sur lui (insérer un mot-clé nu crée son
+// repère ; le nom et l'adresse d'un mot-clé qui a une page ou un sort ne s'écrivent pas ; un mot-clé de sort n'a ni définition, ni couleur, ni icône).
 // `ancrage` (décision R309, sur une opération de `mot_cle`, ou sur l'insertion d'une page de notion) : à l'insertion d'un mot-clé, `{ "table": "page" | "sort" |
-// "type_sort", "id": …, "type": <id de catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id, libelle, url) ; sur « modifier »
-// d'un mot-clé, `{ "aligner": true }` recopie le nom et l'adresse de l'élément (`apres` : libelle, url, qui doivent valoir ceux de l'élément). À l'insertion
+// "type_sort", "id": …, "type": <id de catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id ; pour un type de sort, qui n'a
+// pas de nom à lui, aussi libelle, le nom de son repère ; un lot d'avant la migration 0136 y donne libelle et url, qui doivent valoir ceux du mot-clé créé) ; sur « modifier » d'un mot-clé, `{ "aligner": true }` (lots d'avant la migration 0136
+// seulement : plus rien ne se recopie) vérifie que le nom et l'adresse du mot-clé sont ceux de son élément (`apres` : libelle, url). À l'insertion
 // d'une `page`, `{ "notion": true }` crée la page de notion d'un mot-clé (docs/chantier-pages-de-notion.md, §3) : `cle` { id: "guide/<nom>" }, `apres` : id, titre
-// (le nom du mot-clé), mot_cle_id (son id, ou le jeton qu'une opération précédente donne), et rien d'autre ; le service écrit le reste.
+// (le nom du mot-clé), mot_cle_id (son id, ou le jeton qu'une opération précédente donne), et rien d'autre ; le service écrit le reste (la définition, la
+// couleur et l'icône du repère du mot-clé passent sur la page, et le repère part).
 //
 // Pur : aucune dépendance au navigateur, à Astro ni à node:… (skill site-version-portable). La structure d'une table (colonnes, clé) vient de l'appelant,
 // qui la lit dans sa base (PRAGMA table_info : serveur/edition-journal.mjs#structure) ; les valeurs actuelles aussi (comparerAvecLaBase).
@@ -67,6 +75,13 @@ const TITRE_MAX = 200;
 export const TABLES_ANCRABLES = Object.freeze(['page', 'sort', 'type_sort']);
 const COLONNES_D_UNE_CREATION_ANCREE = Object.freeze(['id', 'libelle', 'url']);
 const COLONNES_D_UN_ALIGNEMENT = Object.freeze(['libelle', 'url']);
+/**
+ * Les colonnes LOGIQUES d'une opération sur `mot_cle` (voir l'en-tête) : la migration 0136 les a retirées de la table, leur valeur se lit et s'écrit sur
+ * l'élément du mot-clé (sa page, sinon son sort, sinon son repère). Un lot peut toujours les nommer ; une ligne ancienne du journal les porte encore.
+ */
+export const COLONNES_LOGIQUES_DU_MOT_CLE = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+/** Les colonnes d'une table telles qu'un lot peut les nommer : celles de la base, et pour `mot_cle` ses colonnes logiques. */
+const colonnesNommables = (table, s) => (table === 'mot_cle' ? [...new Set([...s.colonnes, ...COLONNES_LOGIQUES_DU_MOT_CLE])] : s.colonnes);
 /** Les colonnes qu'un lot donne à une page de notion (`ancrage: { notion: true }`) : le service écrit les autres. */
 export const COLONNES_D_UNE_PAGE_DE_NOTION = Object.freeze(['id', 'titre', 'mot_cle_id']);
 
@@ -286,7 +301,9 @@ function controlerLesValeurs(o, s, dit, numeros, rang) {
       return null;
     }
     let bon = true;
-    const inconnues = Object.keys(valeurs).filter((c) => !s.colonnes.includes(c));
+    // les colonnes logiques d'un mot-clé sont admises : le service les traduit vers l'élément, un lot d'avant la migration 0136 n'est pas refusé avant
+    const nommables = colonnesNommables(o.table, s);
+    const inconnues = Object.keys(valeurs).filter((c) => !nommables.includes(c));
     if (inconnues.length) {
       dit(`${nom} : colonne ${liste(inconnues)} inexistante dans « ${o.table} »`);
       bon = false;
@@ -460,6 +477,31 @@ export function effetNetDuLot(lignes) {
   }
   return nets.sort((a, b) => a.rang - b.rang);
 }
+
+/**
+ * L'effet net d'un lot (`effetNetDuLot`) sur une base où `mot_cle` n'a plus les colonnes `retirees` (migration 0136 ; le journal, lui, n'est jamais
+ * réécrit : docs/chantier-retrait-des-colonnes.md, §6). Chaque ligne de `mot_cle` qui en porte une est ramenée aux colonnes que la table a encore : la
+ * comparaison (`jugerLAnnulation`) et l'écriture de l'annulation les ignorent. Elle garde `retirees` (les colonnes écartées) et `brut` ({ origine, fin } tels
+ * que le journal les note : ce que la page montre, ce dont le repère d'un mot-clé remis se refait). Une ligne modifiée qui n'écrivait que ces colonnes reste
+ * dans la liste, sans rien à remettre (`neResteRienARemettre`) : son numéro ne change pas, et l'annulation dit où le champ se corrige désormais.
+ * @param {ReturnType<typeof effetNetDuLot>} nets
+ * @param {readonly string[]} [retirees] les colonnes que `mot_cle` n'a plus dans cette base (aucune : la liste est rendue telle quelle)
+ */
+export function sansLesColonnesRetirees(nets, retirees = COLONNES_LOGIQUES_DU_MOT_CLE) {
+  if (!retirees.length) return nets;
+  const garder = (valeurs) => (valeurs === null ? null : Object.fromEntries(Object.entries(valeurs).filter(([c]) => !retirees.includes(c))));
+  return nets.map((n) => {
+    if (n.table !== 'mot_cle') return n;
+    const ecartees = retirees.filter((c) => Object.hasOwn(n.origine ?? {}, c) || Object.hasOwn(n.fin ?? {}, c));
+    return ecartees.length ? { ...n, origine: garder(n.origine), fin: garder(n.fin), retirees: ecartees, brut: { origine: n.origine, fin: n.fin } } : n;
+  });
+}
+
+/**
+ * Une ligne modifiée de `mot_cle`, d'avant la migration 0136, dont l'annulation n'a plus rien à remettre : elle n'écrivait que des colonnes retirées, et au
+ * plus la clé, qui se calcule d'après le nom (R232) et ne s'écrit jamais.
+ */
+export const neResteRienARemettre = (net) => net.table === 'mot_cle' && net.genre === 'modifier' && Boolean(net.retirees?.length) && Object.keys(net.fin).every((c) => c === 'cle');
 
 /**
  * Juge ce que l'annulation ferait d'une ligne de `effetNetDuLot`, d'après la ligne actuelle de la base : une valeur n'est remise que si elle vaut encore ce que

@@ -19,6 +19,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { CHAMPS_DE_TEXTE, ENTITES, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { classeDuMotCle, PREFIXE_DE_CLASSE } from '../src/lib/mots-cles-liens.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -38,7 +39,8 @@ function nouvelle() {
   const lot = (operations, page = 'recherche/') => appel('POST', '/api/edition/', { page, operations });
   // hors route : un mot-clé y naît nu, avec l'adresse qu'on lui donne (par une route, elle viendrait de sa page de notion : aide-mot-cle-nu.mjs)
   lot.horsRoute = (operations) => lotHorsRoute(db, operations, 'recherche/');
-  const motCle = (id) => ({ ...db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id) });
+  // le mot-clé, son lien et sa couleur lus sur son élément (page, sort ou repère : migration 0136)
+  const motCle = (id) => lireUnMotCle(db, id);
   const nombre = () => db.prepare('SELECT count(*) AS n FROM modification').get().n;
   /** Un libellé de mot-clé que le vocabulaire n'a pas. */
   const motLibre = (base) => {
@@ -159,7 +161,8 @@ test('fusion : la cible garde son lien et sa couleur, prend ceux de la source qu
   assert.deepEqual([motCle(c1).url, motCle(c1).couleur], ['/races/drakos/', 'race:pure']);
   const notees = db.prepare('SELECT table_nom, operation, cle, apres FROM modification WHERE lot_id = ? ORDER BY rang').all(r1.lot)
     .map((m) => ({ table: m.table_nom, operation: m.operation, cle: JSON.parse(m.cle), apres: m.apres && JSON.parse(m.apres) }));
-  assert.ok(notees.some((m) => m.table === 'mot_cle' && m.operation === 'modifier' && m.cle.id === c1 && m.apres.url === '/races/drakos/' && m.apres.couleur === 'race:pure'),
+  // (sans page ni sort, la cible les reçoit dans son repère : migration 0136)
+  assert.ok(notees.some((m) => m.table === 'repere' && m.operation === 'modifier' && m.cle.mot_cle_id === c1 && m.apres.adresse === '/races/drakos/' && m.apres.couleur === 'race:pure'),
     JSON.stringify(notees));
   assert.equal(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(s1), undefined);
   assert.match(db.prepare('SELECT resume FROM modification_lot WHERE id = ?').get(r1.lot).resume, /il en prend le lien et la couleur/);
@@ -174,14 +177,17 @@ test('fusion : la cible garde son lien et sa couleur, prend ceux de la source qu
   // ni lien ni couleur à la source : rien de modifié sur la cible
   const s3 = creer({ libelle: 'Essai source trois' });
   const r3 = fusionner(s3, c2);
-  assert.equal(db.prepare("SELECT count(*) AS n FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle' AND operation = 'modifier'").get(r3.lot).n, 0);
+  const modifiees = (lot_) => db.prepare("SELECT count(*) AS n FROM modification WHERE lot_id = ? AND table_nom IN ('mot_cle', 'repere') AND operation = 'modifier'").get(lot_).n;
+  assert.equal(modifiees(r3.lot), 0);
   assert.doesNotMatch(db.prepare('SELECT resume FROM modification_lot WHERE id = ?').get(r3.lot).resume, /prend|garde/);
   // une cible verrouillée (décisions R218, R219 (4)) : elle ne prend rien, aucune modification de mot_cle n'est notée, le résumé le dit
-  const verrouillee = db.prepare('SELECT * FROM mot_cle WHERE verrou = 1 AND (url IS NULL OR couleur IS NULL) AND id NOT IN (SELECT mot_cle_id FROM sort_mot_cle) ORDER BY id LIMIT 1').get();
+  const etiquettes = new Set(db.prepare('SELECT mot_cle_id FROM sort_mot_cle').all().map((l) => l.mot_cle_id));
+  const verrouillee = motCle(motsClesDeLaBase(db, { elements: false })
+    .find((m) => m.verrou === 1 && (m.url === null || m.couleur === null) && !etiquettes.has(m.id)).id);
   const s4 = creer({ libelle: 'Essai source quatre', url: '/races/drakos/', couleur: '#445566' });
   const r4 = fusionner(s4, verrouillee.id);
-  assert.deepEqual(motCle(verrouillee.id), { ...verrouillee });
-  assert.equal(db.prepare("SELECT count(*) AS n FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle' AND operation = 'modifier'").get(r4.lot).n, 0);
+  assert.deepEqual(motCle(verrouillee.id), verrouillee);
+  assert.equal(modifiees(r4.lot), 0);
   assert.match(db.prepare('SELECT resume FROM modification_lot WHERE id = ?').get(r4.lot).resume, /verrouillé, n’en prend pas (le lien|la couleur)/);
 });
 
@@ -226,7 +232,10 @@ test('un lien saisi au texte mis en forme ou balisé : 400 { champ, liens } qui 
   const page = db.prepare("SELECT id, corps_md FROM page WHERE type = 'guide' AND statut <> 'example' AND instr(corps_md, '[[') = 0 AND instr(corps_md, '](/') = 0 ORDER BY id").get();
   const modifier = (corps) => lot([{ op: 'modifier', table: 'page', cle: { id: page.id }, valeurs: { corps_md: corps } }], `${page.id}/`);
   // une adresse où mène un seul mot-clé (lue dans la base vivante, jamais supposée) : sans le refus, le lien deviendrait sa balise
-  const adresse = db.prepare("SELECT url FROM mot_cle WHERE url IS NOT NULL AND url NOT LIKE '%#%' AND url NOT LIKE '%?%' GROUP BY url HAVING count(*) = 1 ORDER BY url").get().url;
+  // (l'adresse se lit sur l'élément du mot-clé : migration 0136)
+  const parAdresse = new Map();
+  for (const m of motsClesDeLaBase(db, { elements: false })) if (m.url && !/[#?]/.test(m.url)) parAdresse.set(m.url, (parAdresse.get(m.url) ?? 0) + 1);
+  const adresse = [...parAdresse].filter(([, n]) => n === 1).map(([u]) => u).sort()[0];
   ok(modifier(`${page.corps_md}\n\n[texte simple d’essai](${adresse})\n`));
   assert.match(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md, /\{\{[^{}|]+\|texte simple d’essai\}\}/, 'le témoin : un texte simple passe');
   const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(page.id).corps_md;

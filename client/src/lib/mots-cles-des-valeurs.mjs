@@ -7,6 +7,7 @@
 //   - taille, estoc, frappe : `texte` = null (la page garde son libellé), le mot-clé est celui de type_degats.mot_cle_id.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant, qui la lit à chaque appel (le service, dont la base change d'un lot à
 // l'autre, n'a donc aucun cache à invalider). Une base d'avant la migration 0125 n'a ni la table ni la colonne : aucun lien.
+import { lireUnMotCle } from './mots-cles-db.mjs';
 import { classeDuMotCle } from './mots-cles-liens.mjs';
 
 const existe = (db, table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
@@ -30,8 +31,10 @@ const lienDe = (m, { texte = null, magie_id = null } = {}) => ({
 export function liensDesValeursFermees(db) {
   const sortie = { degats: {}, magies: {} };
   if (!existe(db, 'mot_cle') || !existe(db, 'magie') || !aLaColonne(db, 'magie', 'mot_cle_id')) return sortie;
-  const motsCles = new Map(db.prepare('SELECT id, cle, libelle, description, couleur, url, icone FROM mot_cle WHERE id IN (SELECT mot_cle_id FROM magie WHERE mot_cle_id IS NOT NULL'
-    + `${existe(db, 'type_degats') ? ' UNION SELECT mot_cle_id FROM type_degats WHERE mot_cle_id IS NOT NULL' : ''})`).all().map((m) => [m.id, m]));
+  // le libellé, la définition, la couleur, l'adresse et l'icône d'un mot-clé se lisent sur son élément depuis la migration 0136 (lireUnMotCle)
+  const ids = db.prepare('SELECT mot_cle_id FROM magie WHERE mot_cle_id IS NOT NULL'
+    + `${existe(db, 'type_degats') ? ' UNION SELECT mot_cle_id FROM type_degats WHERE mot_cle_id IS NOT NULL' : ''}`).all().map((r) => r.mot_cle_id);
+  const motsCles = new Map(ids.map((id) => lireUnMotCle(db, id)).filter(Boolean).map((m) => [m.id, m]));
   for (const g of db.prepare('SELECT id, nom, mot_cle_id FROM magie ORDER BY ordre').all()) {
     const m = motsCles.get(g.mot_cle_id);
     sortie.magies[g.id] = m ? lienDe(m, { texte: g.nom, magie_id: g.id }) : null;

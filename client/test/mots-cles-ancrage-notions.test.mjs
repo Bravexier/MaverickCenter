@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { planDeLAncrage, REPRISES } from '../src/lib/mots-cles-ancrage.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
   ancrerUnMotCle, appliquerEnSql, baseDAncrage, operationsDe, poserLesCategoriesNouvelles, poserMagie, poserMotCle, poserPage, poserPageLisible, poserSort,
@@ -148,7 +149,11 @@ test('rejouable : une fois les pages posées, le plan est vide', () => {
   poserNotion(db, 'Zéphyrion deux');
   const plan = planDeLAncrage(db);
   appliquerEnSql(db, plan.lots[0]);
-  for (const o of plan.lots[0].operations) assert.equal(db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(o.apres.mot_cle_id).url, adresseDeLaPage(o.apres.id, null));
+  // l'adresse du mot-clé est celle de sa page (migration 0136 : elle se lit sur elle) ; la page a repris son repère
+  for (const o of plan.lots[0].operations) {
+    assert.equal(motsClesDeLaBase(db).find((m) => m.id === o.apres.mot_cle_id).url, adresseDeLaPage(o.apres.id, null));
+    assert.equal(db.prepare('SELECT 1 FROM repere WHERE mot_cle_id = ?').get(o.apres.mot_cle_id), undefined);
+  }
   const ensuite = planDeLAncrage(db);
   assert.deepEqual(ensuite.lots, []);
   assert.deepEqual(ensuite.a_trancher, []);

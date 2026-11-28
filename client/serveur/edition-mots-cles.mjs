@@ -13,7 +13,7 @@
 // Sans import de serveur/edition.mjs : ses outils (ErreurEdition, refus) sont donnés par outilsDesMotsCles.
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { fautesDuSynonyme, reciblerLaCle, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { estVerrouille } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -60,14 +60,204 @@ export const FILLES_DU_MOT_CLE = Object.freeze({
 export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(Object.keys(FILLES_DU_MOT_CLE));
 
 /**
+ * Les champs LOGIQUES d'un mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md §1) : la table mot_cle ne les porte plus, ils se lisent
+ * (lib/mots-cles-db.mjs#lireUnMotCle, #motsClesDeLaBase) et s'écrivent (ecrireSurLElement) sur son ÉLÉMENT : sa page, sinon son sort, sinon son repère.
+ */
+export const CHAMPS_DE_L_ELEMENT = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+/** Champ logique d'un mot-clé → colonne de son repère. */
+export const COLONNES_DU_REPERE = Object.freeze({ libelle: 'nom', url: 'adresse', description: 'definition', couleur: 'couleur', icone: 'icone' });
+/** Champ logique d'un mot-clé → colonne de sa page (son nom est le titre de la page, son adresse se calcule : ils ne s'écrivent jamais d'ici). */
+export const COLONNES_DE_LA_PAGE = Object.freeze({ description: 'definition', couleur: 'couleur', icone: 'icone' });
+
+const CITE_UN_NUMERO = /\bR[0-9]+\b/;
+/** Le sujet d'un refus sans numéro de décision : un nom qui s'écrit comme un numéro n'y entre pas (un refus qui en cite un devient un verrou qu'une session Créateur ouvre). */
+export const motCleDansUnRefus = (libelle) => (libelle && !CITE_UN_NUMERO.test(libelle) ? `Le mot-clé « ${libelle} »` : 'Ce mot-clé');
+
+/** Vrai si la base lit le nom d'un mot-clé sur son élément (migration 0136 : la table repere, et plus de colonne mot_cle.libelle). */
+export const nomSurLElement = (db) => tableExiste(db, 'mot_cle') && tableExiste(db, 'repere') && !db.prepare("SELECT 1 FROM pragma_table_info('mot_cle') WHERE name = 'libelle'").get();
+
+/** Les ids des mots-clés qui ont une page ou un sort : leur nom suit cet élément, que la règle des clés ne peut pas refuser (clesTenues). */
+export function motsClesDePageOuDeSort(db) {
+  const sortie = new Set();
+  for (const table of ['page', 'sort']) {
+    if (!tableExiste(db, table) || !db.prepare(`SELECT 1 FROM pragma_table_info('${table}') WHERE name = 'mot_cle_id'`).get()) continue;
+    for (const l of db.prepare(`SELECT mot_cle_id AS id FROM "${table}" WHERE mot_cle_id IS NOT NULL`).all()) sortie.add(l.id);
+  }
+  return sortie;
+}
+
+/** Des clés qui s'échangeraient sans qu'aucune puisse être écrite la première (mot_cle.cle est unique) : `ids`, les mots-clés en cause. */
+export class ClesCroisees extends Error {
+  constructor(ids) {
+    super(`clés croisées : ${ids.join(', ')}`);
+    this.name = 'ClesCroisees';
+    this.ids = ids;
+  }
+}
+
+/**
+ * Vrai si la clé du mot-clé `m` ({ libelle, cle, categories, parent? }) est faite de son nom : normalize(libellé), puis, chacun précédé d'un tiret et dans
+ * l'ordre de la règle (lib/mots-cles-cles.mjs), une part des libellés de ses catégories (par id croissant), puis, s'il a un parent, ce qui reste (le nom
+ * de sa magie au calcul de la clé, qui a pu changer depuis). Faux pour un mot-clé dont le
+ * nom a changé sans que sa clé suive (un renommage de page ou de sort que la règle ne sait pas distinguer : décision 1 de B3). `categories` : Map(id → libellé).
+ */
+export function laCleSuitLeNom(m, categories) {
+  const base = normalize(m?.libelle ?? '');
+  if (!base || typeof m?.cle !== 'string') return false;
+  if (m.cle === base) return true;
+  if (!m.cle.startsWith(`${base}-`)) return false;
+  const parts = [...(m.categories ?? [])].map(Number).sort((a, b) => a - b).map((c) => normalize((categories instanceof Map ? categories.get(c) : categories?.[c]) ?? '')).filter(Boolean);
+  // le parent (la magie d'un sort) a pu changer de nom depuis le calcul de la clé : la part qui le suit est libre, pour un mot-clé qui en a un
+  const parent = Boolean(m.parent);
+  const suite = (reste, i) => (parent && i <= parts.length && reste !== '')
+    || parts.slice(i).some((p, j) => reste === p || (reste.startsWith(`${p}-`) && suite(reste.slice(p.length + 1), i + j + 1)));
+  return suite(m.cle.slice(base.length + 1), 0);
+}
+
+/**
+ * La clé de chaque mot-clé quand un nom que la règle ne sait pas distinguer ne bloque jamais (docs/chantier-ancrage-mots-cles.md, choix 7 ; le nom d'un
+ * mot-clé se lit sur sa page ou son sort, que le vocabulaire ne peut pas refuser) : la règle stricte (lib/mots-cles-cles.mjs#clesDesMotsCles) d'abord ;
+ * si elle refuse, les mots-clés que la faute cite et qui peuvent attendre (`attendent` : ceux d'une page ou d'un sort, motsClesDePageOuDeSort ; ils ont
+ * déjà une clé ; ni `exiges`) GARDENT LEUR CLÉ, et la règle juge les autres sans eux. De même ceux dont les clés se croiseraient, s'ils ont été renommés
+ * (laCleSuitLeNom faux) : un croisement sans renommage reste un refus (ClesCroisees). Un mot-clé dont la clé
+ * calculée serait alors celle d'un mot-clé qui garde la sienne garde aussi la sienne. La même fonction pour le service (recalculerLesCles, creerMotCle) et
+ * pour le contrôle du contenu (serveur/controles-du-contenu.mjs, db:check) : ce que l'un tolère, l'autre ne le compte pas en erreur.
+ * `motsCles` : [{ id, libelle, cle?, categories, parent? }] ; `gardes` : des ids qui gardent leur clé d'emblée ; `exiges` : des ids jugés par la règle
+ * stricte (le mot-clé qu'on crée ou qu'on renomme au Glossaire : son refus reste un refus).
+ * Lève HomonymesRefuses (une faute qu'aucun mot-clé en attente n'explique, ou qui cite un mot-clé exigé ou sans clé) ou ClesCroisees.
+ * Rend { cles: Map(id → clé), tenus: Set (ceux qui gardent leur clé), aTrancher: [{ ids, base?, raison, cle? }] (les fautes tolérées) }.
+ */
+export function clesTenues(motsCles, categories, { attendent = new Set(), gardes = [], exiges = [] } = {}) {
+  const parId = new Map(motsCles.map((m) => [m.id, m]));
+  const exige = new Set(exiges);
+  const aUneCle = (id) => typeof parId.get(id)?.cle === 'string' && parId.get(id).cle !== '';
+  const ferme = (id) => exige.has(id) || !aUneCle(id);
+  const peutAttendre = (id) => attendent.has(id) && !ferme(id);
+  const tenus = new Set([...gardes].filter(aUneCle));
+  const aTrancher = [];
+  // un nom sans lettre ni chiffre (« ¿ ? ! ») n'a pas de clé (la règle lève une Error) : celui d'une page ou d'un sort garde la sienne, à trancher
+  // (décision 1 de B3 : un renommage n'est jamais refusé) ; un autre reste l'erreur de la règle
+  for (const m of motsCles) {
+    if (!normalize(m.libelle ?? '') && peutAttendre(m.id) && !tenus.has(m.id)) {
+      tenus.add(m.id);
+      aTrancher.push({ ids: [m.id], raison: 'sans-lettre' });
+    }
+  }
+  for (;;) {
+    let cles;
+    try {
+      cles = clesDesMotsCles(motsCles.filter((m) => !tenus.has(m.id)), categories);
+    } catch (e) {
+      if (!(e instanceof HomonymesRefuses)) throw e;
+      // la faute d'un mot-clé exigé ou sans clé reste un refus, dit pour lui seul
+      const fermes = e.fautes.filter((f) => f.ids.some(ferme));
+      if (fermes.length) throw fermes.length === e.fautes.length ? e : new HomonymesRefuses(fermes);
+      const ecartes = [...new Set(e.fautes.flatMap((f) => f.ids))].filter(peutAttendre);
+      if (!ecartes.length) throw e;
+      for (const f of e.fautes) if (f.ids.some((id) => ecartes.includes(id))) aTrancher.push({ ids: [...f.ids], base: f.base, raison: f.raison, ...(f.cle ? { cle: f.cle } : {}) });
+      for (const id of ecartes) tenus.add(id);
+      continue;
+    }
+    // une clé calculée que tient un mot-clé qui garde la sienne
+    const gardees = new Map([...tenus].map((id) => [parId.get(id).cle, id]));
+    const heurts = [...cles].filter(([, cle]) => gardees.has(cle));
+    if (heurts.length) {
+      const fermes = heurts.filter(([id]) => ferme(id));
+      if (fermes.length) throw new HomonymesRefuses(fermes.map(([id, cle]) => ({ base: normalize(parId.get(id).libelle), ids: [id, gardees.get(cle)], raison: 'cle-prise', cle })));
+      for (const [id] of heurts) tenus.add(id);
+      continue;
+    }
+    // des clés qui s'échangeraient : aucune ne s'écrit la première
+    const courantes = new Map(motsCles.filter((m) => aUneCle(m.id)).map((m) => [m.cle, m.id]));
+    let restants = [...cles].filter(([id, cle]) => parId.get(id).cle !== cle);
+    for (;;) {
+      const prets = restants.filter(([id, cle]) => !courantes.has(cle) || courantes.get(cle) === id);
+      if (!prets.length) break;
+      for (const [id, cle] of prets) {
+        courantes.delete(parId.get(id).cle);
+        courantes.set(cle, id);
+      }
+      restants = restants.filter((r) => !prets.includes(r));
+    }
+    if (restants.length) {
+      // seul un mot-clé renommé (sa clé n'est plus faite de son nom) attend : des clés qui se croisent sans renommage (deux magies qui échangent leur
+      // nom, parents de sorts homonymes) restent un refus, comme avant la migration 0136
+      const ecartes = restants.map(([id]) => id).filter((id) => peutAttendre(id) && !laCleSuitLeNom(parId.get(id), categories));
+      if (!ecartes.length) throw new ClesCroisees(restants.map(([id]) => id));
+      aTrancher.push({ ids: ecartes, raison: 'croisees' });
+      for (const id of ecartes) tenus.add(id);
+      continue;
+    }
+    for (const id of tenus) cles.set(id, parId.get(id).cle);
+    return { cles, tenus, aTrancher };
+  }
+}
+
+/** Le repère du mot-clé `id`, noté au journal par `w` : son nom, et ce qui est donné de son adresse, sa définition, sa couleur et son icône. */
+export function creerLeRepere(w, id, { nom, adresse = null, definition = null, couleur = null, icone = null }) {
+  return w.inserer('repere', { mot_cle_id: id, nom, adresse: adresse || null, definition: definition || null, couleur: couleur || null, icone: icone || null });
+}
+
+/**
+ * Écrit sur l'élément du mot-clé `m` (lib/mots-cles-db.mjs#lireUnMotCle) ceux de ses champs logiques `valeurs` qui changent, par `w` (notés au journal sur
+ * la ligne de l'élément) : son repère les reçoit tous ; sa page, sa définition, sa couleur et son icône ; un sort, aucun (il n'a ni définition, ni
+ * couleur, ni icône). Le nom et l'adresse d'un mot-clé de page ou de sort se lisent sur l'élément : les écrire est refusé. `refuser(message, champ)`
+ * lève le refus de l'appelant (409). Rend les champs écrits.
+ */
+export function ecrireSurLElement(w, m, valeurs, refuser) {
+  const voulue = (c) => (c === 'libelle' ? valeurs[c] : valeurs[c] || null);
+  const changes = CHAMPS_DE_L_ELEMENT.filter((c) => Object.hasOwn(valeurs, c) && voulue(c) !== (m[c] ?? null));
+  if (!changes.length) return [];
+  const { table, id } = m.element ?? {};
+  if (table === 'repere') {
+    w.modifier('repere', { mot_cle_id: m.id }, Object.fromEntries(changes.map((c) => [COLONNES_DU_REPERE[c], voulue(c)])));
+    return changes;
+  }
+  const sujet = motCleDansUnRefus(m.libelle);
+  if (table !== 'page' && table !== 'sort') refuser(`${sujet} n’a ni page, ni sort, ni repère : rien ne porte ses champs.`, changes[0]);
+  const lus = changes.filter((c) => !(c in COLONNES_DE_LA_PAGE));
+  if (lus.length) {
+    refuser(`${sujet} est celui d’${table === 'page' ? 'une page' : 'un sort'} : son nom et son adresse se lisent sur ${table === 'page' ? 'elle' : 'lui'}, ils ne s’écrivent pas sur le mot-clé.`, lus[0]);
+  }
+  if (table === 'sort') refuser(`${sujet} est celui d’un sort : il n’a ni définition, ni couleur, ni icône.`, changes[0]);
+  w.modifier('page', { id }, Object.fromEntries(changes.map((c) => [COLONNES_DE_LA_PAGE[c], voulue(c)])));
+  return changes;
+}
+
+/**
+ * Le mot-clé `id` vient de recevoir une page ou un sort (`element` : { table, id }) : son repère part dans la même opération (un repère ne double jamais
+ * une page ni un sort, docs/chantier-retrait-des-colonnes.md §2). Sa définition, sa couleur et son icône passent sur la page, là où elle n'en a pas ; un
+ * sort n'en porte pas : `refuser(message)` si le repère en a une. `w` : le journal, ou les écritures brutes du rejeu (mêmes méthodes `modifier` et
+ * `supprimer`). Rend le repère retiré, ou null.
+ */
+export function reprendreLeRepere(db, w, id, element, refuser) {
+  if (!nomSurLElement(db)) return null; // avant la migration 0136, le repère n'est qu'une copie des colonnes du mot-clé : la page n'a pas où les recevoir
+  const r = lireLigne(db, 'repere', { mot_cle_id: id });
+  if (!r) return null;
+  const portes = Object.values(COLONNES_DE_LA_PAGE).filter((c) => (r[c] ?? null) !== null);
+  if (element.table === 'page') {
+    const page = lireLigne(db, 'page', { id: element.id });
+    const reprises = Object.fromEntries(portes.filter((c) => (page?.[c] ?? null) === null).map((c) => [c, r[c]]));
+    if (Object.keys(reprises).length) w.modifier('page', { id: element.id }, reprises);
+  } else if (portes.length) {
+    refuser(`${motCleDansUnRefus(r.nom)} porte une définition, une couleur ou une icône : le mot-clé d’un sort n’en a pas. Retirez-les d’abord de son repère.`);
+  }
+  w.supprimer('repere', { mot_cle_id: id });
+  return r;
+}
+
+/**
  * Le refus (409, sans numéro de décision : une session Créateur ne l'ouvre pas) d'un repère qu'un lot de changements insère (table `repere`, migration
  * 0135 ; docs/chantier-retrait-des-colonnes.md, §2), ou null : un repère est l'élément d'un mot-clé qui existe et que ne désigne ni une page ni un sort
- * (`page.mot_cle_id`, `sort.mot_cle_id`). Aussi pour l'annulation d'un lot qui remet un repère retiré. Sa clé ne se modifie pas (lib/lot-de-changements.mjs).
+ * (`page.mot_cle_id`, `sort.mot_cle_id`). Sa clé ne se modifie pas (lib/lot-de-changements.mjs). `restaurer` : l'annulation d'un lot remet un repère
+ * qu'il a retiré ; la page ou le sort qui l'avait remplacé part peut-être juste après (une page de notion et son repère sont groupés : seul l'état final
+ * se juge, par la règle `repere_en_double` des contrôles du contenu), seul un mot-clé absent est refusé.
  */
-export function refusDuRepere(db, table, valeurs) {
+export function refusDuRepere(db, table, valeurs, { restaurer = false } = {}) {
   if (table !== 'repere') return null;
   const id = valeurs?.mot_cle_id;
   if (!Number.isInteger(id) || !db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id)) return `Repère : le mot-clé ${JSON.stringify(id ?? null)} n’existe pas.`;
+  if (restaurer) return null;
   // l'identifiant de la page ou du sort, pas son nom : un refus qui citerait « R… » serait lu comme un verrou (edition-lots.mjs#decisionsCitees)
   const page = db.prepare('SELECT id FROM page WHERE mot_cle_id = ?').get(id);
   if (page) return `Repère : le mot-clé ${id} a déjà une page (${page.id}) ; son nom et son adresse se lisent sur elle, il ne reçoit pas de repère.`;
@@ -182,39 +372,55 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
    * mot_cle_ancienne_cle (sauf si un mot-clé la porte désormais), retirée de cette table quand elle redevient une clé courante, puis chaque balise
    * qui citait une clé quittée, réécrite dans tous les textes de la base (reciblerLaCle ; R232 (3)), le verrou n'y faisant rien (R232 (11)). Refus 409
    * (refusDesHomonymes) si la règle refuse le vocabulaire ; 409 aussi si une clé nouvelle s'écrit comme le synonyme d'un autre mot-clé (R233 (4),
-   * `champ: 'libelle'`). Rend Map(id → { avant, apres }) des clés changées.
+   * `champ: 'libelle'`). Le mot-clé d'une page ou d'un sort n'est jamais la cause d'un refus (son nom se lit sur son élément, qu'on renomme librement :
+   * docs/chantier-ancrage-mots-cles.md, choix 7) : il garde sa clé (clesTenues), sauf s'il est dans `exiges` (celui qu'on crée, ou dont on change le
+   * type). Rend Map(id → { avant, apres }) des clés changées.
    */
-  function recalculerLesCles(ctx) {
+  function recalculerLesCles(ctx, { exiges = [] } = {}) {
     const { db, w } = ctx;
     // l'annulation d'un lot d'ancrage remet ses lignes une à une : seul l'état final se juge, le recalcul vient après (edition-lots.mjs#annulerLeLot)
     if (ctx.clesEnAttente) return new Map();
     if (!tableExiste(db, 'categorie_mot_cle')) return new Map();
     const motsCles = motsClesDeLaBase(db, { elements: false });
     const categories = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));
-    let cles;
-    try {
-      cles = clesDesMotsCles(motsCles, categories);
-    } catch (e) {
-      if (e instanceof HomonymesRefuses) throw refusDesHomonymes(e, motsCles);
-      throw e;
+    const avant = vocabulaireDesMotsCles(motsCles);
+    // un mot-clé de page ou de sort dont la règle refuse le nom garde sa clé (clesTenues) : renommer une page ou un sort n'est jamais refusé ; de même
+    // quand sa clé s'écrirait comme le synonyme d'un autre mot-clé (R233 (4)). `exiges` : ceux pour qui le refus reste un refus
+    const attendent = motsClesDePageOuDeSort(db);
+    const gardes = new Set();
+    let changements;
+    for (;;) {
+      let cles;
+      try {
+        ({ cles } = clesTenues(motsCles, categories, { attendent, gardes, exiges }));
+      } catch (e) {
+        if (e instanceof HomonymesRefuses) throw refusDesHomonymes(e, motsCles);
+        if (e instanceof ClesCroisees) throw new ErreurEdition(409, 'Les clés de ces mots-clés s’échangeraient : enregistrez ces modifications en deux fois.', { champ: 'libelle', mots_cles: e.ids });
+        throw e;
+      }
+      changements = new Map();
+      for (const m of motsCles) if (cles.get(m.id) !== m.cle) changements.set(m.id, { avant: m.cle, apres: cles.get(m.id) });
+      let repris = false;
+      for (const [id, { apres }] of changements) {
+        const m = avant.parId.get(id);
+        const [pris] = synonymesPris(avant, { id, libelle: m.libelle, cle: apres });
+        if (!pris) continue;
+        if (attendent.has(id) && !exiges.includes(id) && !gardes.has(id)) {
+          gardes.add(id);
+          repris = true;
+          break;
+        }
+        throw new ErreurEdition(409, `La clé « ${apres} » de ${nom(m)} s’écrit comme le synonyme « ${pris.synonyme} » du mot-clé ${nom(pris.m)} (décision R233 (4)).`,
+          { champ: 'libelle', mot_cle: pris.m.id });
+      }
+      if (!repris) break;
     }
-    const changements = new Map();
-    for (const m of motsCles) if (cles.get(m.id) !== m.cle) changements.set(m.id, { avant: m.cle, apres: cles.get(m.id) });
     // une clé quittée que porte de nouveau un mot-clé (créé ou renommé vers elle) n'est plus une clé quittée (R232 : la clé courante se cherche d'abord)
     if (tableExiste(db, 'mot_cle_ancienne_cle')) {
       for (const { cle } of db.prepare('SELECT a.cle FROM mot_cle_ancienne_cle a JOIN mot_cle m ON m.cle = a.cle ORDER BY a.cle').all()) w.supprimer('mot_cle_ancienne_cle', { cle });
     }
     if (!changements.size) return changements;
-    const avant = vocabulaireDesMotsCles(motsCles);
-    for (const [id, { apres }] of changements) {
-      const m = avant.parId.get(id);
-      const [pris] = synonymesPris(avant, { id, libelle: m.libelle, cle: apres });
-      if (pris) {
-        throw new ErreurEdition(409, `La clé « ${apres} » de ${nom(m)} s’écrit comme le synonyme « ${pris.synonyme} » du mot-clé ${nom(pris.m)} (décision R233 (4)).`,
-          { champ: 'libelle', mot_cle: pris.m.id });
-      }
-    }
-    // les clés, dans un ordre qui ne heurte jamais l'unicité de mot_cle.cle (une clé n'est écrite qu'une fois libérée)
+    // les clés, dans un ordre qui ne heurte jamais l'unicité de mot_cle.cle (une clé n'est écrite qu'une fois libérée ; clesTenues a écarté les échanges)
     const courantes = new Map(motsCles.map((m) => [m.cle, m.id]));
     let restants = [...changements];
     while (restants.length) {
@@ -258,9 +464,9 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
     }
   }
 
-  /** Le mot-clé `id` (un entier) de la base, ou 404. */
+  /** Le mot-clé `id` (un entier) de la base, son nom lu sur son élément (lib/mots-cles-db.mjs#lireUnMotCle), ou 404. */
   function motCle(db, id, quoi = 'Mot-clé') {
-    const m = Number.isInteger(id) ? lireLigne(db, 'mot_cle', { id }) : null;
+    const m = Number.isInteger(id) ? lireUnMotCle(db, id) : null;
     if (!m) throw new ErreurEdition(404, `${quoi} introuvable : ${JSON.stringify(id)}`);
     return m;
   }
@@ -351,7 +557,7 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
       throw new ErreurEdition(409, refusDeLaSecondeCategorie(m.libelle, ids.length), { champ: 'categories' });
     }
     poserLesCategories(ctx, m.id, ids);
-    const cles = recalculerLesCles(ctx);
+    const cles = recalculerLesCles(ctx, { exiges: [m.id] }); // le refus de ses catégories reste un refus, même pour le mot-clé d'une page
     const noms = ids.map((id) => lireLigne(db, 'categorie_mot_cle', { id }).libelle);
     return `Mot-clé ${m.libelle} : ${noms.length ? `catégories ${noms.join(', ')}` : 'sans catégorie'}${resumeDesCles(cles)}`;
   }
@@ -419,7 +625,8 @@ export function outilsDesMotsCles({ ErreurEdition, sousLeVerrou, refusDuVerrou, 
       const { db, w } = ctx;
       const c = Number.isInteger(cle?.id) ? lireLigne(db, 'categorie_mot_cle', { id: cle.id }) : null;
       if (!c) throw new ErreurEdition(404, `Catégorie de mots-clés introuvable : ${JSON.stringify(cle?.id)}`);
-      const portent = db.prepare('SELECT m.id, m.libelle FROM mot_cle_categorie l JOIN mot_cle m ON m.id = l.mot_cle_id WHERE l.categorie_id = ? ORDER BY m.cle')
+      // le nom d'un mot-clé se lit sur son élément (vue v_mot_cle, migration 0136)
+      const portent = db.prepare('SELECT m.id, m.libelle FROM mot_cle_categorie l JOIN v_mot_cle m ON m.id = l.mot_cle_id WHERE l.categorie_id = ? ORDER BY m.cle')
         .all(c.id).map((m) => ({ ...m }));
       if (portent.length) {
         const noms = portent.slice(0, 5).map(nom).join(', ') + (portent.length > 5 ? '…' : '');

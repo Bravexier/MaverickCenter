@@ -59,7 +59,8 @@ test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_m
     const numero = IDS_DES_MOTS_CLES_PROTEGES[id];
     assert.ok(MOTS_CLES_PROTEGES.has(numero), `${id} : protégé`);
     // verrouillé (R219 (2)) : son libellé ne se modifie pas sur le site
-    assert.deepEqual(lignes('SELECT id, libelle, cle, verrou FROM mot_cle WHERE id = ?', numero), [{ id: numero, libelle: LIBELLES[id], cle: id, verrou: 1 }]);
+    // (le nom se lit sur l'élément du mot-clé : vue v_mot_cle, migration 0136)
+    assert.deepEqual(lignes('SELECT id, libelle, cle, verrou FROM v_mot_cle WHERE id = ?', numero), [{ id: numero, libelle: LIBELLES[id], cle: id, verrou: 1 }]);
   }
 });
 

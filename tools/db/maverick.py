@@ -147,8 +147,46 @@ def _synonyme(db, cle):
     return trouve[0] if trouve else None
 
 
+def _colonnes(db, table):
+    return {r[1] for r in db.execute(f'PRAGMA table_info({table})')}
+
+
+# Les éléments qui portent le nom d'un mot-clé depuis le retrait des colonnes (migration 0136, chantier 4) : sa page (titre), sinon son sort (nom),
+# sinon son repère (nom) ; même ordre que la vue v_mot_cle et client/src/lib/mots-cles-db.mjs#motsClesDeLaBase. Clé de l'historique : la colonne
+# qui porte l'id de la ligne, et si elle est celle du mot-clé.
+_ELEMENTS_DU_NOM = (('page', 'titre', 'id'), ('sort', 'nom', 'id'), ('repere', 'nom', 'mot_cle_id'))
+
+
+def _libelles(db):
+    """[(id, libellé, clé)] des mots-clés de `db`, par id. Avant la migration 0136, mot_cle.libelle ; depuis, le nom de l'élément du mot-clé
+    (_ELEMENTS_DU_NOM, parmi les tables présentes : une base de travail n'en charge parfois aucune), sinon sa clé. La règle de la clé ne change pas :
+    seule la provenance du nom change."""
+    if 'libelle' in _colonnes(db, 'mot_cle'):
+        return db.execute('SELECT id, libelle, cle FROM mot_cle ORDER BY id').fetchall()
+    presents = [(table, colonne) for table, colonne, _ in _ELEMENTS_DU_NOM if _table_existe(db, table) and 'mot_cle_id' in _colonnes(db, table)]
+    # un mot-clé ancre au plus une page et au plus un sort, et n'a qu'un repère : une ligne par mot-clé
+    jointures = ''.join(f' LEFT JOIN "{table}" e{i} ON e{i}.mot_cle_id = m.id' for i, (table, _) in enumerate(presents))
+    noms = [f'e{i}."{colonne}"' for i, (_, colonne) in enumerate(presents)]
+    return db.execute(f'SELECT m.id, coalesce({", ".join(noms + ["m.cle", "m.cle"])}), m.cle FROM mot_cle m{jointures} ORDER BY m.id').fetchall()
+
+
+def _mot_cle_de_l_element(db, table, cle, avant, apres):
+    """L'id du mot-clé dont la ligne `table` (une de _ELEMENTS_DU_NOM) de l'historique est l'élément : la clé d'un repère, la valeur mot_cle_id
+    de la trace, sinon celle de la ligne courante (si la table est chargée) ; None sinon."""
+    if table == 'repere':
+        return cle.get('mot_cle_id')
+    for valeurs in (avant, apres):
+        if valeurs and valeurs.get('mot_cle_id') is not None:
+            return valeurs['mot_cle_id']
+    if _table_existe(db, table) and 'mot_cle_id' in _colonnes(db, table):
+        trouve = db.execute(f'SELECT mot_cle_id FROM "{table}" WHERE id = ?', (cle.get('id'),)).fetchone()
+        return trouve[0] if trouve else None
+    return None
+
+
 def _vocabulaire_du_site(db):
-    """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes).
+    """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag ; depuis la migration 0136, aussi le nom
+    de l'élément du mot-clé : page.titre, sort.nom, repere.nom) : (ecritures, supprimes).
     ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé ou supprimé) -> son id ; supprimes : id d'un mot-clé supprimé ->
     l'id du mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None. Ids entiers (migration 0113).
     Le journal ne note d'une fusion que ce qu'elle change : quand aucune page n'est passée de l'un à l'autre (toutes portaient déjà le second, ou le
@@ -157,8 +195,19 @@ def _vocabulaire_du_site(db):
     if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").fetchone():
         return ecritures, supprimes
     lignes = db.execute("SELECT lot_id, table_nom, cle, operation, avant, apres FROM historique_modification "
-                        "WHERE table_nom IN ('mot_cle', 'page_tag') ORDER BY fait_le, lot_id, rang").fetchall()
+                        "WHERE table_nom IN ('mot_cle', 'page_tag', 'page', 'sort', 'repere') ORDER BY fait_le, lot_id, rang").fetchall()
     for lot, table, cle, operation, avant, apres in lignes:
+        if table in ('page', 'sort', 'repere'):
+            colonne = next(c for t, c, _ in _ELEMENTS_DU_NOM if t == table)
+            avant_l, apres_l = json.loads(avant or 'null'), json.loads(apres or 'null')
+            if operation in ('modifier', 'supprimer') and avant_l and avant_l.get(colonne):
+                ident = _mot_cle_de_l_element(db, table, json.loads(cle), avant_l, apres_l)
+                if ident is not None:
+                    if operation == 'modifier':
+                        ecritures[normalize(avant_l[colonne])] = ident
+                    else:
+                        ecritures.setdefault(normalize(avant_l[colonne]), ident)
+            continue
         if table != 'mot_cle':
             continue
         ident = json.loads(cle).get('id')
@@ -168,6 +217,8 @@ def _vocabulaire_du_site(db):
         elif operation == 'supprimer':
             if avant and avant.get('libelle'):
                 ecritures.setdefault(normalize(avant['libelle']), ident)
+            elif avant and avant.get('cle'):   # depuis la migration 0136, la trace n'a plus le libellé (son élément le porte) : sa clé, une écriture qui menait à lui
+                ecritures.setdefault(avant['cle'], ident)
             cible = None
             for lot2, table2, _, operation2, avant2, apres2 in lignes:
                 if lot2 == lot and table2 == 'page_tag' and operation2 == 'modifier':
@@ -201,7 +252,7 @@ def trouver_mot_cle(db, ecriture):
     trouve = db.execute('SELECT id FROM mot_cle WHERE cle = ?', (cle,)).fetchone()
     if trouve:
         return trouve[0], []
-    homonymes = [(i, c) for i, libelle, c in db.execute('SELECT id, libelle, cle FROM mot_cle ORDER BY id') if _normalise(libelle) == cle]
+    homonymes = [(i, c) for i, libelle, c in _libelles(db) if _normalise(libelle) == cle]
     if len(homonymes) == 1:
         return homonymes[0][0], []
     if homonymes:
@@ -277,18 +328,29 @@ _VOCABULAIRES = {}   # chemin du vocabulaire -> {id: (clé, écriture qui mène 
 
 def vocabulaire_des_mots_cles(chemin=VOCABULAIRE, schema=SCHEMA):
     """{id: (clé, écriture)} des mots-clés d'un export de la table mot_cle (data/rows/mot_cle.sql par défaut) ; {} s'il n'existe pas. L'écriture est
-    le libellé courant quand il mène au mot-clé (sa clé est normalize(libellé)), sinon la clé (un homonyme, migration 0113 : son libellé est ambigu)."""
+    le libellé courant quand il mène au mot-clé (sa clé est normalize(libellé)), sinon la clé (un homonyme, migration 0113 : son libellé est ambigu).
+    Depuis la migration 0136, le libellé est le nom de l'élément du mot-clé (_libelles) : les exports voisins page.sql, sort.sql et repere.sql sont
+    chargés avec lui quand le schéma n'a plus mot_cle.libelle."""
     cle = (os.path.abspath(chemin), os.path.abspath(schema))
     if cle not in _VOCABULAIRES:
         vocabulaire = {}
         if os.path.exists(chemin):
             with open(schema, encoding='utf-8') as f:
-                table = re.search(r'CREATE TABLE mot_cle \([\s\S]*?\) STRICT;', f.read()).group(0)
+                texte = f.read()
             db = sqlite3.connect(':memory:')
-            db.execute(table)
-            with open(chemin, encoding='utf-8') as f:
-                db.executescript(f.read())
-            vocabulaire = {i: (c, libelle if normalize(libelle) == c else c) for i, c, libelle in db.execute('SELECT id, cle, libelle FROM mot_cle')}
+            db.execute(re.search(r'CREATE TABLE mot_cle \([\s\S]*?\) STRICT;', texte).group(0))
+            fichiers = [chemin]
+            if 'libelle' not in _colonnes(db, 'mot_cle'):
+                for table, _, _ in _ELEMENTS_DU_NOM:
+                    creation = re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte)
+                    voisin = os.path.join(os.path.dirname(chemin), f'{table}.sql')
+                    if creation and os.path.exists(voisin):
+                        db.execute(creation.group(0))
+                        fichiers.append(voisin)
+            for fichier in fichiers:
+                with open(fichier, encoding='utf-8') as f:
+                    db.executescript(f.read())
+            vocabulaire = {i: (c, libelle if normalize(libelle) == c else c) for i, libelle, c in _libelles(db)}
             db.close()
         _VOCABULAIRES[cle] = vocabulaire
     return _VOCABULAIRES[cle]

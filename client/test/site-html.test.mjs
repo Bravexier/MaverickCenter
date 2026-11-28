@@ -11,7 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { htmlAvecMotsCles, htmlDeLIcone, lireBalises, pageAvecMotsCles, texteSansBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire, elementsDesMotsCles } from '../src/lib/mots-cles-db.mjs';
+import { chargerVocabulaire, elementsDesMotsCles, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
@@ -766,7 +766,7 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
   const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
   const base = ouvrirBase();
   const corpsUnivers = base.prepare("SELECT corps_md FROM page WHERE id = 'guide/l-univers'").get()?.corps_md ?? '';
-  const motCleMagies = base.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('magies'));
+  const motCleMagies = lireUnMotCle(base, idDuMotCleNomme('magies')); // son adresse se lit sur son élément (migration 0136)
   if (motCleMagies?.url && lireBalises(corpsUnivers, { markdown: true }).some((b) => b.ref === motCleMagies.cle)) {
     const echappe = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     assert.match(univers, new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${echappe(motCleMagies.url)}" data-mot-cle="${echappe(motCleMagies.cle)}"`),

@@ -8,7 +8,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         [--xlsx <classeur.xlsx> | --sans-liens] --out client/src/content/wiki
     python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx> | --sans-liens] \
         --out client/src/content/wiki --verifier
-    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; les protégés s'écrivent avec leur libellé courant)
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut, avec page.sql, sort.sql et repere.sql voisins depuis la migration 0136 qui y a mis le nom ; les protégés s'écrivent avec leur libellé courant)
 
 Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_json.py ; corrections avant l'extracteur) :
 

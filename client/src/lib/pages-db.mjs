@@ -2,6 +2,7 @@
 // fabriqués par `scripts/db-export-pages.mjs` pour que le site (Astro, wikilinks, outils d'import) les lise comme avant.
 // Format écrit : le sous-ensemble strict de YAML que les importeurs (tools/sheets/*.py) écrivent déjà, lu par tools/db/pages_md.py et par le site.
 import { DatabaseSync } from 'node:sqlite';
+import { motsClesDeLaBase } from './mots-cles-db.mjs';
 import { nomDuProtege } from './mots-cles-proteges.mjs';
 import { normalize } from './text.mjs';
 
@@ -37,12 +38,13 @@ export function lirePages(db) {
   };
   const aliases = regrouper('SELECT page_id, texte AS v FROM alias ORDER BY page_id, ordre');
   // l'écriture d'un mot-clé dans `tags:` : son libellé, sauf pour un homonyme (migration 0113 : sa clé n'est plus le slug de son libellé, que
-  // d'autres portent) — sa clé, que tools/db/maverick.py#trouver_mot_cle relit d'abord (la règle de maverick.py#vocabulaire_des_mots_cles)
-  const colonnes = db.prepare('PRAGMA table_info(mot_cle)').all().map((c) => c.name);
-  const cle = colonnes.includes('cle') ? 'm.cle' : 'm.libelle_cle';
+  // d'autres portent) — sa clé, que tools/db/maverick.py#trouver_mot_cle relit d'abord (la règle de maverick.py#vocabulaire_des_mots_cles). Le libellé
+  // est celui de l'élément du mot-clé depuis la migration 0136 : lu par lib/mots-cles-db.mjs#motsClesDeLaBase (qui lit aussi une base plus ancienne)
+  const motsCles = new Map(motsClesDeLaBase(db, { elements: false }).map((m) => [m.id, m]));
   const tags = new Map();
-  for (const r of db.prepare(`SELECT t.page_id, m.libelle, ${cle} AS cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre`).all()) {
-    (tags.get(r.page_id) ?? tags.set(r.page_id, []).get(r.page_id)).push(ecritureDuTag(r));
+  for (const r of db.prepare('SELECT page_id, tag_id FROM page_tag ORDER BY page_id, ordre').all()) {
+    const m = motsCles.get(r.tag_id);
+    if (m) (tags.get(r.page_id) ?? tags.set(r.page_id, []).get(r.page_id)).push(ecritureDuTag(m));
   }
   const sources = regrouper('SELECT ps.page_id, s.texte AS v FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre');
   return db.prepare('SELECT id, type, slug, titre, resume, donnees, corps_md, statut, origine FROM page ORDER BY id').all().map((r) => ({

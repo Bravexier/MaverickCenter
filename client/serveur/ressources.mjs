@@ -56,6 +56,7 @@ import { ErreurEdition, enregistrer, listes, raisonDuGel } from './edition.mjs';
 import { ErreurHttp, empreinteCourte, entierDeLAdresse, etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { cleDe, lireLigne, structure, TABLES_INTERDITES } from './edition-journal.mjs';
 import { descriptionOpenApi } from './openapi.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 
 export const PREFIXE_V1 = '/api/v1/';
 export const LIMITE_PAR_DEFAUT = 50;
@@ -330,12 +331,43 @@ const unique = (liste) => [...new Set(liste.filter((x) => x !== null && x !== un
 const COLONNES_D_IMAGE = /^portrait(_|$)/;
 
 /**
+ * Les champs d'une table qui se lisent sur une autre ligne que la sienne (`champsDeLElement` d'une ressource du registre) : depuis la migration 0136, le
+ * nom, l'adresse, la définition, la couleur et l'icône d'un mot-clé se lisent sur son élément (sa page, sinon son sort, sinon son repère :
+ * lib/mots-cles-db.mjs, docs/chantier-retrait-des-colonnes.md §4 et §5). La ressource `mots-cles` les rend comme avant, sous les mêmes noms ; ils se
+ * filtrent, se cherchent et se trient comme des colonnes. Leur écriture part au service comme avant (une opération `modifier` de `mot_cle`), qui l'écrit
+ * sur le repère et refuse le nom et l'adresse d'un mot-clé de page ou de sort (serveur/edition-mots-cles.mjs#ecrireSurLElement). Par table : les champs
+ * déclarés, et `lire(db, champs, id)` : les lignes (une seule si `id` est donné), champs compris.
+ */
+const LECTURES_SUR_L_ELEMENT = {
+  mot_cle: {
+    champs: RESSOURCES.find((r) => r.table === 'mot_cle' && r.champsDeLElement)?.champsDeLElement.champs ?? [],
+    lire(db, champs, id) {
+      const seul = typeof id === 'number';
+      const lus = seul ? [lireUnMotCle(db, id)].filter(Boolean) : motsClesDeLaBase(db, { elements: false });
+      const brutes = new Map(db.prepare(`SELECT * FROM "mot_cle"${seul ? ' WHERE id = ?' : ''}`).all(...(seul ? [id] : [])).map((r) => [r.id, r]));
+      return lus.map((m) => ({ ...brutes.get(m.id), ...Object.fromEntries(champs.map((c) => [c, m[c] ?? null])) }));
+    },
+  },
+};
+
+/**
+ * La structure d'une table telle que l'API la sert (edition-journal.mjs#structure), plus les champs de LECTURES_SUR_L_ELEMENT que la table n'a pas en
+ * colonnes (des textes) : { colonnes, types, cle, lusAilleurs } ; `lusAilleurs` est vide pour une base d'avant la migration 0136, où ils sont des colonnes.
+ */
+function structureServie(db, table) {
+  const s = structure(db, table);
+  const lusAilleurs = (LECTURES_SUR_L_ELEMENT[table]?.champs ?? []).filter((c) => !s.colonnes.includes(c));
+  if (!lusAilleurs.length) return { ...s, lusAilleurs };
+  return { ...s, colonnes: [...s.colonnes, ...lusAilleurs], types: { ...s.types, ...Object.fromEntries(lusAilleurs.map((c) => [c, 'TEXT'])) }, lusAilleurs };
+}
+
+/**
  * La vue d'une ressource (enfant = null) ou de l'un de ses enfants : table, colonnes et types (PRAGMA table_info : la seule liste blanche des noms de
  * colonnes qui entrent dans une requête), clé primaire, colonnes de la clé d'adresse, libellé, colonnes de liste, de recherche et tri par défaut.
  */
 export function vueDe(db, ressource, enfant = null) {
   const o = enfant ?? ressource;
-  const { colonnes, types, cle } = structure(db, o.table);
+  const { colonnes, types, cle, lusAilleurs } = structureServie(db, o.table);
   const parent = enfant?.parent ?? {};
   const cleAdresse = cle.filter((c) => !(c in parent));
   const libelle = o.libelle ?? ['nom', 'titre', 'libelle'].find((c) => colonnes.includes(c)) ?? null;
@@ -344,7 +376,7 @@ export function vueDe(db, ressource, enfant = null) {
   const textes = colonnes.filter((c) => types[c] === 'TEXT' && !COLONNES_D_IMAGE.test(c));
   const recherche = o.recherche ?? (libelle ? [libelle] : enfant ? textes : cleAdresse);
   const tri = o.tri ?? libelle ?? null;
-  return { ressource, enfant, objet: o, table: o.table, colonnes, types, clePrimaire: cle, cle: cleAdresse, parent, libelle, liste, recherche, tri };
+  return { ressource, enfant, objet: o, table: o.table, colonnes, types, clePrimaire: cle, cle: cleAdresse, parent, libelle, liste, recherche, tri, lusAilleurs };
 }
 
 /** La valeur d'une colonne lue dans l'adresse : nombre pour une colonne INTEGER ou REAL (sinon 400), texte sinon. */
@@ -469,8 +501,19 @@ function lignesDe(db, vue, filtres = {}, lues = null, autres = { morceaux: [], v
     }
   }
   const colonnes = lues ? unique(lues).filter((c) => vue.colonnes.includes(c)).map((c) => `"${c}"`).join(', ') : '*';
-  const sql = `SELECT ${colonnes} FROM "${vue.table}"${ou.length ? ` WHERE ${ou.join(' AND ')}` : ''}`;
-  return db.prepare(sql).all(...valeurs).map((l) => ({ ...l }));
+  // des champs lus sur une autre ligne (structureServie) : la table est remplacée, dans cette requête seule, par ses lignes lues (une table nommée
+  // comme elle, WITH), et les filtres, conditions et colonnes s'écrivent comme sur une table
+  const avec = vue.lusAilleurs?.length ? lignesLuesAilleurs(db, vue, filtres) : null;
+  const sql = `${avec ? avec.sql : ''}SELECT ${colonnes} FROM "${vue.table}"${ou.length ? ` WHERE ${ou.join(' AND ')}` : ''}`;
+  return db.prepare(sql).all(...(avec ? [avec.json] : []), ...valeurs).map((l) => ({ ...l }));
+}
+
+/** La clause WITH qui remplace la table de `vue` par ses lignes lues (LECTURES_SUR_L_ELEMENT), et leur JSON ; une seule ligne pour un filtre sur `id`. */
+function lignesLuesAilleurs(db, vue, filtres) {
+  const lecture = LECTURES_SUR_L_ELEMENT[vue.table];
+  const lignes = lecture.lire(db, lecture.champs, vue.clePrimaire.length === 1 && vue.clePrimaire[0] === 'id' ? filtres.id : undefined);
+  const champs = vue.colonnes.map((c) => `json_extract(value, '$."${c}"') AS "${c}"`).join(', ');
+  return { sql: `WITH "${vue.table}" AS (SELECT ${champs} FROM json_each(?)) `, json: JSON.stringify(lignes.map((l) => Object.fromEntries(vue.colonnes.map((c) => [c, l[c] ?? null])))) };
 }
 
 /**
@@ -608,8 +651,10 @@ function champDecrit(nom, champ, lesListes) {
  * lignes seulement. `parOperation` : les champs d'un PATCH traduit en opération du lot (ils remplacent TABLES).
  */
 function colonnesDecrites(db, table, ecrit, lesListes, { o = null, parOperation = null } = {}) {
-  const { types, cle } = structure(db, table);
+  const { types, cle, lusAilleurs } = structureServie(db, table);
   const notNull = new Map(db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => [c.name, Boolean(c.notnull)]));
+  // un champ lu sur l'élément (structureServie) est obligatoire comme l'était sa colonne : celui que le modèle exige (le nom d'un mot-clé)
+  for (const c of lusAilleurs) notNull.set(c, Boolean(TABLES[table]?.colonnes[c]?.requis));
   const principale = o && table === o.table;
   return Object.keys(types).map((c) => {
     const figee = principale ? o.colonnesFigees?.[c] : null;

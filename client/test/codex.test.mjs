@@ -9,12 +9,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { NAV } from '../src/lib/nav.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -46,9 +47,19 @@ const pagesDImport = pagesDuCodex.map((p) => ({
 const CODEX = IDS_DES_MOTS_CLES_PROTEGES.codex;
 const ESSAI = 100000;   // ids des mots-clés d'essai, hors de ceux de la base
 const sqlDe = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
-/** Un vocabulaire d'essai (export de la table mot_cle) : [{ id, libelle, cle, description?, url? }]. */
-const vocabulaireDEssai = (lignes) => `INSERT INTO mot_cle (id, libelle, cle, description, url) VALUES ${lignes
-  .map((m) => `(${[m.id, m.libelle, m.cle, m.description ?? null, m.url ?? null].map(sqlDe).join(', ')})`).join(', ')};\n`;
+/**
+ * Écrit un vocabulaire d'essai (export de la table mot_cle) dans `chemin` : [{ id, libelle, cle, description?, url? }]. Depuis la migration 0136, le
+ * nom, l'adresse et la définition d'un mot-clé sont ceux de son élément : chaque mot-clé d'essai a un repère, dans le repere.sql voisin que codex.py
+ * charge avec lui.
+ */
+const ecrireVocabulaireDEssai = (chemin, lignes) => {
+  writeFileSync(chemin, `INSERT INTO mot_cle (id, cle) VALUES ${lignes.map((m) => `(${[m.id, m.cle].map(sqlDe).join(', ')})`).join(', ')};\n`);
+  writeFileSync(join(dirname(chemin), 'repere.sql'), `INSERT INTO repere (mot_cle_id, nom, adresse, definition) VALUES ${lignes
+    .map((m) => `(${[m.id, m.libelle, m.url ?? null, m.description ?? null].map(sqlDe).join(', ')})`).join(', ')};\n`);
+};
+/** Les traces que le service écrit pour un mot-clé à repère (structure 136) : sa ligne mot_cle (id, clé) et celle de son repère. */
+const ligneDuMotCle = (m) => ({ id: m.id, cle: m.cle, verrou: 0, monnaie_id: null });
+const ligneDuRepere = (m) => ({ mot_cle_id: m.id, nom: m.libelle, adresse: m.url ?? null, definition: m.description ?? null, couleur: null, icone: null });
 const MOT_CLE_CODEX = { id: CODEX, libelle: 'codex', cle: 'codex' };
 // Une page du site de dev que la migration 0121 (R266 : trois graphies, Codex compris) a réécrite après le site garde, dans baseDImport(), le texte
 // du site avec la correction : son texte d'import n'existe plus (aide-base-d-import.mjs), et il peut citer un mot-clé que le site a créé. Le
@@ -144,7 +155,7 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
     `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES ('lot-mots', ${rang}, '2026-10-14T20:00:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
   const vocabulaire = join(tmp, 'mot_cle.sql');
   const FEU = ESSAI + 1;
-  const ecrireVocabulaire = (feu) => writeFileSync(vocabulaire, vocabulaireDEssai([MOT_CLE_CODEX, { id: FEU, libelle: feu, cle: normalize(feu) }]));
+  const ecrireVocabulaire = (feu) => ecrireVocabulaireDEssai(vocabulaire, [MOT_CLE_CODEX, { id: FEU, libelle: feu, cle: normalize(feu) }]);
   const avec = (...args) => codexPy(...args, '--out', tmp, '--vocabulaire', vocabulaire);
   const absent = join(tmp, 'absent.sql');
   const tagsDe = (f) => readFileSync(join(tmp, 'lore', f), 'utf8').match(/^tags: (.*)$/m)[1];
@@ -160,7 +171,7 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
   r = avec('--verifier', '--historique', absent);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   // un mot-clé du glossaire qui porte le nom d'une magie dans un autre sens (« Corruption », la jauge : MAGIES_HOMONYMES) n'est pas posé sur ses temples
-  writeFileSync(vocabulaire, vocabulaireDEssai([MOT_CLE_CODEX, { id: ESSAI + 2, libelle: 'Corruption', cle: 'corruption', description: 'Poison du chakra.' }]));
+  ecrireVocabulaireDEssai(vocabulaire, [MOT_CLE_CODEX, { id: ESSAI + 2, libelle: 'Corruption', cle: 'corruption', description: 'Poison du chakra.' }]);
   const cache = join(tmp, 'corruption');
   cpSync(join(tmp, 'lore'), join(cache, 'lore'), { recursive: true });
   assert.equal(codexPy('--out', cache, '--vocabulaire', vocabulaire, '--historique', absent).status, 0);
@@ -177,6 +188,7 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
   const autre = 'les-divinites.md';
   assert.ok(!porteuses.includes(autre));
   const historique = join(tmp, 'historique.sql');
+  // (une trace d'avant la migration 0136, quand le libellé était sur le mot-clé : l'historique du site les garde)
   writeFileSync(historique, [
     ligne(1, 'mot_cle', { id: FEU }, 'modifier', { libelle: 'Feu', cle: 'feu' }, { libelle: 'Flammes', cle: 'flammes' }),
     ligne(2, 'page_tag', { page_id: 'lore/les-divinites', ordre: 1 }, 'supprimer', { page_id: 'lore/les-divinites', ordre: 1, tag_id: ESSAI + 3 }, null),
@@ -207,17 +219,17 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
   // peut pas davantage le poser)
   const idSang = idDuMotCleNomme('sang');
   assert.ok(Number.isInteger(idSang), 'la correspondance de la 0113 donne un id entier à « sang »');
-  const sang = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(idSang);
+  const sang = db.prepare('SELECT libelle FROM v_mot_cle WHERE id = ?').get(idSang);
   if (!sang) assert.ok(historique.supprimee('mot_cle', { id: idSang }), 'le mot-clé « Sang » (0090) manque sans que le site de dev l’ait supprimé');
   const ecrituresDuSang = new Set(['sang', ...(sang ? [normalize(sang.libelle)] : [])]);
   for (const [nom, vocabulaire] of [
-    ['un vocabulaire d’essai', vocabulaireDEssai([MOT_CLE_CODEX, { id: idSang, libelle: 'Sang', cle: 'sang', description: 'La quatrième barre.' }])],
+    ['un vocabulaire d’essai', [MOT_CLE_CODEX, { id: idSang, libelle: 'Sang', cle: 'sang', description: 'La quatrième barre.' }]],
     ['le vocabulaire de la base', null],
   ]) {
     const tmp = dossierTemporaire('codex-sang', { t });
     const args = ['--out', tmp, '--historique', join(tmp, 'absent.sql')];
     if (vocabulaire) {
-      writeFileSync(join(tmp, 'mot_cle.sql'), vocabulaire);
+      ecrireVocabulaireDEssai(join(tmp, 'mot_cle.sql'), vocabulaire);
       args.push('--vocabulaire', join(tmp, 'mot_cle.sql'));
     } else {
       args.push('--base', BASE);
@@ -226,7 +238,7 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
     assert.equal(r.status, 0, r.stdout + r.stderr);
     const tags = (f) => JSON.parse(readFileSync(join(tmp, 'lore', f), 'utf8').match(/^tags: (.*)$/m)[1]);
     // l'étiquette écrit le libellé du mot-clé « codex », lu par son id (R309 le renomme « Codex »)
-    const codex = vocabulaire ? MOT_CLE_CODEX.libelle : db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(CODEX).libelle;
+    const codex = vocabulaire ? MOT_CLE_CODEX.libelle : db.prepare('SELECT libelle FROM v_mot_cle WHERE id = ?').get(CODEX).libelle;
     for (const page of ['confrerie-du-sang', 'la-pointe-de-sang']) assert.deepEqual(tags(`${page}.md`), [codex], `${nom} : lore/${page}`);
     assert.deepEqual(readdirSync(join(tmp, 'lore')).filter((f) => f.endsWith('.md') && tags(f).some((e) => ecrituresDuSang.has(normalize(e)))), [], nom);
   }
@@ -263,7 +275,8 @@ test('les renvois du Codex mènent tous à une page (les sommaires ne citent que
   const index = buildIndex(base.prepare('SELECT id, type, slug, titre FROM page').all()
     .map((p) => ({ id: p.id, type: p.type, slug: p.slug, title: p.titre, aliases: (alias.get(p.id) ?? []).map((a) => a.texte) })));
   const adresses = indexDesAdresses(base);
-  const motsCles = new Map(base.prepare('SELECT cle, url FROM mot_cle').all().map((m) => [m.cle, m]));   // la clé que cite une balise (0113)
+  // la clé que cite une balise (0113) ; l'adresse, celle de l'élément du mot-clé (0136)
+  const motsCles = new Map(motsClesDeLaBase(base, { elements: false }).map((m) => [m.cle, m]));
   const codex = base.prepare('SELECT p.id, p.corps_md FROM page p JOIN page_source ps ON ps.page_id = p.id AND ps.ordre = 0 JOIN source s ON s.id = ps.source_id WHERE s.texte = ? ORDER BY p.id').all(SOURCE);
   assert.equal(codex.length, 116);
   for (const p of codex) {
@@ -285,7 +298,7 @@ test('les renvois du Codex : des balises de mots-clés qui mènent chacun à une
   /** Les renvois des pages du Codex dans `base` (chacun vérifié) : leur nombre. */
   const renvoisDe = (base) => {
     const index = indexDesAdresses(base);
-    const motsCles = new Map(base.prepare('SELECT cle, libelle, url FROM mot_cle').all().map((m) => [m.cle, m]));   // la clé que cite une balise (0113)
+    const motsCles = new Map(motsClesDeLaBase(base, { elements: false }).map((m) => [m.cle, m]));   // la clé que cite une balise (0113) ; nom et adresse de l'élément (0136)
     const corps = base.prepare('SELECT corps_md FROM page WHERE id = ?');
     let renvois = 0;
     for (const p of pagesDuCodex) {
@@ -331,7 +344,7 @@ test('un renvoi sans exactement un mot-clé pour sa page : le texte simple, sign
     { id: ESSAI + 5, libelle: 'Balogne bis', cle: 'balogne-bis', url: '/lore/balogne/' },
     { id: ESSAI + 6, libelle: 'Épée', cle: 'epee', url: '/lore/mrode/#epee' },
   ];
-  writeFileSync(vocabulaire, vocabulaireDEssai(lignes));
+  ecrireVocabulaireDEssai(vocabulaire, lignes);
   const args = ['--out', tmp, '--vocabulaire', vocabulaire, '--historique', join(tmp, 'absent.sql')];
   const r = codexPy(...args);
   assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -354,9 +367,12 @@ test('un renvoi sans exactement un mot-clé pour sa page : le texte simple, sign
   assert.match(v.stdout, /renvoi sans mot-clé, écrit en texte simple : « Saugnane »/);
   // « Mrode » renommé « Mrode (continent) » sur le site de dev : sa clé suit (« mrode-continent », R232 (2)) et le site réécrit chaque texte qui le
   // cite (R232 (3) ; serveur/edition-mots-cles.mjs#reecrireLesCles : seule la clé change), chaque page réécrite notée au journal
-  writeFileSync(vocabulaire, vocabulaireDEssai(lignes.map((m) => (m === MRODE ? { ...m, libelle: 'Mrode (continent)', cle: 'mrode-continent' } : m))));
-  const journal = [`('lot-renomme', 1, '2026-11-07T10:00:00Z', 'essai', NULL, 'mot_cle', ${sqlDe(JSON.stringify({ id: MRODE.id }))}, 'modifier', `
-    + `${sqlDe(JSON.stringify({ libelle: 'Mrode', cle: 'mrode' }))}, ${sqlDe(JSON.stringify({ libelle: 'Mrode (continent)', cle: 'mrode-continent' }))})`];
+  ecrireVocabulaireDEssai(vocabulaire, lignes.map((m) => (m === MRODE ? { ...m, libelle: 'Mrode (continent)', cle: 'mrode-continent' } : m)));
+  // depuis la migration 0136 : le nom change sur le repère du mot-clé, la clé sur le mot-clé
+  const journal = [`('lot-renomme', 1, '2026-11-07T10:00:00Z', 'essai', NULL, 'repere', ${sqlDe(JSON.stringify({ mot_cle_id: MRODE.id }))}, 'modifier', `
+    + `${sqlDe(JSON.stringify({ nom: 'Mrode' }))}, ${sqlDe(JSON.stringify({ nom: 'Mrode (continent)' }))})`,
+  `('lot-renomme', 2, '2026-11-07T10:00:00Z', 'essai', NULL, 'mot_cle', ${sqlDe(JSON.stringify({ id: MRODE.id }))}, 'modifier', `
+    + `${sqlDe(JSON.stringify({ cle: 'mrode' }))}, ${sqlDe(JSON.stringify({ cle: 'mrode-continent' }))})`];
   const reecrites = [];
   for (const f of readdirSync(join(tmp, 'lore')).filter((n) => n.endsWith('.md'))) {
     const [, entete, corps] = readFileSync(join(tmp, 'lore', f), 'utf8').match(/^(---\n[\s\S]*?\n---\n)\n([\s\S]*)$/);
@@ -412,35 +428,39 @@ test('registre de corrections : décrit, appliqué à l’export (qui reste tel 
 test('--verifier : les renvois attendus se refont avec le vocabulaire de l’état d’import (mot-clé non mentionné supprimé, créé ou déplacé par le site, R196)', (t) => {
   const tmp = dossierTemporaire('codex-vocabulaire', { t });
   const sql = (v) => (v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
-  const motsCles = vocabulaireDEssai;
   const mc = (id, cle, libelle, url) => ({ id, libelle, cle, url });
   const dImport = [mc(CODEX, 'codex', 'codex', '/lore/codex/'), mc(ESSAI + 1, 'mrode', 'Mrode', '/lore/mrode/'), mc(ESSAI + 2, 'balogne', 'Balogne', '/lore/balogne/'),
     mc(ESSAI + 3, 'balogne-bis', 'Balogne bis', '/lore/balogne/')];
   const vocabulaire = join(tmp, 'mot_cle.sql');
   const historique = join(tmp, 'historique.sql');
-  writeFileSync(vocabulaire, motsCles(dImport));
+  ecrireVocabulaireDEssai(vocabulaire, dImport);
   // les pages écrites par l'import (aucun historique)
   const ecrites = codexPy('--out', tmp, '--vocabulaire', vocabulaire, '--historique', join(tmp, 'absent.sql'));
   assert.equal(ecrites.status, 0, ecrites.stdout + ecrites.stderr);
   assert.match(ecrites.stdout, /renvoi sans mot-clé, écrit en texte simple : « Balogne » \(2 mot\(s\)-clé\(s\)/);
   const verifier = () => codexPy('--verifier', '--out', tmp, '--vocabulaire', vocabulaire, '--historique', historique);
-  const op = (rang, id, operation, avant, apres) => `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES `
-    + `('lot-${rang}', 1, '2026-11-07T10:0${rang}:00Z', 'essai', NULL, 'mot_cle', ${sql(JSON.stringify({ id }))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
+  const trace = (lot, rang, table, cle, operation, avant, apres) => `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES `
+    + `('lot-${lot}', ${rang}, '2026-11-07T10:0${lot}:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
+  // depuis la migration 0136, le service crée, supprime et déplace un mot-clé à repère avec son repère (le nom et l'adresse sont sur le repère)
+  const supprimer = (lot, m) => [trace(lot, 1, 'repere', { mot_cle_id: m.id }, 'supprimer', ligneDuRepere(m), null),
+    trace(lot, 2, 'mot_cle', { id: m.id }, 'supprimer', ligneDuMotCle(m), null)];
+  const inserer = (lot, m) => [trace(lot, 1, 'mot_cle', { id: m.id }, 'inserer', null, ligneDuMotCle(m)),
+    trace(lot, 2, 'repere', { mot_cle_id: m.id }, 'inserer', null, ligneDuRepere(m))];
+  const deplacer = (lot, m, url) => [trace(lot, 1, 'repere', { mot_cle_id: m.id }, 'modifier', { adresse: m.url }, { adresse: url })];
   const [, mrode, , bis] = dImport;
   const cree = mc(ESSAI + 4, 'mrode-bis', 'Mrode bis', '/lore/mrode/');
   // le site supprime « Balogne bis » (aucune balise ne le cite), crée un second mot-clé vers « Mrode », puis déplace « Mrode » et le remet
   const courant = [...dImport.filter((m) => m !== bis), cree];
   const cas = [
-    ['supprimé', dImport.filter((m) => m !== bis), [op(1, bis.id, 'supprimer', { ...bis, description: null }, null)]],
-    ['créé', [...dImport, cree], [op(1, cree.id, 'inserer', null, { ...cree, description: null })]],
-    ['déplacé', dImport.map((m) => (m === mrode ? { ...m, url: '/lore/ailleurs/' } : m)), [op(1, mrode.id, 'modifier', { url: mrode.url }, { url: '/lore/ailleurs/' })]],
+    ['supprimé', dImport.filter((m) => m !== bis), supprimer(1, bis)],
+    ['créé', [...dImport, cree], inserer(1, cree)],
+    ['déplacé', dImport.map((m) => (m === mrode ? { ...m, url: '/lore/ailleurs/' } : m)), deplacer(1, mrode, '/lore/ailleurs/')],
     ['les trois', courant.map((m) => (m === mrode ? { ...m, url: '/lore/ailleurs/' } : m)), [
-      op(1, bis.id, 'supprimer', { ...bis, description: null }, null), op(2, cree.id, 'inserer', null, { ...cree, description: null }),
-      op(3, mrode.id, 'modifier', { url: mrode.url }, { url: '/lore/ailleurs/' }),
+      ...supprimer(1, bis), ...inserer(2, cree), ...deplacer(3, mrode, '/lore/ailleurs/'),
     ]],
   ];
   for (const [nom, actuel, lignes] of cas) {
-    writeFileSync(vocabulaire, motsCles(actuel));
+    ecrireVocabulaireDEssai(vocabulaire, actuel);
     writeFileSync(historique, `${lignes.join('\n')}\n`);
     const r = verifier();
     assert.equal(r.status, 0, `${nom} : ${r.stdout}${r.stderr}`);

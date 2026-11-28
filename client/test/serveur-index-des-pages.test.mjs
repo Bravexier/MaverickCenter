@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { tenirLIndexDesPages } from '../serveur/index-des-pages.mjs';
 import { demarrerService } from '../serveur/service.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -34,7 +35,8 @@ test('la ligne du service est celle de la fabrication, page par page (titre, ali
   const db = new DatabaseSync(chemin);
   // une page d'essai qui porte tout ce que le calcul transforme : balises (sans texte, avec texte, mode complet, dans un code), groupe d'onglets, ancre figée,
   // couleur d'intertitre, [[lien]], un alias et une étiquette
-  const motCle = db.prepare("SELECT id, cle FROM mot_cle WHERE url IS NOT NULL ORDER BY id LIMIT 1").get();
+  // (l'adresse se lit sur l'élément du mot-clé, migration 0136)
+  const motCle = motsClesDeLaBase(db, { elements: false }).find((m) => m.url !== null);
   const page = db.prepare("SELECT id FROM page WHERE statut <> 'example' ORDER BY id LIMIT 1").get().id;
   db.prepare('UPDATE page SET resume = ?, corps_md = ? WHERE id = ?').run(`Résumé qui cite {{${motCle.cle}|la Fulgurance}}.`,
     `Avec {{${motCle.cle}}} et {{${motCle.cle}:}}, en code \`{{qxwvcode}}\`, et [[Ailleurs|là-bas]].\n\n::: onglets\n\n### {couleur:rouge} Premier {#premier}\nTexte.\n\n:::\n`, page);

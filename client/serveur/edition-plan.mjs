@@ -214,7 +214,8 @@ export function domainesDuPlan({ refus, ErreurEdition, creerPage, supprimerPage,
         throw new ErreurEdition(409, `« ${ligne.titre} » ne se supprime pas : ${raisons.map((r) => r.texte).join(' ; ')}.`, { page: id, raisons });
       }
       // son propre mot-clé (R309) part avec elle, sauf s'il est verrouillé ; ses balises et étiquettes dans d'autres textes la retiennent. L'annulation d'un lot
-      // qui a créé une page de notion la retire sans son mot-clé (motCleARetirer : null) : ni ses mentions ni son verrou ne la retiennent
+      // qui a créé une page de notion la retire sans son mot-clé (motCleARetirer : null) : ni ses mentions ni son verrou ne la retiennent ; le mot-clé retrouve
+      // son repère, remis par le lot ou refait de la page (edition.mjs#supprimerPage, edition-ancrage.mjs#repereApresLAnnulation)
       const sansSonMotCle = notion && ctx.annulation && ligne.mot_cle_id != null;
       const citations = sansSonMotCle
         ? citationsBloquantes(citationsDe(db, id, { sansSonMotCle: true })).filter((c) => !(c.table === 'mot_cle' && c.cle?.id === ligne.mot_cle_id))

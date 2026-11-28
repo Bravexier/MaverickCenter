@@ -18,7 +18,7 @@ import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { decouperArtisanat } from '../src/lib/metier-champs.mjs';
 import { formeCanonique, formesNonCanoniques, lireBalises } from '../src/lib/mots-cles-balises.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
@@ -206,8 +206,8 @@ test('R224 (2) : le mot-clé créé par la 0111 mène à sa page, porte son titr
     assert.ok(m, c.id);
     assert.equal(m.page, c.page, `${c.id} : son adresse mène à ${c.page}`);
     assert.equal(m.libelle, imp.prepare('SELECT titre FROM page WHERE id = ?').get(c.page).titre, `${c.id} : libellé = titre de la page`);
-    const ligne = imp.prepare('SELECT description, verrou FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(c.id));
-    assert.deepEqual([ligne.description, ligne.verrou], [null, 1], c.id);
+    // la définition se lit sur l'élément du mot-clé (migration 0136 : ici, sa page)
+    assert.deepEqual([m.description, m.verrou], [null, 1], c.id);
     // une seule adresse mène à la page (sinon un lien saisi vers elle serait ambigu : lib/mots-cles-liens.mjs#motsClesDeLAdresse)
     assert.deepEqual([...mc.values()].filter((x) => x.page === c.page).map((x) => x.id), [idDuMotCleNomme(c.id)]);
   }
@@ -277,7 +277,8 @@ test('R228 : le mot-clé mode-super mène à la page du Mode Super, à l’adres
   assert.ok(registre.mots_cles.length > 0);
   for (const m of registre.mots_cles) {
     assert.equal(m.decision, 'R228');
-    const ligne = imp.prepare('SELECT url, verrou FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(m.id));
+    // l'adresse se lit sur l'élément du mot-clé (migration 0136)
+    const ligne = lireUnMotCle(imp, idDuMotCleNomme(m.id));
     assert.ok(ligne, m.id);
     assert.equal(ligne.url, `/${adresseDuGuide(m.page)}`, `${m.id} : l'adresse de ${m.page}`);
     assert.equal(ligne.verrou, 1, `${m.id} : un mot-clé à adresse est verrouillé (0110)`);

@@ -575,8 +575,100 @@ def ouvrir_base(chemin, schema=SCHEMA):
     return lecture
 
 
+# Le retrait des colonnes (migration 0136, chantier 4 des mots-clés) : le nom et l'adresse d'un mot-clé se lisent sur son élément (sa page, sinon son
+# sort, sinon son repère). Le vocabulaire chargé ici les remet sur la table mot_cle (forme d'avant : id, cle, libelle, url) pour garder sa lecture.
+ELEMENTS = {table: colonne for table, colonne, _ in T._ELEMENTS_DU_NOM}   # table de l'élément -> colonne de son nom
+
+
+def sans_nom_sur_le_mot_cle(schema):
+    """Vrai si la table mot_cle du schéma n'a plus de libellé (migration 0136 : le nom se lit sur l'élément)."""
+    with open(schema, encoding='utf-8') as f:
+        table = re.search(r'CREATE TABLE mot_cle \([\s\S]*?\) STRICT;', f.read()).group(0)
+    return not re.search(r'^\s*libelle\s', table, re.M)
+
+
+def adresse_de_page(page_id, slug_adresse=None):
+    """L'adresse d'une page servie par la route du wiki (« /lore/mrode/ ») : son type, puis son segment renommé (page.slug_adresse, R316), sinon
+    celui de son id (lib/metiers.mjs#adresseDePage). Exacte pour les pages du Codex, les seules dont ce module cherche l'adresse ; pour une autre
+    (guide, métier, page servie par une autre), une adresse qui n'est pas la sienne mais ne mène jamais sous /lore/ : elle ne sert qu'à dire que son
+    mot-clé en a une (Vocabulaire.etiquette)."""
+    type_page, _, reste = str(page_id).partition('/')
+    return f'/{type_page}/{slug_adresse or reste}/'
+
+
+def adresse_du_sort(sort_id):
+    """L'adresse d'un sort (« <magie>#sort:<slug> ») : la page de sa magie, à l'ancre de sa ligne (lib/adresses-db.mjs#adresseDuSort)."""
+    magie, _, slug = str(sort_id).partition('#sort:')
+    return f'{adresse_de_page(magie)}#sort-{slug}'
+
+
+def _champs_du_mot_cle(table, cle, operation, valeurs):
+    """Ce qu'une trace de l'élément `table` dit du nom et de l'adresse de son mot-clé, en colonnes de l'ancienne table mot_cle : {libelle, url}."""
+    champs = {}
+    if ELEMENTS[table] in valeurs:
+        champs['libelle'] = valeurs[ELEMENTS[table]]
+    if table == 'repere' and 'adresse' in valeurs:
+        champs['url'] = valeurs['adresse']
+    elif table == 'page' and 'slug_adresse' in valeurs:
+        champs['url'] = adresse_de_page(cle.get('id'), valeurs['slug_adresse'])
+    elif table == 'sort' and operation == 'supprimer':
+        champs['url'] = adresse_du_sort(cle.get('id'))
+    return champs
+
+
+def traces_du_vocabulaire(db, elements):
+    """Les traces de l'historique (historique_modification) qui touchent le nom ou l'adresse d'un mot-clé, dans l'ordre : [(id du mot-clé, table,
+    opération, avant, après)], avant et après en colonnes de l'ancienne table mot_cle. Celles de mot_cle telles quelles ; avec `elements` (structure
+    136), aussi celles de son élément (page.titre, page.slug_adresse, sort.nom, repere.nom, repere.adresse), dont le mot-clé se lit sur la trace ou la
+    ligne courante (maverick.py#_mot_cle_de_l_element) ; une trace d'élément sans mot-clé (page pas ancrée) est ignorée."""
+    tables = ['mot_cle'] + (list(ELEMENTS) if elements else [])
+    traces = []
+    for table, cle, operation, avant, apres in db.execute(
+            f"SELECT table_nom, cle, operation, avant, apres FROM historique_modification WHERE table_nom IN ({', '.join('?' for _ in tables)}) "
+            'ORDER BY fait_le, lot_id, rang', tables):
+        cle = json.loads(cle)
+        avant, apres = json.loads(avant or 'null') or {}, json.loads(apres or 'null') or {}
+        if table == 'mot_cle':
+            traces.append((cle.get('id'), table, operation, avant, apres))
+            continue
+        ident = T._mot_cle_de_l_element(db, table, cle, avant, apres)
+        if ident is not None:
+            traces.append((ident, table, operation, _champs_du_mot_cle(table, cle, operation, avant), _champs_du_mot_cle(table, cle, operation, apres)))
+    return traces
+
+
+def mot_cle_a_l_ancienne(db):
+    """Remplace, dans `db` (en mémoire, structure 136 : mot_cle, page, sort et repere chargés), la table mot_cle par sa forme d'avant la migration
+    0136 (id, cle, libelle, url) : le nom de l'élément (maverick.py#_libelles) et son adresse (adresse_de_page, adresse_du_sort, repere.adresse)."""
+    noms = {i: libelle for i, libelle, _ in T._libelles(db)}
+    urls = {}
+    for page_id, slug, ident in db.execute('SELECT id, slug_adresse, mot_cle_id FROM page WHERE mot_cle_id IS NOT NULL'):
+        urls[ident] = adresse_de_page(page_id, slug)
+    for sort_id, ident in db.execute('SELECT id, mot_cle_id FROM sort WHERE mot_cle_id IS NOT NULL'):
+        urls.setdefault(ident, adresse_du_sort(sort_id))
+    for ident, adresse in db.execute('SELECT mot_cle_id, adresse FROM repere'):
+        urls.setdefault(ident, adresse)
+    lignes = [(i, c, noms[i], urls.get(i)) for i, c in db.execute('SELECT id, cle FROM mot_cle')]
+    db.execute('CREATE TABLE mot_cle_lu (id INTEGER NOT NULL PRIMARY KEY, cle TEXT NOT NULL UNIQUE, libelle TEXT, url TEXT)')
+    db.executemany('INSERT INTO mot_cle_lu (id, cle, libelle, url) VALUES (?, ?, ?, ?)', lignes)
+    db.execute('DROP TABLE mot_cle')
+    db.execute('ALTER TABLE mot_cle_lu RENAME TO mot_cle')
+
+
+def tables_du_vocabulaire(chemin, historique, schema):
+    """Les tables que charge le vocabulaire (charger_tables) : mot_cle et l'historique ; depuis la migration 0136, aussi les éléments (page, sort,
+    repere), lus dans les exports voisins de `chemin` (data/rows/page.sql…), ou dans la base quand `chemin` est None."""
+    sources = {'mot_cle': chemin, 'historique_modification': historique}
+    if sans_nom_sur_le_mot_cle(schema):
+        for table in ELEMENTS:
+            sources[table] = os.path.join(os.path.dirname(chemin), f'{table}.sql') if chemin else None
+    return sources
+
+
 class Vocabulaire:
     """Les mots-clés du vocabulaire (table mot_cle de --base, ou data/rows/mot_cle.sql ; historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
+    Depuis la migration 0136, le nom et l'adresse se lisent sur l'élément du mot-clé (page.sql, sort.sql, repere.sql voisins, ou la base) : la table
+    mot_cle chargée est remise à sa forme d'avant (mot_cle_a_l_ancienne), et les traces de l'élément comptent comme celles du mot-clé.
     - protege(clé) : le libellé courant du mot-clé protégé de cette clé de maverick.py#MOTS_CLES_PROTEGES, ou None (un protégé se pose par l'id
       entier que lui donne ce dictionnaire) ;
     - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
@@ -596,14 +688,15 @@ class Vocabulaire:
 
     def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False, base=None):
         self.db = sqlite3.connect(':memory:')
-        charger_tables(self.db, schema, {'mot_cle': chemin, 'historique_modification': historique}, base)
+        sources = tables_du_vocabulaire(chemin, historique, schema)
+        charger_tables(self.db, schema, sources, base)
+        self.elements = 'page' in sources
+        if self.elements:
+            mot_cle_a_l_ancienne(self.db)
         if etat_d_import:
             self.defaire_le_site()
         self.d_import = {}   # id (entier) -> libellé d'avant la première modification de son libellé par le site
-        for cle, avant, apres in self.db.execute(
-                "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
-            ident = json.loads(cle).get('id')
-            avant, apres = json.loads(avant or 'null') or {}, json.loads(apres or 'null') or {}
+        for ident, _, _, avant, apres in traces_du_vocabulaire(self.db, self.elements):
             if ident not in self.d_import and ('libelle' in avant or 'libelle' in apres):
                 self.d_import[ident] = avant.get('libelle', apres.get('libelle'))
         self.par_chemin = {}
@@ -613,21 +706,30 @@ class Vocabulaire:
                 self.par_chemin.setdefault(chemin_url, []).append((cle, self.libelle_d_import(ident)))
 
     def defaire_le_site(self):
-        """Ramène la table mot_cle à son état d'import : chaque ligne touchée par le site, son historique rejoué à l'envers (historique-site.mjs#versLImport)."""
+        """Ramène la table mot_cle à son état d'import : chaque ligne touchée par le site, son historique rejoué à l'envers (historique-site.mjs#versLImport).
+        Depuis la migration 0136, une trace de l'élément (traces_du_vocabulaire) rend le nom et l'adresse d'avant, quelle que soit son opération : la
+        ligne du mot-clé ne naît ni ne meurt avec elle (un repère retiré quand le mot-clé est ancré sur une page) ; celle d'un mot-clé encore absent
+        (rejouée avant la suppression du mot-clé) attend qu'elle revienne."""
         colonnes = [r[1] for r in self.db.execute('PRAGMA table_info(mot_cle)')]
         operations = {}
-        for cle, operation, avant in self.db.execute(
-                "SELECT cle, operation, avant FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
-            operations.setdefault(json.loads(cle).get('id'), []).append((operation, json.loads(avant or 'null') or {}))
+        for ident, table, operation, avant, _ in traces_du_vocabulaire(self.db, self.elements):
+            operations.setdefault(ident, []).append((table, operation, avant))
         a_l_import = []
         for ident, ops in operations.items():
             trouvee = self.db.execute('SELECT * FROM mot_cle WHERE id = ?', (ident,)).fetchone()
             ligne = dict(zip(colonnes, trouvee)) if trouvee else None
-            for operation, avant in reversed(ops):
-                if operation == 'inserer':
+            en_attente = {}
+            for table, operation, avant in reversed(ops):
+                if table != 'mot_cle':
+                    if ligne is None:
+                        en_attente.update(avant)
+                    else:
+                        ligne.update(avant)
+                elif operation == 'inserer':
                     ligne = None
                 elif operation == 'supprimer':
-                    ligne = dict(avant)
+                    ligne = {**en_attente, **avant}
+                    en_attente = {}
                 elif ligne is not None:
                     ligne.update(avant)
             a_l_import.append(ligne)
@@ -691,19 +793,22 @@ def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None, base=No
     if historique is not None and not os.path.exists(historique):
         return {}
     db = sqlite3.connect(':memory:')
-    charger_tables(db, schema, {'historique_modification': historique}, base)
+    # depuis la migration 0136, le nom d'un mot-clé est celui de son élément : les tables page et sort disent de quel mot-clé une trace parle
+    elements = {t: (os.path.join(os.path.dirname(historique), f'{t}.sql') if historique else None) for t in ('page', 'sort')} \
+        if sans_nom_sur_le_mot_cle(schema) else {}
+    charger_tables(db, schema, {'historique_modification': historique, **elements}, base)
     pages = {}
     vues = set()
     nouvelle = lambda slug: pages.setdefault(slug, {'alias': {'retires': set(), 'remis': set()}})  # noqa: E731
     renommes = set()   # écritures (normalize) qu'un mot-clé a prises sur le site
-    for table_nom, cle, avant, apres in db.execute(
-            "SELECT table_nom, cle, avant, apres FROM historique_modification WHERE table_nom IN ('page_tag', 'mot_cle') ORDER BY fait_le, lot_id, rang"):
+    for table_nom, cle in db.execute(
+            "SELECT table_nom, cle FROM historique_modification WHERE table_nom = 'page_tag' ORDER BY fait_le, lot_id, rang"):
         cle = json.loads(cle)
-        if table_nom == 'page_tag':
-            if str(cle.get('page_id')).startswith(f'{TYPE}/'):
-                nouvelle(cle['page_id'][len(TYPE) + 1:])['mots_cles'] = True
-        elif apres and 'libelle' in json.loads(apres):
-            renommes.add(T.normalize(json.loads(apres)['libelle']))
+        if str(cle.get('page_id')).startswith(f'{TYPE}/'):
+            nouvelle(cle['page_id'][len(TYPE) + 1:])['mots_cles'] = True
+    for _, _, _, _, apres in traces_du_vocabulaire(db, bool(elements)):
+        if 'libelle' in apres:
+            renommes.add(T.normalize(apres['libelle']))
     for slug, texte in (sur_disque or {}).items():
         if renommes & {T.normalize(t) for t in pages_md.parse_frontmatter(texte)[0].get('tags') or []}:
             nouvelle(slug)['mots_cles'] = True

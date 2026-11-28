@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lireBalises, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { TABLES_DERIVEES, TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
@@ -30,6 +31,8 @@ function cellule(table, cle, col) {
   return un(`SELECT "${col}" AS v FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`, ...Object.values(cle))?.v;
 }
 const cleDuMotCle = (id) => un('SELECT cle FROM mot_cle WHERE id = ?', id)?.cle;
+// libellé, adresse et définition d'un mot-clé se lisent sur son élément (page, sort ou repère : migration 0136)
+const motCle = (id) => lireUnMotCle(dImport, id);
 const parDecision = (liste, decision) => registre[liste].filter((e) => e.decision === decision);
 
 testDeLaMixte('registre : chaque correction et chaque texte de la 0121 est en place à l’import (le nouveau écrit, l’ancien absent de la cellule)', () => {
@@ -120,7 +123,7 @@ testDeLaMixte('R266 : plus aucune autre écriture des trois graphies hors des tr
 testDeLaMixte('R258 (7), R268 : sept mots-clés sans adresse, non verrouillés, leur catégorie ; quatre infobulles, trois sans (NULL)', () => {
   assert.equal(registre.mots_cles.length, 7);
   for (const m of registre.mots_cles) {
-    const l = un('SELECT * FROM mot_cle WHERE id = ?', m.id);
+    const l = motCle(m.id);
     assert.ok(l, `mot-clé ${m.id}`);
     assert.equal(l.cle, normalize(l.libelle), `${m.id} : sa clé (aucun homonyme)`);
     assert.equal(l.url, null, `${m.id} : sans adresse`);
@@ -137,7 +140,7 @@ testDeLaMixte('R258 (7), R268 : sept mots-clés sans adresse, non verrouillés, 
   // Immatériel : la balise « Sort fer » de sa capacité comprise
   const immateriel = registre.mots_cles.find((m) => m.description_de?.id === 'immateriel');
   const sortFer = registre.constats.sort_fer.mot_cle_id;
-  assert.ok(lireBalises(un('SELECT description FROM mot_cle WHERE id = ?', immateriel.id).description).some((b) => b.ref === cleDuMotCle(sortFer)));
+  assert.ok(lireBalises(motCle(immateriel.id).description).some((b) => b.ref === cleDuMotCle(sortFer)));
 });
 
 testDeLaMixte('R258 (7) : balises posées sur les mots des effets des matériaux et du tableau de ressources/armes, sans réécrire le texte', () => {
@@ -159,7 +162,7 @@ testDeLaMixte('R258 (7) : le don « Avantage » du Porte-étendard n’est pas c
   const avantage = registre.mots_cles.find((m) => m.homonyme_non_capte);
   const page = avantage.homonyme_non_capte;
   assert.ok(un('SELECT 1 FROM page WHERE id = ?', page), page);
-  assert.equal(un('SELECT url FROM mot_cle WHERE id = ?', avantage.id).url, null);
+  assert.equal(motCle(avantage.id).url, null);
   assert.equal(un('SELECT count(*) AS n FROM page_tag WHERE tag_id = ?', avantage.id).n, 0, 'aucune page ne le porte en étiquette');
   assert.equal(un('SELECT count(*) AS n FROM lien WHERE cible = ? OR cible_page_id = ?', cleDuMotCle(avantage.id), page).n, 0, 'aucun lien vers le don ni par la balise');
   const corps = un('SELECT corps_md FROM page WHERE id = ?', page).corps_md;
@@ -168,7 +171,7 @@ testDeLaMixte('R258 (7) : le don « Avantage » du Porte-étendard n’est pas c
 
 testDeLaMixte('R258 (4) : le mot-clé « Sort fer » n’écrit aucun nombre de sorts ; 14 sorts le portent à l’import', () => {
   const id = registre.constats.sort_fer.mot_cle_id;
-  assert.doesNotMatch(un('SELECT description FROM mot_cle WHERE id = ?', id).description ?? '', /\d/);
+  assert.doesNotMatch(motCle(id).description ?? '', /\d/);
   assert.equal(un('SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ?', id).n, 14);
 });
 
@@ -217,7 +220,7 @@ testDeLaMixte('R265 : la page du Fongoïde mène à Dimitri et au Champicer par 
     assert.equal(texteSansBalises(e.apres), texteSansBalises(e.avant), 'aucun mot changé');
     const [b] = lireBalises(e.apres);
     assert.equal(b.ref, cleDuMotCle(e.mot_cle_id), `${e.col} : la balise du mot-clé ${e.mot_cle_id}`);
-    const url = un('SELECT url FROM mot_cle WHERE id = ?', e.mot_cle_id).url;
+    const url = motCle(e.mot_cle_id).url;
     assert.ok(cibles.has(url.replace(/^\/|\/$/g, '')), `${race} -> ${url}`);
   }
 });

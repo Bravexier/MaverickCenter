@@ -13,7 +13,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { lireBalises, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
-import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 
@@ -79,6 +79,14 @@ const COPIES = [
       && JSON.stringify(b.cle) === JSON.stringify({ id: m.description_de.id })))
     .map((m) => ({ table: 'mot_cle', cle: { id: m.id }, colonne: 'description' })),
 ];
+/** Où se lit aujourd'hui la définition d'une copie `mot_cle.description` dans la base `base` : sur l'élément du mot-clé, sa page ou son repère (migration 0136). */
+const copieSurLElement = (base, { table, cle, colonne }) => {
+  if (table !== 'mot_cle' || colonne !== 'description') return [];
+  const element = lireUnMotCle(base, cle.id)?.element;
+  if (element?.table === 'page') return [{ table: 'page', cle: { id: element.id }, colonne: 'definition' }];
+  if (element?.table === 'repere') return [{ table: 'repere', cle: { mot_cle_id: cle.id }, colonne: 'definition' }];
+  return [];
+};
 const cleDe = ({ table, cle, colonne }) => `${table}|${JSON.stringify(cle)}|${colonne}`;
 const valeur = ({ table, cle, colonne }) => {
   const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
@@ -92,7 +100,8 @@ test('R164, R237 (2) : « Sort fer » étiquette chaque sort « Fer… » (sort_
   // son id entier (migration 0113 : lib/mots-cles-proteges.mjs)
   const fer = IDS_DES_MOTS_CLES_PROTEGES['sort-fer'];
   assert.equal(lignes('SELECT id FROM mot_cle WHERE id = ?', fer).length, 1);
-  assert.deepEqual(lignesDImport('SELECT id, libelle, cle, description FROM mot_cle WHERE id = ?', fer),
+  // le nom et la définition se lisent sur l'élément du mot-clé (migration 0136) : la vue v_mot_cle les rend
+  assert.deepEqual(lignesDImport('SELECT id, libelle, cle, description FROM v_mot_cle WHERE id = ?', fer),
     [{ id: fer, libelle: 'Sort fer', cle: 'sort-fer', description: "Type de sort d'amélioration qui s'applique sur une arme." }]);
   const etiquetes = lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', fer).map((l) => l.sort_id);
   // les sorts de R164 et Fer brillant (R237 (2)) : comptés par l'étiquette, sans effectif figé
@@ -149,7 +158,7 @@ test('R164 : la balise « Sort fer » est posée dans les huit textes qui parlen
     if (b.site) assert.equal(texteSansBalises(texte), texteSansBalises(texteDImport(b.table, b.cle, b.colonne)), cleDe(b));
     else assert.ok(!historique.modifiee(b.table, b.cle, b.colonne), `${cleDe(b)} : balisé par la migration, pas par le site`);
   }
-  const permis = new Set([...BALISES, ...COPIES].map(cleDe));
+  const permis = new Set([...BALISES, ...COPIES, ...COPIES.flatMap((c) => copieSurLElement(apres, c))].map(cleDe));
   const ailleurs = [];
   for (const { table, colonne, cle } of textesDeLaBase(apres)) {
     const champs = cle.map((c) => `"${c}"`).join(', ');

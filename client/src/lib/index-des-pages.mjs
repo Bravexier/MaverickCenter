@@ -44,8 +44,9 @@ export function lignesDeLIndex(db, { ids = null, vocabulaire = vocabulaireDeLInd
     return m;
   };
   const alias = parPage(db.prepare(`SELECT page_id, texte FROM alias${filtre('page_id')} ORDER BY page_id, ordre`).all(...params), (r) => r.texte);
-  const tags = parPage(db.prepare(`SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id${filtre('t.page_id')} ORDER BY t.page_id, t.ordre`).all(...params),
-    (r) => r.libelle);
+  // le libellé d'une étiquette est celui de l'élément de son mot-clé (migration 0136) : il se lit dans le vocabulaire, celui de toute la base
+  const tags = parPage(db.prepare(`SELECT t.page_id, t.tag_id FROM page_tag t${filtre('t.page_id')} ORDER BY t.page_id, t.ordre`).all(...params)
+    .filter((r) => vocabulaire.parId.has(r.tag_id)), (r) => vocabulaire.parId.get(r.tag_id).libelle);
   const sans = (t) => texteSansBalises(t, vocabulaire);
   return db.prepare(`SELECT id, titre, resume, corps_md FROM page${filtre('id')} ORDER BY id`).all(...params).map((p) => [
     p.id, sans(p.titre), (alias.get(p.id) ?? []).join('\n'), (tags.get(p.id) ?? []).join('\n'), sans(p.resume ?? ''), textePlein(p.corps_md, vocabulaire),

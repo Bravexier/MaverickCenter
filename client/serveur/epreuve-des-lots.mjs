@@ -212,7 +212,9 @@ export function lotDeLaDifference(diff, db, { titre, nature, decision, auteur })
     for (const l of diff[table].inserees) {
       let k = cleDe_(table, l);
       let ligne = copieDe(l);
-      if (cle.length === 1 && estEntiere(types[cle[0]])) {
+      // une clé qui est aussi une clé étrangère (repere.mot_cle_id) n'a pas de numéro à elle : c'est celui de la ligne citée (boucle ci-dessous)
+      const cleEtrangere = clesEtrangeres(db, table).some((f) => f.colonne === cle[0]);
+      if (cle.length === 1 && estEntiere(types[cle[0]]) && !cleEtrangere) {
         const jeton = `${table}_${l[cle[0]]}`;
         if (!jetons.has(table)) jetons.set(table, new Map());
         jetons.get(table).set(l[cle[0]], jeton);

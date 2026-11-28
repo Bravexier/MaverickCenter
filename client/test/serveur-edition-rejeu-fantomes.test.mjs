@@ -15,10 +15,11 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { lotHorsRoute } from './aide-mot-cle-nu.mjs';
-import { reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
+import { poserUnMotCle, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const racine = dossierTemporaire('rejeu-fantomes');
 let compteur = 0;
@@ -51,9 +52,10 @@ function rebatir(source, regles = null) {
   }
   for (const m of source.prepare('SELECT * FROM modification').all()) {
     if (horsDeLAncienneForme(m.table_nom, JSON.parse(m.avant ?? m.apres ?? 'null'))) continue;
-    const ancienne = (x) => (x === null ? null : JSON.stringify(enAncienneForme(m.table_nom, JSON.parse(x))));
+    const a = enAncienneForme(m.table_nom, ...[m.cle, m.avant, m.apres].map((x) => (x === null ? null : JSON.parse(x))));
+    const enJson = (x) => (x === null ? null : JSON.stringify(x));
     neuve.prepare('INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(m.lot_id, m.rang, m.table_nom, ancienne(m.cle), m.operation, ancienne(m.avant), ancienne(m.apres), m.etat, m.detail, m.apercu);
+      .run(m.lot_id, m.rang, a.table, enJson(a.cle), m.operation, enJson(a.avant), enJson(a.apres), m.etat, m.detail, m.apercu);
   }
   neuve.exec('PRAGMA foreign_keys = OFF');
   neuve.exec('BEGIN');
@@ -186,6 +188,8 @@ test('fusions en chaîne (S dans N créé, puis N dans M) que les règles neuves
   lot([{ op: 'fusionner_mots_cles', mot_cle: n, dans: m }]);
   const sansM = (db) => {
     db.prepare('DELETE FROM page_tag WHERE tag_id = ?').run(m);
+    // son repère avec lui (migration 0136 : les clés étrangères sont coupées pendant la livraison, la cascade ne joue pas)
+    db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(m);
     db.prepare('DELETE FROM mot_cle WHERE id = ?').run(m);
   };
   const etat = (r) => ({
@@ -206,7 +210,7 @@ const rapatrier = (base) => {
   const journal = journalExporte(base);
   for (const l of journal.lots) {
     l.modifications = l.modifications.filter((m) => !horsDeLAncienneForme(m.table, m.avant ?? m.apres));
-    for (const m of l.modifications) for (const c of ['cle', 'avant', 'apres']) m[c] = enAncienneForme(m.table, m[c]);
+    for (const m of l.modifications) Object.assign(m, enAncienneForme(m.table, m.cle, m.avant, m.apres));
   }
   return { ...appliquerJournal(journal, { rows }), rows };
 };
@@ -221,21 +225,26 @@ const etatsParLot = (b) => {
 /**
  * Les mots-clés libres que l'ancien rejeu avait tirés d'un lot d'avant la 0043 (commeLAncienRejeu) : ancien id texte → l'id entier qu'ils ont dans la
  * base du test. Le site de dev de ces scénarios est d'avant la migration 0113 : son journal les nomme par leur id texte (et la clé est `libelle_cle`) ;
- * enAncienneForme y remet les lots que le service du test a notés, avant de les rejouer ou de les rapatrier.
+ * enAncienneForme y remet les lignes que le service du test a notées sur eux, avant de les rejouer ou de les rapatrier. Les autres lignes gardent la forme
+ * d'aujourd'hui : un journal d'avant la 0113 écrivait aussi le libellé d'un mot-clé créé, que le service ne note plus depuis la migration 0136.
  */
 const FANTOMES = new Map();
 /** Une ligne qu'un journal d'avant la 0113 n'a pas : la clé quittée d'un mot-clé libre (mot_cle_ancienne_cle, que le service note depuis). */
 const horsDeLAncienneForme = (table, ligne) => table === 'mot_cle_ancienne_cle' && [...FANTOMES.values()].includes(ligne?.mot_cle_id);
-function enAncienneForme(table, valeur) {
-  if (!valeur || typeof valeur !== 'object' || !['mot_cle', 'page_tag'].includes(table)) return valeur;
+/** Une ligne du journal ({ table, cle, avant, apres }) d'un mot-clé libre (FANTOMES) dans la forme d'avant la 0113 ; une autre, telle quelle. */
+function enAncienneForme(table, cle, avant, apres) {
   const texte = (n) => [...FANTOMES].find(([, id]) => id === n)?.[0] ?? n;
-  const sortie = {};
-  for (const [c, v] of Object.entries(valeur)) {
-    if ((table === 'mot_cle' && c === 'id') || (table === 'page_tag' && c === 'tag_id')) sortie[c] = texte(v);
-    else if (table === 'mot_cle' && c === 'cle') sortie.libelle_cle = v;
-    else sortie[c] = v;
+  const valeurs = (f) => [cle, avant, apres].map((v) => (v && typeof v === 'object' ? f(v) : v));
+  if (table === 'page_tag') {
+    const [c, a, p] = valeurs((v) => ('tag_id' in v ? { ...v, tag_id: texte(v.tag_id) } : v));
+    return { table, cle: c, avant: a, apres: p };
   }
-  return sortie;
+  const id = table === 'mot_cle' ? cle?.id : table === 'repere' ? cle?.mot_cle_id : undefined;
+  if (id === undefined || texte(id) === id) return { table, cle, avant, apres };
+  // le repère d'un mot-clé libre (migration 0136) : ses colonnes étaient celles du mot-clé avant elle
+  const colonnes = { id: 'id', cle: 'libelle_cle', ...(table === 'repere' ? { mot_cle_id: 'id', nom: 'libelle', adresse: 'url', definition: 'description' } : {}) };
+  const [c, a, p] = valeurs((v) => Object.fromEntries(Object.entries(v).map(([k, x]) => [colonnes[k] ?? k, (colonnes[k] ?? k) === 'id' ? texte(x) : x])));
+  return { table: 'mot_cle', cle: c, avant: a, apres: p };
 }
 /** Un lot d'avant la migration 0043 : une ligne de page_tag avec son `libelle` (l'écriture du mot-clé, que le vocabulaire n'avait pas encore). */
 const lotDAvant0043 = (base, id, fait, rang, operation, ligne) => {
@@ -256,7 +265,8 @@ const commeLAncienRejeu = (base, ligne) => {
   // loin des ids que le service donne : une page créée ancre son mot-clé (R309), et enAncienneForme relirait cet id comme celui du fantôme
   const id = FANTOMES.get(ligne.tag_id) ?? Math.max(900000, base.prepare('SELECT max(id) + 1 AS n FROM mot_cle').get().n, ...[...FANTOMES.values()].map((n) => n + 1));
   FANTOMES.set(ligne.tag_id, id);
-  base.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(id, ligne.libelle, normalize(ligne.libelle));
+  // sans page ni sort : son nom dans son repère (migration 0136)
+  poserUnMotCle(base, { id, libelle: ligne.libelle, cle: normalize(ligne.libelle) });
   base.prepare('INSERT INTO page_tag (page_id, ordre, tag_id) VALUES (?, ?, ?)').run(ligne.page_id, ligne.ordre, id);
 };
 
@@ -376,12 +386,14 @@ test('mot-clé libre d’un lot d’avant 0043 posé puis retiré par le journal
   assert.notEqual(doublon.statut, 200, 'le service ne crée pas un second mot-clé de même écriture');
   serviceDe(r1.base, 'recherche/')([{ op: 'modifier', table: 'mot_cle', cle: { id: cree }, valeurs: { libelle: `${libelle} renommé` }, avant: { libelle } }]);
   const r2 = rebatir(r1.base);
-  assert.equal(r2.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(cree)?.libelle, `${libelle} renommé`);
+  assert.equal(lireUnMotCle(r2.base, cree)?.libelle, `${libelle} renommé`);
   assert.deepEqual(etatsParLot(r2.base), ['integree', 'integree', 'en_attente', 'en_attente']);
   // le rapatriement rejoue les lots d'avant (intégrés, pas encore livrés) avec la création : celle-ci n'est pas prise pour leur mot-clé sauté
   const res = rapatrier(r1.base);
   assert.deepEqual(res.conflits, []);
-  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`(${cree}, '${libelle} renommé'`), 'data/rows a le mot-clé, renommé');
+  // (son nom, dans son repère : migration 0136)
+  assert.ok(readFileSync(join(res.rows, 'mot_cle.sql'), 'utf8').includes(`VALUES (${cree}, `), 'data/rows a le mot-clé');
+  assert.ok(readFileSync(join(res.rows, 'repere.sql'), 'utf8').includes(`(${cree}, '${libelle} renommé'`), 'et son repère, renommé');
 });
 
 test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, le premier en conflit : libre, aucun effet depuis 0056 (D4) ; dont le site se sert, l’écriture est celle du lot qui le pose, stable d’une reconstruction à l’autre', () => {
@@ -402,7 +414,8 @@ test('mot-clé d’un lot d’avant 0043 écrit de deux façons par deux lots, l
     const r1 = rebatir(base, regles);
     const r2 = rebatir(r1.base, regles);
     // le mot-clé créé par le rejeu a un id entier (migration 0113) : on le suit par sa clé
-    const motCle = (b) => (b.prepare('SELECT libelle FROM mot_cle WHERE cle = ?').get(id) ? { ...b.prepare('SELECT libelle FROM mot_cle WHERE cle = ?').get(id) } : null);
+    // (son libellé, lu sur son élément : vue v_mot_cle, migration 0136)
+    const motCle = (b) => (b.prepare('SELECT libelle FROM v_mot_cle WHERE cle = ?').get(id) ? { ...b.prepare('SELECT libelle FROM v_mot_cle WHERE cle = ?').get(id) } : null);
     if (protege) {
       assert.deepEqual(motCle(r1.base), { libelle: l2.libelle }, 'l’écriture du lot qui le pose');
       assert.deepEqual(etatsParLot(r1.base), ['conflit', 'en_attente']);

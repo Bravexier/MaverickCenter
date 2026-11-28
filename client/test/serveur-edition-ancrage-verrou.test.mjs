@@ -10,13 +10,12 @@ import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurEdition, enregistrer, OUTILS_DE_RESOLUTION, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte, nouveauLot, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, appliquer, decisionsCitees, deposer, deposerEtAppliquer, lire, previsualiserLAnnulation } from '../serveur/edition-lots.mjs';
-import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { baseDAncrage, idDeCategorie, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
+import { ancrerUnMotCle, baseDAncrage, idDeCategorie, poserMagie, poserMotCle, poserPage, poserSort, recalculerLesCles } from './aide-ancrage.mjs';
 import { copieDeLaBaseLegere } from './aide-base-legere.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -29,8 +28,8 @@ const TOUS_LES_VERROUS = ['R218', 'R219', 'R232', 'R233', 'R309'];
 function monde(plus = () => ({})) {
   const memoire = baseDAncrage();
   const page = poserPage(memoire, 'guide/zephyrion-page', nom('page'));
-  const ancre = poserMotCle(memoire, { libelle: nom('page'), url: adresseDeLaPage(page), categories: ['Don'] });
-  memoire.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(ancre, page);
+  // son nom et son adresse se lisent sur sa page, sans repère (migration 0136)
+  const ancre = ancrerUnMotCle(memoire, 'page', page, { categories: ['Don'] });
   const libre = poserMotCle(memoire, { libelle: nom('libre'), categories: ['Règles'] });
   const autre = poserMotCle(memoire, { libelle: nom('autre'), categories: ['Combat'] });
   const ajout = plus(memoire, { page, ancre, libre, autre });
@@ -52,7 +51,8 @@ const lot = (operations) => ({ format: FORMAT_DU_LOT, titre: `Verrou d’essai $
 const proposer = (m, operations) => deposer(m.base, lot(operations), { enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });
 const deposerDirect = (m, operations, plus = {}, par = 'cle_de_depot') => deposerEtAppliquer(m.base, { ...lot(operations), ...plus }, { par, enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });
 const route = (m, operations) => enregistrer(m.db, { page: 'essai/', operations });
-const motCle = (m, id) => ({ ...m.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id) });
+/** Un mot-clé : son nom, son adresse, sa définition, sa couleur et son icône lus sur son élément (page, sinon sort, sinon repère : migration 0136). */
+const motCle = (m, id) => ({ ...lireUnMotCle(m.db, id) });
 const categoriesDe = (m, id) => m.db.prepare('SELECT categorie_id AS c FROM mot_cle_categorie WHERE mot_cle_id = ? ORDER BY c').all(id).map((l) => l.c);
 const synonymesDe = (m, id) => m.db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre').all(id).map((l) => l.libelle);
 const refusees = (m, p) => lire(m.db, p.id).essai.operations.filter((o) => o.etat === 'refusee');
@@ -63,7 +63,10 @@ const modifier = (m, id, apres) => {
 };
 const retirerCategorie = (id, c) => ({ table: 'mot_cle_categorie', cle: { mot_cle_id: id, categorie_id: c }, operation: 'supprimer', avant: { mot_cle_id: id, categorie_id: c } });
 const poserCategorie = (id, c) => ({ table: 'mot_cle_categorie', cle: { mot_cle_id: id, categorie_id: c }, operation: 'inserer', apres: { mot_cle_id: id, categorie_id: c } });
-const supprimerLeMotCle = (m, id) => ({ table: 'mot_cle', cle: { id }, operation: 'supprimer', avant: motCle(m, id) });
+const supprimerLeMotCle = (m, id) => {
+  const { element: _, ...avant } = motCle(m, id);
+  return { table: 'mot_cle', cle: { id }, operation: 'supprimer', avant };
+};
 const synonymeDuLot = (id, libelle) => ({
   table: 'mot_cle_synonyme', cle: { id: { $numero: 's' } }, operation: 'inserer', apres: { id: { $numero: 's' }, mot_cle_id: id, libelle, libelle_cle: normalize(libelle), ordre: 0 },
 });
@@ -143,7 +146,7 @@ test('R309, route : une cible ancrée reçoit la clé de la source et rien d’a
   const m = monde();
   const avant = motCle(m, m.ancre);
   const source = motCle(m, m.libre);
-  m.db.prepare('UPDATE mot_cle SET couleur = ?, icone = ? WHERE id = ?').run('#445566', ICONES[0].valeur, m.libre);
+  assert.equal(m.db.prepare('UPDATE repere SET couleur = ?, icone = ? WHERE mot_cle_id = ?').run('#445566', ICONES[0].valeur, m.libre).changes, 1);
   route(m, [{ op: 'fusionner_mots_cles', mot_cle: m.libre, dans: m.ancre }]);
   assert.deepEqual(motCle(m, m.ancre), avant, 'ni couleur, ni icône, ni adresse');
   assert.equal(m.db.prepare('SELECT mot_cle_id AS id FROM mot_cle_ancienne_cle WHERE cle = ?').get(source.cle)?.id, m.ancre, 'la clé de la source mène à la cible');
@@ -203,7 +206,8 @@ test('un mot-clé sans élément garde tous ses gestes', () => {
 test('R309 : forcer la suppression d’un mot-clé sans élément réécrit la définition d’un ancré qui le cite', () => {
   const m = monde();
   const { cle } = motCle(m, m.libre);
-  m.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${cle}}}.`, m.ancre);
+  // la définition de l'ancré : celle de sa page (migration 0136)
+  m.db.prepare('UPDATE page SET definition = ? WHERE id = ?').run(`Voir {{${cle}}}.`, m.page);
   route(m, [{ op: 'supprimer', entite: 'mot_cle', cle: { id: m.libre }, forcer: true }]);
   assert.equal(m.db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(m.libre), undefined);
   assert.ok(!motCle(m, m.ancre).description.includes('{{'), 'sa balise est devenue du texte');
@@ -213,7 +217,7 @@ test('R309 : forcer la suppression d’un mot-clé sans élément réécrit la d
 test('R309 : fusionner un mot-clé sans élément recible la balise de la définition d’un ancré', () => {
   const m = monde();
   const { cle } = motCle(m, m.libre);
-  m.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${cle}}}.`, m.ancre);
+  m.db.prepare('UPDATE page SET definition = ? WHERE id = ?').run(`Voir {{${cle}}}.`, m.page);
   route(m, [{ op: 'fusionner_mots_cles', mot_cle: m.libre, dans: m.autre }]);
   assert.ok(motCle(m, m.ancre).description.includes(motCle(m, m.autre).cle));
   m.db.close();
@@ -246,7 +250,9 @@ test('le refus d’un lot sur le nom ne cite aucun numéro de décision', async 
 
 test('un libellé qui s’écrit comme un numéro de décision n’ouvre pas le refus', async () => {
   const m = monde();
-  m.db.prepare('UPDATE mot_cle SET libelle = ? WHERE id = ?').run('R218', m.ancre);
+  // le nom de l'ancré : le titre de sa page (migration 0136)
+  m.db.prepare('UPDATE page SET titre = ? WHERE id = ?').run('R218', m.page);
+  assert.equal(motCle(m, m.ancre).libelle, 'R218');
   const p = await proposer(m, [modifier(m, m.ancre, { url: '/races/' })]);
   const [r] = refusees(m, p);
   assert.deepEqual(decisionsCitees(r.message), [], r.message);
@@ -341,14 +347,13 @@ test('R309, lot : ramener à un seul type un mot-clé qui en avait plusieurs pas
 test('un lot `ancrage: { aligner: true }` dont `apres` porte un autre nom n’écrit jamais ce nom', async () => {
   const m = monde();
   const pris = nom('titre de la page');
-  m.db.prepare('UPDATE page SET titre = ? WHERE id = ?').run(pris, m.page);
+  await deposerDirect(m, [{ table: 'page', cle: { id: m.page }, operation: 'modifier', avant: { titre: motCle(m, m.ancre).libelle }, apres: { titre: pris } }]);
   const autreNom = nom('un autre nom');
   const p = await proposer(m, [{ ...modifier(m, m.ancre, { libelle: autreNom }), ancrage: { aligner: true } }]);
   assert.equal(p.verdict, 'a_corriger', 'l’alignement écrit le nom de l’élément, la ligne attendue diffère');
   assert.throws(() => appliquer(m.db, p.id, { verrous_ouverts: TOUS_LES_VERROUS }), (e) => e instanceof ErreurEdition && e.statut === 409);
   assert.notEqual(motCle(m, m.ancre).libelle, autreNom);
-  // l'alignement reste la voie du nom : celui de l'élément passe
-  await deposerDirect(m, [{ ...modifier(m, m.ancre, { libelle: pris }), ancrage: { aligner: true } }]);
+  // le nom de l'élément se lit sur le mot-clé (migration 0136) : il n'y a plus de copie à aligner
   assert.equal(motCle(m, m.ancre).libelle, pris);
   clesJustes(m);
   m.db.close();
@@ -405,14 +410,18 @@ test('un ancien lot repasse au rejeu (R219 (6))', () => {
   // ici, le même mot-clé est désormais ancré : les lots d'avant l'ancrage se rejouent tels quels
   const page = m.db.prepare("SELECT id FROM page WHERE statut <> 'example' AND mot_cle_id IS NULL AND id LIKE 'capacites/%' ORDER BY id LIMIT 1").get().id;
   m.db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(id, page);
+  m.db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(id); // un repère ne double jamais une page (migration 0136)
   m.db.exec('BEGIN');
   chargerJournal(m.db, suite);
   const bilan = rejouerLeJournal(m.db);
   m.db.exec('COMMIT');
   m.db.exec('PRAGMA foreign_keys = ON');
   assert.equal(bilan.conflits, 0, JSON.stringify(bilan));
-  assert.equal(motCle(m, id).libelle, libelle);
+  // son nom se lit désormais sur sa page (migration 0136) : le renommage d'avant l'ancrage passe sans rien écrire ; sa couleur va sur la page
+  assert.notEqual(motCle(m, id).libelle, libelle);
+  assert.equal(motCle(m, id).libelle, m.db.prepare('SELECT titre FROM page WHERE id = ?').get(page).titre);
   assert.equal(motCle(m, id).couleur, '#112233');
+  assert.equal(m.db.prepare('SELECT couleur FROM page WHERE id = ?').get(page).couleur, '#112233');
   assert.deepEqual(categoriesDe(m, id), [c2]);
   m.db.close();
 });
@@ -426,15 +435,21 @@ test('un ancien lot à deux catégories repasse (`gel` faux)', () => {
   m.db.close();
 });
 
-test('R309 : la résolution d’un lot ancien (`gel: false`) n’est pas sous le verrou', () => {
+// Depuis la migration 0136, le nom d'un mot-clé ancré n'est plus une colonne du mot-clé : il se lit sur sa page ou son sort. La résolution, qui n'est pas
+// sous le verrou (R219 (6)), ne l'écrit donc pas davantage ; elle écrit ce que porte l'élément (sa définition).
+test('R309 : à la résolution d’un lot ancien (`gel: false`), le nom d’un mot-clé de page ne s’écrit pas (il se lit sur elle) ; sa définition, si', () => {
   const m = monde();
   const libelle = nom('résolu');
   const { id, instant } = nouveauLot();
   m.db.exec('BEGIN IMMEDIATE');
   try {
     const w = ouvrirLot(m.db, { id, instant });
-    OUTILS_DE_RESOLUTION.modifier({ db: m.db, w, instant, crees: [], forcees: [], fusions: [] }, { op: 'modifier', table: 'mot_cle', cle: { id: m.ancre }, valeurs: { libelle } });
-    assert.equal(motCle(m, m.ancre).libelle, libelle);
+    const ctx = { db: m.db, w, instant, crees: [], forcees: [], fusions: [] };
+    refusSansNumero(() => OUTILS_DE_RESOLUTION.modifier(ctx, { op: 'modifier', table: 'mot_cle', cle: { id: m.ancre }, valeurs: { libelle } }));
+    assert.notEqual(motCle(m, m.ancre).libelle, libelle);
+    OUTILS_DE_RESOLUTION.modifier(ctx, { op: 'modifier', table: 'mot_cle', cle: { id: m.ancre }, valeurs: { description: 'Résolue.' } });
+    assert.equal(motCle(m, m.ancre).description, 'Résolue.');
+    assert.equal(m.db.prepare('SELECT definition FROM page WHERE id = ?').get(m.page).definition, 'Résolue.', 'écrite sur la page');
   } finally {
     m.db.exec('ROLLBACK');
   }
@@ -448,12 +463,14 @@ test('R309 : la résolution d’un lot ancien (`gel: false`) n’est pas sous le
 /** Deux homonymes : un mot-clé ancré, et un mot-clé sans élément qu'un lot retire ; la clé de l'ancré change alors seule. */
 function mondeAHomonymes() {
   const m = monde((db, { ancre }) => {
-    const { libelle } = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(ancre);
+    const { libelle } = lireUnMotCle(db, ancre);
     return { homonyme: poserMotCle(db, { libelle, categories: ['Combat'] }) };
   });
   return m;
 }
 const ligneDuVoisin = (m, p, id) => lire(m.db, p.id).lignes.find((l) => l.table === 'Mot-clé' && l.genre === 'modifier' && l.colonnes.every((c) => c.colonne === 'cle') && l.colonnes.length === 1 && l.ligne !== undefined && numeroDe(m, p, id) === l.n);
+/** Le numéro de la ligne du repère du mot-clé `id` dans le lot `p` (son nom, migration 0136). */
+const numeroDuRepere = (m, p, id) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lire(m.db, p.id).lot_id, 'repere').find((l) => JSON.parse(l.cle).mot_cle_id === id)?.rang;
 const numeroDe = (m, p, id) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lire(m.db, p.id).lot_id, 'mot_cle').find((l) => JSON.parse(l.cle).id === id)?.rang;
 
 test('R309 : la clé recalculée d’un voisin n’est pas annulable seule, avec un motif et sans verrou ouvrable', async () => {
@@ -478,11 +495,11 @@ test('R309 : la clé recalculée d’un voisin n’est pas annulable seule, avec
 test('R309 : la clé d’un voisin revient avec la ligne qui l’a causée', async () => {
   const m = mondeAHomonymes();
   const cleAvant = motCle(m, m.ancre).cle;
-  // l'homonyme change de nom : sa ligne porte le nom, celle du voisin sa seule clé
+  // l'homonyme change de nom : la ligne de son repère porte le nom (migration 0136), celle du voisin sa seule clé
   const fait = await deposerDirect(m, [modifier(m, m.homonyme, { libelle: nom('parti') })]);
   assert.notEqual(motCle(m, m.ancre).cle, cleAvant);
   assert.equal(ligneDuVoisin(m, fait, m.ancre).annulable_seule, false);
-  const cause = lire(m.db, fait.id).lignes.find((l) => l.n === numeroDe(m, fait, m.homonyme));
+  const cause = lire(m.db, fait.id).lignes.find((l) => l.n === numeroDuRepere(m, fait, m.homonyme));
   assert.equal(cause.annulable_seule, true, cause.motif);
   annulerUneLigne(m.db, fait.id, cause.n);
   assert.equal(motCle(m, m.ancre).cle, cleAvant);
@@ -723,9 +740,7 @@ function mondeAuxSortsJumeaux() {
     const titre = nom('sort jumeau');
     const [sien, jumeau] = [magie, autreMagie].map((g) => {
       const sort = poserSort(db, g, titre);
-      const k = poserMotCle(db, { libelle: titre, url: adresseDuSort(sort), categories: ['Sort'] });
-      db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(k, sort);
-      return k;
+      return ancrerUnMotCle(db, 'sort', sort, { categories: ['Sort'] });
     });
     return { magie, sien, jumeau };
   });
@@ -739,48 +754,54 @@ const renommerLaMagie = (m, id) => {
 const nomDeLaMagie = (m, id) => m.db.prepare('SELECT nom FROM magie WHERE id = ?').get(id).nom;
 const premiereLigne = (m, p, table) => m.db.prepare('SELECT min(rang) AS n FROM modification WHERE lot_id = ? AND table_nom = ?').get(lire(m.db, p.id).lot_id, table).n;
 
-/** Le lot de la relecture : une colonne du mot-clé et le nom de sa magie ; la clé du mot-clé suit la magie. */
-async function lotCouleurEtMagie(m) {
+/**
+ * Le lot de la relecture : le nom de la magie ; la clé du mot-clé de son sort la suit. Depuis la migration 0136, le lot ne porte plus de colonne du mot-clé
+ * avec elle : un sort n'a ni définition, ni couleur, ni icône, et son nom se lit sur lui (la ligne { couleur, cle } n'existe plus, plus bas).
+ */
+async function lotDeLaMagie(m) {
   const avant = { magie: nomDeLaMagie(m, m.magie), ...motCle(m, m.sien) };
-  const fait = await deposerDirect(m, [modifier(m, m.sien, { couleur: '#112233' }), renommerLaMagie(m, m.magie)]);
+  const fait = await deposerDirect(m, [renommerLaMagie(m, m.magie)]);
   assert.notEqual(motCle(m, m.sien).cle, avant.cle, 'la clé a suivi le nom de la magie');
   return { fait, avant, cleDuLot: motCle(m, m.sien).cle };
 }
 
-test('T8-annulation-recalcul : annuler le lot entier rend le nom de la magie, la colonne et la clé, sans verrou', async () => {
+test('T8-annulation-recalcul : annuler le lot entier rend le nom de la magie et la clé, sans verrou', async () => {
   const m = mondeAuxSortsJumeaux();
-  const { fait, avant } = await lotCouleurEtMagie(m);
+  const { fait, avant } = await lotDeLaMagie(m);
   const apercu = await previsualiserLAnnulation(m.base, fait.id, { enArrierePlan: false, dossier: m.dossier });
   assert.deepEqual(apercu.verrous_a_ouvrir, [], JSON.stringify(apercu.operations));
   assert.equal(apercu.verdict, 'applicable', JSON.stringify(apercu.operations));
   annuler(m.db, fait.id);
   assert.equal(nomDeLaMagie(m, m.magie), avant.magie);
-  assert.equal(motCle(m, m.sien).couleur, avant.couleur);
   assert.equal(motCle(m, m.sien).cle, avant.cle);
   assert.equal(m.db.prepare('SELECT 1 AS x FROM mot_cle_ancienne_cle WHERE cle = ?').get(avant.cle), undefined, 'la clé revenue n’est plus une clé quittée');
   clesJustes(m);
   m.db.close();
 });
 
-test('T8-annulation-recalcul : annuler la seule ligne de la magie rend son nom et la clé ; la colonne reste celle du lot', async () => {
+test('T8-annulation-recalcul : annuler la seule ligne de la magie rend son nom et la clé', async () => {
   const m = mondeAuxSortsJumeaux();
-  const { fait, avant } = await lotCouleurEtMagie(m);
+  const { fait, avant } = await lotDeLaMagie(m);
   annulerUneLigne(m.db, fait.id, premiereLigne(m, fait, 'magie'));
   assert.equal(nomDeLaMagie(m, m.magie), avant.magie);
   assert.equal(motCle(m, m.sien).cle, avant.cle);
-  assert.equal(motCle(m, m.sien).couleur, '#112233');
   clesJustes(m);
   m.db.close();
 });
 
-test('T8-annulation-recalcul : annuler la seule ligne { couleur, cle } rend la couleur ; la clé reste celle de la règle, sans verrou', async () => {
+test('T8-annulation-recalcul : la seule ligne de la clé suivie ne s’annule pas ; la clé reste celle de la règle, sans verrou (un sort n’a pas de couleur)', async () => {
   const m = mondeAuxSortsJumeaux();
-  const { fait, avant, cleDuLot } = await lotCouleurEtMagie(m);
+  // la couleur d'un mot-clé de sort (migration 0136 : un sort n'en porte pas) : refusée, sans numéro de décision, rien n'est écrit
+  await refuseSansNumero(m, [modifier(m, m.sien, { couleur: '#112233' })], m.sien);
+  const { fait, avant, cleDuLot } = await lotDeLaMagie(m);
   const n = numeroDe(m, fait, m.sien);
+  const ligne = lire(m.db, fait.id).lignes.find((l) => l.n === n);
+  assert.equal(ligne.annulable_seule, false, 'il n’y a que la clé, qui suit la magie');
+  assert.ok(ligne.motif);
+  assert.deepEqual(decisionsCitees(ligne.motif), []);
   const apercu = await previsualiserLAnnulation(m.base, fait.id, { enArrierePlan: false, dossier: m.dossier, ligne: n });
   assert.deepEqual(apercu.verrous_a_ouvrir, [], JSON.stringify(apercu.operations));
-  annulerUneLigne(m.db, fait.id, n);
-  assert.equal(motCle(m, m.sien).couleur, avant.couleur);
+  refusSansNumero(() => annulerUneLigne(m.db, fait.id, n, { verrous_ouverts: TOUS_LES_VERROUS }));
   assert.equal(motCle(m, m.sien).cle, cleDuLot);
   assert.notEqual(nomDeLaMagie(m, m.magie), avant.magie);
   assert.ok(m.db.prepare('SELECT 1 AS x FROM mot_cle_ancienne_cle WHERE cle = ? AND mot_cle_id = ?').get(avant.cle, m.sien), 'le renvoi de l’ancienne clé reste');
@@ -790,7 +811,7 @@ test('T8-annulation-recalcul : annuler la seule ligne { couleur, cle } rend la c
 
 test('T8-annulation-recalcul : le renvoi d’une clé quittée ne s’annule pas seul, il suit la clé', async () => {
   const m = mondeAuxSortsJumeaux();
-  const { fait, avant } = await lotCouleurEtMagie(m);
+  const { fait, avant } = await lotDeLaMagie(m);
   const renvoi = lire(m.db, fait.id).lignes.find((l) => l.n === premiereLigne(m, fait, 'mot_cle_ancienne_cle'));
   assert.equal(renvoi.annulable_seule, false, renvoi.motif);
   assert.ok(renvoi.motif);

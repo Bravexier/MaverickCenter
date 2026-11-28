@@ -50,12 +50,13 @@ test('un lot crée un mot-clé par le service : l’id suivant, la clé de la r�
   const avant = m.db.prepare('SELECT max(id) AS m FROM mot_cle').get().m;
   const p = await proposer(m, lot([creation('a', { libelle: nom, cle: cleDe(nom), description: 'Défini par un lot.' })]));
   assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.operations));
-  assert.equal(m.db.prepare('SELECT count(*) AS n FROM mot_cle WHERE libelle = ?').get(nom).n, 0, 'l’essai n’écrit rien dans la base vivante');
+  assert.equal(m.db.prepare('SELECT count(*) AS n FROM v_mot_cle WHERE libelle = ?').get(nom).n, 0, 'l’essai n’écrit rien dans la base vivante');
   const fait = appliquer(m.db, p.id, {});
   assert.equal(fait.etat, 'applique');
-  const ligne = m.db.prepare('SELECT * FROM mot_cle WHERE libelle = ?').get(nom);
+  const ligne = m.db.prepare('SELECT * FROM v_mot_cle WHERE libelle = ?').get(nom);
   assert.equal(ligne.id, avant + 1, 'le numéro suivant, donné à l’application');
   assert.equal(ligne.cle, cleDe(nom));
+  assert.equal(ligne.description, 'Défini par un lot.', 'sa définition, sur son repère (migration 0136)');
   assert.equal(ligne.verrou, 0, 'un mot-clé créé n’est pas verrouillé (R219 (5)) tant que le lot ne le demande pas');
   assert.deepEqual(fait.bilan.numeros.map((x) => [x.table, x.colonne, x.numero]), [['mot_cle', 'id', ligne.id]]);
   // le lot du journal est écrit par le service : création du mot-clé (et clés recalculées), de la nature du lot
@@ -65,11 +66,11 @@ test('un lot crée un mot-clé par le service : l’id suivant, la clé de la r�
   // annuler : le service le supprime ; le numéro ne revient pas
   const retour = annuler(m.db, p.id, {});
   assert.equal(retour.etat, 'annule');
-  assert.equal(m.db.prepare('SELECT count(*) AS n FROM mot_cle WHERE libelle = ?').get(nom).n, 0);
+  assert.equal(m.db.prepare('SELECT count(*) AS n FROM v_mot_cle WHERE libelle = ?').get(nom).n, 0);
   const autre = libelle('deux');
   const p2 = await proposer(m, lot([creation('a', { libelle: autre, cle: cleDe(autre) })]));
   appliquer(m.db, p2.id, {});
-  assert.ok(m.db.prepare('SELECT id FROM mot_cle WHERE libelle = ?').get(autre).id > ligne.id, 'un numéro annulé n’est jamais redonné');
+  assert.ok(m.db.prepare('SELECT id FROM v_mot_cle WHERE libelle = ?').get(autre).id > ligne.id, 'un numéro annulé n’est jamais redonné');
 });
 
 test('verrou : le lot qui crée un mot-clé verrouillé demande R218 ; sans l’accord donné au clic il n’est pas appliqué, avec il l’est', async () => {
@@ -79,9 +80,9 @@ test('verrou : le lot qui crée un mot-clé verrouillé demande R218 ; sans l’
   assert.equal(p.verdict, 'verrous');
   assert.deepEqual(lire(m.db, p.id).essai.verrous_a_ouvrir, ['R218']);
   assert.throws(() => appliquer(m.db, p.id, {}), (e) => e instanceof ErreurEdition && e.statut === 409 && /R218/.test(e.message));
-  assert.equal(m.db.prepare('SELECT count(*) AS n FROM mot_cle WHERE libelle = ?').get(nom).n, 0, 'rien n’est écrit sans l’accord');
+  assert.equal(m.db.prepare('SELECT count(*) AS n FROM v_mot_cle WHERE libelle = ?').get(nom).n, 0, 'rien n’est écrit sans l’accord');
   appliquer(m.db, p.id, { verrous_ouverts: ['R218'] });
-  assert.equal(m.db.prepare('SELECT verrou FROM mot_cle WHERE libelle = ?').get(nom).verrou, 1);
+  assert.equal(m.db.prepare('SELECT verrou FROM v_mot_cle WHERE libelle = ?').get(nom).verrou, 1);
 });
 
 test('le lot vérifie la ligne créée : une clé ou un numéro que le service ne retient pas telle quelle refuse l’opération (rien n’est écrit)', async () => {
@@ -94,7 +95,7 @@ test('le lot vérifie la ligne créée : une clé ou un numéro que le service n
   assert.match(refus.message, /autrement que le lot ne la décrit/);
   assert.match(refus.message, /cle/);
   assert.throws(() => appliquer(m.db, p.id, {}), (e) => e instanceof ErreurEdition && e.statut === 409);
-  assert.equal(m.db.prepare('SELECT count(*) AS n FROM mot_cle WHERE libelle = ?').get(nom).n, 0);
+  assert.equal(m.db.prepare('SELECT count(*) AS n FROM v_mot_cle WHERE libelle = ?').get(nom).n, 0);
 });
 
 test('« verifier_ligne » n’est pas une opération du service d’édition : aucune route ne la joint', () => {

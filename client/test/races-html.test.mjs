@@ -176,10 +176,11 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
 // en gras, sa définition en infobulle (la bulle `mot-cle-<clé>` posée par le middleware) ; sans mot-clé, le nom nu. Le mot-clé est lu par l'id de la magie dans la
 // base courante (le site de dev change les clés), jamais écrit ici. Le mot-clé peut avoir une icône (mot_cle.icone, R235 (3), posée ou retirée sur le
 // site de dev) : le nom est alors suivi d'une espace et de son dessin (lib/mots-cles-balises.mjs#avecLIcone), lu dans la base courante lui aussi.
-const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle, m.icone FROM magie g LEFT JOIN mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
+// (l'icône se lit sur l'élément du mot-clé : vue v_mot_cle, migration 0136)
+const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle, m.icone FROM magie g LEFT JOIN v_mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
 const sansBalises = (h) => h.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
 // le HTML sans les icônes des mots-clés (le dessin et l'espace qui le précède), pour en lire le nom
-const DESSINS = [...new Set(base.prepare('SELECT icone FROM mot_cle WHERE icone IS NOT NULL').all().map((m) => htmlDeLIcone(m.icone)).filter(Boolean))];
+const DESSINS = [...new Set(base.prepare('SELECT icone FROM v_mot_cle WHERE icone IS NOT NULL').all().map((m) => htmlDeLIcone(m.icone)).filter(Boolean))];
 const sansIcones = (h) => DESSINS.reduce((x, d) => x.replaceAll(` ${d}`, ''), h);
 function verifierLaMagieLiee(ou, slugDeLaMagie, interieur) {
   const g = magiesDeLaBase.get(`magies/${slugDeLaMagie}`);

@@ -15,6 +15,7 @@ import { ALIGNEMENTS_EN_GRILLE } from '../src/lib/caracteristiques-postures.mjs'
 import { separerLaCouleur } from '../src/lib/couleurs-ecrites.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { MARQUE_D_OUVERTURE, MARQUE_DE_FERMETURE, NIVEAU_DES_ONGLETS } from '../src/lib/onglets-groupe.mjs';
 import { fauteDeLaCouleur, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
@@ -130,7 +131,7 @@ test('0126 (R277) : deux groupes d’onglets — les quatre tendances sans coule
   }
   // la couleur de chaque onglet est celle du mot-clé de son alignement (migration 0123), lu dans la même base
   for (const m of registre0123.mots_cles_crees) {
-    const l = dImport.prepare('SELECT url, couleur FROM mot_cle WHERE id = ?').get(m.id);
+    const l = lireUnMotCle(dImport, m.id); // l'adresse et la couleur se lisent sur l'élément du mot-clé (migration 0136)
     const ancre = l.url.slice(l.url.indexOf('#') + 1);
     assert.equal(neuf.intertitres.find((t) => t.ancre === ancre)?.couleur, l.couleur, `${m.id} : même couleur`);
   }

@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 135;  -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 136;  -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -90,6 +90,16 @@ CREATE TABLE page (
   -- le service au renommage, jamais à la main ; l'ancienne adresse est gardée dans page_ancienne_adresse.
   slug_adresse TEXT CHECK (slug_adresse IS NULL OR (length(slug_adresse) > 0 AND slug_adresse NOT GLOB '*[^a-z0-9-]*'
                                                     AND slug_adresse NOT GLOB '*--*' AND slug_adresse NOT GLOB '-*' AND slug_adresse NOT GLOB '*-')),
+  -- Colonnes ajoutées par la migration 0136 (chantier 4 des mots-clés, « le retrait des colonnes » : docs/chantier-retrait-des-colonnes.md §3) : la
+  -- définition, la couleur et l'icône que portait le mot-clé de la page (mot_cle.description, couleur, icone, retirées par la même migration), avec
+  -- les contraintes du repère. NULL sauf pour une page que désigne un mot-clé (mot_cle_id). La définition n'est pas le résumé : `resume` s'affiche sous
+  -- le titre, dans la Recherche et dans les listes ; `definition` est le texte de l'infobulle et du Glossaire (client/src/lib/mots-cles-db.mjs#lireUnMotCle).
+  definition TEXT CHECK (definition IS NULL OR length(definition) > 0),   -- la définition du glossaire : texte simple, balises du glossaire comprises ; NULL : aucune
+  couleur    TEXT CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
+                                                     -- une référence « <famille>:<id> » d'une couleur de la palette (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ;
+                                                     -- id = celui de sa classe CSS, lib/palette-css.mjs#idDeCouleur) ou « #rrggbb » (minuscules) ; NULL : aucune
+  icone      TEXT CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-')),
+                                                     -- une référence « <famille>:<id> » d'une icône du site ; NULL : aucune
   CHECK (id = type || '/' || slug)
 ) STRICT;
 
@@ -181,52 +191,32 @@ CREATE INDEX page_ancienne_adresse_page ON page_ancienne_adresse (page_id);
 -- des classes raciales, sans catégorie à la 0113, ont reçu Race et la clé « x-race », la classe garde « x-classe »). Le libellé
 -- n'est plus unique : une écriture que portent plusieurs homonymes est ambiguë, la saisie écrit alors la clé. Une clé quittée (renommage,
 -- catégorie changée, ancien id texte) mène encore au mot-clé par mot_cle_ancienne_cle.
+-- Le 2026-11-28, le retrait des colonnes (migration 0136 ; chantier 4 des mots-clés, docs/chantier-retrait-des-colonnes.md) : le mot-clé ne porte plus
+-- ni nom (libelle), ni adresse (url), ni définition (description), ni couleur, ni icône. Ces cinq valeurs se lisent sur son ÉLÉMENT : sa page
+-- (page.mot_cle_id : page.titre, l'adresse de la page, page.definition, page.couleur, page.icone), sinon son sort (sort.mot_cle_id : sort.nom, la place
+-- du sort dans la page de sa magie ; ni définition, ni couleur, ni icône), sinon son repère (repere : nom, adresse, definition, couleur, icone). Un
+-- mot-clé a un repère si et seulement s'il n'a ni page ni sort. Ce qui précède, quand il parle du libellé, de l'adresse, de la définition, de la couleur
+-- ou de l'icône d'un mot-clé, parle depuis lors de ceux de son élément ; le code les lit par client/src/lib/mots-cles-db.mjs#lireUnMotCle et
+-- client/src/lib/mots-cles-db.mjs#motsClesDeLaBase, le SQL par la vue v_mot_cle (sans l'adresse, qui ne se calcule pas en SQL pour une page).
 CREATE TABLE mot_cle (
   id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),             -- entier attribué à la création (le suivant), FIGÉ, jamais réutilisé (migration 0113)
-  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire) ; pas unique (0113)
   cle         TEXT    NOT NULL UNIQUE CHECK (length(cle) > 0 AND cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),
-                                                                 -- la clé citée par les balises et les adresses : normalize(libelle), suivi des
+                                                                 -- la clé citée par les balises et les adresses : normalize du nom de l'élément, suivi des
                                                                  -- catégories qui distinguent un homonyme (règle plus haut) ; recalculée à chaque
                                                                  -- renommage ou changement de catégorie ; client/scripts/db-check.mjs la vérifie.
                                                                  -- Migration 0113 (remplace libelle_cle, à sa place)
-  description TEXT    CHECK (description IS NULL OR length(description) > 0),  -- la définition du glossaire : texte simple, balises du glossaire
-                                                                 -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
-                                                                 -- migration 0056, ajoutée en dernier
-  couleur     TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
-                                                                 -- la couleur du mot-clé : une référence « <famille>:<id> » d'une couleur de la palette
-                                                                 -- (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ; id = celui de sa classe CSS,
-                                                                 -- lib/palette-css.mjs#idDeCouleur : « magie:sang », « classe:melee », « race:pure »,
-                                                                 -- « partie:creer ») ou « #rrggbb » (minuscules) ; NULL : aucune. Que la référence nomme
-                                                                 -- une couleur de la palette ne se lit pas en SQL. Migration 0098, ajoutée en dernier
-  url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0)),
-                                                                 -- l'adresse où mène le mot-clé : interne seulement, relative à la racine du site, sans le
-                                                                 -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
-                                                                 -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
-                                                                 -- Migration 0098, ajoutée en dernier
   verrou      INTEGER NOT NULL DEFAULT 0 CHECK (verrou IN (0,1)),  -- 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ
                                                                  -- (libellé, définition, synonymes (R233 (6)), adresse, couleur) et ne le supprime pas, ni par
                                                                  -- fusion dans un autre ; il se pose, se cite et reçoit une fusion. Aucune route n'écrit
                                                                  -- verrou : il ne change que par une migration (« seul un admin », à venir). 0 par défaut :
                                                                  -- un mot-clé créé plus tard n'est pas verrouillé (R219 (5)), sauf race-hybride (R220 (2)).
-                                                                 -- Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110, ajoutée en dernier
-  monnaie_id  TEXT    UNIQUE REFERENCES monnaie(id) ON DELETE SET NULL,
+                                                                 -- Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110
+  monnaie_id  TEXT    UNIQUE REFERENCES monnaie(id) ON DELETE SET NULL
                                                                  -- la monnaie dont c'est le mot-clé (« ricken-de-fer » -> 'rf') ; NULL : aucune. Avant la
                                                                  -- 0113, un mot-clé de monnaie avait pour id celui de sa monnaie (R183 : reconnu à cet
                                                                  -- id, jamais à son abréviation) : ce lien est cette colonne. Aucune route ne l'écrit.
                                                                  -- Supprimer la monnaie (le rejeu d'un ancien lot, R220 (1)) garde le mot-clé, qui n'est
-                                                                 -- plus celui d'une monnaie (SET NULL). Migration 0113, ajoutée en dernier
-  icone       TEXT    CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'))
-                                                                 -- l'icône du mot-clé (demande du propriétaire, 2026-11-08 : « tu peux mettre une colonne
-                                                                 -- supplémentaire avec "icone" […] Pour le moment, seul les monnaies vont l'utiliser ») :
-                                                                 -- une référence « <famille>:<id> » d'une icône du site, sur le modèle de `couleur` ;
-                                                                 -- famille « monnaie », id = celui de la monnaie dans MONNAIES_DU_JEU
-                                                                 -- (lib/monnaies.mjs#MONNAIES_DU_JEU : 'monnaie:rf', 'monnaie:ro', 'monnaie:pp', dessin
-                                                                 -- de la classe piece--<id>, styles/global/monnaies.css) ; NULL : aucune. Choisie sur le
-                                                                 -- site de dev dans la liste des icônes du site ; le CHECK ne lit que la forme, que la
-                                                                 -- référence nomme une icône du site se vérifie par client/scripts/db-check.mjs et le
-                                                                 -- service. C'est un dessin, pas une donnée : une monnaie supprimée ne la vide pas.
-                                                                 -- Affichée avec le libellé (glossaire, infobulle, balises), comme les monnaies (R63).
-                                                                 -- Migration 0116 (remplie pour les trois mots-clés de monnaie), ajoutée en dernier
+                                                                 -- plus celui d'une monnaie (SET NULL). Migration 0113
 ) STRICT;
 
 
@@ -295,21 +285,22 @@ CREATE INDEX mot_cle_synonyme_mot_cle ON mot_cle_synonyme (mot_cle_id, ordre);  
 -- d'un mot-clé que ne désigne ni une page (page.mot_cle_id) ni un sort (sort.mot_cle_id). Il mène à un endroit du site qui n'est pas une ligne de la
 -- base (une rubrique, une page calculée, une section de page), ou nomme une notion dont le nom attend un arbitrage. Une ligne par mot-clé au plus
 -- (mot_cle_id est la clé primaire) ; supprimer le mot-clé retire son repère (ON DELETE CASCADE). Les contraintes de `adresse`, `definition`, `couleur`
--- et `icone` sont celles de mot_cle.url, description, couleur et icone, recopiées. Qu'un mot-clé à repère n'ait ni page ni sort ne se lit pas dans
--- un CHECK : le service le refuse à l'écriture d'un lot (client/serveur/edition-mots-cles.mjs#refusDuRepere). Table créée VIDE : les repères sont posés par
--- un lot de changements du site de dev (client/src/lib/lot-des-reperes.mjs). À la migration 0135, rien ne lit cette table : les colonnes de mot_cle
--- font encore foi, un repère n'en est que la copie (client/src/lib/tables-de-la-base.mjs#TABLES_PAS_ENCORE_LUES : ni texte à balises, ni note de version).
+-- et `icone` sont celles qu'avaient les colonnes url, description, couleur et icone du mot-clé, recopiées. Qu'un mot-clé à repère n'ait ni page ni sort
+-- ne se lit pas dans un CHECK : le service le refuse à l'écriture d'un lot (client/serveur/edition-mots-cles.mjs#refusDuRepere) et db:check le contrôle.
+-- Depuis la migration 0136, le repère FAIT FOI : les colonnes du mot-clé sont retirées, tout mot-clé sans page ni sort a le sien (la migration l'a posé
+-- depuis les colonnes), aucun autre n'en a ; son nom, sa définition et le reste se lisent par client/src/lib/mots-cles-db.mjs#lireUnMotCle et la vue
+-- v_mot_cle.
 CREATE TABLE repere (
   mot_cle_id INTEGER NOT NULL PRIMARY KEY REFERENCES mot_cle(id) ON DELETE CASCADE,   -- le mot-clé dont c'est l'élément
-  nom        TEXT    NOT NULL CHECK (length(nom) > 0),          -- le nom du mot-clé (l'écriture affichée) ; même contrainte que mot_cle.libelle
+  nom        TEXT    NOT NULL CHECK (length(nom) > 0),          -- le nom du mot-clé (l'écriture affichée) : ce qu'était la colonne libelle du mot-clé
   adresse    TEXT    CHECK (adresse IS NULL OR (adresse GLOB '/*' AND adresse NOT GLOB '//*' AND adresse NOT GLOB '*[^!-~]*' AND instr(adresse, '\') = 0)),
                                                                  -- l'adresse où mène le mot-clé : interne, relative à la racine du site, sans le préfixe de
-                                                                 -- déploiement (« /classes/ », « /fiche/ ») ; NULL : aucune. Même contrainte que mot_cle.url
-  definition TEXT    CHECK (definition IS NULL OR length(definition) > 0),   -- la définition du glossaire ; NULL : pas encore décrit. Comme mot_cle.description
+                                                                 -- déploiement (« /classes/ », « /fiche/ ») ; NULL : aucune. Ce qu'était la colonne url du mot-clé
+  definition TEXT    CHECK (definition IS NULL OR length(definition) > 0),   -- la définition du glossaire ; NULL : pas encore décrit. Ce qu'était sa colonne description
   couleur    TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
-                                                                 -- une référence « <famille>:<id> » de la palette ou « #rrggbb » ; NULL : aucune. Comme mot_cle.couleur
+                                                                 -- une référence « <famille>:<id> » de la palette ou « #rrggbb » ; NULL : aucune. Ce qu'était sa colonne couleur
   icone      TEXT    CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'))
-                                                                 -- une référence « <famille>:<id> » d'une icône du site ; NULL : aucune. Comme mot_cle.icone
+                                                                 -- une référence « <famille>:<id> » d'une icône du site ; NULL : aucune. Ce qu'était sa colonne icone
 ) STRICT;
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
@@ -4128,16 +4119,24 @@ CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
 -- Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de
--- nb_pages pages), avec sa définition (glossaire, migration 0056), sa couleur et son adresse (migration 0098) ; id entier et clé (migration 0113 :
--- `cle` remplace libelle_cle ; les catégories sont dans mot_cle_categorie) ; sans l'abréviation (migration 0115 : devenue un synonyme,
--- mot_cle_synonyme).
+-- nb_pages pages). Refaite par la migration 0136 (le retrait des colonnes) : le nom (`libelle`), la définition (`description`), la couleur et l'icône
+-- se lisent sur l'élément du mot-clé. `libelle` : le titre de sa page, sinon le nom de son sort, sinon le nom de son repère. `description`, `couleur`,
+-- `icone` : ceux de la page si le mot-clé en a une, sinon ceux du repère ; NULL pour un mot-clé de sort, qui n'en porte pas. Sans l'adresse : celle
+-- d'une page ne se calcule pas en SQL (client/src/lib/adresses-db.mjs#adresseDeLaPage ; client/src/lib/mots-cles-db.mjs#lireUnMotCle la rend). Une ligne
+-- par mot-clé (un mot-clé ancre au plus une page et au plus un sort, et n'a qu'un repère). Les catégories sont dans mot_cle_categorie, les synonymes
+-- dans mot_cle_synonyme. Le corps de la vue est sans commentaire : il reste identique à celui de la migration.
 CREATE VIEW v_mot_cle AS
-  SELECT m.id, m.libelle, m.cle,
-    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
-    m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
-    m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
-    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
-  FROM mot_cle m;
+  SELECT m.id, m.cle,
+    coalesce(p.titre, s.nom, r.nom) AS libelle,
+    CASE WHEN p.id IS NOT NULL THEN p.definition WHEN s.id IS NULL THEN r.definition END AS description,
+    CASE WHEN p.id IS NOT NULL THEN p.couleur WHEN s.id IS NULL THEN r.couleur END AS couleur,
+    CASE WHEN p.id IS NOT NULL THEN p.icone WHEN s.id IS NULL THEN r.icone END AS icone,
+    m.verrou, m.monnaie_id,
+    (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
+  FROM mot_cle m
+    LEFT JOIN page p ON p.mot_cle_id = m.id
+    LEFT JOIN sort s ON s.mot_cle_id = m.id
+    LEFT JOIN repere r ON r.mot_cle_id = m.id;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
 CREATE VIEW v_magie_incompatible AS

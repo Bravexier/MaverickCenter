@@ -20,6 +20,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { genreDeLaPeriode } from '../src/lib/limite-texte.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
@@ -572,9 +573,11 @@ test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes 
     const chemin = join(dossier, 'maverick.db');
     cpSync(cheminBase({ sansExemples: false }), chemin);
     const copie = new DatabaseSync(chemin);
-    const motCle = copie.prepare('SELECT id, cle, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+    // la définition s'écrit sur l'élément du mot-clé, sa page ou son repère (migration 0136 ; un sort n'en a pas)
+    const motCle = copie.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((l) => lireUnMotCle(copie, l.id)).find((k) => ['page', 'repere'].includes(k?.element.table));
     const DEFINITION = 'Définition d’essai, que la fiche ne montre jamais.';
-    copie.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(DEFINITION, motCle.id);
+    if (motCle.element.table === 'page') copie.prepare('UPDATE page SET definition = ? WHERE id = ?').run(DEFINITION, motCle.element.id);
+    else copie.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(DEFINITION, motCle.id);
     // un texte de case (l'effet d'un don) : sa forme canonique « {{clé|texte}} » (la clé, R232 (3)) ; et, hors forme canonique, une balise sans texte et
     // le mode complet
     const don = copie.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();

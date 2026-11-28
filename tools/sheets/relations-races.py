@@ -6,7 +6,7 @@ Usage (bibliothèque standard uniquement ; relançable, même fichier à l'ident
     python3 -I tools/sheets/relations-races.py --dump <les-races-annexes.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
     python3 -I tools/sheets/relations-races.py --verifier --dump <les-races-annexes.json> --out <même dossier>
-    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; le mot-clé protégé `race` s'écrit avec son libellé courant)
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut, avec page.sql, sort.sql et repere.sql voisins depuis la migration 0136 qui y a mis le nom ; le mot-clé protégé `race` s'écrit avec son libellé courant)
 
 Le dump JSON uniforme (tools/sheets/sheets_api_to_json.py) doit contenir l'onglet « Relation entre les races » COMPLET
 du classeur « Les races » (la copie de cet onglet dans le dump principal du classeur est tronquée : le script s'arrête

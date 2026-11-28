@@ -12,6 +12,7 @@ import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { annuler, annulerUneLigne, decisionsCitees, lire, traduire } from '../serveur/edition-lots.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { controlerLeLot } from '../src/lib/lot-de-changements.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { adresseDesRegles, idDesRegles, nom, outilsDesCas, refusDuDepot } from './aide-adresses-lots.mjs';
 import { idDeCategorie, poserLesCategoriesNouvelles, poserMotCle, poserOnglet, poserPageLisible } from './aide-ancrage.mjs';
 
@@ -34,14 +35,16 @@ function poserLeMonde(db) {
 /** Un mot-clé du type Notion, décrit. */
 function poserNotion(db, libelle) {
   const id = poserMotCle(db, { libelle, categories: ['Notion'] });
-  db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Définition d’essai de ${libelle}.`, id);
+  // sans page ni sort, sa définition est dans son repère (migration 0136)
+  db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(`Définition d’essai de ${libelle}.`, id);
   return id;
 }
 
-/** Les lignes que les pages de notion écrivent. */
-const photo = (db) => Object.fromEntries(['page', 'page_source', 'source', 'mot_cle', 'mot_cle_categorie'].map((t) => [t, db.prepare(`SELECT * FROM "${t}" ORDER BY 1, 2`).all().map((l) => ({ ...l }))]));
+/** Les lignes que les pages de notion écrivent (le repère d'un mot-clé sans page ni sort compris : migration 0136). */
+const photo = (db) => Object.fromEntries(['page', 'page_source', 'source', 'mot_cle', 'repere', 'mot_cle_categorie'].map((t) => [t, db.prepare(`SELECT * FROM "${t}" ORDER BY 1, 2`).all().map((l) => ({ ...l }))]));
 const page = (m, id) => m.db.prepare('SELECT * FROM page WHERE id = ?').get(id);
-const urlDe = (m, k) => m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(k)?.url;
+// l'adresse du mot-clé, lue sur son élément (migration 0136)
+const urlDe = (m, k) => lireUnMotCle(m.db, k)?.url;
 /** Le numéro d'une ligne du lot : le rang de sa première écriture au journal. */
 const rangDe = (m, lotId, table, cle) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lotId, table)
   .find((l) => Object.entries(cle).every(([c, v]) => JSON.parse(l.cle)[c] === v))?.rang;
@@ -122,7 +125,10 @@ test('trois pages de notion (un mot-clé ordinaire, un verrouillé, un de monnai
     const { motsCles } = m.monde;
     const titres = ['Un', 'Scelle', 'Piece'].map(nom);
     const depart = photo(m.db);
-    const commeAvant = (k) => assert.deepEqual(photo(m.db).mot_cle.find((x) => x.id === k), depart.mot_cle.find((x) => x.id === k), `le mot-clé ${k} tel qu’avant le lot`);
+    const commeAvant = (k) => {
+      assert.deepEqual(photo(m.db).mot_cle.find((x) => x.id === k), depart.mot_cle.find((x) => x.id === k), `le mot-clé ${k} tel qu’avant le lot`);
+      assert.deepEqual(photo(m.db).repere.find((x) => x.mot_cle_id === k), depart.repere.find((x) => x.mot_cle_id === k), `le repère du mot-clé ${k} tel qu’avant le lot`);
+    };
     const p = await applique(m, motsCles.map((k, i) => notion(titres[i], k)));
     const ids = titres.map(idDesRegles);
     for (const [i, id] of ids.entries()) {
@@ -130,7 +136,7 @@ test('trois pages de notion (un mot-clé ordinaire, un verrouillé, un de monnai
       assert.equal(urlDe(m, motsCles[i]), adresseDesRegles(titres[i]));
     }
     // la base avec les pages : le journal rejoué donne les mêmes lignes, la source du jour comprise
-    rejoueCommeIci(m, ['page', 'page_source', 'mot_cle', 'source']);
+    rejoueCommeIci(m, ['page', 'page_source', 'mot_cle', 'repere', 'source']);
 
     const n = rangDe(m, p.lot, 'page', { id: ids[0] });
     annulerUneLigne(m.db, p.id, n);
@@ -151,7 +157,7 @@ test('trois pages de notion (un mot-clé ordinaire, un verrouillé, un de monnai
     }
 
     // la base après les annulations ligne à ligne
-    rejoueCommeIci(m, ['page', 'page_source', 'mot_cle']);
+    rejoueCommeIci(m, ['page', 'page_source', 'mot_cle', 'repere']);
 
     annuler(m.db, p.id, {});
     assert.deepEqual(photo(m.db), depart, 'la base d’avant, la source comprise');
@@ -224,7 +230,7 @@ test('un lot qui crée un mot-clé, sa catégorie et sa page de notion (jeton) s
       { table: 'mot_cle_categorie', cle: { mot_cle_id: jeton, categorie_id: categorie }, operation: 'inserer', apres: { mot_cle_id: jeton, categorie_id: categorie } },
       notion(nom('Neuf'), jeton),
     ]);
-    const k = m.db.prepare('SELECT id FROM mot_cle WHERE libelle = ?').get(nom('Neuf')).id;
+    const k = m.db.prepare('SELECT id FROM v_mot_cle WHERE libelle = ?').get(nom('Neuf')).id;
     const id = idDesRegles(nom('Neuf'));
     assert.equal(page(m, id).mot_cle_id, k);
     assert.equal(urlDe(m, k), adresseDesRegles(nom('Neuf')));

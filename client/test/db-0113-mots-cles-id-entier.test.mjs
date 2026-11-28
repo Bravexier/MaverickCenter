@@ -54,8 +54,8 @@ const clesEtrangeres = (table) => db.prepare(`PRAGMA foreign_key_list("${table}"
 test('structure : mot_cle.id entier, `cle` unique à la place de libelle_cle, libellé sans UNIQUE, monnaie_id en dernier', () => {
   const c = colonnes('mot_cle');
   // abreviation, retirée par la migration 0115 (R233 (7) : devenue un synonyme, test/db-0115-mots-cles-synonymes.test.mjs)
-  // icone, ajoutée en dernier par la migration 0116 (test/db-0116-icone-des-mots-cles.test.mjs)
-  assert.deepEqual(c.map((x) => x.name).filter((n) => n !== 'icone'), ['id', 'libelle', 'cle', 'description', 'couleur', 'url', 'verrou', 'monnaie_id']);
+  // libelle, description, couleur, url et icone (0116) : retirées par la migration 0136, elles se lisent sur l'élément du mot-clé (page, sort ou repère)
+  assert.deepEqual(c.map((x) => x.name), ['id', 'cle', 'verrou', 'monnaie_id']);
   assert.deepEqual([c[0].type, c[0].pk], ['INTEGER', 1]);
   const uniques = db.prepare("SELECT name FROM pragma_index_list('mot_cle') WHERE \"unique\" = 1").all()
     .map((i) => db.prepare('SELECT name FROM pragma_index_info(?)').all(i.name).map((x) => x.name).join(','));
@@ -123,7 +123,9 @@ test('état courant : l’ancien id d’un mot-clé encore présent mène à lui
 test('import : les 13 classes raciales n’ont plus le suffixe « (classe) » et ont la catégorie Classe (R191 remplacée)', () => {
   const h = historiqueSite(db);
   const classe = h.lignesDImport('categorie_mot_cle').find((c) => c.libelle_cle === 'classe').id;
-  const libelles = new Map(h.lignesDImport('mot_cle').map((m) => [m.id, m.libelle]));
+  // le libellé se lit sur l'élément du mot-clé (vue v_mot_cle, migration 0136) ; l'historique y remet ceux d'avant les renommages du site
+  const libelles = new Map(h.lignesDImport('mot_cle', db.prepare('SELECT id, libelle FROM v_mot_cle').all()).map((m) => [m.id, m.libelle]));
+  assert.ok([...libelles.values()].every((l) => typeof l === 'string' && l), 'chaque mot-clé a son libellé');
   const categories = h.lignesDImport('mot_cle_categorie');
   const raciales = REGISTRE.motsCles.filter((e) => e.libelleAvant);
   assert.equal(raciales.length, 13);
@@ -146,7 +148,8 @@ test('état courant : chaque monnaie a un seul mot-clé (monnaie_id), celui dont
 });
 
 test('état courant : la clé de chaque mot-clé suit la règle (maverick.py#cles_des_mots_cles ; strict depuis la 0114 : test/db-0114-categories-assignees.test.mjs)', { skip: sansPython }, () => {
-  const mots = db.prepare('SELECT id, libelle FROM mot_cle').all();
+  // le libellé se lit sur l'élément du mot-clé (migration 0136)
+  const mots = motsClesDeLaBase(db, { elements: false });
   const cats = db.prepare('SELECT mot_cle_id, categorie_id FROM mot_cle_categorie').all();
   const entree = {
     mots: mots.map((m) => [m.id, m.libelle, cats.filter((c) => c.mot_cle_id === m.id).map((c) => c.categorie_id)]),

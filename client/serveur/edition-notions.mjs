@@ -2,7 +2,7 @@
 // /regles/<nom>/, dont le texte n'est que le bloc calculé `notion` (lib/guide.mjs#CORPS_D_UNE_PAGE_DE_NOTION) et qui n'a pas de résumé. Le mot-clé l'ancre
 // (`page.mot_cle_id`) : son nom et son adresse viennent d'elle, il ne se modifie plus à la main (serveur/edition-ancrage.mjs#refusDuVerrou).
 //   - creerLaPageDeNotion : la page d'un mot-clé EXISTANT (l'opération `creer_page_de_notion` d'un lot de changements) ; le mot-clé garde son numéro, sa clé,
-//     son type, sa définition, sa couleur, son icône et ses synonymes, seule son adresse devient celle de la page ;
+//     son type et ses synonymes ; son nom et son adresse se lisent sur la page, où passent la définition, la couleur et l'icône de son repère, qui part ;
 //   - creerLaNotion : la notion NOUVELLE, sa page puis son mot-clé, ancré, dans la même opération (le Glossaire, tâche suivante du chantier) ;
 //   - estUnePageDeNotion, idDeNotion, refusDeLaNotion : ce que le service, le plan et l'annulation d'un lot en lisent.
 // Aucune entrée de menu (`regles_onglet_entree`) n'est écrite ici. Aucun refus d'ici ne cite un numéro de décision : un refus qui en cite un devient un verrou
@@ -11,8 +11,9 @@
 import { adresseDeLaPage, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { estDansDecouvrir, estDuGuideDuMj } from '../src/lib/livres.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { lireLigne } from './edition-journal.mjs';
+import { nomSurLElement, reprendreLeRepere } from './edition-mots-cles.mjs';
 
 /** La mention d'une décision dans un refus repris d'ailleurs (« (décision R233 (4)) ») : retirée, ce refus n'est pas un verrou. */
 const MENTION_D_UNE_DECISION = / ?\(décisions? R[0-9]+(?: \([0-9]+\))?(?:, R[0-9]+(?: \([0-9]+\))?)*\)/g;
@@ -35,9 +36,9 @@ export function estUnePageDeNotion(db, pageId) {
 
 /**
  * Les outils des pages de notion, liés au service d'édition (serveur/edition.mjs les donne : `idPris` vient de edition-plan.mjs#domainesDuPlan).
- * @param {{ ErreurEdition: Function, refus: Function, creerPage: Function, creerMotCle: Function, ANCRAGE: object, idPris: Function }} outils
+ * @param {{ ErreurEdition: Function, refus: Function, creerPage: Function, creerMotCle: Function, idPris: Function }} outils
  */
-export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle, ANCRAGE, idPris }) {
+export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle, idPris }) {
   const ongletsDe = (db) => db.prepare('SELECT id FROM regles_onglet').all().map((o) => o.id);
 
   /** Le premier identifiant libre tiré de `cle` : guide/<cle>, puis -2, -3… */
@@ -73,7 +74,8 @@ export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle,
       if (sort) return { statut: 409, message: `${leNom(libelle)} : c’est le mot-clé d’un sort, il mène à sa fiche et ne reçoit pas de page de notion.`, details: { sort: sort.id } };
       const magie = db.prepare('SELECT id FROM magie WHERE mot_cle_id = ? ORDER BY id LIMIT 1').get(motCle.id);
       if (magie) return { statut: 409, message: `${leNom(libelle)} : c’est le mot-clé d’une magie, il mène à sa page et ne reçoit pas de page de notion.`, details: { magie: magie.id } };
-      const url = db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(motCle.id)?.url ?? null;
+      // seul un repère écrit son adresse depuis la migration 0136 (celle d'une page ou d'un sort se lit sur eux, refusés plus haut)
+      const url = (nomSurLElement(db) ? db.prepare('SELECT adresse AS url FROM repere WHERE mot_cle_id = ?') : db.prepare('SELECT url FROM mot_cle WHERE id = ?')).get(motCle.id)?.url ?? null;
       if (url !== null) {
         return { statut: 409, message: `${leNom(libelle)} : ce mot-clé mène déjà à une adresse ; une page de notion changerait la destination de ses mentions.`, details: { url } };
       }
@@ -91,15 +93,17 @@ export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle,
 
   /**
    * La page de notion du mot-clé EXISTANT `mot_cle_id` : son nom pour titre (caractère pour caractère), ni résumé ni entrée de menu, le bloc `notion` pour texte,
-   * la provenance de toute page créée (creerPage), puis le mot-clé aligné sur elle (son adresse : ANCRAGE.alignerMotCle, par le journal, hors du verrou).
+   * la provenance de toute page créée (creerPage), ancrée sur le mot-clé. Son repère part dans la même opération (un mot-clé a un repère si et seulement s'il
+   * n'a ni page ni sort : docs/chantier-retrait-des-colonnes.md, §2) : sa définition, sa couleur et son icône passent sur la page, par le journal, hors du
+   * verrou ; rien n'est copié sur le mot-clé, dont le nom et l'adresse se lisent désormais sur la page.
    * `titre`, s'il est donné (un lot de changements l'écrit), est son nom tel qu'il s'écrit. `id`, s'il est donné, est guide/<nom> ou guide/<nom>-<n> (n ≥ 2,
    * sans zéro en tête), encore libre ; pas forcément le premier libre : un identifiant que le journal garde (une page annulée puis reprise) n'est jamais
    * réutilisé, et le lot repris en donne un suivant. Refus : 404 (mot-clé inconnu), 409 (refusDeLaNotion, titre autre que son nom, identifiant d'une autre
    * forme, ou déjà pris). Rend l'id de la page.
    */
   function creerLaPageDeNotion(ctx, { mot_cle_id, id = undefined, titre = undefined }) {
-    const { db } = ctx;
-    const m = Number.isInteger(mot_cle_id) ? lireLigne(db, 'mot_cle', { id: mot_cle_id }) : null;
+    const { db, w } = ctx;
+    const m = Number.isInteger(mot_cle_id) ? lireUnMotCle(db, mot_cle_id) : null;
     if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${JSON.stringify(mot_cle_id ?? null)}`);
     leverLeRefus(refusDeLaNotion(db, m));
     if (titre !== undefined && titre !== m.libelle) throw new ErreurEdition(409, `${leNom(m.libelle)} : sa page de notion prend son nom pour titre, tel qu’il s’écrit.`);
@@ -117,7 +121,7 @@ export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle,
       pageId = id;
     }
     creerPage(ctx, { type: 'guide', slug: pageId.slice('guide/'.length), titre: m.libelle, resume: null, corps: CORPS_D_UNE_PAGE_DE_NOTION, index, motCle: m.id });
-    ANCRAGE.alignerMotCle(ctx, m.id);
+    reprendreLeRepere(db, w, m.id, { table: 'page', id: pageId }, (message) => { throw new ErreurEdition(409, message); });
     return pageId;
   }
 

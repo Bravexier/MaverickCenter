@@ -319,7 +319,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     le plafond de 4 ko. » ;
   - question « Le Markdown des pages et l'attribut des cases changent-ils ? » ; option retenue : « Garder `{couleur:x}` et `data-couleur`
     (Recommandé) : la classe est posée en plus, par le plugin et par l'éditeur ; le Markdown ne l'écrit jamais. ».
-- **Les couleurs des mots-clés** (migration `0098` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : `mot_cle.couleur` est une référence
+- **Les couleurs des mots-clés** (migration `0098` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : la couleur d'un mot-clé (`mot_cle.couleur` jusqu'à la migration `0136`, depuis celle de sa page ou de son repère ; un mot-clé de sort n'en a pas) est une référence
   `famille:id` d'une couleur de la palette (`magie:feu`, `classe:melee`), ou une couleur écrite `#rrggbb`. La classe d'un mot-clé coloré
   (`lib/mots-cles-liens.mjs#classeDuMotCle`) est celle de la palette, ou `couleur-mot-cle-<id>` pour une couleur écrite (sa règle :
   `palette-css.mjs#cssDesMotsCles`, fond rendu lisible comme une couleur des règles). La feuille des mots-clés colorés (couleurs écrites et familles
@@ -1735,8 +1735,9 @@ désigner une page et un type de sort (Météo). Les mots-clés sans élément (
   on **corrige** son type, sa couleur, son icône, ses synonymes ou sa définition par un lot de l'équipe (R309 (17)), on le **supprime** en supprimant sa page (refusé si un
   texte cite le mot-clé ; le mot-clé part avec elle, sauf s'il désigne aussi un type de sort, de dégâts ou une monnaie). « Préparer l'ancrage » donne leur page aux
   mots-clés existants (cinquième lot, `docs/serveur.md`) ; ceux qui ont déjà une adresse, ou dont le nom est celui d'une autre page, restent « à trancher ».
-- **Le nom, l'adresse et la clé** d'un mot-clé ancré viennent de son élément : `mot_cle.libelle` et `mot_cle.url` en sont des **copies provisoires**, écrites
-  seulement par ce module jusqu'au retrait des colonnes (chantier 4) ; l'adresse de la page, elle, suit son titre au renommage (R316, ci-dessous). Deux éléments de même nom se distinguent
+- **Le nom, l'adresse et la clé** d'un mot-clé ancré viennent de son élément : depuis le retrait des colonnes (migration `0136`, chantier 4, `docs/chantier-retrait-des-colonnes.md`), le
+  mot-clé ne porte plus ni nom, ni adresse, ni définition, ni couleur, ni icône : ils se lisent sur sa page, sinon son sort, sinon son **repère** (table `repere`, l'élément d'un
+  mot-clé sans page ni sort ; `lib/mots-cles-db.mjs#lireUnMotCle`, `#motsClesDeLaBase`, vue `v_mot_cle` en SQL) ; l'adresse de la page, elle, suit son titre au renommage (R316, ci-dessous). Deux éléments de même nom se distinguent
   par leur type (`force-metier`) et, **à type égal, par leur parent** : la magie d'un sort (`contre-sort-arcane`, `contre-sort-corruption` ; `parent`, lu
   par `lib/mots-cles-db.mjs#motsClesDeLaBase` et donné à `lib/mots-cles-cles.mjs#clesDesMotsCles`, jumelle de `tools/db/maverick.py#cles_des_mots_cles`).
   Le parent ne sert qu'à départager : il n'entre pas dans la clé d'un mot-clé sans homonyme ni d'un homonyme que ses catégories distinguent déjà.
@@ -1923,7 +1924,7 @@ seul (R233 (9)), dans le titre de sa bulle, sa pastille de `/recherche/` (« Arm
 (`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) ; sa bulle porte ensuite « Aussi appelé : … » quand il a des
 synonymes (`{{AM}}` montre « AM », sa bulle dit « Armure magique », puis « Aussi appelé : AM »). Deux **homonymes** (R232 (4) : la race et la classe
 raciale « Orios ») s'affichent sous le même libellé sur toutes les pages, plus de suffixe « (classe) » (R191 remplacée) ; leurs clés les distinguent.
-**L'icône** d'un mot-clé (`mot_cle.icone`, migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, celles des
+**L'icône** d'un mot-clé (`mot_cle.icone` jusqu'à la migration `0136`, depuis celle de sa page ou de son repère ; migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, celles des
 trois monnaies, que le RF, le RO et la PP ont reçues, puis celles des types de dégâts physiques — épée, flèche, marteau — et des quinze magies : le dessin prend la
 couleur de sa classe de la palette (`couleur-magie-<id>`, `couleur-degats-<id>`, les couleurs des pastilles de type des armes : « Couleurs des armes », 2026-11-14), sur chaque
 page (`FAMILLES_DE_CHAQUE_PAGE`) ; le propriétaire les attribue lui-même sur le site de dev, « Liste seulement » ; dessins : `styles/global/icones.css`) suit son nom partout où il apparaît : dans le texte d'une balise (après le texte affiché, sauf s'il
@@ -2012,7 +2013,7 @@ lot. Au rejeu du journal, une suppression forcée se rejoue forcée (R223 (6) : 
 ## Liens entre pages
 
 **Un lien est la balise d'un mot-clé** (migration `0098` ; décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés
-deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, interne, relative à la racine du site, sans le préfixe de déploiement :
+deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url` jusqu'à la migration `0136` ; depuis, celle de son élément : sa page, la ligne de son sort, ou `repere.adresse` ; interne, relative à la racine du site, sans le préfixe de déploiement :
 `/races/humain/`, `/metiers/#metier-mineur`) mène à cette adresse ; sa balise s'écrit comme toute balise du glossaire :
 
 | Écriture | Effet |

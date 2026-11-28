@@ -7,7 +7,9 @@ import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { lecteurDesMentions, mentionsDe, referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { CATEGORIES_NOUVELLES, estAncre, planDeLAncrage, REPRISES, TYPE_DE_RUBRIQUE, TYPE_UNIQUE } from '../src/lib/mots-cles-ancrage.mjs';
 import { elementsDesMotsCles } from '../src/lib/mots-cles-db.mjs';
-import { appliquerEnSql, baseDAncrage, idDeCategorie, operationsDe, poserLesCategoriesNouvelles, poserMagie, poserMotCle, poserPage, poserSort } from './aide-ancrage.mjs';
+import {
+  ancrerUnMotCle, appliquerEnSql, baseDAncrage, idDeCategorie, operationsDe, poserLesCategoriesNouvelles, poserMagie, poserMotCle, poserPage, poserSort,
+} from './aide-ancrage.mjs';
 
 /** Une base d'essai dont les quatre catégories existent déjà : le plan rend alors tous ses lots. */
 function baseComplete() {
@@ -28,8 +30,7 @@ test('une page sans mot-clé reçoit une création portant son type de rubrique 
   const plan = planDeLAncrage(db);
   const o = creationDe(plan, 'page', id);
   assert.equal(o.operation, 'inserer');
-  assert.equal(o.apres.libelle, 'Frappe de Zéphyr');
-  assert.equal(o.apres.url, adresseDeLaPage(id));
+  assert.deepEqual(Object.keys(o.apres), ['id'], 'son nom et son adresse se lisent sur la page (migration 0136) : le lot ne les écrit pas');
   assert.equal(o.ancrage.type, idDeCategorie(db, TYPE_DE_RUBRIQUE.capacites));
   assert.deepEqual(o.cle, { id: o.apres.id });
   assert.equal(plan.comptes.capacites, 1);
@@ -90,8 +91,7 @@ test('une reprise libère l’adresse qu’elle quitte : la page reste désigné
   assert.equal(aTrancher(plan, 'page', quittee), undefined);
   assert.equal(ancreDe(plan, 'page', quittee).apres.mot_cle_id, 245);
   assert.equal(ancreDe(plan, 'page', reprise).apres.mot_cle_id, 420);
-  assert.deepEqual(alignementDe(plan, 420).apres, { url: adresseDeLaPage(reprise) });
-  assert.deepEqual(alignementDe(plan, 420).ancrage, { aligner: true });
+  assert.equal(alignementDe(plan, 420), undefined, 'son adresse se lit sur la page qu’il reprend : rien à recopier');
 });
 
 test('un mot-clé à plusieurs catégories absent de TYPE_UNIQUE : à trancher', () => {
@@ -186,9 +186,10 @@ test('les éléments d’un mot-clé : page, sort, type, magie, dégâts, monnai
   assert.deepEqual(elementsDesMotsCles(db).get(m), [
     { table: 'page', id: page, nom: 'Zéphyr écrit', adresse: adresseDeLaPage(page), texte: 'Résumé du Zéphyr.' },
     { table: 'sort', id: sort, nom: 'Souffle', adresse: adresseDuSort(sort), texte: 'Effet du souffle.' },
-    { table: 'type_sort', id: 'soin', nom: 'Zéphyr', adresse: null, texte: null },
+    // un type de sort ou de dégâts porte le nom du mot-clé, celui de son élément depuis la migration 0136 : le titre de sa page
+    { table: 'type_sort', id: 'soin', nom: 'Zéphyr écrit', adresse: null, texte: null },
     { table: 'magie', id: magie, nom: 'Magie de Zéphyr', adresse: adresseDeLaPage(magie), texte: null },
-    { table: 'type_degats', id: 'sonore', nom: 'Zéphyr', adresse: null, texte: null },
+    { table: 'type_degats', id: 'sonore', nom: 'Zéphyr écrit', adresse: null, texte: null },
     { table: 'monnaie', id: 'zf', nom: 'Zéphyr de fer', adresse: null, texte: null },
   ]);
   assert.equal(elementsDesMotsCles(db).has(m + 1), false);
@@ -205,7 +206,7 @@ test('sort : adresse <magie>#sort-<slug>, type Sort ; deux sorts homonymes de ma
   assert.deepEqual(plan.a_trancher, []);
   for (const s of [s1, s2]) {
     const o = creationDe(plan, 'sort', s);
-    assert.equal(o.apres.url, adresseDuSort(s));
+    assert.deepEqual(Object.keys(o.apres), ['id'], 'son nom et son adresse se lisent sur le sort');
     assert.equal(o.ancrage.type, idDeCategorie(db, 'Sort'));
   }
   assert.equal(plan.comptes.sorts, 2);
@@ -219,8 +220,8 @@ test('types : un par code utilisé, `meteo` reprend #239 sans changer son nom ni
   poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', url: '/regles/zephyr-meteo/', categories: ['Règles'] });
   const plan = planDeLAncrage(db);
   const attaque = creationDe(plan, 'type_sort', 'attaque');
-  assert.equal(attaque.apres.libelle, 'Attaque');
-  assert.equal(attaque.apres.url, null);
+  assert.equal(attaque.apres.libelle, 'Attaque', 'un type de sort n’a pas de nom à lui : son repère porte celui du lot');
+  assert.equal('url' in attaque.apres, false);
   assert.equal(attaque.ancrage.type, idDeCategorie(db, 'Type de sort'));
   assert.equal(creationDe(plan, 'type_sort', 'meteo'), undefined);
   assert.equal(ancreDe(plan, 'type_sort', 'meteo').apres.mot_cle_id, 239);
@@ -281,7 +282,7 @@ test('tant qu’une catégorie nouvelle manque, seul le lot 1 est rendu ; les co
   assert.deepEqual(plan.comptes, { crees: 4, capacites: 1, autres_pages: 1, sorts: 1, types: 1, renommes: 0, reclasses: 0, ancres_existants: 0, notions: 0 });
 });
 
-test('ordre du lot 1 : catégories, reclassements, ancres, alignements', () => {
+test('ordre du lot 1 : catégories, reclassements, ancres ; plus d’alignement, l’ancre donne au mot-clé le nom de sa page', () => {
   const db = baseDAncrage();
   const page = poserPage(db, 'races/zephyrine', 'Zéphyrine écrite');
   const m = poserMotCle(db, { libelle: 'Zéphyrine', url: adresseDeLaPage(page), categories: ['Race'] });
@@ -291,13 +292,12 @@ test('ordre du lot 1 : catégories, reclassements, ancres, alignements', () => {
   poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', categories: ['Règles'] });
   const plan = planDeLAncrage(db);
   const genres = plan.lots[0].operations.map((o) => o.table);
-  const rangs = ['categorie_mot_cle', 'mot_cle_categorie', 'page', 'type_sort', 'mot_cle'];
+  const rangs = ['categorie_mot_cle', 'mot_cle_categorie', 'page', 'type_sort'];
   assert.deepEqual([...new Set(genres)], rangs);
   assert.deepEqual(genres, [...genres].sort((x, y) => rangs.indexOf(x) - rangs.indexOf(y)));
-  assert.deepEqual(alignementDe(plan, m).avant, { libelle: 'Zéphyrine' });
-  assert.deepEqual(alignementDe(plan, m).apres, { libelle: 'Zéphyrine écrite' });
-  assert.deepEqual(alignementDe(plan, m).ancrage, { aligner: true });
-  assert.equal(plan.comptes.renommes, 1);
+  assert.equal(alignementDe(plan, m), undefined);
+  assert.deepEqual(ancreDe(plan, 'page', page).apres, { mot_cle_id: m });
+  assert.equal(plan.comptes.renommes, 1, 'l’ancre change son nom : il prend celui de la page');
 });
 
 test('chaque lot porte au plus 2 000 opérations ; aucun `cle` dans un apres de création', () => {
@@ -343,78 +343,66 @@ test('rejouable : une fois appliqué, le plan est vide', () => {
   assert.equal(db.prepare("SELECT mot_cle_id FROM type_sort WHERE id = 'meteo'").get().mot_cle_id, 239);
   assert.equal(db.prepare("SELECT mot_cle_id FROM type_sort WHERE id = 'aleatoire'").get().mot_cle_id, null);
   assert.equal(db.prepare('SELECT count(*) AS n FROM (SELECT mot_cle_id FROM mot_cle_categorie GROUP BY mot_cle_id HAVING count(*) > 1)').get().n, 0);
-  const cles = db.prepare("SELECT cle FROM mot_cle WHERE libelle = 'Souffle commun' ORDER BY cle").all().map((x) => x.cle);
+  const cles = db.prepare("SELECT cle FROM v_mot_cle WHERE libelle = 'Souffle commun' ORDER BY cle").all().map((x) => x.cle); // le nom, lu sur l'élément
   assert.deepEqual(cles, ['souffle-commun-boree', 'souffle-commun-zephyr'], 'le parent distingue les deux sorts');
 });
 
-test('un renommage annulé revient au plan d’une page déjà ancrée, sauf si sa clé est écartée', () => {
+test('une page ancrée : son mot-clé lit son nom et son adresse sur elle, rien à faire ; une ancre qui renommerait un mot-clé dont le nom est écarté (`nom:<id>`) n’est pas posée', () => {
   const db = baseComplete();
-  const page = poserPage(db, 'races/zephyrine', 'Zéphyrine écrite');
-  const m = poserMotCle(db, { libelle: 'Zéphyrine', url: adresseDeLaPage(page), categories: ['Race'] });
-  db.prepare('UPDATE page SET mot_cle_id = ? WHERE id = ?').run(m, page);
+  const ancree = poserPage(db, 'races/zephyrine', 'Zéphyrine écrite');
+  const m = ancrerUnMotCle(db, 'page', ancree, { categories: ['Race'] });
+  db.prepare('UPDATE page SET titre = ? WHERE id = ?').run('Zéphyrine renommée', ancree);
+  const designee = poserPage(db, 'races/boree', 'Borée écrite');
+  const autre = poserMotCle(db, { libelle: 'Borée', url: adresseDeLaPage(designee), categories: ['Race'] });
   const plan = planDeLAncrage(db);
-  assert.equal(ancreDe(plan, 'page', page), undefined, 'déjà ancrée');
-  assert.deepEqual(alignementDe(plan, m).apres, { libelle: 'Zéphyrine écrite' });
-  const ecarte = planDeLAncrage(db, { ecartees: new Set([`nom:${m}`]) });
-  assert.deepEqual(ecarte.lots, []);
-  assert.deepEqual(ecarte.ecartees, [`nom:${m}`]);
+  assert.equal(ancreDe(plan, 'page', ancree), undefined, 'déjà ancrée');
+  assert.equal(alignementDe(plan, m), undefined, 'son nom est le titre de la page : rien à aligner');
+  assert.deepEqual(ancreDe(plan, 'page', designee).apres, { mot_cle_id: autre });
+  assert.equal(plan.comptes.renommes, 1, 'l’ancre donne au mot-clé le nom de la page');
+  const ecarte = planDeLAncrage(db, { ecartees: new Set([`nom:${autre}`, `nom:${m}`]) });
+  assert.equal(ancreDe(ecarte, 'page', designee), undefined, 'le renommage écarté : la page reste sans ancre');
+  assert.equal(aTrancher(ecarte, 'page', designee), undefined);
+  assert.deepEqual(ecarte.ecartees, [`nom:${autre}`], 'seule la clé qui a retenu quelque chose est listée');
+  assert.deepEqual(lotsHorsNotions(ecarte), []);
 });
 
-test('un sort ancré dont le nom a quitté son mot-clé (retiré, renommé, remis) : l’alignement est proposé, puis plus rien', () => {
-  const db = baseComplete();
-  const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
-  const sort = poserSort(db, magie, 'Souffle nouveau', { types: ['soin'] });
-  const m = poserMotCle(db, { libelle: 'Souffle ancien', url: adresseDuSort(sort), categories: ['Sort'] });
-  const t = poserMotCle(db, { libelle: 'Soin', categories: ['Type de sort'] });
-  db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(m, sort);
-  db.prepare("UPDATE type_sort SET mot_cle_id = ? WHERE id = 'soin'").run(t);
-  const plan = planDeLAncrage(db);
-  assert.deepEqual(alignementDe(plan, m).apres, { libelle: 'Souffle nouveau' });
-  assert.equal(ancreDe(plan, 'sort', sort), undefined, 'déjà ancré');
-  assert.equal(plan.comptes.renommes, 1);
-  appliquerEnSql(db, plan.lots[0]);
-  assert.deepEqual(lotsHorsNotions(planDeLAncrage(db)), []);
-  const ecarte = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
-  assert.deepEqual(lotsHorsNotions(ecarte), [], 'aligné : plus rien à écarter');
-  db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run('Souffle encore', sort);
-  const ecarteApres = planDeLAncrage(db, { ecartees: new Set([`sort:${sort}`]) });
-  assert.deepEqual([lotsHorsNotions(ecarteApres), ecarteApres.ecartees], [[], [`sort:${sort}`]], 'une ligne annulée reste écartée');
-});
-
-test('un sort ancré dont le nom est le synonyme d’un autre mot-clé : à trancher, son mot-clé ne bouge pas', () => {
+test('un sort ancré : son mot-clé lit son nom et son adresse sur lui, le plan n’a rien à faire, même quand ce nom est le synonyme d’un autre mot-clé', () => {
   const db = baseComplete();
   poserMotCle(db, { libelle: 'Zéphyr règle', categories: ['Règles'], synonymes: ['Souffle pris'] });
   const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
   const sort = poserSort(db, magie, 'Souffle pris', { types: ['soin'] });
-  const m = poserMotCle(db, { libelle: 'Souffle ancien', url: adresseDuSort(sort), categories: ['Sort'] });
+  const m = ancrerUnMotCle(db, 'sort', sort, { categories: ['Sort'] });
+  db.prepare('UPDATE sort SET nom = ? WHERE id = ?').run('Souffle nouveau', sort);
   const t = poserMotCle(db, { libelle: 'Soin', categories: ['Type de sort'] });
-  db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(m, sort);
   db.prepare("UPDATE type_sort SET mot_cle_id = ? WHERE id = 'soin'").run(t);
   const plan = planDeLAncrage(db);
   assert.equal(alignementDe(plan, m), undefined);
-  assert.ok(aTrancher(plan, 'sort', sort), JSON.stringify(plan.a_trancher));
+  assert.equal(ancreDe(plan, 'sort', sort), undefined, 'déjà ancré');
+  assert.equal(aTrancher(plan, 'sort', sort), undefined);
+  assert.equal(plan.comptes.renommes, 0);
   assert.deepEqual(lotsHorsNotions(plan), []);
 });
 
-test('un type de sort ancré suit l’écriture unique de ses sorts ; écrit de deux façons : à trancher ; celui qui reprend un mot-clé garde son nom', () => {
+test('un type de sort ancré n’est pas renommé : écrit autrement par ses sorts, ou de deux façons, il est à trancher avec les deux noms ; celui qui reprend un mot-clé garde son nom', () => {
   const db = baseComplete();
   const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
   const s1 = poserSort(db, magie, 'Souffle un', { types: ['soin', 'attaque', 'meteo'] });
   const s2 = poserSort(db, magie, 'Souffle deux', { types: ['attaque'] });
-  for (const s of [s1, s2]) {
-    const n = db.prepare('SELECT nom FROM sort WHERE id = ?').get(s).nom;
-    db.prepare('UPDATE sort SET mot_cle_id = ? WHERE id = ?').run(poserMotCle(db, { libelle: n, url: adresseDuSort(s), categories: ['Sort'] }), s);
-  }
+  for (const s of [s1, s2]) ancrerUnMotCle(db, 'sort', s, { categories: ['Sort'] });
   const soin = poserMotCle(db, { libelle: 'Soin ancien', categories: ['Type de sort'] });
   const attaque = poserMotCle(db, { libelle: 'Attaque', categories: ['Type de sort'] });
   const meteo = poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', url: '/regles/zephyr-meteo/', categories: ['Type de sort'] });
   for (const [code, id] of [['soin', soin], ['attaque', attaque], ['meteo', meteo]]) db.prepare('UPDATE type_sort SET mot_cle_id = ? WHERE id = ?').run(id, code);
   db.prepare("UPDATE sort_type SET libelle = 'Attaques' WHERE sort_id = ? AND type = 'attaque'").run(s2);
   const plan = planDeLAncrage(db);
-  assert.deepEqual(alignementDe(plan, soin).apres, { libelle: 'Soin' });
+  assert.equal(alignementDe(plan, soin), undefined, 'rien n’est renommé en silence');
+  const deSoin = aTrancher(plan, 'type_sort', 'soin');
+  assert.ok(deSoin?.raison.includes('Soin') && deSoin.raison.includes('Soin ancien'), JSON.stringify(plan.a_trancher));
   assert.equal(alignementDe(plan, attaque), undefined);
   assert.match(aTrancher(plan, 'type_sort', 'attaque').raison, /Attaque, Attaques|Attaques, Attaque/);
   assert.equal(alignementDe(plan, meteo), undefined, 'il reprend un mot-clé : son nom ne suit pas');
+  assert.equal(aTrancher(plan, 'type_sort', 'meteo'), undefined);
+  assert.deepEqual(lotsHorsNotions(plan), []);
 });
 
 test('le lecteur des mentions dit comme `mentionsDe` : sans la définition d’un mot-clé retiré depuis, et relit après `oublier`', () => {
@@ -422,12 +410,13 @@ test('le lecteur des mentions dit comme `mentionsDe` : sans la définition d’u
   const cite = poserMotCle(db, { libelle: 'Zéphyr cité', categories: ['Règles'] });
   const citant = poserMotCle(db, { libelle: 'Zéphyr citant', categories: ['Règles'] });
   const { cle } = db.prepare('SELECT cle FROM mot_cle WHERE id = ?').get(cite);
-  db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${cle}}}.`, citant);
+  db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(`Voir {{${cle}}}.`, citant); // sa définition, sur son repère (migration 0136)
   const page = poserPage(db, 'guide/zephyr', 'Guide de Zéphyr');
   const lecteur = lecteurDesMentions(db);
   assert.deepEqual(lecteur.de(cite), mentionsDe(db, cite));
-  assert.deepEqual(lecteur.de(cite).map((x) => x.cle.id), [citant]);
-  db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(citant); // clés étrangères coupées sur cette base : rien ne cascade
+  assert.deepEqual(lecteur.de(cite).map((x) => [x.table, x.cle.mot_cle_id]), [['repere', citant]]);
+  // clés étrangères coupées sur cette base : rien ne cascade
+  for (const table of ['mot_cle_categorie', 'repere']) db.prepare(`DELETE FROM ${table} WHERE mot_cle_id = ?`).run(citant);
   db.prepare('DELETE FROM mot_cle WHERE id = ?').run(citant);
   assert.deepEqual(lecteur.de(cite), [], 'la définition retirée ne compte plus, sans relire');
   db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`Voir {{${cle}}}.`, page);
@@ -453,8 +442,9 @@ test('une clé écartée est sautée et listée', () => {
   assert.equal(creationDe(plan, 'sort', sort), undefined);
   assert.equal(creationDe(plan, 'type_sort', 'soin'), undefined);
   assert.equal(alignementDe(plan, m), undefined);
-  assert.ok(ancreDe(plan, 'page', designee), 'écarter le nom ne retire pas l’ancre');
+  assert.equal(ancreDe(plan, 'page', designee), undefined, 'écarter le nom laisse la page sans ancre : l’ancre renommerait son mot-clé');
   assert.equal(plan.lots.flatMap((l) => l.operations).filter((o) => o.table === 'mot_cle_categorie').length, 0);
   assert.deepEqual(plan.ecartees, [`nom:${m}`, `page:${page}`, `sort:${sort}`, `type:${reclasse}`, 'type_sort:soin'].sort());
-  assert.deepEqual(plan.a_trancher, []);
+  // resté sans ancre, il mène à une page : il n'est pas candidat à une page de notion
+  assert.deepEqual(plan.a_trancher.map((x) => [x.table, x.id]), [['mot_cle', m]]);
 });

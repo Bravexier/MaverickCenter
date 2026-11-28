@@ -17,7 +17,7 @@
 import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonner } from '../src/lib/chronologie.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { estVerrouille, parLibelle, RAISON_DU_VERROU } from '../src/lib/mots-cles.mjs';
-import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
+import { categoriesDesMotsCles, lireUnMotCle, motsClesDeLaBase, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
 import { reciblerLeMotCle, synonymesPris } from '../src/lib/mots-cles-balises.mjs';
 import { mentionsDe, mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
@@ -27,7 +27,7 @@ import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
-import { recevoirLaFusion, reporterLesReferences, retirerLesFillesDuMotCle, synonymesDuMotCle } from './edition-mots-cles.mjs';
+import { COLONNES_DU_REPERE, nomSurLElement, recevoirLaFusion, reporterLesReferences, retirerLesFillesDuMotCle, synonymesDuMotCle } from './edition-mots-cles.mjs';
 
 const ORIGINE = 'chronologie';
 
@@ -188,7 +188,9 @@ export function domainesDeLaChronologie({
     if (ajoutes.length) throw refus(`${quoi} : ${messageDeRefus(ajoutes)}`);
   }
 
-  const motCle = (db, id) => (Number.isInteger(id) ? lireLigne(db, 'mot_cle', { id }) : null);
+  // le mot-clé lu avec les champs de son élément (la table mot_cle ne porte plus son nom ni son adresse depuis la migration 0136) : sans eux, `m.libelle` et
+  // `m.url` vaudraient undefined, et le refus de R223 (7) ne se déclencherait plus
+  const motCle = (db, id) => (Number.isInteger(id) ? lireUnMotCle(db, id) : null);
   const categorie = (db, id) => (typeof id === 'string' ? lireLigne(db, 'categorie_chronologie', { id }) : null);
   const nomDe = (e) => `« ${e.titre} »`;
 
@@ -666,7 +668,10 @@ export function domainesDeLaChronologie({
       if (db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(t.page_id, cible.id)) w.supprimer('page_tag', { page_id: t.page_id, ordre: t.ordre });
       else w.modifier('page_tag', { page_id: t.page_id, ordre: t.ordre }, { tag_id: cible.id });
     }
-    // l'adresse et la couleur (migration 0098), l'icône (migration 0116) ; colonnes absentes d'une base d'avant : rien à reprendre
+    // l'adresse et la couleur (migration 0098), l'icône (migration 0116) ; colonnes absentes d'une base d'avant : rien à reprendre. Depuis la migration 0136,
+    // elles s'écrivent dans le repère de la cible : une cible qui a une page ou un sort (relié à son élément) ne prend rien
+    const surLeRepere = nomSurLElement(db);
+    const accueille = !surLeRepere || cible.element?.table === 'repere';
     const reprises = {};
     const gardees = [];
     const laissees = []; // ce qu'une cible verrouillée n'a pas et ne prend pas
@@ -674,10 +679,12 @@ export function domainesDeLaChronologie({
     for (const [colonne, nom] of Object.entries(NOMS_REPRIS)) {
       const deLaSource = source[colonne] ?? null;
       if (deLaSource === null) continue;
-      if ((cible[colonne] ?? null) === null) (cibleAncree || (estVerrouille(cible) && ctx.gel !== false) ? laissees.push(nom) : (reprises[colonne] = deLaSource));
+      if ((cible[colonne] ?? null) === null) (cibleAncree || !accueille || (estVerrouille(cible) && ctx.gel !== false) ? laissees.push(nom) : (reprises[colonne] = deLaSource));
       else if (cible[colonne] !== deLaSource) gardees.push(nom);
     }
-    if (Object.keys(reprises).length) w.modifier('mot_cle', { id: cible.id }, reprises);
+    if (Object.keys(reprises).length && surLeRepere) {
+      w.modifier('repere', { mot_cle_id: cible.id }, Object.fromEntries(Object.entries(reprises).map(([c, v]) => [COLONNES_DU_REPERE[c], v])));
+    } else if (Object.keys(reprises).length) w.modifier('mot_cle', { id: cible.id }, reprises);
     // au rejeu, les textes que le site de dev n'avait pas (pages d'exemple, règles d'une autre base) citent la cible eux aussi : le rejeu la reconnaît
     // aux étiquettes et aux balises que ce lot reporte (serveur/edition.mjs#cibleReportee, balisesRetireesParLeLot)
     // R233 (11), « Oui, tout transmettre » : ses clés quittées passent à la cible, ses catégories et ses synonymes sont retirés (notés au journal),
@@ -696,7 +703,7 @@ export function domainesDeLaChronologie({
       ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => NOMS_REPRIS[c]).join(' et ')}`] : []),
       ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
       ...(references.length ? [`${references.length > 1 ? 'ses références' : 'sa référence'} (${references.map((r) => `${r.table} ${r.id}`).join(', ')}) ${references.length > 1 ? 'passent' : 'passe'} à la cible`] : []),
-      ...(laissees.length ? [`« ${cible.libelle} », ${cibleAncree ? 'relié à un élément' : 'verrouillé'}, n’en prend pas ${laissees.join(' ni ')}`] : []),
+      ...(laissees.length ? [`« ${cible.libelle} », ${cibleAncree || !accueille ? 'relié à un élément' : 'verrouillé'}, n’en prend pas ${laissees.join(' ni ')}`] : []),
       ...(legs.repris.length ? [`il en prend ${legs.repris.length > 1 ? 'les synonymes' : 'le synonyme'} ${legs.repris.map((x) => `« ${x} »`).join(', ')}`] : []),
       ...(legs.ecartes.length ? [`synonymes écartés : ${legs.ecartes.map((e) => `« ${e.synonyme} » (${e.raison})`).join(', ')}`] : []),
     ];

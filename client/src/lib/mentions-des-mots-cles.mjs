@@ -38,6 +38,12 @@ const TABLES_DES_ANCRES = new Set(['page', 'sort', 'type_sort']);
 const aLaColonne = (db, table, colonne) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(table, colonne));
 
 /**
+ * Les colonnes d'un mot-clé qui ne sont pas des textes : son adresse, sa couleur et son icône, sur sa ligne avant la migration 0136, sur son repère ou
+ * sa page depuis (sa définition, elle, reste un texte qui mentionne).
+ */
+const PAS_DES_TEXTES = Object.freeze({ mot_cle: ['url', 'couleur', 'icone'], repere: ['adresse', 'couleur', 'icone'], page: ['couleur', 'icone'] });
+
+/**
  * Les lignes de la base dont une colonne cite un des mots-clés `ids` (REFERENCES_AUX_MOTS_CLES) : [{ table, colonne, id (la ligne citante), mot_cle_id }],
  * triées par table puis id. Une base d'avant la migration 0125 n'a ni la table ni la colonne : aucune référence.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -101,8 +107,11 @@ export function mentionsDesMotsCles(db, ids) {
   }
 
   const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
+  // le mot-clé dont une page porte la définition (migration 0136 : page.definition) : ce texte est le sien, pas une mention
+  const motCleDeLaPage = aLaColonne(db, 'page', 'mot_cle_id')
+    ? new Map(db.prepare('SELECT id, mot_cle_id FROM page WHERE mot_cle_id IS NOT NULL').all().map((p) => [p.id, p.mot_cle_id])) : new Map();
   for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
-    if (table === 'mot_cle' && (colonne === 'url' || colonne === 'couleur')) continue;
+    if ((PAS_DES_TEXTES[table] ?? []).includes(colonne)) continue;
     for (const l of db.prepare(`SELECT ${[...new Set([...cle, colonne])].map(q).join(', ')} FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
       const v = l[colonne];
       if (typeof v !== 'string') continue;
@@ -110,12 +119,19 @@ export function mentionsDesMotsCles(db, ids) {
       for (const b of lireBalises(v, { markdown })) {
         const id = motCleDeLaRef(vocabulaire, b.ref)?.id;
         if (!id || !voulus.has(id)) continue;
-        if (table === 'mot_cle' && cleDeLigne.id === id) continue; // sa propre définition
+        // sa propre définition : sur sa ligne avant la migration 0136, sur son repère ou sa page depuis
+        const sien = table === 'mot_cle' ? cleDeLigne.id : table === 'repere' ? cleDeLigne.mot_cle_id
+          : table === 'page' && colonne === 'definition' ? motCleDeLaPage.get(cleDeLigne.id) : undefined;
+        if (sien === id) continue;
         let page = null;
         let libelle = null;
-        if (table === 'page') page = cleDeLigne.id;
-        // la définition d'un autre mot-clé : nommée par son libellé (son id est un entier depuis la migration 0113, il ne dit rien)
-        else if (table === 'mot_cle') libelle = `Mot-clé « ${vocabulaire.parId.get(cleDeLigne.id)?.libelle ?? cleDeLigne.id} »`;
+        // la définition d'un autre mot-clé : nommée par son libellé (son id est un entier depuis la migration 0113, il ne dit rien) ; celle que porte
+        // sa page (0136) aussi, la page servant de lien
+        const nomme = (motCle) => `Mot-clé « ${vocabulaire.parId.get(motCle)?.libelle ?? motCle} »`;
+        if (table === 'page') {
+          page = cleDeLigne.id;
+          if (sien !== undefined) libelle = nomme(sien);
+        } else if (table === 'mot_cle' || table === 'repere') libelle = nomme(sien);
         else if (table === 'evenement' || table === 'evenement_extrait') {
           const evenement = cleDeLigne.evenement_id ?? cleDeLigne.id;
           libelle = `Chronologie › ${evenements.get(evenement) ?? evenement}`;
@@ -147,7 +163,7 @@ export function lecteurDesMentions(db) {
     de(id) {
       carte ??= mentionsDesMotsCles(db, db.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
       if (!carte.has(id)) return mentionsDe(db, id); // créé depuis la lecture
-      return carte.get(id).filter((x) => x.table !== 'mot_cle' || encore.get(x.cle.id));
+      return carte.get(id).filter((x) => (x.table === 'mot_cle' ? encore.get(x.cle.id) : x.table === 'repere' ? encore.get(x.cle.mot_cle_id) : true));
     },
   };
 }

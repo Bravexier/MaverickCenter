@@ -25,6 +25,7 @@ import { historiser } from '../serveur/historique.mjs';
 import { ENTITES, journalSansImage } from '../src/lib/edition-modele.mjs';
 import { cleDeLigne } from '../src/lib/historique-site.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
+import { elementDuMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -68,28 +69,45 @@ export const TABLES_VIDEES = Object.freeze(['arme', 'monstre', 'monstre_capacite
 /** Mots-clés par groupe (catégorie, type de page) qui reçoivent une icône en V1. */
 const PAR_GROUPE = 3;
 
+/**
+ * La ligne qui porte l'icône du mot-clé `id`, dans la structure qu'a la base : { table, cle } — le mot-clé lui-même avant la migration 0136 (colonne
+ * `mot_cle.icone`) ; depuis, son élément (docs/chantier-retrait-des-colonnes.md §1) : sa page ou son repère. Le mot-clé d'un sort n'a pas d'icône : erreur.
+ */
+function porteurDeLIcone(db, id) {
+  if (colonnes(db, 'mot_cle').some((c) => c.name === 'icone')) return { table: 'mot_cle', cle: { id } };
+  const e = elementDuMotCle(db, id);
+  if (e?.table === 'page') return { table: 'page', cle: { id: e.id } };
+  if (e?.table === 'repere') return { table: 'repere', cle: { mot_cle_id: id } };
+  throw new Error(e ? 'le mot-clé d’un sort n’a pas d’icône' : 'mot-clé sans élément');
+}
+
 export function v1IconesVariees(db) {
   const rapport = { variante: 'V1', faites: [], refusees: [] };
   const choisis = new Map(); // id → groupe
-  const ajouter = (lignes, groupe) => { for (const { id } of lignes) if (!choisis.has(id)) choisis.set(id, groupe); };
+  // l'icône de chaque mot-clé, lue dans la structure de la base (lib/mots-cles-db.mjs) : seuls ceux qui n'en ont pas sont choisis
+  const icones = new Map(motsClesDeLaBase(db, { elements: false }).map((m) => [m.id, m.icone ?? null]));
+  const ajouter = (lignes, groupe, n = Infinity) => {
+    for (const { id } of lignes.filter((l) => icones.get(l.id) === null).slice(0, n)) if (!choisis.has(id)) choisis.set(id, groupe);
+  };
   for (const { id } of db.prepare('SELECT id FROM categorie_mot_cle ORDER BY id').all()) {
-    ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN mot_cle_categorie c ON c.mot_cle_id = m.id WHERE c.categorie_id = ? AND m.icone IS NULL ORDER BY m.id LIMIT ?').all(id, PAR_GROUPE), `categorie:${id}`);
+    ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN mot_cle_categorie c ON c.mot_cle_id = m.id WHERE c.categorie_id = ? ORDER BY m.id').all(id), `categorie:${id}`, PAR_GROUPE);
   }
   for (const { type } of db.prepare('SELECT DISTINCT type FROM page ORDER BY type').all()) {
-    ajouter(db.prepare('SELECT DISTINCT m.id FROM mot_cle m JOIN page_tag t ON t.tag_id = m.id JOIN page p ON p.id = t.page_id WHERE p.type = ? AND m.icone IS NULL ORDER BY m.id LIMIT ?').all(type, PAR_GROUPE), `page:${type}`);
+    ajouter(db.prepare('SELECT DISTINCT m.id FROM mot_cle m JOIN page_tag t ON t.tag_id = m.id JOIN page p ON p.id = t.page_id WHERE p.type = ? ORDER BY m.id').all(type), `page:${type}`, PAR_GROUPE);
   }
-  ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN magie g ON g.mot_cle_id = m.id WHERE m.icone IS NULL ORDER BY m.id').all(), 'magie');
-  if (tableExiste(db, 'type_degats')) ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN type_degats d ON d.mot_cle_id = m.id WHERE m.icone IS NULL ORDER BY m.id').all(), 'type_degats');
-  const poser = db.prepare('UPDATE mot_cle SET icone = ? WHERE id = ?');
+  ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN magie g ON g.mot_cle_id = m.id ORDER BY m.id').all(), 'magie');
+  if (tableExiste(db, 'type_degats')) ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN type_degats d ON d.mot_cle_id = m.id ORDER BY m.id').all(), 'type_degats');
   const journal = journalDeLaVariante(db, 'V1');
   let i = 0;
   for (const [id, groupe] of choisis) {
     const icone = ICONES[i++ % ICONES.length].valeur;
     try {
-      const avant = db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
-      poser.run(icone, id);
-      journal.modifier('mot_cle', avant, { icone });
-      rapport.faites.push({ table: 'mot_cle', id, groupe, icone });
+      const { table, cle } = porteurDeLIcone(db, id);
+      const ou = Object.keys(cle).map((c) => `${q(c)} = ?`).join(' AND ');
+      const avant = db.prepare(`SELECT * FROM ${q(table)} WHERE ${ou}`).get(...Object.values(cle));
+      db.prepare(`UPDATE ${q(table)} SET icone = ? WHERE ${ou}`).run(icone, ...Object.values(cle));
+      journal.modifier(table, avant, { icone });
+      rapport.faites.push({ table: 'mot_cle', id, groupe, icone, porteur: { table, cle } });
     } catch (e) {
       rapport.refusees.push({ table: 'mot_cle', id, raison: String(e.message).split('\n')[0] });
     }
@@ -220,12 +238,18 @@ function referencesVers(db, table) {
   return refs;
 }
 
+/**
+ * Les colonnes des éléments qui portent les champs d'un mot-clé depuis la migration 0136 (son repère, la définition, la couleur et l'icône de sa page) :
+ * comme les colonnes du mot-clé avant elle, elles ne disent pas qu'il est cité.
+ */
+const CHAMPS_DU_MOT_CLE = { repere: null, page: ['definition', 'couleur', 'icone'] };
+
 /** Tous les textes de la base (cellules TEXT des tables de contenu), pour savoir si un mot-clé est cité. */
 function corpus(db) {
   const morceaux = [];
   for (const { name, sql } of db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
-    if (/^\s*CREATE\s+VIRTUAL/i.test(sql ?? '') || /_fts/.test(name) || name === 'mot_cle') continue;
-    const textes = colonnes(db, name).filter((c) => /TEXT/i.test(c.type)).map((c) => q(c.name));
+    if (/^\s*CREATE\s+VIRTUAL/i.test(sql ?? '') || /_fts/.test(name) || name === 'mot_cle' || CHAMPS_DU_MOT_CLE[name] === null) continue;
+    const textes = colonnes(db, name).filter((c) => /TEXT/i.test(c.type) && !CHAMPS_DU_MOT_CLE[name]?.includes(c.name)).map((c) => q(c.name));
     if (!textes.length) continue;
     for (const c of textes) for (const r of db.prepare(`SELECT ${c} AS t FROM ${q(name)} WHERE ${c} IS NOT NULL`).all()) morceaux.push(r.t);
   }
@@ -260,7 +284,8 @@ export function v4LignesRetirees(db, tables = TABLES_VIDEES) {
       if (table === 'mot_cle') {
         if (proteges.has(c.id)) continue;
         // un homonyme : sa clé distingue l'autre (« <libellé>-<catégorie> »), que le service recalculerait ; on n'en retire pas
-        if (db.prepare('SELECT count(*) AS n FROM mot_cle a JOIN mot_cle b ON b.id <> a.id AND lower(b.libelle) = lower(a.libelle) WHERE a.id = ?').get(c.id).n) continue;
+        // (le libellé lu par la vue v_mot_cle : la colonne du mot-clé avant la migration 0136, son élément depuis)
+        if (db.prepare('SELECT count(*) AS n FROM v_mot_cle a JOIN v_mot_cle b ON b.id <> a.id AND lower(b.libelle) = lower(a.libelle) WHERE a.id = ?').get(c.id).n) continue;
         textes ??= corpus(db);
         if (textes.includes(c.cle)) continue;
       }

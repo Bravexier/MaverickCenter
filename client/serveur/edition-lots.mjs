@@ -26,7 +26,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { adresseDeLaPage, adresseQuiSuit, indexDesAdresses } from '../src/lib/adresses-db.mjs';
+import { adresseDeLaPage, adresseQuiSuit, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
 import { ErreurCorpsArmures } from '../src/lib/corps-armures.mjs';
 import {
@@ -37,15 +37,20 @@ import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-poti
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { CORPS_D_UNE_PAGE_DE_NOTION } from '../src/lib/guide.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
-import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import {
+  COLONNES_LOGIQUES_DU_MOT_CLE, comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, neResteRienARemettre,
+  sansLesColonnesRetirees, TABLES_ANCRABLES,
+} from '../src/lib/lot-de-changements.mjs';
 import { estUnLotDAncrage } from '../src/lib/lots-d-ancrage.mjs';
 import { lecteurDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { refusDuLienDeLAncre } from '../src/lib/mots-cles-ancrage.mjs';
+import { elementDuMotCle, lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
 import { tableDeLElement } from './edition-adresses.mjs';
 import { lectureDesBalises } from './edition-ancrage.mjs';
-import { libelleDeLigne } from './edition-conflits.mjs';
+import { COLONNES_DE_LA_PAGE, COLONNES_DU_REPERE } from './edition-mots-cles.mjs';
+import { libelleDeLigne, ligneDuMotCle } from './edition-conflits.mjs';
 import { corpsEntierDesArmes } from './edition-armes.mjs';
 import { corpsEntierDesArmures } from './edition-armures.mjs';
 import { corpsEntierDeLaPageDesComposants } from './edition-composants.mjs';
@@ -91,6 +96,26 @@ const structureDe = (db) => (table) => {
     return null;
   }
 };
+
+/**
+ * La ligne actuelle d'une table telle qu'un lot la compare et la montre : celle de la base ; d'un mot-clé, l'objet lu sur son élément (migration 0136,
+ * lib/mots-cles-db.mjs#lireUnMotCle : `libelle`, `url`, `description`, `couleur`, `icone`, ses colonnes logiques, avec `id`, `cle`, `verrou`, `monnaie_id`),
+ * pour qu'un `avant` qui les nomme ne soit pas « changé entre-temps » ; null si la ligne n'existe pas.
+ */
+function lireLaLigne(db, table, cle) {
+  if (table !== 'mot_cle') return lireLigne(db, table, cle);
+  const m = Number.isInteger(cle?.id) ? lireUnMotCle(db, cle.id) : null;
+  if (!m) return null;
+  const { element: _element, ...ligne } = m;
+  return ligne;
+}
+
+/** Les colonnes logiques que `mot_cle` n'a plus dans cette base (toutes depuis la migration 0136, aucune avant) : celles que l'annulation ignore. */
+function colonnesRetirees(db) {
+  if (!tableExiste(db, 'mot_cle')) return [];
+  const { colonnes } = structure(db, 'mot_cle');
+  return COLONNES_LOGIQUES_DU_MOT_CLE.filter((c) => !colonnes.includes(c));
+}
 
 /** Le fichier de la base ouverte (« » pour une base en mémoire). */
 const fichierDe = (db) => db.prepare('PRAGMA database_list').all().find((b) => b.name === 'main')?.file ?? '';
@@ -154,6 +179,10 @@ const sous = (valeurs, colonnes) => Object.fromEntries(colonnes.map((c) => [c, v
  *     se donnent pas d'un bloc) ; voie générique sinon.
  * L'ancrage des mots-clés (décision R309, serveur/edition-ancrage.mjs) : une création ancrée (`ancrage`) passe par `ancrer_nouveau`, un alignement par
  * `aligner_mot_cle`, chacun suivi de `verifier_ligne` ; le `mot_cle_id` d'une page, d'un sort ou d'un type de sort par `ancrer_element` ; une catégorie se crée par le service.
+ * Depuis la migration 0136, `libelle`, `url`, `description`, `couleur` et `icone` d'un mot-clé sont des colonnes LOGIQUES (lib/lot-de-changements.mjs, en-tête) :
+ * celles de `TABLES.mot_cle`, que l'opération « modifier » du service écrit sur l'élément du mot-clé (sa page, son repère ; refus pour un sort, et pour le nom
+ * ou l'adresse d'un mot-clé de page ou de sort) ; un alignement (lots d'avant) ne recopie plus rien et ne fait que vérifier. Un lot nouveau écrit `page.definition`,
+ * `page.couleur`, `page.icone` ou `repere.*` par la même voie que toute colonne.
  */
 export function traduire(o) {
   const entite = entiteDeLaTable(o.table);
@@ -211,13 +240,18 @@ function traduireLaCreationDUnMotCle(o) {
   return { ops };
 }
 
-/** La création du mot-clé d'un élément (décision R309) : le service le crée avec son type et son ancre, puis le lot vérifie la ligne créée. */
+/**
+ * La création du mot-clé d'un élément (décision R309) : le service le crée avec son type et son ancre, puis le lot vérifie la ligne créée. Depuis la migration
+ * 0136, son nom et son adresse se lisent sur l'élément : `apres` se réduit à `id` ; un lot d'avant y donne aussi `libelle` et `url`, que la vérification compare
+ * à ceux de l'élément (sans rien recopier).
+ */
 function traduireLaCreationAncree(o) {
-  const { id, libelle, url = null } = o.apres;
+  const { id } = o.apres;
   const { table, id: element, type } = o.ancrage;
+  const donnes = ['libelle', 'url'].filter((c) => Object.hasOwn(o.apres, c));
   return { ops: [
-    { op: 'ancrer_nouveau', table, id: element, libelle, url, type },
-    { op: 'verifier_ligne', table: 'mot_cle', cle: { id }, attendu: { id, libelle, url } },
+    { op: 'ancrer_nouveau', table, id: element, type, ...sous(o.apres, donnes) },
+    { op: 'verifier_ligne', table: 'mot_cle', cle: { id }, attendu: sous(o.apres, ['id', ...donnes]) },
   ] };
 }
 
@@ -249,7 +283,9 @@ function traduireLaCreationDUneCategorie(o) {
  * sort donne son parent) : la clé n'est pas recalculée sur le moment, mais une fois après la dernière opération (un état entre deux lignes n'a pas à satisfaire la règle).
  */
 const changeUneCle = (o) => o.table === 'mot_cle_categorie' || o.ancrage?.aligner === true
-  || (o.operation === 'modifier' && TABLES_ANCRABLES.includes(o.table) && Object.hasOwn(o.apres, 'mot_cle_id'));
+  || (o.operation === 'modifier' && TABLES_ANCRABLES.includes(o.table) && Object.hasOwn(o.apres, 'mot_cle_id'))
+  // le nom d'un mot-clé à repère (migration 0136) : sa clé se calcule d'après lui
+  || (o.operation === 'modifier' && o.table === 'repere' && Object.hasOwn(o.apres, 'nom'));
 
 /** Les numéros de décision que cite un refus du service (« décision R218 », « décisions R218, R219 ») : ce qu'il verrouille au nom du propriétaire. */
 export const decisionsCitees = (message) => [...new Set(String(message ?? '').match(/\bR[0-9]+\b/g) ?? [])];
@@ -264,12 +300,16 @@ function valeurCourte(v) {
   return { valeur: v ?? null, tronquee: false };
 }
 
+/** Le mot-clé d'une ligne de `mot_cle`, lu sur son élément (lib/mots-cles-db.mjs#lireUnMotCle), pour la nommer ; null pour une autre table ou un mot-clé parti. */
+const motCleLu = (db, table, cle) => (table === 'mot_cle' && Number.isInteger(cle?.id) ? lireUnMotCle(db, cle.id) : null);
+
 /** L'aperçu d'une opération : la table et la ligne par leurs noms, chaque colonne par son libellé, avec la valeur d'avant (celle de la base) et d'après. */
 function apercuDe(db, o, ligne, ligneDuLibelle = ligne) {
   const colonnes = Object.keys(o.operation === 'supprimer' ? o.avant : o.apres).filter((c) => !colonneMasquee(o.table, c));
   let libelle;
   try {
-    libelle = libelleDeLigne(o.table, ligneDuLibelle ?? o.apres ?? o.avant, o.cle, db);
+    // un mot-clé par le nom qu'il lit sur son élément (migration 0136), même quand la ligne donnée est la sienne, brute
+    libelle = libelleDeLigne(o.table, ligneDuMotCle(o.table, ligneDuLibelle ?? o.apres ?? o.avant, motCleLu(db, o.table, o.cle)), o.cle, db);
   } catch {
     libelle = JSON.stringify(o.cle);
   }
@@ -348,12 +388,14 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
   const travail = (hote) => {
     const { lot: resolu, numeros } = donnerLesNumeros(depose.lot, (table, colonne) => plusHautNumero(db, table, colonne));
     sorties.numeros = numeros;
-    const comparaison = comparerAvecLaBase(resolu, (table, cle) => lireLigne(db, table, cle));
+    // un mot-clé se lit sur son élément (lireLaLigne) : un `avant` qui nomme ses colonnes logiques se compare à elles
+    const comparaison = comparerAvecLaBase(resolu, (table, cle) => lireLaLigne(db, table, cle));
     const verrous = new Set();
+    let adresses = null; // les adresses du site, lues à la première création ancrée
     resolu.operations.forEach((o, i) => {
       const rang = i + 1;
       const c = comparaison.operations[i];
-      const ligne = lireLigne(db, o.table, o.cle);
+      const ligne = lireLaLigne(db, o.table, o.cle);
       const base = { rang, table: o.table, cle: o.cle, operation: o.operation, apercu: apercuDe(db, o, ligne) };
       const noter = (etat, plus = {}) => sorties.operations.push({ ...base, etat, ...plus });
       const refuser = (message, plus = {}) => {
@@ -363,6 +405,12 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
       if (c.etat === 'changee') return noter('changee', { raison: c.raison, ecarts: c.ecarts });
       const { ops, refus } = traduire(o);
       if (refus) return refuser(refus);
+      // le mot-clé créé pour une page ou un sort lit son lien sur l'élément (migration 0136) : un lien qui ne mène à aucune page refuse sa ligne, comme avant
+      // (les adresses lues valent pour une suite de créations ancrées, qui ne changent aucune page : toute autre ligne les fait relire)
+      const creationAncree = o.table === 'mot_cle' && o.operation === 'inserer' && ['page', 'sort'].includes(o.ancrage?.table);
+      if (!creationAncree) adresses = null;
+      const lien = creationAncree ? refusDuLienDeLAncre(db, o.ancrage, (adresses ??= adressesDuSite(db))) : null;
+      if (lien) return refuser(lien);
       return ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o, noter, refuser, etats: { ecrite: essai ? 'applicable' : 'ecrite', verrouillee: essai ? 'verrouillee' : 'ecrite' } });
     });
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
@@ -589,7 +637,7 @@ function lignesDuLot(db, lotId) {
  */
 function planDeLAnnulation(db, lotId, lignes = null) {
   const journal = lignesDuLot(db, lotId);
-  const nets = effetNetDuLot(journal);
+  const nets = netsDuJournal(db, journal);
   const choisis = lignes ? nets.filter((n) => lignes.includes(n.rang)) : nets;
   if (lignes && choisis.length !== lignes.length) {
     throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${lignes.filter((n) => !nets.some((x) => x.rang === n)).join(', ')}`);
@@ -604,15 +652,74 @@ function planDeLAnnulation(db, lotId, lignes = null) {
   ];
 }
 
-/** L'effet net du lot du journal : une ligne par ligne de table touchée, numérotée par le rang de sa première écriture au journal (stable : c'est « la ligne n » des routes). */
-export const netsDuLot = (db, lotId) => effetNetDuLot(lignesDuLot(db, lotId));
+/**
+ * L'effet net de lignes du journal sur cette base : une ligne d'avant la migration 0136 qui note des colonnes que `mot_cle` n'a plus y est ramenée aux colonnes
+ * de la table, avec `retirees` et `brut` (lib/lot-de-changements.mjs#sansLesColonnesRetirees ; docs/chantier-retrait-des-colonnes.md, §6 : le journal n'est
+ * jamais réécrit, la comparaison et l'écriture de l'annulation les ignorent).
+ */
+const netsDuJournal = (db, journal) => sansLesColonnesRetirees(effetNetDuLot(journal), colonnesRetirees(db));
 
-/** Les opérations du service qui remettent une ligne : { ops } ou { refus }. La réinsertion d'une ligne retirée par le lot est une restauration à l'identique. */
-function operationsDeLAnnulation(db, net, jugement) {
-  if (net.genre === 'modifier') return traduire({ table: net.table, cle: net.cle, operation: 'modifier', apres: sous(net.aEcrire ?? net.origine, jugement.remises) });
+/** L'effet net du lot du journal : une ligne par ligne de table touchée, numérotée par le rang de sa première écriture au journal (stable : c'est « la ligne n » des routes). */
+export const netsDuLot = (db, lotId) => netsDuJournal(db, lignesDuLot(db, lotId));
+
+/**
+ * Les opérations du service qui remettent une ligne : { ops } ou { refus }. La réinsertion d'une ligne retirée par le lot est une restauration à l'identique.
+ * Depuis la migration 0136 (docs/chantier-retrait-des-colonnes.md, §2 et §6 ; `nets` : l'effet net du lot) :
+ *   - un mot-clé retiré par un lot d'avant la migration revient sans nom : son repère revient avec lui depuis ce que le journal en note (`brut`), sauf si le
+ *     même lot remet sa page ou son sort, qui lui rendent son nom ;
+ *   - une page ou un sort ancré qui revient reprend le repère que son mot-clé a reçu entre-temps (la migration, ou le site quand l'élément est parti : un
+ *     repère ne double jamais une page ni un sort) : le repère part ; sa définition, sa couleur et son icône passent sur la page quand le journal ne les
+ *     note pas (lot d'avant la migration), ou viennent du mot-clé que ce lot avait retiré ; un sort n'en porte pas (refus si le repère en a) ;
+ *   - l'ancre retirée d'un mot-clé dont le lot avait supprimé le repère (il ancrait un mot-clé existant) : ce repère revient tel qu'il était (`repereDeLAncreRetiree`).
+ */
+function operationsDeLAnnulation(db, net, jugement, nets = []) {
+  if (net.genre === 'modifier') {
+    const traduite = traduire({ table: net.table, cle: net.cle, operation: 'modifier', apres: sous(net.aEcrire ?? net.origine, jugement.remises) });
+    const repere = jugement.remises.includes('mot_cle_id') ? repereDeLAncreRetiree(db, net, nets) : null;
+    return repere && traduite.ops ? { ops: [repere, ...traduite.ops] } : traduite;
+  }
   if (net.genre === 'inserer') return traduire({ table: net.table, cle: net.cle, operation: 'supprimer' });
   const { colonnes } = structure(db, net.table);
-  return { ops: [{ op: 'ecrire_inserer', table: net.table, valeurs: sous(net.origine, Object.keys(net.origine).filter((c) => colonnes.includes(c))), restaurer: true }] };
+  const valeurs = sous(net.origine, Object.keys(net.origine).filter((c) => colonnes.includes(c)));
+  const ops = [{ op: 'ecrire_inserer', table: net.table, valeurs, restaurer: true }];
+  if (!tableExiste(db, 'repere')) return { ops };
+  const elementRemis = (k) => nets.some((n) => estUnElementAncreRetire(n) && ['page', 'sort'].includes(n.table) && n.origine.mot_cle_id === k);
+  if (net.table === 'mot_cle' && net.brut?.origine && !elementRemis(net.cle.id) && !lireLigne(db, 'repere', { mot_cle_id: net.cle.id })) {
+    const r = Object.fromEntries(Object.entries(COLONNES_DU_REPERE).map(([logique, colonne]) => [colonne, net.brut.origine[logique] ?? null]));
+    if (r.nom !== null) ops.push({ op: 'ecrire_inserer', table: 'repere', valeurs: { mot_cle_id: net.cle.id, ...r }, restaurer: true });
+  }
+  if (['page', 'sort'].includes(net.table) && Number.isInteger(net.origine.mot_cle_id)) {
+    const k = net.origine.mot_cle_id;
+    const repere = nets.some((n) => n.table === 'repere' && n.genre === 'inserer' && n.cle.mot_cle_id === k) ? null : lireLigne(db, 'repere', { mot_cle_id: k });
+    const parti = nets.find((n) => n.table === 'mot_cle' && n.genre === 'supprimer' && n.cle.id === k && n.brut?.origine);
+    // les champs que le journal ne note pas sur la page : ceux du repère d'aujourd'hui, sinon ceux du mot-clé retiré par ce lot
+    const source = repere ? Object.fromEntries(Object.values(COLONNES_DE_LA_PAGE).map((c) => [c, repere[c] ?? null]))
+      : parti ? Object.fromEntries(Object.entries(COLONNES_DE_LA_PAGE).map(([logique, c]) => [c, parti.brut.origine[logique] ?? null])) : {};
+    const portes = Object.entries(source).filter(([c, v]) => v !== null && !Object.hasOwn(net.origine, c));
+    if (net.table === 'sort' && repere && portes.length) {
+      return { refus: `le mot-clé de ce sort porte sur son repère une définition, une couleur ou une icône, qu’un mot-clé de sort n’a pas : retirez-les d’abord au Glossaire.` };
+    }
+    if (net.table === 'page' && portes.length && portes.every(([c]) => colonnes.includes(c))) Object.assign(valeurs, Object.fromEntries(portes));
+    if (repere) ops.push({ op: 'ecrire_supprimer', table: 'repere', cle: { mot_cle_id: k } });
+  }
+  return { ops };
+}
+
+/**
+ * L'annulation retire l'ancre `net` (une ligne de l'effet net qui a posé le `mot_cle_id` d'une page, d'un sort ou d'un type de sort) : quand ce même lot a
+ * supprimé le repère du mot-clé ancré (l'ancre d'un mot-clé existant le lui fait perdre, migration 0136), ce repère revient tel que le journal le note (son
+ * nom d'avant, son adresse, sa définition, sa couleur, son icône), avant l'ancre ; le service ne le refait alors pas de la page (décision B3-4 du chantier 4 :
+ * « si le lot ne remet pas lui-même un repère »). Rend l'opération, ou null : pas d'ancre retirée, repère que le lot n'a pas supprimé, ou déjà revenu
+ * (le lot entier le remet d'abord, `planDeLAnnulation`).
+ */
+function repereDeLAncreRetiree(db, net, nets) {
+  if (!estUneAncre(net) || !tableExiste(db, 'repere')) return null;
+  const k = net.fin.mot_cle_id;
+  if (!Number.isInteger(k) || net.origine.mot_cle_id === k) return null;
+  const retire = nets.find((n) => n.table === 'repere' && n.genre === 'supprimer' && n.cle.mot_cle_id === k);
+  if (!retire || lireLigne(db, 'repere', { mot_cle_id: k })) return null;
+  const { colonnes } = structure(db, 'repere');
+  return { op: 'ecrire_inserer', table: 'repere', valeurs: sous(retire.origine, Object.keys(retire.origine).filter((c) => colonnes.includes(c))), restaurer: true };
 }
 
 /**
@@ -680,7 +787,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       let actuelle = null;
       let illisible = null;
       try {
-        actuelle = lireLigne(db, net.table, net.cle);
+        actuelle = lireLaLigne(db, net.table, net.cle);
       } catch (e) {
         illisible = e?.message ?? String(e);
       }
@@ -707,28 +814,45 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         if (!essai) throw new ErreurEdition(409, `Ligne ${net.rang} refusée : ${message}`, { rang: net.rang, table: net.table, cle: net.cle, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] });
         return noter('refusee', { message, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] });
       }
-      if (jugement.etat === 'deja') return noter('deja');
-      if (jugement.etat === 'gardee') return noter('gardee');
       const refuser = (message, reste = {}) => {
         if (essai) return noter('refusee', { message, ...reste });
         throw new ErreurEdition(409, `Ligne ${rang} refusée : ${message}`, { rang, table: net.table, cle: net.cle, ...reste });
       };
-      // une clé se calcule (R232) : demandée seule, elle n'a rien à écrire ; sans numéro de décision, ce n'est pas un verrou à ouvrir
-      if (depose.lignes && estUneCleRecalculee(net)) return refuser(MOTIF_DE_LA_CLE_RECALCULEE);
+      // une ligne d'avant la migration 0136 qui n'écrivait que des colonnes que le mot-clé n'a plus : rien à remettre ici, le champ se corrige sur son élément ;
+      // demandée seule, elle est refusée ; dans le lot entier (ou emportée avec une autre), elle est gardée et n'empêche pas le reste
+      if (neResteRienARemettre(net)) {
+        const message = motifDesColonnesRetirees(db, net);
+        return depose.ligne === net.rang ? refuser(message) : noter('gardee', { raison: 'colonnes_retirees', message });
+      }
+      if (jugement.etat === 'deja') return noter('deja');
+      if (jugement.etat === 'gardee') return noter('gardee');
+      // une clé se calcule (R232) : demandée seule, elle n'a rien à écrire ; sans numéro de décision, ce n'est pas un verrou à ouvrir. Emportée avec la ligne
+      // qui l'a causée (le titre de la page dont le mot-clé lit son nom, `groupesDesAdresses`), elle se juge après le recalcul
+      if (depose.lignes?.length === 1 && estUneCleRecalculee(net)) return refuser(MOTIF_DE_LA_CLE_RECALCULEE);
       // le nom a changé depuis sans changer la clé : il ne reste que la clé à remettre, et elle ne s'écrit pas (aucun verrou à proposer) ; elle est gardée
       if (resteSeulementLaCle(net, jugement)) {
         imprevues.set('cle', { colonne: 'cle', ecrite: net.fin.cle ?? null, avant: net.origine.cle ?? null, trouvee: actuelle.cle ?? null });
         return noter('gardee');
       }
       if (estUnRenvoiDeCle(nets, net)) return noter('gardee', { raison: 'cle_gardee', message: MOTIF_DU_RENVOI }); // encore là : sa clé n'est pas revenue
-      const { ops, refus } = operationsDeLAnnulation(db, vu, jugement);
+      const { ops, refus } = operationsDeLAnnulation(db, vu, jugement, nets);
       if (refus) return refuser(refus);
       // une colonne que le service recalcule depuis une autre (la clé d'un mot-clé, après son libellé) est déjà revenue quand on la remet : on ne l'écrit pas
       const adapter = (op) => (op.op === 'ecrire_modifier' ? valeursEncoreARemettre(db, vu, op, imprevues) : op);
       return ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o: { table: net.table, cle: net.cle }, noter, refuser, adapter, etats: { ecrite: 'remise', verrouillee: essai ? 'verrouillee' : 'remise' } });
     };
-    if (!annulationAuRecalculDiffere(db, depose, plan)) plan.forEach((net) => remettre(juge.enClesDuMoment(net)));
-    else {
+    if (!annulationAuRecalculDiffere(db, depose, plan)) {
+      plan.forEach((net) => remettre(juge.enClesDuMoment(net)));
+      // le titre remis d'une page ancrée (le nom d'un sort, d'un repère) rend son nom au mot-clé (migration 0136) : sa clé le suit avant les contrôles, comme à
+      // l'aller (edition-ancrage.mjs#suivreLesElements, qui ne joue pas en annulation) ; un nom que la règle ne sait pas distinguer garde sa clé (B3-1)
+      if (hote.ecrites() && plan.some(nomRemis)) {
+        try {
+          hote.isoler(() => hote.executer({ op: 'recalculer_les_cles' }));
+        } catch (e) {
+          if (!(e instanceof ErreurEdition)) throw e;
+        }
+      }
+    } else {
       // l'état entre deux lignes n'a pas à satisfaire la règle des clés : on remet d'abord ce qui les fait (les textes avant les suppressions : un mot-clé cité ne se
       // supprime pas), on recalcule une fois, puis on juge ce que le recalcul a réécrit lui-même (la clé, les balises)
       hote.differerLesCles();
@@ -738,7 +862,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       const lecture = lectureDesBalises(motsClesDeLaBase(db, { elements: false }), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
       // une ligne d'un groupe gardé ne se coupe pas en deux : elle est notée une fois, entière
       // le renvoi d'une clé quittée se juge après le recalcul, qui le retire si la clé revient
-      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) ? { net, dabord: net, ensuite: null }
+      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) || neResteRienARemettre(net) ? { net, dabord: net, ensuite: null }
         : estUnRenvoiDeCle(nets, net) ? { net, dabord: null, ensuite: net } : { net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
@@ -768,7 +892,10 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
  * Retirer cette ligne insérée par le lot laisse-t-il les mentions des autres mots-clés comme elles sont ? Un mot-clé (le lecteur écarte sa définition), une catégorie et son
  * rangement : ni texte, ni étiquette, ni synonyme, ni clé quittée d'un mot-clé qui reste. Toute autre ligne fait relire les mentions.
  */
-const laisseLesMentions = (n) => n.genre === 'inserer' && ['mot_cle', 'mot_cle_categorie', 'categorie_mot_cle'].includes(n.table);
+const laisseLesMentions = (n) => n.genre === 'inserer' && ['mot_cle', 'mot_cle_categorie', 'categorie_mot_cle', 'repere'].includes(n.table);
+
+/** Une ligne de l'effet net qui a changé le nom que lit un mot-clé (migration 0136) : le titre d'une page, le nom d'un sort ou d'un repère. */
+const nomRemis = (n) => n.genre === 'modifier' && ((n.table === 'page' && Object.hasOwn(n.fin, 'titre')) || (['sort', 'repere'].includes(n.table) && Object.hasOwn(n.fin, 'nom')));
 
 /**
  * L'annulation remet-elle ce qui fait les clés sans passer par le service qui les recalcule ? Une ligne de `mot_cle_categorie`, une ancre, le nom d'une magie dont des sorts
@@ -778,21 +905,46 @@ const laisseLesMentions = (n) => n.genre === 'inserer' && ['mot_cle', 'mot_cle_c
 function annulationAuRecalculDiffere(db, depose, plan) {
   if (plan.some((n) => n.table === 'mot_cle_categorie' || estUneAncre(n))) return true;
   // une ligne de clé seule, demandée seule, est refusée dans `remettre` : elle n'a rien à recalculer
-  if (plan.some((n) => porteLaCleSansLeNom(n) && !(depose.lignes && estUneCleRecalculee(n)))) return true;
+  if (plan.some((n) => porteLaCleSansLeNom(n) && !(depose.lignes?.length === 1 && estUneCleRecalculee(n)))) return true;
   // même condition que `parentChange` à l'aller (edition-ancrage.mjs#suivreLesElements) : la clé des sorts homonymes dépend du nom de leur magie
   if (plan.some((n) => n.table === 'magie' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'nom')
     && db.prepare('SELECT 1 FROM sort WHERE magie_id = ? AND mot_cle_id IS NOT NULL LIMIT 1').get(n.cle.id))) return true;
-  if (!plan.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'libelle'))) return false;
+  // le nom d'un mot-clé : celui de son repère (migration 0136), ou sa colonne dans une ligne d'avant (seuls les lots d'avant ont aligné)
+  const renomme = (n) => n.genre === 'modifier' && ((n.table === 'repere' && Object.hasOwn(n.fin, 'nom')) || (n.table === 'mot_cle' && Object.hasOwn(n.brut?.fin ?? n.fin, 'libelle')));
+  if (!plan.some(renomme)) return false;
   return (jsonOuNull(ligneDuLot(db, depose.id)?.contenu)?.operations ?? []).some((o) => o.ancrage?.aligner === true);
 }
 
-/** Une ligne de `mot_cle` dont seule la clé a changé : celle d'un voisin, recalculée. Elle revient avec la ligne qui l'a causée, ou avec l'annulation du lot. */
-const estUneCleRecalculee = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.keys(n.fin).length === 1 && Object.hasOwn(n.fin, 'cle');
+/**
+ * Une ligne de `mot_cle` dont seule la clé a changé : celle d'un voisin, recalculée. Elle revient avec la ligne qui l'a causée, ou avec l'annulation du lot. Pas une
+ * ligne d'avant la migration 0136 qui écrivait aussi des colonnes retirées (son nom : `neResteRienARemettre`).
+ */
+const estUneCleRecalculee = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && !n.retirees?.length && Object.keys(n.fin).length === 1 && Object.hasOwn(n.fin, 'cle');
 const MOTIF_DE_LA_CLE_RECALCULEE = 'Seule sa clé a changé, recalculée par le site : elle revient avec la ligne qui l’a causée, ou avec l’annulation du lot.';
 /** Une ligne de `mot_cle` qui portait plus que la clé, et dont il ne reste que la clé à remettre : son nom a changé depuis, la clé suit le nom du moment. */
 const resteSeulementLaCle = (n, jugement) => n.table === 'mot_cle' && n.genre === 'modifier' && !estUneCleRecalculee(n) && jugement.remises.length === 1 && jugement.remises[0] === 'cle';
 /** Une ligne de `mot_cle` dont la clé a changé sans son nom : un voisin ou un parent l'a causé, seul le recalcul la ramène. */
-const porteLaCleSansLeNom = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'cle') && !Object.hasOwn(n.fin, 'libelle');
+const porteLaCleSansLeNom = (n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'cle') && !Object.hasOwn(n.brut?.fin ?? n.fin, 'libelle');
+
+/** Ce que les colonnes retirées par la migration 0136 deviennent dans un motif : le champ du mot-clé, lu sur son élément. */
+const CHAMPS_RETIRES = Object.freeze({ libelle: 'son nom', url: 'son adresse', description: 'sa définition', couleur: 'sa couleur', icone: 'son icône' });
+
+/**
+ * Pourquoi une ligne de `mot_cle` d'avant la migration 0136 n'a rien à remettre (`neResteRienARemettre`) : elle n'écrivait que des champs que le mot-clé ne porte
+ * plus lui-même, et où ils se corrigent désormais (docs/chantier-retrait-des-colonnes.md, §6) : sur sa page, son sort ou son repère (au Glossaire).
+ */
+function motifDesColonnesRetirees(db, net) {
+  const champs = net.retirees.map((c) => CHAMPS_RETIRES[c]);
+  const liste = champs.length > 1 ? `${champs.slice(0, -1).join(', ')} et ${champs.at(-1)}` : champs[0];
+  const pluriel = champs.length > 1;
+  const element = tableExiste(db, 'repere') ? elementDuMotCle(db, net.cle.id) : null;
+  const se = pluriel ? 'ces champs se corrigent' : 'ce champ se corrige';
+  const ou = !element ? (lireLigne(db, 'mot_cle', { id: net.cle.id }) ? 'ce mot-clé n’a plus d’élément.' : 'ce mot-clé n’existe plus.')
+    : element.table === 'page' ? `${se} désormais sur sa page « ${element.id} ».`
+      : element.table === 'sort' ? `${se} désormais sur son sort « ${element.id} » (un mot-clé de sort n’a ni définition, ni couleur, ni icône).`
+        : `${se} désormais au Glossaire, sur son repère.`;
+  return `Cette ligne ne change que ${liste} du mot-clé, qu’il ne porte plus lui-même mais lit sur son élément : ${ou}`;
+}
 
 /**
  * Le renvoi noté par le recalcul quand un mot-clé du lot a quitté la clé qu'il avait avant le lot. Il suit cette clé : le recalcul le retire quand elle revient ; tant qu'il est
@@ -905,9 +1057,10 @@ function jugerApresLeRecalcul(net, actuelle, lecture) {
   return { etat: gardees.length ? 'gardee' : 'deja', remises: [], deja, gardees, raison: jugement.raison };
 }
 
-/** Cette ligne de l'effet net tient-elle au mot-clé `k` : sa ligne, une de ses catégories, une clé qu'il a quittée, une ancre qui le cite ? */
+/** Cette ligne de l'effet net tient-elle au mot-clé `k` : sa ligne, une de ses catégories, une clé qu'il a quittée, une ancre qui le cite, son repère ? */
 const tientAuMotCle = (n, k) => (n.table === 'mot_cle' && n.cle.id === k) || (n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k)
-  || (n.table === 'mot_cle_ancienne_cle' && (n.fin ?? n.origine)?.mot_cle_id === k) || (estUneAncre(n) && n.fin.mot_cle_id === k);
+  || (n.table === 'mot_cle_ancienne_cle' && (n.fin ?? n.origine)?.mot_cle_id === k) || (estUneAncre(n) && n.fin.mot_cle_id === k)
+  || (n.table === 'repere' && n.cle.mot_cle_id === k);
 
 /**
  * Les lignes qu'annuler une ligne emporte, parce que seule elle n'a pas de sens : Map(rang → les rangs du groupe, croissants), sans entrée pour une ligne qui reste
@@ -921,7 +1074,7 @@ const tientAuMotCle = (n, k) => (n.table === 'mot_cle' && n.cle.id === k) || (n.
  * synonymes et clés quittées) ; la source du jour, partagée, reste seule ; ce groupe s'unit aussi à ceux qu'il recoupe.
  * Rien d'autre : un renommage qui ne déplace pas l'adresse, l'ancre d'un mot-clé existant, un lot sans ancrage restent ligne à ligne.
  */
-function lignesEmportees(nets, lot) {
+function lignesEmportees(nets, lot, db) {
   const groupes = new Map();
   const grouper = (lignes) => {
     const rangs = lignes.map((n) => n.rang).sort((a, b) => a - b);
@@ -929,6 +1082,11 @@ function lignesEmportees(nets, lot) {
   };
   const crees = motsClesCreesEtAncres(nets);
   for (const k of crees) grouper(nets.filter((n) => tientAuMotCle(n, k)));
+  // un mot-clé créé nu et le repère qui naît avec lui (migration 0136) : l'un sans l'autre n'a pas de sens
+  for (const m of nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer' && !crees.has(n.cle.id) && !groupes.has(n.rang))) {
+    const repere = nets.find((n) => n.table === 'repere' && n.genre === 'inserer' && n.cle.mot_cle_id === m.cle.id);
+    if (repere) grouper([m, repere]);
+  }
   if (estUnLotDAncrage(lot)) {
     const reclasses = new Set(nets.filter((n) => n.table === 'mot_cle_categorie' && !crees.has(n.cle.mot_cle_id)).map((n) => n.cle.mot_cle_id));
     for (const k of reclasses) grouper(nets.filter((n) => n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k));
@@ -936,12 +1094,15 @@ function lignesEmportees(nets, lot) {
   // les éléments retirés et leur mot-clé reviennent ensemble, un groupe par mot-clé (après les reclassements : ce groupe contient le leur)
   for (const [k, elements] of Map.groupBy(nets.filter(estUnElementAncreRetire), (n) => n.origine.mot_cle_id)) {
     const motCle = nets.find((n) => n.table === 'mot_cle' && n.cle.id === k);
+    // gardé, il a reçu un repère (migration 0136) ; dans un lot d'avant, son adresse s'est vidée
+    const repere = nets.find((n) => n.table === 'repere' && n.genre === 'inserer' && n.cle.mot_cle_id === k);
     if (motCle?.genre === 'supprimer') grouper([...elements, ...nets.filter((n) => tientAuMotCle(n, k) || (n.table === 'mot_cle_synonyme' && n.origine?.mot_cle_id === k))]);
-    else if (motCle?.genre === 'modifier' && motCle.fin.url === null) grouper([...elements, motCle]);
+    else if (repere) grouper([...elements, repere]);
+    else if (motCle?.genre === 'modifier' && Object.hasOwn(motCle.brut?.fin ?? motCle.fin, 'url') && (motCle.brut?.fin ?? motCle.fin).url === null) grouper([...elements, motCle]);
   }
   // les pages de notion, puis les adresses en dernier : un groupe qui recoupe un groupe déjà fait l'absorbe (la ligne de la page peut être l'ancre d'un mot-clé
   // créé, ou la page de notion de ce mot-clé)
-  for (const lignes of [...groupesDesPagesDeNotion(nets), ...groupesDesAdresses(nets)]) {
+  for (const lignes of [...groupesDesPagesDeNotion(nets), ...groupesDesAdresses(nets, db)]) {
     const rangs = new Set(lignes.flatMap((n) => groupes.get(n.rang) ?? [n.rang]));
     grouper([...rangs].map((r) => ({ rang: r })));
   }
@@ -964,10 +1125,12 @@ function groupesDesPagesDeNotion(nets) {
     const motCle = nets.find((n) => n.table === 'mot_cle' && n.cle.id === k);
     const duMotCle = motCle?.genre === 'inserer'
       ? nets.filter((n) => n !== p && (tientAuMotCle(n, k) || (n.table === 'mot_cle_synonyme' && n.fin?.mot_cle_id === k)))
-      : motCle?.genre === 'modifier' && Object.hasOwn(motCle.fin, 'url') ? [motCle] : [];
+      : motCle?.genre === 'modifier' && Object.hasOwn(motCle.brut?.fin ?? motCle.fin, 'url') ? [motCle] : [];
+    // le repère que la page a repris (migration 0136) : il revient quand elle part (l'annulation le remet d'abord, le contrôle du contenu juge l'état final)
+    const repere = nets.filter((n) => n.table === 'repere' && n.genre === 'supprimer' && n.cle.mot_cle_id === k && !duMotCle.includes(n));
     return [
       p, ...nets.filter((n) => n.table === 'page_source' && n.cle.page_id === p.cle.id),
-      ...nets.filter((n) => n.table === 'page_ancienne_adresse' && n.genre === 'supprimer' && avecBarre(n.cle.adresse) === adresse), ...duMotCle,
+      ...nets.filter((n) => n.table === 'page_ancienne_adresse' && n.genre === 'supprimer' && avecBarre(n.cle.adresse) === adresse), ...duMotCle, ...repere,
     ];
   });
 }
@@ -981,10 +1144,13 @@ const avecBarre = (adresse) => `/${adresse}`;
  * ligne de l'élément dont elle tire son segment, s'il a changé (un don, un métier, une race, une classe : edition-adresses.mjs#tableDeLElement ; remis en premier,
  * dans l'ordre du lot, il ramène le titre de la page, que l'annulation ne remet pas elle-même) ; les lignes de `page_ancienne_adresse` écrites pour elle
  * (insérées ou reprises à son nom) et celle retirée de sa nouvelle adresse ; les mots-clés dont le lot a fait passer l'adresse de l'adresse quittée à la nouvelle
- * (lib/adresses-db.mjs#adresseQuiSuit). Une page créée par le lot n'en a pas : sa ligne est entière.
+ * (lib/adresses-db.mjs#adresseQuiSuit) ; depuis la migration 0136, la ligne du mot-clé ancré sur la page renommée qui ne change que sa clé (son nom se lit sur
+ * le titre : sa clé le suit ; `db` lit l'ancre). Une page créée par le lot n'en a pas : sa ligne est entière.
  */
-function groupesDesAdresses(nets) {
+function groupesDesAdresses(nets, db) {
   const anciennes = nets.filter((n) => n.table === 'page_ancienne_adresse');
+  // le mot-clé dont la page est l'élément lit son nom sur elle (migration 0136) : sa clé suit le titre, et la ligne qui ne change qu'elle va avec l'adresse
+  const ancreDe = (id) => (db && tableExiste(db, 'repere') ? db.prepare('SELECT mot_cle_id FROM page WHERE id = ?').get(id)?.mot_cle_id ?? null : null);
   const pages = new Map();
   for (const n of nets) {
     if (n.table === 'page' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'slug_adresse') && !memeValeur(n.origine.slug_adresse ?? null, n.fin.slug_adresse ?? null)) pages.set(n.cle.id, n);
@@ -1002,10 +1168,15 @@ function groupesDesAdresses(nets) {
     // l'adresse quittée : celle du segment d'avant, et chaque ancienne adresse écrite pour la page
     const quittees = new Set([...(page && Object.hasOwn(page.origine, 'slug_adresse') ? [adresseDeLaPage(id, segment('origine'))] : []), ...ecrites.map((a) => avecBarre(a.cle.adresse))]);
     quittees.delete(adresse);
-    const motsCles = nets.filter((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'url')
-      && [...quittees].some((quittee) => adresseQuiSuit(n.origine.url, { quittee, adresse }) === n.fin.url));
+    // les repères dont l'adresse a suivi (migration 0136), et les mots-clés d'un lot d'avant, dont la colonne `url` suivait
+    const suit = (avant, apres) => [...quittees].some((quittee) => adresseQuiSuit(avant, { quittee, adresse }) === apres);
+    const motsCles = nets.filter((n) => n.genre === 'modifier' && (
+      (n.table === 'repere' && Object.hasOwn(n.fin, 'adresse') && suit(n.origine.adresse, n.fin.adresse))
+      || (n.table === 'mot_cle' && Object.hasOwn(n.brut?.fin ?? n.fin, 'url') && suit((n.brut?.origine ?? n.origine).url, (n.brut?.fin ?? n.fin).url))));
     const element = nets.find((n) => n.genre === 'modifier' && n.table === tableDeLElement(id) && n.cle.id === id);
-    const lignes = [...(element ? [element] : []), ...(page ? [page] : []), ...ecrites, ...retiree, ...motsCles];
+    const k = page && Object.hasOwn(page.fin, 'titre') ? ancreDe(id) : null;
+    const cle = k === null ? [] : nets.filter((n) => estUneCleRecalculee(n) && n.cle.id === k);
+    const lignes = [...(element ? [element] : []), ...(page ? [page] : []), ...ecrites, ...retiree, ...motsCles, ...cle];
     if (lignes.length > 1) sortie.push(lignes);
   }
   return sortie;
@@ -1034,6 +1205,27 @@ function etatDansLeGroupe(net, actuelle, juge) {
   return gardees.length ? 'changee' : remises.length ? 'en_place' : 'revenue';
 }
 
+/** Les champs d'un mot-clé que son élément porte et qu'aucune autre ligne du groupe ne dit : sa définition, sa couleur, son icône. */
+const CHAMPS_DE_L_ELEMENT = Object.freeze(['description', 'couleur', 'icone']);
+
+/**
+ * La définition, la couleur ou l'icône du mot-clé que la ligne `net` a créé ont-elles changé depuis le lot ? Depuis la migration 0136, elles se lisent sur son
+ * élément (lib/mots-cles-db.mjs#lireUnMotCle) et la ligne du mot-clé ne les note plus : leur valeur à la fin du lot est celle que le lot a écrite sur son repère
+ * ou sur la page qu'il lui a donnée, sinon aucune (un mot-clé créé n'en a pas d'autre) ; une ligne d'avant la migration les note elle-même (`brut`).
+ * Faux pour toute autre ligne, et pour un mot-clé parti depuis (le groupe se juge sans lui).
+ */
+function champsDeLElementChanges(db, nets, net) {
+  if (net.table !== 'mot_cle' || net.genre !== 'inserer' || !tableExiste(db, 'repere')) return false;
+  const k = net.cle.id;
+  const m = Number.isInteger(k) ? lireUnMotCle(db, k) : null;
+  if (!m) return false;
+  const repere = nets.find((n) => n.table === 'repere' && n.genre !== 'supprimer' && n.cle.mot_cle_id === k);
+  const page = nets.find((n) => n.table === 'page' && n.genre !== 'supprimer' && n.fin?.mot_cle_id === k);
+  const deFin = (c) => (net.brut?.fin ? net.brut.fin[c]
+    : repere ? repere.fin[COLONNES_DU_REPERE[c]] : page ? page.fin[COLONNES_DE_LA_PAGE[c]] : null) ?? null;
+  return CHAMPS_DE_L_ELEMENT.some((c) => (m[c] ?? null) !== deFin(c));
+}
+
 /**
  * Les mots-clés créés des `groupes` qu'une ligne de la base cite sans être ce que le lot a laissé, comparée par identité. Une ligne n'est du lot que si l'effet net porte
  * sa clé avec cette même valeur de clé étrangère à `fin` ; sinon elle a été ajoutée depuis. Une ligne du lot hors du groupe et retouchée depuis compte aussi : la
@@ -1042,6 +1234,9 @@ function etatDansLeGroupe(net, actuelle, juge) {
 function fillesAjoutees(db, nets, groupes, juge) {
   const duGroupe = new Set(groupes.flat());
   const motsCles = nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer' && duGroupe.has(n.rang)).map((n) => n.cle.id);
+  // le repère que la migration 0136 a posé au mot-clé créé par un lot d'avant (sa ligne porte les colonnes retirées) n'a pas été ajouté depuis : sinon sa
+  // création ne s'annulerait plus
+  const reperesDeLaMigration = new Set(nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer' && n.retirees?.length).map((n) => n.cle.id));
   const trouves = new Set();
   if (!motsCles.length) return trouves;
   const idDeLigne = (cle, valeurs) => JSON.stringify(cle.map((c) => String(valeurs[c])));
@@ -1054,6 +1249,7 @@ function fillesAjoutees(db, nets, groupes, juge) {
       const lues = [...new Set([...cle, colonne])].map((c) => `"${c}"`).join(', ');
       for (const l of db.prepare(`SELECT ${lues} FROM "${name}" WHERE "${colonne}" IN (${motsCles.map(() => '?').join(', ')})`).all(...motsCles)) {
         const net = duLot.get(idDeLigne(cle, l));
+        if (!net && name === 'repere' && reperesDeLaMigration.has(l[colonne])) continue;
         const ecriteParLeLot = net && memeValeur(net.fin?.[colonne], l[colonne]);
         if (!ecriteParLeLot || (!duGroupe.has(net.rang) && juge.juger(net, lireLigne(db, name, net.cle)).gardees.length)) trouves.add(l[colonne]);
       }
@@ -1070,7 +1266,7 @@ function fillesAjoutees(db, nets, groupes, juge) {
  */
 function groupesGardes(db, nets, lot, annulees = new Set()) {
   const gardes = new Map();
-  const groupes = [...new Set(lignesEmportees(nets, lot).values())].filter((rangs) => !rangs.every((r) => annulees.has(r)));
+  const groupes = [...new Set(lignesEmportees(nets, lot, db).values())].filter((rangs) => !rangs.every((r) => annulees.has(r)));
   if (!groupes.length) return gardes;
   const parRang = new Map(nets.map((n) => [n.rang, n]));
   const juge = jugeDesLignes(db, nets);
@@ -1086,7 +1282,10 @@ function groupesGardes(db, nets, lot, annulees = new Set()) {
   };
   for (const rangs of groupes) {
     const lignes = rangs.map((r) => parRang.get(r));
-    const etats = lignes.filter((n) => n.table !== 'mot_cle_ancienne_cle').map((n) => etatDansLeGroupe(n, lue(n), juge));
+    // une ligne d'avant la migration 0136 qui n'écrivait que des colonnes retirées n'a rien à remettre : elle ne dit rien de l'état du groupe
+    const etats = lignes.filter((n) => n.table !== 'mot_cle_ancienne_cle' && !neResteRienARemettre(n)).map((n) => etatDansLeGroupe(n, lue(n), juge));
+    // la définition, la couleur ou l'icône d'un mot-clé créé, écrites depuis sur son élément (migration 0136) : la ligne du mot-clé ne les porte plus
+    if (lignes.some((n) => champsDeLElementChanges(db, nets, n))) etats.push('changee');
     const enPlace = etats.filter((e) => e === 'en_place').length;
     if (!enPlace && !etats.includes('changee')) continue;
     const motCle = lignes.find((n) => n.table === 'mot_cle');
@@ -1150,8 +1349,10 @@ function etiquettesDesLignes(db, nets) {
   return new Map(nets.map((net) => {
     let libelle;
     try {
-      const actuelle = lireLigne(db, net.table, net.cle);
-      libelle = libelleDeLigne(net.table, actuelle ?? { ...net.origine, ...net.fin }, net.cle, db);
+      // un mot-clé par son nom, lu sur son élément ; parti, par ce que le journal en note (une ligne d'avant la migration 0136 porte encore son libellé)
+      const actuelle = lireLaLigne(db, net.table, net.cle);
+      const notee = { ...(net.brut?.origine ?? net.origine), ...(net.brut?.fin ?? net.fin) };
+      libelle = libelleDeLigne(net.table, ligneDuMotCle(net.table, actuelle ?? notee, motCleLu(db, net.table, net.cle)), net.cle, db);
     } catch {
       libelle = `${nomDeTable(net.table) ?? net.table}`;
     }
@@ -1270,7 +1471,7 @@ function dependancesDuLot(db, depose) {
 function differeDeLaProduction(db, production, net) {
   const lue = (base) => {
     try {
-      return lireLigne(base, net.table, net.cle);
+      return ligneComparable(base, net.table, net.cle);
     } catch {
       return null;
     }
@@ -1278,7 +1479,33 @@ function differeDeLaProduction(db, production, net) {
   const ici = lue(db);
   const enProduction = lue(production);
   if (!ici || !enProduction) return Boolean(ici) !== Boolean(enProduction);
-  return Object.keys({ ...net.origine, ...net.fin }).some((c) => !isDeepStrictEqual(ici[c] ?? null, enProduction[c] ?? null));
+  // une ligne d'avant la migration 0136 : les colonnes logiques qu'elle a écrites comptent aussi
+  return Object.keys({ ...(net.brut?.origine ?? net.origine), ...(net.brut?.fin ?? net.fin) }).some((c) => !isDeepStrictEqual(ici[c] ?? null, enProduction[c] ?? null));
+}
+
+/**
+ * Une ligne telle que `differeDeLaProduction` la compare, sur une base de l'une ou l'autre structure (la production reste à celle d'avant la migration 0136
+ * tant qu'elle n'est pas livrée) : une valeur seulement déplacée du mot-clé vers son élément n'est pas un écart (docs/chantier-retrait-des-colonnes.md, §4 :
+ * l'objet de lib/mots-cles-db.mjs, des deux côtés).
+ *   - `mot_cle` : l'objet du mot-clé (lireUnMotCle : ses colonnes logiques comprises, lues dans ses colonnes ou sur son élément) ;
+ *   - `repere` : ses colonnes, lues dans l'objet du mot-clé (`nom` = libelle…) ; absent si le mot-clé n'a ni repère ni (avant la migration) de place pour
+ *     ses champs : un mot-clé qui a une page ou un sort, ou qui n'existe pas ;
+ *   - `page` : la ligne ; sur une base d'avant la migration, `definition`, `couleur` et `icone` sont ceux du mot-clé qu'elle désigne ;
+ *   - toute autre table : la ligne.
+ */
+function ligneComparable(base, table, cle) {
+  const ancienne = !colonnesRetirees(base).length;
+  if (table === 'mot_cle') return lireLaLigne(base, table, cle);
+  if (table === 'repere') {
+    if (!ancienne) return lireLigne(base, table, cle);
+    const m = Number.isInteger(cle?.mot_cle_id) ? lireUnMotCle(base, cle.mot_cle_id) : null;
+    if (!m || (m.element && m.element.table !== 'repere')) return null;
+    return { mot_cle_id: m.id, ...Object.fromEntries(Object.entries(COLONNES_DU_REPERE).map(([logique, colonne]) => [colonne, m[logique] ?? null])) };
+  }
+  const ligne = lireLigne(base, table, cle);
+  if (table !== 'page' || !ligne || !ancienne) return ligne;
+  const m = Number.isInteger(ligne.mot_cle_id) ? lireUnMotCle(base, ligne.mot_cle_id) : null;
+  return { ...ligne, ...Object.fromEntries(Object.entries(COLONNES_DE_LA_PAGE).map(([logique, colonne]) => [colonne, m?.[logique] ?? null])) };
 }
 
 /** Le lot appliqué (ses lignes nettes `nets`) change-t-il encore quelque chose par rapport à la production ? */
@@ -1332,7 +1559,7 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
   const etiquettes = etiquettesDesLignes(db, nets);
   const dependances = ligne.etat === 'applique' ? dependancesDesLignes(db, nets, new Set(Object.keys(annulees).map(Number)), etiquettes) : new Map();
   const juge = jugeDesLignes(db, nets);
-  const groupes = lignesEmportees(nets, ligne);
+  const groupes = lignesEmportees(nets, ligne, db);
   const gardes = ligne.etat === 'applique' ? groupesGardes(db, nets, ligne, new Set(Object.keys(annulees).map(Number))) : new Map();
   // ce qui tient une ligne : ce qui tient son groupe, hors du groupe lui-même (il s'annule d'un bloc)
   const tenueDe = (rang) => {
@@ -1343,12 +1570,15 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
     lignes: nets.map((net) => {
       let actuelle = null;
       try {
-        actuelle = lireLigne(db, net.table, net.cle);
+        actuelle = lireLaLigne(db, net.table, net.cle);
       } catch {
         actuelle = null;
       }
-      const jugement = juge.juger(net, actuelle);
-      const descr = apercuDe(db, { table: net.table, cle: net.cle, operation: net.genre, avant: net.origine, apres: net.fin }, net.genre === 'inserer' ? null : net.origine, actuelle ?? { ...net.origine, ...net.fin });
+      // une ligne d'avant la migration 0136 se montre telle que le journal la note (`brut`), colonnes retirées comprises ; elle se juge sans elles
+      const [origine, fin] = [net.brut?.origine ?? net.origine, net.brut?.fin ?? net.fin];
+      const retiree = neResteRienARemettre(net);
+      const jugement = retiree ? jugerLAnnulation({ ...net, origine: sous(origine, net.retirees), fin: sous(fin, net.retirees) }, actuelle) : juge.juger(net, actuelle);
+      const descr = apercuDe(db, { table: net.table, cle: net.cle, operation: net.genre, avant: origine, apres: fin }, net.genre === 'inserer' ? null : origine, actuelle ?? { ...origine, ...fin });
       const sortie = { n: net.rang, table: descr.table, ligne: descr.ligne, genre: net.genre, colonnes: descr.colonnes, ...(production ? { ecart_production: differeDeLaProduction(db, production, net) } : {}) };
       const finie = annulees[net.rang] ?? null;
       const duLot = duLotEntier.get(net.rang);
@@ -1360,13 +1590,15 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
       const motifDuGroupe = gardes.get(net.rang) ?? null;
       const cleSeule = ligne.etat === 'applique' && !motifDuGroupe && juge.seuleLaCle(net, actuelle);
-      const cleRecalculee = ligne.etat === 'applique' && !motifDuGroupe && jugement.remises.length > 0 && estUneCleRecalculee(net);
+      // emportée avec la ligne qui l'a causée (`lignesEmportees`), une clé recalculée s'annule avec son groupe
+      const cleRecalculee = ligne.etat === 'applique' && !motifDuGroupe && !groupes.has(net.rang) && jugement.remises.length > 0 && estUneCleRecalculee(net);
       const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length || cleSeule ? 'en_place' : 'comme_avant';
       const sansRemise = !jugement.remises.length || resteSeulementLaCle(net, jugement); // une clé ne se remet pas : il ne reste rien à remettre sur cette ligne
       const renvoiGarde = ligne.etat === 'applique' && !motifDuGroupe && Boolean(actuelle) && estUnRenvoiDeCle(nets, net);
       const tenue = motifDuGroupe || cleSeule || cleRecalculee || renvoiGarde ? [] : tenueDe(net.rang);
       let motif = null;
-      if (motifDuGroupe) motif = motifDuGroupe;
+      if (retiree) motif = motifDesColonnesRetirees(db, net); // rien ne s'y remet : le champ se corrige sur l'élément
+      else if (motifDuGroupe) motif = motifDuGroupe;
       else if (cleSeule) motif = MOTIF_DE_LA_CLE_SEULE;
       else if (cleRecalculee) motif = MOTIF_DE_LA_CLE_RECALCULEE;
       else if (renvoiGarde) motif = MOTIF_DU_RENVOI;
@@ -1423,7 +1655,7 @@ function aAnnulerUneLigne(db, ligne, numero) {
   const net = nets.find((n) => n.rang === numero);
   if (!net) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
   const libelle = etiquettesDesLignes(db, [net]).get(net.rang);
-  const lignes = lignesEmportees(nets, ligne).get(numero) ?? [numero];
+  const lignes = lignesEmportees(nets, ligne, db).get(numero) ?? [numero];
   return { ...aAnnuler(db, ligne, lignes), titre: `Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300), ligne: numero, lignes };
 }
 

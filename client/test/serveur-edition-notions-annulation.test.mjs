@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { annuler, annulerUneLigne, lire } from '../serveur/edition-lots.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { adresseDesRegles, idDesRegles, nom, outilsDesCas } from './aide-adresses-lots.mjs';
 import { poserLesCategoriesNouvelles, poserMotCle, poserOnglet, poserPageLisible } from './aide-ancrage.mjs';
 
@@ -27,7 +28,7 @@ function poserLeMonde(db) {
 /** Un mot-clé du type Notion, décrit. */
 function poserNotion(db, libelle) {
   const id = poserMotCle(db, { libelle, categories: ['Notion'] });
-  db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Définition d’essai de ${libelle}.`, id);
+  db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(`Définition d’essai de ${libelle}.`, id); // sur son repère (migration 0136)
   return id;
 }
 
@@ -38,10 +39,12 @@ function poserTypeDeSort(db, libelle) {
   return id;
 }
 
-/** Les lignes que les pages de notion écrivent. */
-const photo = (db) => Object.fromEntries(['page', 'page_source', 'source', 'mot_cle', 'mot_cle_categorie'].map((t) => [t, db.prepare(`SELECT * FROM "${t}" ORDER BY 1, 2`).all().map((l) => ({ ...l }))]));
+/** Les lignes que les pages de notion écrivent (le repère du mot-clé compris : il part quand sa page l'ancre, migration 0136). */
+const photo = (db) => Object.fromEntries(['page', 'page_source', 'source', 'mot_cle', 'repere', 'mot_cle_categorie']
+  .map((t) => [t, db.prepare(`SELECT * FROM "${t}" ORDER BY 1, 2`).all().map((l) => ({ ...l }))]));
 const page = (m, id) => m.db.prepare('SELECT * FROM page WHERE id = ?').get(id);
-const urlDe = (m, k) => m.db.prepare('SELECT url FROM mot_cle WHERE id = ?').get(k)?.url;
+/** L'adresse du mot-clé, lue sur son élément (migration 0136). */
+const urlDe = (m, k) => lireUnMotCle(m.db, k)?.url;
 const typeDeSort = (m) => m.db.prepare("SELECT mot_cle_id AS k FROM type_sort WHERE id = 'attaque'").get().k;
 /** Le numéro d'une ligne du lot : le rang de sa première écriture au journal. */
 const rangDe = (m, lotId, table, cle) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lotId, table)
@@ -78,8 +81,9 @@ test('la ligne d’une page posée sur le mot-clé d’un type de sort s’annul
   },
   async (m) => {
     const { k } = m.monde;
-    const avant = photo(m.db).mot_cle.find((x) => x.id === k);
-    assert.equal(avant.url, null);
+    const lu = (base) => ({ motCle: photo(base).mot_cle.find((x) => x.id === k), repere: photo(base).repere.find((x) => x.mot_cle_id === k) });
+    const avant = lu(m.db);
+    assert.equal(urlDe(m, k), null);
     const p = await applique(m, [notion(nom('Rituel'), k)]);
     const id = idDesRegles(nom('Rituel'));
     assert.equal(page(m, id).mot_cle_id, k);
@@ -89,7 +93,7 @@ test('la ligne d’une page posée sur le mot-clé d’un type de sort s’annul
     assert.equal(m.db.prepare('SELECT count(*) AS n FROM page_source WHERE page_id = ?').get(id).n, 0);
     assert.equal(urlDe(m, k), null);
     assert.equal(typeDeSort(m), k, 'le lien du type de sort');
-    assert.deepEqual(photo(m.db).mot_cle.find((x) => x.id === k), avant, 'le mot-clé tel qu’avant le lot');
+    assert.deepEqual(lu(m.db), avant, 'le mot-clé tel qu’avant le lot, son repère compris');
     assert.equal(lire(m.db, p.id).lignes.filter((l) => l.etat === 'annulee').length, 3, 'la page, sa source et le mot-clé');
   },
 ));

@@ -87,7 +87,7 @@ test('le texte de l’annonce : Markdown sûr (ni HTML brut ni lien non sûr), b
   assert.equal(lire().texte, texte, 'rien n’a changé après les refus');
   // une balise du glossaire, écrite par son libellé tel quel : la clé seule dans la base (un texte mis en forme ; migration 0113, décision R232 (3)) —
   // un mot-clé sans homonyme (sa clé est celle de son libellé)
-  const motCle = db.prepare('SELECT id, libelle, cle FROM mot_cle ORDER BY id').all().find((m) => normalize(m.libelle) === m.cle);
+  const motCle = db.prepare('SELECT id, libelle, cle FROM v_mot_cle ORDER BY id').all().find((m) => normalize(m.libelle) === m.cle);
   ok(modifier({ texte: `Une balise : {{${motCle.libelle}}}.` }));
   assert.equal(lire().texte, `Une balise : {{${motCle.cle}}}.`);
   assert.equal(modifier({ texte: 'Une balise : {{mot-cle-qui-n-existe-pas}}.' }).statut, 400, 'une balise qui ne cite aucun mot-clé');

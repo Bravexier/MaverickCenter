@@ -14,6 +14,7 @@ import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { FUSIONS_DE_MIGRATION } from '../serveur/edition.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
@@ -127,7 +128,8 @@ test('0124 (R272) : le mot-clé de la page retirée est fondu dans celui de l’
   const imp = baseDImport();
   assert.equal(imp.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(fusion.source_id), undefined, 'la source a quitté le vocabulaire');
   assert.equal(imp.prepare('SELECT mot_cle_id FROM mot_cle_ancienne_cle WHERE cle = ?').get(fusion.source)?.mot_cle_id, fusion.cible_id, 'sa clé, quittée par la cible');
-  const { url } = imp.prepare('SELECT url FROM mot_cle WHERE id = ?').get(fusion.cible_id);
+  // l'adresse se lit sur l'élément du mot-clé, sa page ou son repère (migration 0136)
+  const { url } = lireUnMotCle(imp, fusion.cible_id);
   assert.equal(url, ADRESSE.apres);
   const index = indexDesAdresses(imp, { exemples: true });
   assert.equal(pageDeLAdresse(index, url), GARDEE, 'la nouvelle adresse mène à la page de l’inventaire (lib/livres.mjs#ADRESSES_RENOMMEES_DU_GUIDE)');

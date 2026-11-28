@@ -17,7 +17,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
-import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { idDuMotCleNomme, lireUnMotCle } from './aide-mots-cles.mjs';
 import { citations, ecritParLeSite } from './aide-page-retiree.mjs';
 import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
@@ -93,7 +93,7 @@ test('0122 : « La montée de niveau » fondu dans la cible, qui mène à la pag
   const imp = baseDImport();
   assert.equal(imp.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(fusion.source_id), undefined, 'la source a quitté le vocabulaire');
   assert.equal(imp.prepare('SELECT mot_cle_id FROM mot_cle_ancienne_cle WHERE cle = ?').get(fusion.source)?.mot_cle_id, fusion.cible_id, 'sa clé, quittée par la cible');
-  const cible = imp.prepare('SELECT url FROM mot_cle WHERE id = ?').get(fusion.cible_id);
+  const cible = lireUnMotCle(imp, fusion.cible_id); // l'adresse se lit sur l'élément du mot-clé (migration 0136)
   assert.equal(pageDeLAdresse(indexDesAdresses(imp, { exemples: true }), cible.url), GARDEE);
   // les balises reciblées, telles que la migration les a écrites (le site de dev peut avoir réécrit ces textes depuis : défait par baseDImport)
   for (const t of REGISTRE.textes) {

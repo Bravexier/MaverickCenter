@@ -9,6 +9,8 @@ import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, cheminDImport, defaireLeSite, lotsAvant, reglesDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
@@ -35,15 +37,36 @@ function copieDImport(t) {
 /** Les lots de l'historique que le test a lui-même écrits. */
 const lotsDuTest = (db) => [...lotsDe(db)].filter(([lot]) => !db.lotsDeLaBase.has(lot));
 
-/** Une opération du site : appliquée à la table, puis notée dans historique_modification (lot, rang, instant). */
-function noter(db, { lot, rang, faitLe, table, cle, operation, avant = null, apres = null, nature = 'saisie', decision = null }) {
+/** Une trace seule dans historique_modification (lot, rang, instant), sans rien appliquer : l'entrée d'un lot ancien, que la base n'a plus la forme d'écrire. */
+function tracer(db, { lot, rang, faitLe, table, cle, operation, avant = null, apres = null, nature = 'saisie', decision = null }) {
+  db.prepare('INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)')
+    .run(lot, rang, faitLe, 'Essai', table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres), nature, decision);
+}
+
+/** Une opération du site : appliquée à la table, puis notée dans historique_modification (tracer). */
+function noter(db, entree) {
+  const { table, cle, operation, apres = null } = entree;
   const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
   if (operation === 'modifier') db.prepare(`UPDATE "${table}" SET ${Object.keys(apres).map((c) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...Object.values(apres), ...Object.values(cle));
   if (operation === 'inserer') db.prepare(`INSERT INTO "${table}" (${Object.keys(apres).map((c) => `"${c}"`).join(', ')}) VALUES (${Object.keys(apres).map(() => '?').join(', ')})`).run(...Object.values(apres));
   if (operation === 'supprimer') db.prepare(`DELETE FROM "${table}" WHERE ${ou}`).run(...Object.values(cle));
-  db.prepare('INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)')
-    .run(lot, rang, faitLe, 'Essai', table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres), nature, decision);
+  tracer(db, entree);
 }
+
+/**
+ * Des mots-clés à repère qui ont une définition (depuis la migration 0136, la définition d'un mot-clé sans page ni sort se lit sur son repère) :
+ * [{ id, description }], `n` au plus, dans l'ordre de leur id.
+ */
+const reperesDecrits = (db, n) => db.prepare('SELECT mot_cle_id AS id, definition AS description FROM repere WHERE definition IS NOT NULL ORDER BY mot_cle_id LIMIT ?')
+  .all(n).map((r) => ({ ...r }));
+/** La trace d'une définition modifiée sur le repère du mot-clé `m` (entrée du journal depuis la migration 0136). */
+const definitionModifiee = (m, avant, apres) => ({ table: 'repere', cle: { mot_cle_id: m.id }, operation: 'modifier', avant: { definition: avant }, apres: { definition: apres } });
+const definitionDe = (db, m) => ligne(db, 'SELECT definition FROM repere WHERE mot_cle_id = ?', m.id)?.definition;
+/** Un mot-clé d'essai créé par le site (id entier, migration 0113 ; 9001 et suivants : test/aide-mots-cles.mjs#idDEssai) : sa ligne, puis son repère. */
+const motCleCree = (id, nom) => [
+  { table: 'mot_cle', cle: { id }, operation: 'inserer', apres: { id, cle: normalize(nom) } },
+  { table: 'repere', cle: { mot_cle_id: id }, operation: 'inserer', apres: { mot_cle_id: id, nom } },
+];
 
 const ligne = (db, sql, ...p) => {
   const l = db.prepare(sql).get(...p);
@@ -53,25 +76,24 @@ const ligne = (db, sql, ...p) => {
 test('defaireLeSite : chaque opération est défaite, de la dernière à la première ; une cellule qu’une migration a réécrite depuis est gardée', (t) => {
   const db = copieDImport(t);
   assert.deepEqual([...db.lotsDeLaBase.values()].filter((n) => DEFAITES.includes(n)), [], 'la copie part de l’état d’import : aucune trace défaisable');
-  const [a, b] = db.prepare('SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 2').all().map((r) => ({ ...r }));
+  const [a, b] = reperesDecrits(db, 2);
   const alias = ligne(db, 'SELECT * FROM alias ORDER BY page_id, ordre LIMIT 1');
   const LOT1 = '2026-11-01T10:00:00.000Z-essai-1';
   const LOT2 = '2026-11-02T10:00:00.000Z-essai-2';
-  // lot 1 : deux définitions réécrites, un mot-clé créé ; lot 2 : la première réécrite encore, un autre nom de page supprimé
-  noter(db, { lot: LOT1, rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Plif.' } });
-  noter(db, { lot: LOT1, rang: 2, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: b.id }, operation: 'modifier', avant: { description: b.description }, apres: { description: 'Plouf.' } });
-  // un mot-clé d'essai (id entier, migration 0113 ; 9001 et suivants : test/aide-mots-cles.mjs#idDEssai)
-  noter(db, { lot: LOT1, rang: 3, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: 9001 }, operation: 'inserer',
-    apres: { id: 9001, libelle: 'Essai import', cle: 'essai-import', description: null } });
-  noter(db, { lot: LOT2, rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Plif.' }, apres: { description: 'Plif plof.' } });
+  // lot 1 : deux définitions réécrites, un mot-clé créé (sa ligne, son repère) ; lot 2 : la première réécrite encore, un autre nom de page supprimé
+  noter(db, { lot: LOT1, rang: 1, faitLe: '2026-11-01T10:00:00Z', ...definitionModifiee(a, a.description, 'Plif.') });
+  noter(db, { lot: LOT1, rang: 2, faitLe: '2026-11-01T10:00:00Z', ...definitionModifiee(b, b.description, 'Plouf.') });
+  motCleCree(9001, 'Essai import').forEach((e, i) => noter(db, { lot: LOT1, rang: 3 + i, faitLe: '2026-11-01T10:00:00Z', ...e }));
+  noter(db, { lot: LOT2, rang: 1, faitLe: '2026-11-02T10:00:00Z', ...definitionModifiee(a, 'Plif.', 'Plif plof.') });
   noter(db, { lot: LOT2, rang: 2, faitLe: '2026-11-02T10:00:00Z', table: 'alias', cle: { page_id: alias.page_id, ordre: alias.ordre }, operation: 'supprimer', avant: alias });
   // une migration passée depuis réécrit la seconde définition : sa valeur d'import n'existe plus, la migration a le dernier mot
-  db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run('Texte de la migration.', b.id);
+  db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run('Texte de la migration.', b.id);
 
   assert.deepEqual(defaireLeSite(db), []);
-  assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, a.description, 'deux lots défaits : la valeur d’import');
-  assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', b.id).description, 'Texte de la migration.', 'réécrite par une migration : gardée');
+  assert.equal(definitionDe(db, a), a.description, 'deux lots défaits : la valeur d’import');
+  assert.equal(definitionDe(db, b), 'Texte de la migration.', 'réécrite par une migration : gardée');
   assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9001'), undefined, 'la ligne insérée par le site est retirée');
+  assert.equal(ligne(db, 'SELECT nom FROM repere WHERE mot_cle_id = 9001'), undefined, 'son repère aussi');
   assert.deepEqual(ligne(db, 'SELECT * FROM alias WHERE page_id = ? AND ordre = ?', alias.page_id, alias.ordre), alias, 'la ligne supprimée est remise');
   assert.deepEqual(lotsDuTest(db), [], 'les lots défaits quittent l’historique');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
@@ -107,19 +129,17 @@ test('defaireLeSite : une cellule dont une migration n’a remplacé, après le 
 
 test('defaireLeSite : seules les traces de nature saisie et decision sont défaites ; source, migration et code font partie de l’import (R275)', (t) => {
   const db = copieDImport(t);
-  const [a, b, c] = db.prepare('SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 3').all().map((r) => ({ ...r }));
-  const trace = (rang, nature, decision, m, apres) => noter(db, { lot: `2026-11-0${rang}T10:00:00.000Z-nature-${rang}`, rang: 1, faitLe: `2026-11-0${rang}T10:00:00Z`, table: 'mot_cle',
-    cle: { id: m.id }, operation: 'modifier', avant: { description: m.description }, apres: { description: apres }, nature, decision });
+  const [a, b, c] = reperesDecrits(db, 3);
+  const trace = (rang, nature, decision, m, apres) => noter(db, { lot: `2026-11-0${rang}T10:00:00.000Z-nature-${rang}`, rang: 1, faitLe: `2026-11-0${rang}T10:00:00Z`,
+    ...definitionModifiee(m, m.description, apres), nature, decision });
   trace(1, 'saisie', null, a, 'Saisie.');
   trace(2, 'decision', 'R275', b, 'Décision.');
   trace(3, 'source', null, c, 'Source.');
   // ni la migration ni le code ne sont défaits : la ligne qu'ils ont insérée reste
-  noter(db, { lot: '2026-11-04T10:00:00.000Z-nature-4', rang: 1, faitLe: '2026-11-04T10:00:00Z', table: 'mot_cle', cle: { id: 9003 }, operation: 'inserer', nature: 'migration',
-    apres: { id: 9003, libelle: 'Essai migration', cle: 'essai-migration', description: null } });
-  noter(db, { lot: '2026-11-05T10:00:00.000Z-nature-5', rang: 1, faitLe: '2026-11-05T10:00:00Z', table: 'mot_cle', cle: { id: 9004 }, operation: 'inserer', nature: 'code',
-    apres: { id: 9004, libelle: 'Essai code', cle: 'essai-code', description: null } });
+  motCleCree(9003, 'Essai migration').forEach((e, i) => noter(db, { lot: '2026-11-04T10:00:00.000Z-nature-4', rang: 1 + i, faitLe: '2026-11-04T10:00:00Z', nature: 'migration', ...e }));
+  motCleCree(9004, 'Essai code').forEach((e, i) => noter(db, { lot: '2026-11-05T10:00:00.000Z-nature-5', rang: 1 + i, faitLe: '2026-11-05T10:00:00Z', nature: 'code', ...e }));
   assert.deepEqual(defaireLeSite(db), []);
-  const description = (m) => ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', m.id).description;
+  const description = (m) => definitionDe(db, m);
   assert.equal(description(a), a.description, 'saisie défaite');
   assert.equal(description(b), b.description, 'décision défaite');
   assert.equal(description(c), 'Source.', 'une source fait partie de l’import');
@@ -131,27 +151,60 @@ test('defaireLeSite : seules les traces de nature saisie et decision sont défai
 
 test('defaireLeSite et historiqueSite s’accordent : une saisie suivie d’une trace code sur la même cellule n’est pas défaite (la cellule garde la valeur du code)', (t) => {
   const db = copieDImport(t);
-  const a = ligne(db, 'SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 1');
-  noter(db, { lot: '2026-11-01T10:00:00.000Z-accord-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Saisie.' } });
-  noter(db, { lot: '2026-11-02T10:00:00.000Z-accord-2', rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Saisie.' }, apres: { description: 'Code.' }, nature: 'code' });
-  assert.equal(historiqueSite(db).valeurDImport('mot_cle', { id: a.id }, 'description'), 'Code.');
+  const [a] = reperesDecrits(db, 1);
+  noter(db, { lot: '2026-11-01T10:00:00.000Z-accord-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', ...definitionModifiee(a, a.description, 'Saisie.') });
+  noter(db, { lot: '2026-11-02T10:00:00.000Z-accord-2', rang: 1, faitLe: '2026-11-02T10:00:00Z', ...definitionModifiee(a, 'Saisie.', 'Code.'), nature: 'code' });
+  assert.equal(historiqueSite(db).valeurDImport('repere', { mot_cle_id: a.id }, 'definition'), 'Code.');
   assert.deepEqual(defaireLeSite(db), []);
-  assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, 'Code.', 'les deux aides rendent la valeur du code');
+  assert.equal(definitionDe(db, a), 'Code.', 'les deux aides rendent la valeur du code');
 });
 
 test('defaireLeSite { garder } : l’état d’après une migration — les lots gardés restent, avec leur historique ; les suivants sont défaits', (t) => {
   const db = copieDImport(t);
-  const a = ligne(db, 'SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 1');
+  const [a] = reperesDecrits(db, 1);
   const GARDE = '2026-11-01T10:00:00.000Z-garde';
   const APRES = '2026-11-03T10:00:00.000Z-apres';
-  noter(db, { lot: GARDE, rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Écrit par une décision.' } });
-  noter(db, { lot: APRES, rang: 1, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Écrit par une décision.' }, apres: { description: 'Plif.' } });
-  noter(db, { lot: APRES, rang: 2, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: 9002 }, operation: 'inserer',
-    apres: { id: 9002, libelle: 'Essai après', cle: 'essai-apres', description: null } });
+  noter(db, { lot: GARDE, rang: 1, faitLe: '2026-11-01T10:00:00Z', ...definitionModifiee(a, a.description, 'Écrit par une décision.') });
+  noter(db, { lot: APRES, rang: 1, faitLe: '2026-11-03T10:00:00Z', ...definitionModifiee(a, 'Écrit par une décision.', 'Plif.') });
+  motCleCree(9002, 'Essai après').forEach((e, i) => noter(db, { lot: APRES, rang: 2 + i, faitLe: '2026-11-03T10:00:00Z', ...e }));
   assert.deepEqual(defaireLeSite(db, { garder: new Set([GARDE]) }), []);
-  assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, 'Écrit par une décision.');
+  assert.equal(definitionDe(db, a), 'Écrit par une décision.');
   assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9002'), undefined);
   assert.deepEqual(lotsDuTest(db).map(([lot]) => lot), [GARDE]);
+});
+
+test('defaireLeSite, migration 0136 : un lot ancien de mot_cle (libelle, url, description, couleur, icone) se défait sur l’élément — une suppression défaite remet le repère avec les valeurs de l’« avant », une définition modifiée revient sur le repère ou la page', (t) => {
+  const db = copieDImport(t);
+  // une suppression ancienne d'un mot-clé sans page ni sort : l'entrée porte les colonnes d'avant la 0136 (elle ne s'applique plus : tracer seul)
+  const ID = 9005;
+  assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = ?', ID), undefined, `${ID} : libre dans la copie`);
+  const SUPPRIME = { id: ID, libelle: 'Essai supprimé', cle: 'essai-supprime', url: '/classes/', description: 'Une définition d’essai.', couleur: '#a1b2c3', icone: 'monnaie:ro', verrou: 0 };
+  tracer(db, { lot: '2026-11-01T10:00:00.000Z-element-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: ID }, operation: 'supprimer', avant: SUPPRIME });
+  // une définition et un nom modifiés par un lot ancien sur un mot-clé à repère, puis une définition sur un mot-clé de page : la base porte la valeur
+  // du lot sur l'élément (la migration 0136 l'y a déplacée)
+  const [r, q] = reperesDecrits(db, 2);
+  const nom = ligne(db, 'SELECT nom FROM repere WHERE mot_cle_id = ?', r.id).nom;
+  db.prepare('UPDATE repere SET definition = ?, nom = ? WHERE mot_cle_id = ?').run('Plif.', 'Essai renommé', r.id);
+  tracer(db, { lot: '2026-11-02T10:00:00.000Z-element-2', rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: r.id }, operation: 'modifier',
+    avant: { libelle: nom, description: r.description }, apres: { libelle: 'Essai renommé', description: 'Plif.' } });
+  // le second est ancré depuis sur une page (l'import n'en ancre aucun : les ancres viennent du site) : son repère s'efface, sa définition est sur la page
+  const p = { ...ligne(db, 'SELECT id FROM page WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1'), mot_cle_id: q.id };
+  db.prepare('DELETE FROM repere WHERE mot_cle_id = ?').run(q.id);
+  db.prepare('UPDATE page SET mot_cle_id = ?, definition = ? WHERE id = ?').run(q.id, 'Plaf.', p.id);
+  tracer(db, { lot: '2026-11-03T10:00:00.000Z-element-3', rang: 1, faitLe: '2026-11-03T10:00:00Z', table: 'mot_cle', cle: { id: q.id }, operation: 'modifier',
+    avant: { description: q.description }, apres: { description: 'Plaf.' } });
+
+  assert.deepEqual(defaireLeSite(db), []);
+  const remis = lireUnMotCle(db, ID);
+  assert.deepEqual({ ...remis, element: { ...remis.element } }, {
+    id: ID, cle: SUPPRIME.cle, verrou: 0, monnaie_id: null, libelle: SUPPRIME.libelle, url: SUPPRIME.url, description: SUPPRIME.description,
+    couleur: SUPPRIME.couleur, icone: SUPPRIME.icone, element: { table: 'repere', id: ID },
+  }, 'la suppression défaite : la ligne du mot-clé et son repère, avec les valeurs de l’« avant »');
+  assert.deepEqual(ligne(db, 'SELECT nom, definition FROM repere WHERE mot_cle_id = ?', r.id), { nom, definition: r.description }, 'sur le repère : le nom et la définition d’import');
+  assert.equal(ligne(db, 'SELECT definition FROM page WHERE id = ?', p.id).definition, q.description, 'sur la page : la définition d’import');
+  assert.equal(ligne(db, 'SELECT 1 AS n FROM repere WHERE mot_cle_id = ?', p.mot_cle_id), undefined, 'un mot-clé de page n’a pas de repère');
+  assert.deepEqual(lotsDuTest(db), [], 'les lots défaits quittent l’historique');
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
 test('base d’import de la base construite : historique vide, rien d’écarté ; chaque cellule modifiée par le site y a sa valeur d’import (historiqueSite)', () => {
@@ -174,7 +227,9 @@ test('base d’import de la base construite : historique vide, rien d’écarté
       const actuelle = ligne(courante, `SELECT * FROM "${e.table}" WHERE ${Object.keys(e.cle).map((k) => `"${k}" = ?`).join(' AND ')}`, ...Object.values(e.cle));
       for (const c of Object.keys(e.apres)) {
         const chaine = ops.filter((o) => c in o.apres);
-        if (chaine.at(-1) !== e || !actuelle || !memes(actuelle[c], e.apres[c]) || chaine.some((o, i) => i > 0 && !memes(o.avant[c], chaine[i - 1].apres[c]))) continue;
+        // une colonne logique d'un lot ancien de mot_cle (libelle, description…) n'est plus une colonne depuis la migration 0136 : elle se défait sur
+        // l'élément du mot-clé (cas « sur l'élément », plus bas)
+        if (chaine.at(-1) !== e || !actuelle || !(c in actuelle) || !memes(actuelle[c], e.apres[c]) || chaine.some((o, i) => i > 0 && !memes(o.avant[c], chaine[i - 1].apres[c]))) continue;
         assert.equal(texteDImport(e.table, e.cle, c), h.valeurDImport(e.table, e.cle, c), `${e.table} ${e.texte} ${c}`);
         comparees += 1;
       }
@@ -190,6 +245,26 @@ test('base d’import de la base construite : historique vide, rien d’écarté
   // hors des lots gardés, seules restent les traces qui font partie de l'import (R275 : source, migration, code)
   for (const [lot, nature] of lotsDe(apres)) assert.ok(garder.has(lot) || !DEFAITES.includes(nature), `${lot} (${nature})`);
   assert.ok(chargerReglesDeFiche(apres).classes.length > 0);
+});
+
+test('texteDImport, migration 0136 : une colonne logique d’un mot-clé (libelle, url, description, couleur, icone) se lit sur son élément ; une autre colonne absente reste une erreur', () => {
+  const imp = baseDImport();
+  // un mot-clé de chaque sorte d'élément que la base d'import connaît : sa page, son sort, son repère
+  const ids = [
+    ligne(imp, 'SELECT mot_cle_id AS id FROM page WHERE mot_cle_id IS NOT NULL ORDER BY mot_cle_id LIMIT 1'),
+    ligne(imp, 'SELECT mot_cle_id AS id FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY mot_cle_id LIMIT 1'),
+    ligne(imp, 'SELECT mot_cle_id AS id FROM repere ORDER BY mot_cle_id LIMIT 1'),
+  ].filter(Boolean).map((l) => l.id);
+  assert.ok(ids.length, 'des mots-clés à lire');
+  for (const id of ids) {
+    const m = lireUnMotCle(imp, id);
+    for (const c of ['libelle', 'url', 'description', 'couleur', 'icone']) assert.equal(texteDImport('mot_cle', { id }, c), m[c], `mot_cle ${id} ${c}`);
+    assert.equal(texteDImport('mot_cle', { id }, 'cle'), m.cle, 'une colonne en place se lit dans la table');
+  }
+  const absent = ligne(imp, 'SELECT max(id) + 1 AS id FROM mot_cle').id;
+  assert.equal(texteDImport('mot_cle', { id: absent }, 'libelle'), undefined, 'un mot-clé absent de l’import');
+  assert.throws(() => texteDImport('mot_cle', { id: ids[0] }, 'inconnue'), /colonne absente/);
+  assert.throws(() => texteDImport('page', { id: 'x' }, 'libelle'), /colonne absente/, 'seul un mot-clé a des colonnes logiques');
 });
 
 test('remettreDepuisLImport : une ligne supprimée revient telle qu’à l’import, avec ce qu’elle cite et ce qui la compose ; présente, rien ne change', (t) => {

@@ -13,7 +13,7 @@ import { annulerUneLigne, appliquer } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { messageDeLAncrage } from '../src/lib/lots-rendu.mjs';
 import { definitionDuMotCle, htmlDeLaBalise, lireUneBalise } from '../src/lib/mots-cles-balises.mjs';
-import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { lireUnMotCle, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { ancrerUnMotCle, baseDAncrage, poserMotCle, poserPageLisible, recalculerLesCles } from './aide-ancrage.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -32,7 +32,7 @@ function nouvelle() {
   const ancree = poserPageLisible(memoire, 'guide/zephyrion-ancre', nomInvente('ancre'));
   ancrerUnMotCle(memoire, 'page', ancree, { categories: ['Règles'] });
   const decrite = poserMotCle(memoire, { libelle: nomInvente('notion décrite'), categories: ['Règles'], synonymes: [nomInvente('autre écriture')] });
-  memoire.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run('Définition d’essai.', decrite);
+  memoire.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run('Définition d’essai.', decrite); // sur son repère (migration 0136)
   const sansDefinition = poserMotCle(memoire, { libelle: nomInvente('notion nue'), categories: ['Règles'] });
   const aAdresse = poserMotCle(memoire, { libelle: nomInvente('rubrique'), url: `${adresseDeLaPage(ancree, null)}#zephyrion`, categories: ['Règles'] });
   const duType = poserMotCle(memoire, { libelle: nomInvente('type'), categories: ['Règles'] });
@@ -73,7 +73,8 @@ async function apresLaChaine() {
 
 const lancer = (m, options = {}) => preparerLAncrage(m.base, { par: 'cle_de_depot', dossier: m.dossier, ...OUVERT, ...options });
 const pageDe = (m, motCle) => m.db.prepare('SELECT id, titre, resume FROM page WHERE mot_cle_id = ?').get(motCle);
-const motCle = (m, id) => m.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
+// le nom, l'adresse et la définition se lisent sur l'élément du mot-clé (migration 0136)
+const motCle = (m, id) => lireUnMotCle(m.db, id);
 /** Les opérations déposées du lot `id` (son contenu, `maverick-lot/1`). */
 const operationsDuLot = (m, id) => JSON.parse(m.db.prepare('SELECT contenu FROM lot_de_changements WHERE id = ?').get(id).contenu).operations;
 const lotsR309 = (m) => m.db.prepare("SELECT id, etat, lot_id, titre FROM lot_de_changements WHERE decision = 'R309' ORDER BY rowid").all();

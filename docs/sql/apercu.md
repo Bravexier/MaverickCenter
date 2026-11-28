@@ -20,10 +20,10 @@
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `type_page` | Registre des catégories du wiki : reprend client/src/lib/types.mjs (aujourd'hui une constante JavaScript). | **id**, libelle, singulier, salon_discord, description, ordre |
-| `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, mot_cle_id→mot_cle?, slug_adresse?, +provenance |
+| `page` | Une page du wiki = un fichier client/src/content/wiki/<type>/<slug>.md d'aujourd'hui. | **id**, type→type_page, slug, titre, titre_cle, resume?, donnees?, corps_md, statut, mot_cle_id→mot_cle?, slug_adresse?, definition?, couleur?, icone?, +provenance |
 | `alias` | Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. | **page_id**→page, **ordre**, texte, cle |
 | `page_ancienne_adresse` | Les anciennes adresses d'une page (décision R316, migration 0133) : une ligne par adresse que la page a eue, telle que `cheminDePage` la donnait, relative à la racine du site et sans barre initiale (« | **adresse**, page_id→page |
-| `mot_cle` | Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). | **id**, libelle, cle, description?, couleur?, url?, verrou, monnaie_id→monnaie?, icone? |
+| `mot_cle` | Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). | **id**, cle, verrou, monnaie_id→monnaie? |
 | `categorie_mot_cle` | Les catégories des mots-clés (migration 0113, demande du propriétaire : « la table Keyword_category qui liste toutes les catégories possibles de mots clés (ID + libelle) », « Il sera possible d'en ajo | **id**, libelle, libelle_cle |
 | `mot_cle_categorie` | Les catégories d'un mot-clé (« La colonne Category des Keyword serai une liste des ID » ; table de liaison, choix du leader-technique). | **mot_cle_id**→mot_cle, **categorie_id**→categorie_mot_cle |
 | `mot_cle_ancienne_cle` | Les clés qu'un mot-clé a quittées (migration 0113 ; « une correspondance des anciennes clés est bienvenue ») : une balise d'un ancien lot du journal ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui. | **cle**, mot_cle_id→mot_cle |
@@ -321,7 +321,7 @@
 | `cle_page` *(vue)* | Index de résolution des [[liens]] = buildIndex() de wikilinks.mjs : toute clé normalisée -> pages qui la portent (slug, titre ou alias). |  |
 | `lien_page` *(vue)* | Graphe de pages tel que le calcule wiki.ts : paires (depuis, vers) distinctes, liens résolus, sans lien d'une page vers elle-même. |  |
 | `lien_a_creer` *(vue)* | « Pages à créer » : [[liens]] sans page (introuvables) ou ambigus. |  |
-| `v_mot_cle` *(vue)* | Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de nb_pages pages), avec sa définition (glossaire, migrati |  |
+| `v_mot_cle` *(vue)* | Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de nb_pages pages). |  |
 | `v_magie_incompatible` *(vue)* | Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre. |  |
 | `v_sort_bonus_au_nm` *(vue)* | Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). |  |
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |

@@ -12,6 +12,7 @@ import {
 import { CONTROLES } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_AJOUTEES, TABLES_VIDEES, VARIANTES } from '../scripts/essai-variantes.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { RETIRES_AVEC_LE_CONTENU } from '../src/lib/sortie-du-contenu.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
@@ -48,15 +49,17 @@ test('V1 : des icônes de la liste du site, sur des mots-clés de plusieurs genr
   const { rapport, db } = variante(t, 'V1');
   assert.ok(rapport.faites.length > 0);
   const valeurs = new Set(ICONES.map((i) => i.valeur));
-  for (const f of rapport.faites) assert.equal(db.prepare('SELECT icone FROM mot_cle WHERE id = ?').get(f.id).icone, f.icone);
+  // l'icône se lit sur l'élément du mot-clé (migration 0136) : `porteur` dit la ligne écrite, la page ou le repère (le mot-clé avant la migration)
+  for (const f of rapport.faites) assert.equal(lireUnMotCle(db, f.id).icone, f.icone);
+  assert.ok(rapport.faites.every((f) => ['mot_cle', 'page', 'repere'].includes(f.porteur.table)), 'jamais un sort, qui n’a pas d’icône');
   assert.ok(rapport.faites.every((f) => valeurs.has(f.icone)), 'seulement des icônes que le site propose (lib/icones.mjs)');
   const genres = new Set(rapport.faites.map((f) => f.groupe.split(':')[0]));
   assert.ok(genres.has('categorie') && genres.has('page'), 'des catégories de mots-clés et des types de page');
   assert.ok(new Set(rapport.faites.map((f) => f.groupe)).size >= 3, 'plusieurs groupes, pas seulement les magies');
   const h = historiqueSite(db);
   for (const f of rapport.faites) {
-    assert.ok(h.modifiee('mot_cle', { id: f.id }, 'icone'), `mot-clé ${f.id} : l’icône posée est une saisie du site (historique)`);
-    assert.notEqual(h.valeurDImport('mot_cle', { id: f.id }, 'icone'), f.icone, `mot-clé ${f.id} : l’état d’import défait l’icône posée`);
+    assert.ok(h.modifiee(f.porteur.table, f.porteur.cle, 'icone'), `mot-clé ${f.id} : l’icône posée est une saisie du site (historique)`);
+    assert.notEqual(h.valeurDImport(f.porteur.table, f.porteur.cle, 'icone'), f.icone, `mot-clé ${f.id} : l’état d’import défait l’icône posée`);
   }
 });
 

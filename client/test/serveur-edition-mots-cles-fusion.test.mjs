@@ -18,10 +18,8 @@ import { appliquerMiseAJour } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
-import { appliquer as appliquerLeLot, deposer as deposerLeLot } from '../serveur/edition-lots.mjs';
 import { TABLES_DES_FILLES_DU_MOT_CLE } from '../serveur/edition-mots-cles.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
-import { operationsDesReperes } from '../src/lib/lot-des-reperes.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -76,17 +74,14 @@ const mettreAJour = (journal) => appliquerMiseAJour({
 /** Les modifications notées au journal du service, par table et opération (« table:operation »). */
 const notees = (db) => new Set(db.prepare('SELECT table_nom, operation FROM modification').all().map((m) => `${m.table_nom}:${m.operation}`));
 
-test('B1 : un mot-clé catégorisé, avec synonyme, clé quittée et repère, supprimé en forçant puis un autre fusionné : tout est noté, et la mise à jour des règles passe', async () => {
+test('B1 : un mot-clé catégorisé, avec synonyme, clé quittée et repère, supprimé en forçant puis un autre fusionné : tout est noté, et la mise à jour des règles passe', () => {
   const { db, lot, filles } = base();
   const [c1] = categoriesDesMotsCles(db).map((c) => c.id);
   // A : une catégorie, un synonyme, un renommage (sa clé quittée) ; puis supprimé en forçant (il est sur des pages)
   lot([{ op: 'categories_mot_cle', mot_cle: A.id, categories: [c1] }, { op: 'synonymes_mot_cle', mot_cle: A.id, synonymes: ['Zq essai alpha'] }]);
   lot([{ op: 'modifier', table: 'mot_cle', cle: { id: A.id }, valeurs: { libelle: `${A.libelle} zq` } }]);
-  // son repère (migration 0135) : posé par un lot de changements, la seule voie qui l'écrit (table hors édition : le dépôt du test l'ouvre, comme la base source)
-  const repere = operationsDesReperes(db).find((o) => o.cle.mot_cle_id === A.id);
-  const proposition = await deposerLeLot(() => db, { titre: 'Repère d’essai', nature: 'code', operations: [repere] }, { enArrierePlan: false, controle: { ouvertHorsEdition: true } });
-  assert.equal(proposition.verdict, 'applicable', JSON.stringify(proposition.essai?.operations));
-  appliquerLeLot(db, proposition.id);
+  // son repère (migrations 0135 et 0136) : un mot-clé sans page ni sort a le sien (data/rows, aide-mots-cles.mjs), rien à poser ; il porte son nom renommé
+  assert.equal(db.prepare('SELECT nom FROM repere WHERE mot_cle_id = ?').get(A.id)?.nom, `${A.libelle} zq`);
   assert.deepEqual(filles(A.id), TABLES_DES_FILLES_DU_MOT_CLE, 'A a des lignes dans chaque table fille');
   // D : un synonyme
   lot([{ op: 'synonymes_mot_cle', mot_cle: D.id, synonymes: ['Zq essai delta'] }]);

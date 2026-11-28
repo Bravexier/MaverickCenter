@@ -26,7 +26,7 @@ import { attributEd } from '../src/lib/edition-modele.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { htmlAvecMotsCles, htmlDuNomDuMotCle, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { chargerVocabulaire, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
@@ -142,7 +142,8 @@ test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, So
   assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', solidite, 'Origine']);
   // le mot-clé « Solidité », par son id entier, figé (migration 0113) : sa clé, que citent data-mot-cle et sa bulle, suit son libellé (R232)
   const idSolidite = idDuMotCleNomme('solidite');
-  const motSolidite = base.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idSolidite);
+  // (son adresse se lit sur son élément : page, sort ou repère, migration 0136)
+  const motSolidite = lireUnMotCle(base, idSolidite);
   if (motSolidite) {
     // en gras, ou un lien s'il mène à une page (sa page de notion comprise, R309 (7))
     const ouverture = motSolidite.url ? `<a class="mot-cle" href="${motSolidite.url}"` : '<strong class="mot-cle"';
@@ -470,8 +471,8 @@ test('R167 : le tableau des améliorations a ses deux colonnes de coût (matéri
   const note = /<p class="tableau__note armes-famille__note js-seul armes-ameliorations__note-elementaire">Arme élémentaire : [\s\S]*?<\/p>/.exec(tableau)?.[0];
   assert.ok(note, 'la note de l’arme élémentaire');
   // décision R207 (4), Q58 : l'amélioration revient au Forgeron, le mot-clé `forgeron` (sa section de /metiers/ quand il a une adresse, libellé et
-  // adresse lus dans la base : le site de dev les modifie)
-  const forgeron = base.prepare('SELECT libelle, url, cle, icone FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('forgeron'));
+  // adresse lus dans la base, sur l'élément du mot-clé depuis la migration 0136 : le site de dev les modifie)
+  const forgeron = lireUnMotCle(base, idDuMotCleNomme('forgeron'));
   assert.ok(forgeron, 'le mot-clé forgeron (migration 0104)');
   assert.match(note, forgeron.url
     ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${forgeron.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${forgeron.cle}"`)

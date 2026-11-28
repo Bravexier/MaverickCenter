@@ -21,7 +21,7 @@ import { htmlDuNomDuMotCle } from '../src/lib/mots-cles-balises.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { ENTETES_DE_DEFENSE, baliseDeLEnteteDeDefense } from '../src/lib/armures-rendu.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { chargerVocabulaire, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { avecLesMotsCles, verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
@@ -145,7 +145,7 @@ test('armures : les armures particulières en premier puis la liste par type, un
   const solidite = avecLesMotsCles('{{solidite}}', db).replace(/<[^>]+>/g, '');
   // le mot-clé « Solidité », par son id entier, figé (migration 0113) ; sa clé suit son libellé (R232)
   const idSolidite = idDuMotCleNomme('solidite');
-  const motSolidite = db.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idSolidite);
+  const motSolidite = lireUnMotCle(db, idSolidite); // l'adresse se lit sur l'élément du mot-clé (migration 0136)
   if (motSolidite) {
     // en gras, ou un lien s'il mène à une page (sa page de notion comprise, R309 (7))
     const ouverture = motSolidite.url ? `<a class="mot-cle" href="${motSolidite.url}"` : '<strong class="mot-cle"';
@@ -369,7 +369,7 @@ test('R165 (2) : le tableau d’amélioration des armures élémentaires — Auc
   // libellé et adresse lus dans la base : le site de dev les modifie)
   const note = /<p class="tableau__note[^"]*">[\s\S]*?<\/p>/.exec(p.slice(debut, p.indexOf('<table', debut)))?.[0];
   assert.ok(note, 'la note du tableau');
-  const armurier = db.prepare('SELECT libelle, url, cle, icone FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('armurier'));
+  const armurier = lireUnMotCle(db, idDuMotCleNomme('armurier')); // nom, adresse et icône : sur l'élément (migration 0136)
   assert.ok(armurier, 'le mot-clé armurier (migration 0104)');
   assert.match(note, armurier.url
     ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${armurier.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${armurier.cle}"`)

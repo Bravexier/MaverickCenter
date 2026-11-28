@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { extraitDuLot, mailler, poserLeMaillage } from '../scripts/autolink.mjs';
 import { lotDeSourceParModification } from '../scripts/lot-de-source.mjs';
 import { essayerLeLot } from '../serveur/edition-lots.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { copieDEssai } from './aide-contenu-fourni.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -24,9 +25,12 @@ test('mailler et poserLeMaillage : une mention plantée devient la balise de la 
   const { motCle, page } = (() => {
     let choisis;
     copieDEssai(dossier, (db) => {
-      const m = db.prepare("SELECT id, cle FROM mot_cle WHERE url IS NOT NULL AND url <> '' ORDER BY id LIMIT 1").get();
-      const p = db.prepare("SELECT id, corps_md FROM page WHERE statut <> 'example' AND id LIKE 'guide/%' AND corps_md IS NOT NULL ORDER BY id LIMIT 1").get();
-      db.prepare('UPDATE mot_cle SET libelle = ? WHERE id = ?').run(MOT, m.id);
+      // le nom et l'adresse d'un mot-clé se lisent sur son élément (page, sort ou repère : migration 0136) : c'est l'élément qu'on renomme
+      const m = db.prepare('SELECT id FROM mot_cle ORDER BY id').all().map((l) => lireUnMotCle(db, l.id)).find((k) => k?.url);
+      const p = db.prepare("SELECT id, corps_md FROM page WHERE statut <> 'example' AND id LIKE 'guide/%' AND corps_md IS NOT NULL AND id <> ? ORDER BY id LIMIT 1")
+        .get(m.element.table === 'page' ? m.element.id : '');
+      const renommer = { page: 'UPDATE page SET titre = ? WHERE id = ?', sort: 'UPDATE sort SET nom = ? WHERE id = ?', repere: 'UPDATE repere SET nom = ? WHERE mot_cle_id = ?' };
+      db.prepare(renommer[m.element.table]).run(MOT, m.element.id);
       db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(`${p.corps_md}\n\nOn y croise le ${MOT} un soir.\n`, p.id);
       choisis = { motCle: m, page: p };
     }, 'depart.db');

@@ -26,7 +26,7 @@ import {
   htmlAussiAppele, htmlDeLIcone, htmlDuNomDuMotCle, lireBalises, lireUneBalise, motCleDeLaRef, synonymesAffiches,
   motsClesCites, pageAvecMotsCles, reciblerLeMotCle, retirerLeMotCle, texteSansBalises, vocabulaireDesMotsCles, zonesDeCode,
 } from '../src/lib/mots-cles-balises.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { chargerVocabulaire, lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { estAncre } from '../src/lib/mots-cles-ancrage.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { comptesDesMotsCles, elementsDuMotCle } from '../src/lib/recherche-mots-cles.mjs';
@@ -301,7 +301,7 @@ test('R4 (relecture), migrations 0113 et 0116 : le mot-clé d’une monnaie se r
   const monnaies = importee.prepare('SELECT id, nom, abreviation FROM monnaie ORDER BY id').all();
   assert.deepEqual(monnaies.map((m) => [m.id, m.abreviation]), Object.entries(MONNAIES_DU_JEU).map(([abr, m]) => [m.id, abr]).sort());
   for (const m of monnaies) {
-    const motCle = importee.prepare('SELECT libelle, icone FROM mot_cle WHERE monnaie_id = ?').get(m.id);
+    const motCle = importee.prepare('SELECT libelle, icone FROM v_mot_cle WHERE monnaie_id = ?').get(m.id);
     assert.ok(motCle, `${m.id} : le mot-clé de sa monnaie`);
     assert.equal(motCle.icone, `monnaie:${m.id}`, `${m.id} : son icône, dès la migration 0116 (R235 (1))`);
     assert.equal(normalize(motCle.libelle), normalize(m.nom), `${m.id} : le nom de sa monnaie`);
@@ -471,7 +471,9 @@ test('middleware : une réponse HTML rendue avec le vocabulaire (statut, en-têt
 test('middleware : le vocabulaire de la base construite (lu une fois), sur une vraie réponse', async () => {
   const r = await reponseAvecMotsCles(async () => new Response('<html><body>{{mordhau}}</body></html>', { headers: { 'content-type': 'text/html' } }));
   const db = new DatabaseSync(cheminBase(), { readOnly: true });
-  const mordhau = db.prepare("SELECT libelle, description, url FROM mot_cle WHERE cle = 'mordhau'").get();
+  // le nom et l'adresse se lisent sur l'élément du mot-clé (migration 0136)
+  const idMordhau = db.prepare("SELECT id FROM mot_cle WHERE cle = 'mordhau'").get()?.id;
+  const mordhau = idMordhau === undefined ? undefined : lireUnMotCle(db, idMordhau);
   db.close();
   const html = await r.text();
   // un mot-clé qui mène à une page (sa page de notion comprise, R309 (7)) est un lien, sinon du gras
@@ -514,7 +516,7 @@ test('db:check (D1, D2) : toute balise de toutes les colonnes de texte vise un m
   cpSync(cheminBase(), copie);
   const d = new DatabaseSync(copie);
   const page = d.prepare("SELECT id FROM page WHERE type = 'guide' ORDER BY id LIMIT 1").get().id;
-  const { cle, libelle } = d.prepare('SELECT cle, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+  const { cle, libelle } = d.prepare('SELECT cle, libelle FROM v_mot_cle ORDER BY id LIMIT 1').get();
   const cite = { id: cle, libelle };
   const arme = d.prepare("SELECT id FROM arme WHERE effet IS NOT NULL AND effet NOT LIKE '%{{%' ORDER BY id LIMIT 1").get().id;
   // un texte mis en forme (le corps d'une page) : l'id seul, un autre texte, le mode complet, « \\| » dans une case ; un code : une écriture littérale
@@ -564,7 +566,7 @@ function service() {
   // une écriture qu'aucun mot-clé ne prend (ni libellé, ni clé, ni synonyme, ni clé quittée : R232, R233 (4))
   const prise = (t) => {
     const k = normalize(t);
-    return db.prepare('SELECT libelle FROM mot_cle').all().some((m) => normalize(m.libelle) === k)
+    return db.prepare('SELECT libelle FROM v_mot_cle').all().some((m) => normalize(m.libelle) === k)
       || Boolean(db.prepare('SELECT 1 FROM mot_cle WHERE cle = ? UNION ALL SELECT 1 FROM mot_cle_synonyme WHERE libelle_cle = ? UNION ALL SELECT 1 FROM mot_cle_ancienne_cle WHERE cle = ?').get(k, k, k));
   };
   const libre = (base) => {
@@ -607,7 +609,7 @@ test('service : un texte enregistré sous sa forme canonique (journal compris), 
   assert.equal(inconnue.statut, 400);
   assert.match(inconnue.corps.erreur, /« \{\{aucun-mot-cle-de-ce-nom\}\} » ne cite aucun mot-clé/);
   // déjà dans le texte (d'avant la suppression de son mot-clé) : le texte se modifie quand même
-  s.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run('Ancien {{mot-cle-disparu-d-essai|texte}}.', id);
+  s.db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run('Ancien {{mot-cle-disparu-d-essai|texte}}.', id);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: 'Ancien {{mot-cle-disparu-d-essai|texte}}, modifié.' } }]);
   assert.equal(s.lot([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: '{{mot-cle-disparu-d-essai}} et {{autre-disparu}}' } }]).statut, 400,
     'une ref inconnue ajoutée reste refusée');
@@ -648,7 +650,7 @@ test('service (D2) : le mode complet refusé dans un texte de case (message clai
   assert.deepEqual([...douteux.corps.homonymes[0]].sort(), [s.cle(a), s.cle(b)].sort());
   assert.match(douteux.corps.erreur, /R232 \(4\)/);
   // déjà dans le texte : il se modifie encore ; la clé de l'un ou de l'autre passe
-  s.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Voir {{${homonyme}|lequel}}.`, id);
+  s.db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run(`Voir {{${homonyme}|lequel}}.`, id);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${homonyme}|lequel}}, modifié.` } }]);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { description: `Voir {{${s.cle(b)}|celui-ci}}.` } }]);
 });
@@ -657,30 +659,30 @@ test('service : la définition d’un mot-clé non verrouillé se modifie, son l
   const s = service();
   // un mot-clé des règles non verrouillé, décrit (le site de dev a pu le vider : on en prend un qui l'est), relié à aucun élément : un mot-clé ancré (sa page
   // de notion comprise, R309 (7), (9)) ne se modifie plus au Glossaire
-  const libre = s.db.prepare('SELECT * FROM mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
+  const libre = s.db.prepare('SELECT * FROM v_mot_cle WHERE verrou = 0 AND description IS NOT NULL ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: 'Une définition d’essai.' }, avant: { description: libre.description } }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, 'Une définition d’essai.');
+  assert.equal(s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', libre.id).description, 'Une définition d’essai.');
   // décision R195 : « Un mot clé peut toujours être changé [dans] tous les champs (sauf l'id technique clé primaire) », verrouillé ou non
   const renomme = s.libre('Essai renommé R195');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { libelle: renomme } }]);
-  assert.equal(s.ligne('SELECT libelle FROM mot_cle WHERE id = ?', libre.id).libelle, renomme, 'le libellé se modifie (R195)');
+  assert.equal(s.ligne('SELECT libelle FROM v_mot_cle WHERE id = ?', libre.id).libelle, renomme, 'le libellé se modifie (R195)');
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: libre.id }, valeurs: { description: '' } }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
+  assert.equal(s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', libre.id).description, null, 'NULL : pas encore décrit');
   // un mot-clé dont le site se sert est verrouillé (R219 (2)) : sa définition se modifie quand même (demande du propriétaire : seule sa suppression est
   // bloquée), le verrou reste. « magique », sinon (il a sa page de notion, R309 (7) : ancré, il ne se modifie plus au Glossaire) un autre verrouillé sans élément
-  const verrouille = (id) => s.ligne('SELECT * FROM mot_cle WHERE id = ?', id);
+  const verrouille = (id) => s.ligne('SELECT * FROM v_mot_cle WHERE id = ?', id);
   const magique = !estAncre(s.db, IDS_DES_MOTS_CLES_PROTEGES.magique) ? verrouille(IDS_DES_MOTS_CLES_PROTEGES.magique)
-    : s.db.prepare('SELECT * FROM mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
+    : s.db.prepare('SELECT * FROM v_mot_cle WHERE verrou = 1 ORDER BY id').all().find((m) => !estAncre(s.db, m.id));
   assert.equal(magique.verrou, 1);
   s.ok([{ op: 'modifier', table: 'mot_cle', cle: { id: magique.id }, valeurs: { description: 'Une classe magique.' } }]);
-  assert.deepEqual({ ...s.ligne('SELECT * FROM mot_cle WHERE id = ?', magique.id) }, { ...magique, description: 'Une classe magique.' });
+  assert.deepEqual({ ...s.ligne('SELECT * FROM v_mot_cle WHERE id = ?', magique.id) }, { ...magique, description: 'Une classe magique.' });
   const id = s.creerMotCle(s.libre('Essai décrit'), 'Ce qu’il veut dire.');
   const sans = s.creerMotCle(s.libre('Essai sans définition'));
   const v = s.appel('GET', '/api/edition/mots-cles/');
   assert.equal(v.statut, 200);
   assert.equal(v.corps.motsCles.find((m) => m.id === id).description, 'Ce qu’il veut dire.');
   assert.equal(v.corps.motsCles.find((m) => m.id === sans).description, null, 'un seul contrat : NULL tant qu’il n’est pas décrit');
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', sans).description, null);
+  assert.equal(s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', sans).description, null);
   const listes = s.appel('GET', '/api/edition/listes/');
   assert.equal(listes.corps.motsCles.find((m) => m.id === id).description, 'Ce qu’il veut dire.', 'la liste de l’éditeur (outils « Mot-clé », « Définition »)');
   assert.equal(listes.corps.motsCles.find((m) => m.id === sans).description, null);
@@ -705,22 +707,23 @@ test('service (R196) : un mot-clé cité par une balise ne se supprime pas (409,
   assert.equal(s.ligne('SELECT recharge FROM arme WHERE id = ?', arme.id).recharge, 'longue');
   const pageDesArmes = () => s.ligne("SELECT corps_md FROM page WHERE id = 'ressources/armes'").corps_md;
   assert.ok(pageDesArmes().includes(`{{${a}\\|Recharge longue}}`), 'le corps de la page des armes suit (case de tableau : « \\| »)');
-  const definitionDuTemoin = s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description;
+  const definitionDuTemoin = s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', temoin).description;
   assert.equal(definitionDuTemoin, `Voir {{${a}|le A}}, {{${b}|la source}} et {{${b}|${libelleB}}}.`, 'forme canonique d’un texte de case');
   // suppression refusée : la liste des endroits, rien d'écrit (la cascade d'avant R196 est abandonnée)
   const refus = s.lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: idA } }]);
   assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
   assert.match(refus.corps.erreur, /R196/);
   const endroits = new Set(refus.corps.mentions.map((m) => `${m.table}.${m.colonne}`));
-  for (const e of ['arme.effet', 'mot_cle.description', 'evenement_extrait.texte']) assert.ok(endroits.has(e), `${e} dans ${[...endroits]}`);
-  assert.ok(refus.corps.mentions.some((m) => m.table === 'mot_cle' && m.cle.id === temoin), 'la définition qui le cite');
+  // la définition d'un mot-clé nu se lit sur son repère (migration 0136)
+  for (const e of ['arme.effet', 'repere.definition', 'evenement_extrait.texte']) assert.ok(endroits.has(e), `${e} dans ${[...endroits]}`);
+  assert.ok(refus.corps.mentions.some((m) => m.table === 'repere' && m.cle.mot_cle_id === temoin), `la définition qui le cite : ${JSON.stringify(refus.corps.mentions)}`);
   assert.ok(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', idA));
   assert.deepEqual({ ...s.ligne('SELECT effet, recharge FROM arme WHERE id = ?', arme.id) }, { effet: `${arme.effet}, {{${a}|Recharge longue}}`, recharge: 'longue' });
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, definitionDuTemoin);
+  assert.equal(s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', temoin).description, definitionDuTemoin);
   assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${b}}}.`);
   // fusion : les balises de la source citent la cible, leur texte gardé
   s.ok([{ op: 'fusionner_mots_cles', mot_cle: idB, dans: idC }]);
-  assert.equal(s.ligne('SELECT description FROM mot_cle WHERE id = ?', temoin).description, `Voir {{${a}|le A}}, {{${c}|la source}} et {{${c}|${libelleB}}}.`,
+  assert.equal(s.ligne('SELECT description FROM v_mot_cle WHERE id = ?', temoin).description, `Voir {{${a}|le A}}, {{${c}|la source}} et {{${c}|${libelleB}}}.`,
     'un texte de case garde le texte qu’il montrait');
   assert.equal(description(), `Le {{${a}:}}, {{${a}}} et {{${c}}}.`, 'un texte mis en forme suit la cible');
   assert.equal(s.ligne('SELECT 1 FROM mot_cle WHERE id = ?', idB), undefined);
@@ -734,7 +737,7 @@ test('service (R196) : un mot-clé cité par une balise ne se supprime pas (409,
   // plus aucune balise orpheline dans la base
   const orphelines = [];
   const vocabulaire = vocabulaireDesMotsCles(chargerVocabulaire(s.db));
-  for (const t of ['arme', 'mot_cle', 'page', 'evenement_extrait']) {
+  for (const t of ['arme', 'repere', 'page', 'evenement_extrait']) {
     for (const l of s.db.prepare(`SELECT * FROM "${t}"`).all()) {
       for (const v of Object.values(l)) if (typeof v === 'string') for (const x of lireBalises(v)) if (!motCleDeLaRef(vocabulaire, x.ref)) orphelines.push(`${t} ${x.brut}`);
     }

@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
 import { COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
+import { lireUnMotCle } from '../src/lib/mots-cles-db.mjs';
 import { cheminDeLAdresse } from '../src/lib/mots-cles-liens.mjs';
 import { fauteDeLaCouleur, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -113,7 +114,8 @@ test('0123 : les ancres posées sont celles que le rendu donne, une par aligneme
 
 test('0123 : le mot-clé 192 mène à l’intertitre ; les neuf mots-clés des alignements (libellé, clé, adresse, couleur, verrou, catégorie, définition) à l’import', () => {
   const [modifie] = registre.mots_cles_modifies;
-  assert.equal(dImport.prepare('SELECT url FROM mot_cle WHERE id = ?').get(modifie.id)?.url, modifie.apres);
+  // le nom, l'adresse, la couleur et la définition se lisent sur l'élément du mot-clé (migration 0136)
+  assert.equal(lireUnMotCle(dImport, modifie.id)?.url, modifie.apres);
   assert.equal(cheminDeLAdresse(modifie.apres), `/regles/${ACCUEIL.slice('guide/'.length)}/`);
   assert.ok(modifie.apres.endsWith(`#${ANCRE}`));
   const corps = corpsDImport();
@@ -122,7 +124,7 @@ test('0123 : le mot-clé 192 mène à l’intertitre ; les neuf mots-clés des a
   const ids = registre.mots_cles_crees.map((m) => m.id);
   assert.deepEqual(ids, ids.map((_, i) => ids[0] + i), 'ids consécutifs');
   for (const m of registre.mots_cles_crees) {
-    const l = dImport.prepare('SELECT * FROM mot_cle WHERE id = ?').get(m.id);
+    const l = lireUnMotCle(dImport, m.id);
     assert.ok(l, `mot-clé ${m.id}`);
     const s = sousTitres.find((x) => x.texte === l.libelle);
     assert.ok(s, `${l.libelle} : sa section`);
@@ -144,7 +146,7 @@ test('0123 : le mot-clé 192 mène à l’intertitre ; les neuf mots-clés des a
 test('0123 : aujourd’hui, chaque mot-clé de la migration encore présent mène à une page qui existe', () => {
   const ids = [registre.mots_cles_modifies[0].id, ...registre.mots_cles_crees.map((m) => m.id)];
   for (const id of ids) {
-    const l = courante.prepare('SELECT url FROM mot_cle WHERE id = ?').get(id);
+    const l = lireUnMotCle(courante, id);
     if (!l?.url) continue; // supprimé ou sans adresse sur le site de dev : admis
     const chemin = cheminDeLAdresse(l.url);
     if (chemin !== cheminDeLAdresse(registre.mots_cles_modifies[0].apres)) continue; // adresse changée sur le site
