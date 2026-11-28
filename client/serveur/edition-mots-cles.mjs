@@ -100,12 +100,15 @@ export class ClesCroisees extends Error {
  * l'ordre de la règle (lib/mots-cles-cles.mjs), une part des libellés de ses catégories (par id croissant), puis, s'il a un parent, ce qui reste (le nom
  * de sa magie au calcul de la clé, qui a pu changer depuis). Faux pour un mot-clé dont le
  * nom a changé sans que sa clé suive (un renommage de page ou de sort que la règle ne sait pas distinguer : décision 1 de B3). `categories` : Map(id → libellé).
+ * `homonyme` : faux quand aucun autre mot-clé du vocabulaire ne porte le même nom normalisé ; la règle ne donne alors que le nom (lib/mots-cles-cles.mjs :
+ * ni catégorie ni parent), et la clé doit lui être égale (un sort renommé en un préfixe de son nom, « Boule de feu » → « Boule », ne suit plus). Non
+ * donné : la suite est jugée sans le vocabulaire.
  */
-export function laCleSuitLeNom(m, categories) {
+export function laCleSuitLeNom(m, categories, { homonyme = true } = {}) {
   const base = normalize(m?.libelle ?? '');
   if (!base || typeof m?.cle !== 'string') return false;
   if (m.cle === base) return true;
-  if (!m.cle.startsWith(`${base}-`)) return false;
+  if (!homonyme || !m.cle.startsWith(`${base}-`)) return false;
   const parts = [...(m.categories ?? [])].map(Number).sort((a, b) => a - b).map((c) => normalize((categories instanceof Map ? categories.get(c) : categories?.[c]) ?? '')).filter(Boolean);
   // le parent (la magie d'un sort) a pu changer de nom depuis le calcul de la clé : la part qui le suit est libre, pour un mot-clé qui en a un
   const parent = Boolean(m.parent);
@@ -182,7 +185,11 @@ export function clesTenues(motsCles, categories, { attendent = new Set(), gardes
     if (restants.length) {
       // seul un mot-clé renommé (sa clé n'est plus faite de son nom) attend : des clés qui se croisent sans renommage (deux magies qui échangent leur
       // nom, parents de sorts homonymes) restent un refus, comme avant la migration 0136
-      const ecartes = restants.map(([id]) => id).filter((id) => peutAttendre(id) && !laCleSuitLeNom(parId.get(id), categories));
+      const homonyme = (id) => {
+        const base = normalize(parId.get(id).libelle ?? '');
+        return motsCles.some((m) => m.id !== id && normalize(m.libelle ?? '') === base);
+      };
+      const ecartes = restants.map(([id]) => id).filter((id) => peutAttendre(id) && !laCleSuitLeNom(parId.get(id), categories, { homonyme: homonyme(id) }));
       if (!ecartes.length) throw new ClesCroisees(restants.map(([id]) => id));
       aTrancher.push({ ids: ecartes, raison: 'croisees' });
       for (const id of ecartes) tenus.add(id);
@@ -200,9 +207,9 @@ export function creerLeRepere(w, id, { nom, adresse = null, definition = null, c
 
 /**
  * Écrit sur l'élément du mot-clé `m` (lib/mots-cles-db.mjs#lireUnMotCle) ceux de ses champs logiques `valeurs` qui changent, par `w` (notés au journal sur
- * la ligne de l'élément) : son repère les reçoit tous ; sa page, sa définition, sa couleur et son icône ; un sort, aucun (il n'a ni définition, ni
- * couleur, ni icône). Le nom et l'adresse d'un mot-clé de page ou de sort se lisent sur l'élément : les écrire est refusé. `refuser(message, champ)`
- * lève le refus de l'appelant (409). Rend les champs écrits.
+ * la ligne de l'élément) : son repère les reçoit tous ; sa page ou son sort, sa définition, sa couleur et son icône (R309 (14) et (17)). Le nom et
+ * l'adresse d'un mot-clé de page ou de sort se lisent sur l'élément : les écrire est refusé. `refuser(message, champ)` lève le refus de l'appelant
+ * (409). Rend les champs écrits.
  */
 export function ecrireSurLElement(w, m, valeurs, refuser) {
   const voulue = (c) => (c === 'libelle' ? valeurs[c] : valeurs[c] || null);
@@ -219,28 +226,25 @@ export function ecrireSurLElement(w, m, valeurs, refuser) {
   if (lus.length) {
     refuser(`${sujet} est celui d’${table === 'page' ? 'une page' : 'un sort'} : son nom et son adresse se lisent sur ${table === 'page' ? 'elle' : 'lui'}, ils ne s’écrivent pas sur le mot-clé.`, lus[0]);
   }
-  if (table === 'sort') refuser(`${sujet} est celui d’un sort : il n’a ni définition, ni couleur, ni icône.`, changes[0]);
-  w.modifier('page', { id }, Object.fromEntries(changes.map((c) => [COLONNES_DE_LA_PAGE[c], voulue(c)])));
+  w.modifier(table, { id }, Object.fromEntries(changes.map((c) => [COLONNES_DE_LA_PAGE[c], voulue(c)])));
   return changes;
 }
 
 /**
  * Le mot-clé `id` vient de recevoir une page ou un sort (`element` : { table, id }) : son repère part dans la même opération (un repère ne double jamais
- * une page ni un sort, docs/chantier-retrait-des-colonnes.md §2). Sa définition, sa couleur et son icône passent sur la page, là où elle n'en a pas ; un
- * sort n'en porte pas : `refuser(message)` si le repère en a une. `w` : le journal, ou les écritures brutes du rejeu (mêmes méthodes `modifier` et
- * `supprimer`). Rend le repère retiré, ou null.
+ * une page ni un sort, docs/chantier-retrait-des-colonnes.md §2). Sa définition, sa couleur et son icône passent sur la page ou le sort, là où il n'en
+ * a pas (R309 (14) : rien n'est perdu). `w` : le journal, ou les écritures brutes du rejeu (mêmes méthodes `modifier` et `supprimer`). Rend le repère
+ * retiré, ou null.
  */
-export function reprendreLeRepere(db, w, id, element, refuser) {
+export function reprendreLeRepere(db, w, id, element) {
   if (!nomSurLElement(db)) return null; // avant la migration 0136, le repère n'est qu'une copie des colonnes du mot-clé : la page n'a pas où les recevoir
   const r = lireLigne(db, 'repere', { mot_cle_id: id });
   if (!r) return null;
   const portes = Object.values(COLONNES_DE_LA_PAGE).filter((c) => (r[c] ?? null) !== null);
-  if (element.table === 'page') {
-    const page = lireLigne(db, 'page', { id: element.id });
-    const reprises = Object.fromEntries(portes.filter((c) => (page?.[c] ?? null) === null).map((c) => [c, r[c]]));
-    if (Object.keys(reprises).length) w.modifier('page', { id: element.id }, reprises);
-  } else if (portes.length) {
-    refuser(`${motCleDansUnRefus(r.nom)} porte une définition, une couleur ou une icône : le mot-clé d’un sort n’en a pas. Retirez-les d’abord de son repère.`);
+  if (element.table === 'page' || element.table === 'sort') {
+    const ligne = lireLigne(db, element.table, { id: element.id });
+    const reprises = Object.fromEntries(portes.filter((c) => (ligne?.[c] ?? null) === null).map((c) => [c, r[c]]));
+    if (Object.keys(reprises).length) w.modifier(element.table, { id: element.id }, reprises);
   }
   w.supprimer('repere', { mot_cle_id: id });
   return r;

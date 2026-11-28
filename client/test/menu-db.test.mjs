@@ -10,6 +10,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { adresseDeLOnglet, donneesDuMenu, htmlDeLEntree, lireLeMenu, menuDuSite, resoudreLesEntrees } from '../src/lib/menu-db.mjs';
 import { htmlAvecMotsCles, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { poserUnMotCle } from './aide-mots-cles.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const creation = (table) => {
@@ -21,16 +22,19 @@ const creation = (table) => {
 // ids d'essai (aucun rapport avec ceux du site)
 const [A, B, SANS_URL, ABSENT] = [9001, 9002, 9003, 9999];
 
-/** Une base en mémoire : mot_cle (A : adresse, couleur, définition ; B : adresse seule ; SANS_URL : sans adresse) et regles_onglet (deux onglets). */
+/**
+ * Une base en mémoire : mot_cle et son élément, le repère (A : adresse, couleur, définition ; B : adresse seule ; SANS_URL : sans adresse ; depuis la
+ * migration 0136, le nom et le reste se lisent sur l'élément), et regles_onglet (deux onglets).
+ */
 function baseDuMenu({ onglets = true } = {}) {
   const db = new DatabaseSync(':memory:');
   // les clés étrangères vers des tables que le test ne lit pas (monnaie, regles_onglet_entree) ne sont pas contrôlées
   db.exec('PRAGMA foreign_keys = OFF');
   db.exec(creation('mot_cle'));
-  const m = db.prepare('INSERT INTO mot_cle (id, libelle, cle, description, couleur, url) VALUES (?, ?, ?, ?, ?, ?)');
-  m.run(A, 'Alpha d’essai', 'alpha-d-essai', 'La définition d’alpha.', 'partie:decouvrir', '/alpha/page/#ancre');
-  m.run(B, 'Bravo d’essai', 'bravo-d-essai', null, null, '/bravo/');
-  m.run(SANS_URL, 'Sans adresse d’essai', 'sans-adresse-d-essai', null, 'partie:decouvrir', null);
+  db.exec(creation('repere'));
+  poserUnMotCle(db, { id: A, libelle: 'Alpha d’essai', cle: 'alpha-d-essai', description: 'La définition d’alpha.', couleur: 'partie:decouvrir', url: '/alpha/page/#ancre' });
+  poserUnMotCle(db, { id: B, libelle: 'Bravo d’essai', cle: 'bravo-d-essai', url: '/bravo/' });
+  poserUnMotCle(db, { id: SANS_URL, libelle: 'Sans adresse d’essai', cle: 'sans-adresse-d-essai', couleur: 'partie:decouvrir' });
   if (onglets) {
     db.exec(creation('regles_onglet'));
     const o = db.prepare('INSERT INTO regles_onglet (id, titre, ordre, ouverture_page_id) VALUES (?, ?, ?, ?)');
@@ -64,7 +68,8 @@ test('le libellé, l’adresse et l’habillage suivent le mot-clé ; `libelleAr
 test('renommer le mot-clé renomme l’entrée ; changer son adresse la déplace (lu à chaque appel)', () => {
   const db = baseDuMenu();
   const entrees = [{ label: 'Écrit', path: 'repli/', motCle: B }];
-  db.prepare('UPDATE mot_cle SET libelle = ?, url = ? WHERE id = ?').run('Autre nom', '/ailleurs/', B);
+  // le nom et l'adresse se changent sur l'élément du mot-clé (ici son repère)
+  db.prepare('UPDATE repere SET nom = ?, adresse = ? WHERE mot_cle_id = ?').run('Autre nom', '/ailleurs/', B);
   const [e] = lireLeMenu(db, entrees);
   assert.equal(e.libelle, 'Autre nom');
   assert.equal(e.href, 'ailleurs/');
@@ -173,7 +178,7 @@ test('le lien d’une entrée est rendu comme la balise du mot-clé dans un text
 test('sur la base construite : menuDuSite lit la base du build, une fois par liste d’entrées', () => {
   const db = ouvrirBase({ sansExemples: false });
   // les lignes d’essai se choisissent dans l’état courant (jamais par un id supposé)
-  const mot = db.prepare('SELECT id, libelle, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id LIMIT 1').get();
+  const mot = motsClesDeLaBase(db, { elements: false }).find((m) => m.url !== null); // le premier par id, l'adresse lue sur son élément
   const onglet = db.prepare('SELECT id, titre FROM regles_onglet ORDER BY ordre, id LIMIT 1').get();
   assert.ok(mot && onglet, 'la base du site a un mot-clé à adresse et un onglet');
   const entrees = [{ label: 'x', motCle: mot.id, enfants: [{ label: 'y', onglet: onglet.id }] }, { label: 'z', motCle: -1, path: 'repli/' }];

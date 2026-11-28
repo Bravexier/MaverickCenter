@@ -920,6 +920,14 @@ CREATE TABLE sort (
   -- que le sort n'est pas ancré. Un mot-clé ancre au plus un sort (index UNIQUE sort_ancre_mot_cle). Distinct de sort_mot_cle (R114), qui ÉTIQUETTE le sort
   -- de plusieurs mots-clés : ici le mot-clé est l'identité du sort. Pas de cascade.
   mot_cle_id            INTEGER REFERENCES mot_cle(id),   -- le mot-clé que le sort ancre (R309) ; NULL = sort pas encore ancré
+  -- Colonnes ajoutées par la migration 0136 (chantier 4 des mots-clés, « le retrait des colonnes ») : la définition, la couleur et l'icône du mot-clé
+  -- que le sort ancre, comme celles de la page (décision R309 (14) et (17) : elles passent sur l'élément et s'y corrigent par un lot), avec les mêmes
+  -- contraintes. NULL sauf pour un sort ancré ; la page l'emporte quand un mot-clé a les deux (client/src/lib/mots-cles-db.mjs#lireUnMotCle).
+  definition TEXT CHECK (definition IS NULL OR length(definition) > 0),   -- la définition du glossaire : texte simple, balises du glossaire comprises ; NULL : aucune
+  couleur    TEXT CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
+                                                     -- même forme que page.couleur ; NULL : aucune
+  icone      TEXT CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-')),
+                                                     -- même forme que page.icone ; NULL : aucune
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : le service la recalcule avec lib/sort-analyse.mjs, que
@@ -4121,16 +4129,16 @@ CREATE VIEW lien_a_creer AS
 -- Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de
 -- nb_pages pages). Refaite par la migration 0136 (le retrait des colonnes) : le nom (`libelle`), la définition (`description`), la couleur et l'icône
 -- se lisent sur l'élément du mot-clé. `libelle` : le titre de sa page, sinon le nom de son sort, sinon le nom de son repère. `description`, `couleur`,
--- `icone` : ceux de la page si le mot-clé en a une, sinon ceux du repère ; NULL pour un mot-clé de sort, qui n'en porte pas. Sans l'adresse : celle
+-- `icone` : ceux de la page si le mot-clé en a une, sinon ceux de son sort, sinon ceux du repère. Sans l'adresse : celle
 -- d'une page ne se calcule pas en SQL (client/src/lib/adresses-db.mjs#adresseDeLaPage ; client/src/lib/mots-cles-db.mjs#lireUnMotCle la rend). Une ligne
 -- par mot-clé (un mot-clé ancre au plus une page et au plus un sort, et n'a qu'un repère). Les catégories sont dans mot_cle_categorie, les synonymes
 -- dans mot_cle_synonyme. Le corps de la vue est sans commentaire : il reste identique à celui de la migration.
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.cle,
     coalesce(p.titre, s.nom, r.nom) AS libelle,
-    CASE WHEN p.id IS NOT NULL THEN p.definition WHEN s.id IS NULL THEN r.definition END AS description,
-    CASE WHEN p.id IS NOT NULL THEN p.couleur WHEN s.id IS NULL THEN r.couleur END AS couleur,
-    CASE WHEN p.id IS NOT NULL THEN p.icone WHEN s.id IS NULL THEN r.icone END AS icone,
+    CASE WHEN p.id IS NOT NULL THEN p.definition WHEN s.id IS NOT NULL THEN s.definition ELSE r.definition END AS description,
+    CASE WHEN p.id IS NOT NULL THEN p.couleur WHEN s.id IS NOT NULL THEN s.couleur ELSE r.couleur END AS couleur,
+    CASE WHEN p.id IS NOT NULL THEN p.icone WHEN s.id IS NOT NULL THEN s.icone ELSE r.icone END AS icone,
     m.verrou, m.monnaie_id,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
   FROM mot_cle m

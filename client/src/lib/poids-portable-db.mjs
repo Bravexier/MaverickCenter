@@ -51,8 +51,11 @@ export function lecteurDuPoidsPortable(db) {
     if (vocabulaire === null) {
       const table = db.prepare("SELECT 1 FROM main.sqlite_master WHERE type = 'table' AND name = 'mot_cle'").get();
       // la clé (migration 0113 ; libelle_cle avant) : les balises la citent ; une colonne lue par PRAGMA, jamais écrite à partir d'un lot
-      const cle = table && db.prepare('PRAGMA main.table_info(mot_cle)').all().some((c) => c.name === 'cle') ? 'cle' : 'libelle_cle AS cle';
-      vocabulaire = table ? db.prepare(`SELECT id, libelle, ${cle} FROM main.mot_cle`).all().map((m) => ({ ...m })) : [];
+      const colonnes = table ? db.prepare('PRAGMA main.table_info(mot_cle)').all().map((c) => c.name) : [];
+      const cle = colonnes.includes('cle') ? 'cle' : 'libelle_cle AS cle';
+      // depuis la migration 0136, le nom se lit sur l'élément du mot-clé : la vue v_mot_cle le donne (page, sinon sort, sinon repère)
+      const source = colonnes.includes('libelle') ? 'main.mot_cle' : 'main.v_mot_cle';
+      vocabulaire = table ? db.prepare(`SELECT id, libelle, ${cle} FROM ${source}`).all().map((m) => ({ ...m })) : [];
     }
     return vocabulaire;
   };

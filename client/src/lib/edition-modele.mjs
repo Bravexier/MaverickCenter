@@ -326,6 +326,11 @@ export const TABLES = {
       effets: { type: 'texte', libelle: 'Effets secondaires' },
       remarque: { type: 'texte', libelle: 'Remarque' },
       texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
+      // la définition, la couleur et l'icône du mot-clé que le sort ancre (migration 0136, décision R309 (14) et (17)), comme celles de la page : elles
+      // se corrigent par un lot, ou par le mot-clé (serveur/edition-mots-cles.mjs), qui les écrit ici
+      definition: { type: 'texte', libelle: 'Définition' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
   },
   // Bestiaire (/bestiaire/, components/bestiaire/ ; demande du propriétaire : créer, modifier, supprimer un monstre) : une espèce, une carte de monstre,

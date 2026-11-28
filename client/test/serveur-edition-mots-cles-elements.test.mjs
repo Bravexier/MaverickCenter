@@ -4,7 +4,7 @@
 //   - créer : un mot-clé nu naît avec un repère ; celui d'une notion écrit sa définition sur sa page, sans repère ;
 //   - renommer une page : le nom suit sans copie, la clé est recalculée, un nom que la règle ne sait pas distinguer n'est pas refusé (la clé reste) ;
 //   - Glossaire : un mot-clé à repère se modifie (le journal note la ligne du repère) ; un mot-clé ancré reste fermé aux routes, un lot écrit sa
-//     définition sur sa page, et rien sur un sort (409) ;
+//     définition, sa couleur et son icône sur sa page ou son sort (R309 (14) et (17)) ;
 //   - fusion : le repère de l'absorbé part avec lui, la cible à repère reçoit ce qu'elle n'a pas ;
 //   - page de notion d'un mot-clé à repère : elle reprend sa définition, sa couleur et son icône, le repère part ;
 //   - un mot-clé qui survit à sa page (R289) reçoit un repère à son nom, avec sa définition, sans adresse ;
@@ -170,8 +170,21 @@ test('Glossaire : un mot-clé à repère se modifie dans son repère ; un mot-cl
   // une route n'écrit pas la définition d'une page
   assert.equal(parLaRoute(m.db, [{ op: 'modifier', table: 'page', cle: { id: p.id }, valeurs: { definition: 'Par la route.' } }], p.id).statut, 409);
 
+  // un mot-clé de sort : sa définition, sa couleur et son icône s'écrivent sur le sort (R309 (14) et (17)), par un lot ; pas par une route
   const s = sortAncre(m);
-  assert.equal(parUnLot(m.db, [{ op: 'modifier', table: 'mot_cle', cle: { id: s }, valeurs: { couleur: '#abcdef' } }]).statut, 409, 'un sort n’a pas de couleur');
+  const sort = m.un('SELECT id FROM sort WHERE mot_cle_id = ?', s).id;
+  ok(parUnLot(m.db, [{ op: 'modifier', table: 'mot_cle', cle: { id: s }, valeurs: { couleur: '#abcdef', description: 'Définition du sort par un lot.' } }]));
+  assert.deepEqual({ ...m.un('SELECT definition, couleur, icone FROM sort WHERE id = ?', sort) }, { definition: 'Définition du sort par un lot.', couleur: '#abcdef', icone: null });
+  assert.ok(tablesDuDernierLot(m.db).includes('sort') && !tablesDuDernierLot(m.db).includes('repere'), 'le journal note la ligne du sort');
+  assert.deepEqual([lireUnMotCle(m.db, s).description, lireUnMotCle(m.db, s).couleur], ['Définition du sort par un lot.', '#abcdef']);
+  assert.equal(parLaRoute(m.db, [{ op: 'modifier', table: 'mot_cle', cle: { id: s }, valeurs: { couleur: null } }]).statut, 409, 'fermé aux routes, comme celui d’une page');
+  assert.equal(parLaRoute(m.db, [{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { definition: 'Par la route.' } }], sort.split('#')[0]).statut, 409);
+  assert.equal(parUnLot(m.db, [{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { couleur: 'Rouge' } }]).statut, 400, 'une couleur hors de sa forme');
+  ok(parUnLot(m.db, [{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { definition: '' } }]));
+  assert.equal(m.un('SELECT definition FROM sort WHERE id = ?', sort).definition, null, 'une définition vidée : NULL');
+  // un sort sans mot-clé n'en porte pas
+  const libre = m.un('SELECT id FROM sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1').id;
+  assert.equal(parUnLot(m.db, [{ op: 'modifier', table: 'sort', cle: { id: libre }, valeurs: { icone: 'monnaie:rf' } }]).statut, 409);
 });
 
 test('fusion : le repère de l’absorbé part avec lui, la cible à repère prend la couleur qu’elle n’a pas', () => {
@@ -184,6 +197,32 @@ test('fusion : le repère de l’absorbé part avec lui, la cible à repère pre
   assert.equal(m.un('SELECT 1 AS x FROM repere WHERE mot_cle_id = ?', source), undefined);
   assert.equal(m.un('SELECT 1 AS x FROM mot_cle WHERE id = ?', source), undefined);
   assert.equal(m.un('SELECT couleur FROM repere WHERE mot_cle_id = ?', cible).couleur, '#112233');
+});
+
+test('fusion hors verrou (rejeu) dans une cible reliée à une page : la page prend la couleur et l’icône de la source qu’elle n’a pas', () => {
+  const m = nouvelle();
+  ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Source colorée d’essai', couleur: '#112233', icone: 'monnaie:rf' } }], 'regles/glossaire/'));
+  const source = dernierMotCle(m.db);
+  const p = pageAncree(m);
+  assert.deepEqual({ ...m.un('SELECT couleur, icone FROM page WHERE id = ?', p.id) }, { couleur: null, icone: null });
+  enregistrer(m.db, { page: 'regles/glossaire/', operations: [{ op: 'fusionner_mots_cles', mot_cle: source, dans: p.mot_cle_id }] }, { gel: false });
+  assert.equal(m.un('SELECT 1 AS x FROM mot_cle WHERE id = ?', source), undefined);
+  assert.deepEqual({ ...m.un('SELECT couleur, icone FROM page WHERE id = ?', p.id) }, { couleur: '#112233', icone: 'monnaie:rf' });
+  assert.equal(m.un('SELECT 1 AS x FROM repere WHERE mot_cle_id = ?', p.mot_cle_id), undefined, 'pas de repère pour un mot-clé de page');
+});
+
+test('fusion hors verrou d’une source reliée à une page : le corps de sa page suit la cible, sa seule définition est laissée', () => {
+  const m = nouvelle();
+  const p = pageAncree(m);
+  ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Cible de fusion d’essai' } }], 'regles/glossaire/'));
+  const cible = dernierMotCle(m.db);
+  const [cleSource, cleCible] = [lireUnMotCle(m.db, p.mot_cle_id).cle, lireUnMotCle(m.db, cible).cle];
+  const corps = `${m.un('SELECT corps_md FROM page WHERE id = ?', p.id).corps_md}\n\nVoir {{${cleSource}}}.\n`;
+  m.db.prepare('UPDATE page SET corps_md = ?, definition = ? WHERE id = ?').run(corps, `Elle-même : {{${cleSource}}}.`, p.id);
+  enregistrer(m.db, { page: 'regles/glossaire/', operations: [{ op: 'fusionner_mots_cles', mot_cle: p.mot_cle_id, dans: cible }] }, { gel: false });
+  const apres = m.un('SELECT corps_md, definition FROM page WHERE id = ?', p.id);
+  assert.ok(apres.corps_md.includes(`{{${cleCible}}}`) && !apres.corps_md.includes(`{{${cleSource}}}`), 'le corps de sa page est réécrit');
+  assert.equal(apres.definition, `Elle-même : {{${cleSource}}}.`, 'sa définition n’est pas réécrite');
 });
 
 test('page de notion d’un mot-clé à repère : la page reprend sa définition, sa couleur et son icône, le repère part', () => {
@@ -246,8 +285,11 @@ test('rejeu : une ligne de mot_cle d’avant la migration se lit sur l’éléme
     adapte({ lot_id: 'ancien', rang: 2, table_nom: 'page', cle: JSON.stringify({ id: libre.id }), operation: 'modifier', avant: JSON.stringify({ mot_cle_id: null }), apres: JSON.stringify({ mot_cle_id: r.id }) });
     assert.equal(adapte(ligne('modifier', r.id, { couleur: null }, { couleur: '#000000' }, 3)).table_nom, 'page');
   }
-  // un mot-clé de sort : une couleur n'a pas d'équivalent
-  assert.ok(adapte(ligne('modifier', s, { couleur: null }, { couleur: '#000000' })).conflit);
+  // un mot-clé de sort : sa couleur vise le sort (R309 (14)), son nom est sans effet
+  const sortDe = m.un('SELECT id FROM sort WHERE mot_cle_id = ?', s).id;
+  const auSort = adapte(ligne('modifier', s, { couleur: null }, { couleur: '#000000' }));
+  assert.deepEqual([auSort.conflit, auSort.table_nom, JSON.parse(auSort.cle), JSON.parse(auSort.apres)], [undefined, 'sort', { id: sortDe }, { couleur: '#000000' }]);
+  assert.equal(adapte(ligne('modifier', s, { libelle: 'A' }, { libelle: 'B' })).sansEffet, true);
   // une suppression : `avant` réduit, le nom gardé à part
   const suppression = adapte(ligne('supprimer', 999001, { id: 999001, cle: 'ancien-essai', libelle: 'Ancien essai', verrou: 0 }, null));
   assert.deepEqual(JSON.parse(suppression.avant), { id: 999001, cle: 'ancien-essai', verrou: 0 });
@@ -304,13 +346,13 @@ test('annulation : la page de notion retirée rend un repère à son mot-clé (t
   assert.deepEqual(restes, [{ nom: 'Repère remis d’essai', definition: 'Remise.' }]);
 });
 
-test('annulation : un sort retiré rend un repère à son nom à son mot-clé', () => {
+test('annulation : un sort retiré rend un repère à son mot-clé, avec son nom, sa définition, sa couleur et son icône (R309 (14))', () => {
   const m = nouvelle();
   // un sort neuf, copie d'un sort de la base sous un nom d'essai : aucune ligne ne le cite, il se retire seul
   const colonnes = m.db.prepare("SELECT name FROM pragma_table_info('sort')").all().map((c) => c.name);
   const modele = m.un('SELECT * FROM sort ORDER BY id LIMIT 1');
   const ordre = m.un('SELECT max(ordre) + 1 AS o FROM sort WHERE magie_id = ?', modele.magie_id).o;
-  const sort = { ...modele, id: 'sort-annule-d-essai', nom: 'Sort annulé d’essai', ordre, mot_cle_id: null };
+  const sort = { ...modele, id: 'sort-annule-d-essai', nom: 'Sort annulé d’essai', ordre, mot_cle_id: null, definition: 'Définition d’essai du sort.', couleur: '#336699', icone: 'monnaie:rf' };
   m.db.prepare(`INSERT INTO sort (${colonnes.map((c) => `"${c}"`).join(', ')}) VALUES (${colonnes.map(() => '?').join(', ')})`).run(...colonnes.map((c) => sort[c] ?? null));
   const id = ancrer(m, 'sort', sort.id);
   const r = appliquerUnLot(m.db, {
@@ -319,7 +361,20 @@ test('annulation : un sort retiré rend un repère à son nom à son mot-clé', 
   });
   assert.ok(r.lot);
   assert.equal(m.un('SELECT 1 AS x FROM sort WHERE id = ?', sort.id), undefined);
-  assert.deepEqual({ ...m.un('SELECT nom, adresse, definition FROM repere WHERE mot_cle_id = ?', id) }, { nom: sort.nom, adresse: null, definition: null });
+  assert.deepEqual({ ...m.un('SELECT nom, adresse, definition, couleur, icone FROM repere WHERE mot_cle_id = ?', id) },
+    { nom: sort.nom, adresse: null, definition: sort.definition, couleur: sort.couleur, icone: sort.icone });
+});
+
+test('ancrer sur un sort un mot-clé à repère : sa définition, sa couleur et son icône passent sur le sort, le repère part (R309 (14))', () => {
+  const m = nouvelle();
+  ok(lotHorsRoute(m.db, [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: 'Repère vers un sort d’essai', description: 'Définie au repère.', couleur: '#445566', icone: 'monnaie:pp' } }], 'regles/glossaire/'));
+  const id = dernierMotCle(m.db);
+  const sort = m.un('SELECT id FROM sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1').id;
+  ok(parUnLot(m.db, [{ op: 'ancrer_element', table: 'sort', id: sort, mot_cle_id: id }]));
+  assert.deepEqual({ ...m.un('SELECT definition, couleur, icone FROM sort WHERE id = ?', sort) }, { definition: 'Définie au repère.', couleur: '#445566', icone: 'monnaie:pp' });
+  assert.equal(m.un('SELECT 1 AS x FROM repere WHERE mot_cle_id = ?', id), undefined);
+  const lu = lireUnMotCle(m.db, id);
+  assert.deepEqual([lu.element, lu.description, lu.couleur, lu.icone], [{ table: 'sort', id: sort }, 'Définie au repère.', '#445566', 'monnaie:pp']);
 });
 
 test('ancrer_nouveau sans nom donné : le nom du mot-clé se lit sur l’élément, sans repère', () => {

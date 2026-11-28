@@ -47,11 +47,13 @@ function structureDe(db) {
 }
 const structures = new WeakMap(); // db -> { version, structure }
 
-/** Les colonnes de page d'où se lit un mot-clé de page ; une colonne que la base n'a pas (base d'essai réduite) vaut NULL. */
-const colonnesDeLElementPage = (s) => ['definition', 'couleur', 'icone'].map((c) => (s.page.includes(c) ? c : `NULL AS ${c}`)).join(', ');
+/**
+ * Les colonnes de la page ou du sort (`colonnes` : s.page ou s.sort) d'où se lisent la définition, la couleur et l'icône de son mot-clé ; une colonne que
+ * la base n'a pas (base d'essai réduite) vaut NULL. Le sort les porte comme la page (R309 (14) et (17)).
+ */
+const colonnesDeLElement = (colonnes) => ['definition', 'couleur', 'icone'].map((c) => (colonnes.includes(c) ? c : `NULL AS ${c}`)).join(', ');
 const champsDeLaPage = (p, url) => ({ libelle: p.titre, url, description: p.definition ?? null, couleur: p.couleur ?? null, icone: p.icone ?? null, element: { table: 'page', id: p.id } });
-// un mot-clé de sort n'a ni définition écrite, ni couleur, ni icône (docs/chantier-retrait-des-colonnes.md §1)
-const champsDuSort = (l, url) => ({ libelle: l.nom, url, description: null, couleur: null, icone: null, element: { table: 'sort', id: l.id } });
+const champsDuSort = (l, url) => ({ libelle: l.nom, url, description: l.definition ?? null, couleur: l.couleur ?? null, icone: l.icone ?? null, element: { table: 'sort', id: l.id } });
 const champsDuRepere = (r) => ({ libelle: r.nom, url: r.adresse ?? null, description: r.definition ?? null, couleur: r.couleur ?? null, icone: r.icone ?? null, element: { table: 'repere', id: r.mot_cle_id } });
 const LIRE_LE_REPERE = 'SELECT mot_cle_id, nom, adresse, definition, couleur, icone FROM repere';
 
@@ -66,12 +68,12 @@ function champsDesElements(db, s) {
   // l'adresse d'aujourd'hui : le segment renommé de la page (d'un sort : celui de sa magie) lu en base (R316)
   const segments = slugsDAdresse(db);
   if (s.page.includes('mot_cle_id')) {
-    for (const p of db.prepare(`SELECT id, mot_cle_id, titre, ${colonnesDeLElementPage(s)} FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`).all()) {
+    for (const p of db.prepare(`SELECT id, mot_cle_id, titre, ${colonnesDeLElement(s.page)} FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id`).all()) {
       poser(p.mot_cle_id, champsDeLaPage(p, adresseDeLaPage(p.id, segments.get(p.id) ?? null)));
     }
   }
   if (s.sort.includes('mot_cle_id')) {
-    for (const l of db.prepare('SELECT id, mot_cle_id, nom FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id').all()) {
+    for (const l of db.prepare(`SELECT id, mot_cle_id, nom, ${colonnesDeLElement(s.sort)} FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id`).all()) {
       poser(l.mot_cle_id, champsDuSort(l, adresseDuSort(l.id, segments.get(String(l.id).split('#sort:')[0]) ?? null)));
     }
   }
@@ -82,11 +84,11 @@ function champsDesElements(db, s) {
 /** L'élément du seul mot-clé `id` et ce qui s'y lit (la forme de champsDesElements), ou null. Les adresses sont lues dans la base (R316). */
 function champsDeLElement(db, s, id) {
   if (s.page.includes('mot_cle_id')) {
-    const p = db.prepare(`SELECT id, titre, ${colonnesDeLElementPage(s)} FROM page WHERE mot_cle_id = ? ORDER BY id LIMIT 1`).get(id);
+    const p = db.prepare(`SELECT id, titre, ${colonnesDeLElement(s.page)} FROM page WHERE mot_cle_id = ? ORDER BY id LIMIT 1`).get(id);
     if (p) return champsDeLaPage(p, adresseDeLaPageEnBase(db, p.id));
   }
   if (s.sort.includes('mot_cle_id')) {
-    const l = db.prepare('SELECT id, nom FROM sort WHERE mot_cle_id = ? ORDER BY id LIMIT 1').get(id);
+    const l = db.prepare(`SELECT id, nom, ${colonnesDeLElement(s.sort)} FROM sort WHERE mot_cle_id = ? ORDER BY id LIMIT 1`).get(id);
     if (l) return champsDuSort(l, adresseDuSortEnBase(db, l.id));
   }
   if (s.repere) {

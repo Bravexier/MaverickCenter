@@ -18,7 +18,8 @@
 // Un numéro à donner : la clé entière d'une insertion (clé simple de type entier) s'écrit `{ "$numero": "a" }` ; le service donne le numéro à l'application
 // (jamais avant : donnerLesNumeros) et le même jeton se réutilise ensuite, dans `apres` ou la clé d'une insertion à clé composée, d'une opération suivante
 // du même lot. Un jeton n'est donné qu'une fois, et ne figure jamais dans `avant` ni dans la clé d'une modification ou d'une suppression.
-// `cle` : l'objet de la clé primaire (toutes ses colonnes). `avant` : les valeurs attendues des colonnes touchées (la ligne entière pour « supprimer »,
+// `cle` : l'objet de la clé primaire (toutes ses colonnes). `avant` : les valeurs attendues des colonnes touchées (la ligne entière pour « supprimer », hors
+// les colonnes venues après le lot, qui valent alors NULL : COLONNES_VENUES_APRES ;
 // absent pour « inserer »). `apres` : les valeurs écrites (absent pour « supprimer »). Même forme que `avant` / `apres` d'une ligne de `modification`
 // (serveur/edition-journal.mjs) : les colonnes touchées seulement pour « modifier », la ligne entière pour « inserer ».
 // Un mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md, §1 et §5) : la table `mot_cle` ne garde que `id`, `cle`, `verrou` et `monnaie_id`. Son nom,
@@ -26,7 +27,8 @@
 // (`sort.nom`), sinon son repère (`repere.nom`, `adresse`, `definition`, `couleur`, `icone`), et un lot les corrige là. Une opération sur `mot_cle` garde
 // pourtant `libelle`, `url`, `description`, `couleur` et `icone` comme colonnes LOGIQUES (COLONNES_LOGIQUES_DU_MOT_CLE), dans `avant` comme dans `apres` : un
 // lot écrit avant la migration reste valide, le service compare ces valeurs à celles de l'élément et les écrit sur lui (insérer un mot-clé nu crée son
-// repère ; le nom et l'adresse d'un mot-clé qui a une page ou un sort ne s'écrivent pas ; un mot-clé de sort n'a ni définition, ni couleur, ni icône).
+// repère ; le nom et l'adresse d'un mot-clé qui a une page ou un sort ne s'écrivent pas ; la définition, la couleur et l'icône d'un mot-clé de sort vont sur
+// son sort, R309 (17)).
 // `ancrage` (décision R309, sur une opération de `mot_cle`, ou sur l'insertion d'une page de notion) : à l'insertion d'un mot-clé, `{ "table": "page" | "sort" |
 // "type_sort", "id": …, "type": <id de catégorie> }` crée le mot-clé de cet élément, avec son type et son ancre (`apres` : id ; pour un type de sort, qui n'a
 // pas de nom à lui, aussi libelle, le nom de son repère ; un lot d'avant la migration 0136 y donne libelle et url, qui doivent valoir ceux du mot-clé créé) ; sur « modifier » d'un mot-clé, `{ "aligner": true }` (lots d'avant la migration 0136
@@ -80,6 +82,14 @@ const COLONNES_D_UN_ALIGNEMENT = Object.freeze(['libelle', 'url']);
  * l'élément du mot-clé (sa page, sinon son sort, sinon son repère). Un lot peut toujours les nommer ; une ligne ancienne du journal les porte encore.
  */
 export const COLONNES_LOGIQUES_DU_MOT_CLE = Object.freeze(['libelle', 'url', 'description', 'couleur', 'icone']);
+/**
+ * Les colonnes qu'une migration a ajoutées, NULL permise, après que des lots ont été écrits et appliqués (migration 0136 : la définition, la couleur et
+ * l'icône d'une page et d'un sort) : l'`avant` d'une suppression écrite avant elle ne les porte pas. Absentes de cet `avant`, elles valent NULL : le lot
+ * ancien reste valide et annulable (R291), et un lot neuf qui les omet attend NULL, comparé comme s'il l'écrivait (`comparerAvecLaBase`).
+ */
+export const COLONNES_VENUES_APRES = Object.freeze({ page: Object.freeze(['definition', 'couleur', 'icone']), sort: Object.freeze(['definition', 'couleur', 'icone']) });
+/** Les colonnes que l'`avant` de la suppression d'une ligne de `table` doit nommer : toutes, hors celles venues après (`COLONNES_VENUES_APRES`). */
+const colonnesDeLaSuppression = (table, s) => s.colonnes.filter((c) => !(COLONNES_VENUES_APRES[table] ?? []).includes(c));
 /** Les colonnes d'une table telles qu'un lot peut les nommer : celles de la base, et pour `mot_cle` ses colonnes logiques. */
 const colonnesNommables = (table, s) => (table === 'mot_cle' ? [...new Set([...s.colonnes, ...COLONNES_LOGIQUES_DU_MOT_CLE])] : s.colonnes);
 /** Les colonnes qu'un lot donne à une page de notion (`ancrage: { notion: true }`) : le service écrit les autres. */
@@ -338,7 +348,7 @@ function controlerLesValeurs(o, s, dit, numeros, rang) {
     if (!estAbsent(o.apres)) dit('apres : une suppression n\'a pas de valeur après (à retirer)');
     const colonnes = decrire(o.avant, 'avant');
     if (!colonnes) return null;
-    const manque = s.colonnes.filter((c) => !colonnes.includes(c));
+    const manque = colonnesDeLaSuppression(o.table, s).filter((c) => !colonnes.includes(c));
     if (manque.length) {
       dit(`avant : la ligne supprimée est attendue en entier (manque ${liste(manque)})`);
       return null;
@@ -386,7 +396,9 @@ export function comparerAvecLaBase(lot, lireLigne) {
     const changee = (raison) => ({ ...sortie, etat: CHANGEE, raison });
     if (o.operation === 'inserer') return actuelle ? changee('ligne_existante') : sortie;
     if (!actuelle) return changee('ligne_absente');
-    for (const [colonne, attendue] of Object.entries(o.avant)) {
+    // une colonne venue après le lot, absente de l'avant d'une suppression, est attendue NULL (COLONNES_VENUES_APRES)
+    const venues = o.operation === 'supprimer' ? (COLONNES_VENUES_APRES[o.table] ?? []).filter((c) => !Object.hasOwn(o.avant, c) && Object.hasOwn(actuelle, c)) : [];
+    for (const [colonne, attendue] of [...Object.entries(o.avant), ...venues.map((c) => [c, null])]) {
       if (!egal(actuelle[colonne], attendue)) sortie.ecarts.push({ colonne, attendue, actuelle: actuelle[colonne] ?? null });
     }
     return sortie.ecarts.length ? changee('valeur_changee') : sortie;
@@ -483,7 +495,8 @@ export function effetNetDuLot(lignes) {
  * réécrit : docs/chantier-retrait-des-colonnes.md, §6). Chaque ligne de `mot_cle` qui en porte une est ramenée aux colonnes que la table a encore : la
  * comparaison (`jugerLAnnulation`) et l'écriture de l'annulation les ignorent. Elle garde `retirees` (les colonnes écartées) et `brut` ({ origine, fin } tels
  * que le journal les note : ce que la page montre, ce dont le repère d'un mot-clé remis se refait). Une ligne modifiée qui n'écrivait que ces colonnes reste
- * dans la liste, sans rien à remettre (`neResteRienARemettre`) : son numéro ne change pas, et l'annulation dit où le champ se corrige désormais.
+ * dans la liste, sans rien à remettre sur le mot-clé (`neResteRienARemettre`) : son numéro ne change pas, et l'annulation la remet sur l'élément du mot-clé
+ * (serveur/edition-lots.mjs#versLElementDuMotCle, R291), ou dit pourquoi il n'y a rien à remettre.
  * @param {ReturnType<typeof effetNetDuLot>} nets
  * @param {readonly string[]} [retirees] les colonnes que `mot_cle` n'a plus dans cette base (aucune : la liste est rendue telle quelle)
  */
@@ -498,8 +511,8 @@ export function sansLesColonnesRetirees(nets, retirees = COLONNES_LOGIQUES_DU_MO
 }
 
 /**
- * Une ligne modifiée de `mot_cle`, d'avant la migration 0136, dont l'annulation n'a plus rien à remettre : elle n'écrivait que des colonnes retirées, et au
- * plus la clé, qui se calcule d'après le nom (R232) et ne s'écrit jamais.
+ * Une ligne modifiée de `mot_cle`, d'avant la migration 0136, dont l'annulation n'a plus rien à remettre SUR LE MOT-CLÉ : elle n'écrivait que des colonnes
+ * retirées, et au plus la clé, qui se calcule d'après le nom (R232) et ne s'écrit jamais. Ses champs se remettent sur l'élément du mot-clé quand il les reçoit.
  */
 export const neResteRienARemettre = (net) => net.table === 'mot_cle' && net.genre === 'modifier' && Boolean(net.retirees?.length) && Object.keys(net.fin).every((c) => c === 'cle');
 

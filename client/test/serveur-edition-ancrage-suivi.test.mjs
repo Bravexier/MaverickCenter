@@ -917,6 +917,24 @@ test('laCleSuitLeNom : le nom normalisé, puis une part de ses catégories (par 
   assert.equal(laCleSuitLeNom(m('Gel', 'boule-de-feu'), categories), false, 'renommé, la clé gardée');
   assert.equal(laCleSuitLeNom(m('Feu', 'feu-sacre', [1]), categories), false, 'une clé plus longue que le nom n’est pas faite de ses catégories');
   assert.equal(laCleSuitLeNom(m('¿ ?', 'ancienne'), categories), false, 'un nom sans lettre ni chiffre');
+  // sans homonyme dans le vocabulaire, la règle ne donne que le nom : un sort renommé en un préfixe de son nom ne suit plus
+  assert.equal(laCleSuitLeNom(m('Boule', 'boule-de-feu', [1], 'Feu'), categories, { homonyme: false }), false, '« Boule de feu » renommé « Boule »');
+  assert.equal(laCleSuitLeNom(m('Contre-sort', 'contre-sort-sort-arcane', [1], 'Arcane'), categories, { homonyme: false }), false, 'plus d’homonyme : la suite n’est plus celle de la règle');
+  assert.equal(laCleSuitLeNom(m('Boule', 'boule', [1], 'Feu'), categories, { homonyme: false }), true);
+  assert.equal(laCleSuitLeNom(m('Trait', 'trait-eau', [1], 'Feu'), categories, { homonyme: true }), true, 'avec un homonyme, la part du parent reste libre');
+});
+
+test('clesTenues : un mot-clé renommé en un préfixe de son nom, sans homonyme, attend au lieu de croiser les clés', () => {
+  const categories = new Map([[1, 'Sort']]);
+  // deux sorts qui échangent leurs noms : « Boule de feu » devient « Boule », « Boule » devient « Boule de feu » ; aucun autre homonyme
+  const motsCles = [
+    { id: 1, libelle: 'Boule', cle: 'boule-de-feu', categories: [1], parent: 'Feu' },
+    { id: 2, libelle: 'Boule de feu', cle: 'boule', categories: [1], parent: 'Feu' },
+  ];
+  const { cles, tenus, aTrancher } = clesTenues(motsCles, categories, { attendent: new Set([1, 2]) });
+  assert.deepEqual([...tenus].sort(), [1, 2], 'les deux gardent leur clé');
+  assert.deepEqual([cles.get(1), cles.get(2)], ['boule-de-feu', 'boule']);
+  assert.ok(aTrancher.some((t) => t.raison === 'croisees' && t.ids.includes(1)), 'le renommé en préfixe est « à trancher »');
 });
 
 test('rejeu : une modification d’un repère dont le mot-clé a, depuis, une page ou un sort vise l’élément ; son nom et son adresse sans effet', () => {
@@ -934,8 +952,10 @@ test('rejeu : une modification d’un repère dont le mot-clé a, depuis, une pa
     assert.deepEqual([pourLaPage.table_nom, JSON.parse(pourLaPage.cle), JSON.parse(pourLaPage.avant), JSON.parse(pourLaPage.apres)],
       ['page', { id: page.id }, { couleur: null, definition: null }, { couleur: '#112233', definition: 'Déf.' }], 'définition et couleur vers la page, le nom laissé');
     assert.equal(adapte(ligne(page.mot_cle_id, { nom: 'a', adresse: null }, { nom: 'b', adresse: '/x/' })).sansEffet, true, 'nom et adresse : sans effet');
-    assert.equal(adapte(ligne(deSort, { nom: 'a' }, { nom: 'b', icone: null })).sansEffet, true, 'un sort : sans effet si rien n’est porté');
-    assert.match(adapte(ligne(deSort, { couleur: null }, { couleur: '#112233' })).conflit, /sort/, 'un sort n’a pas de couleur : conflit');
+    assert.equal(adapte(ligne(deSort, { nom: 'a' }, { nom: 'b' })).sansEffet, true, 'un sort : son nom, sans effet');
+    // un sort porte la définition, la couleur et l'icône de son mot-clé, comme la page (R309 (14))
+    const pourLeSort = adapte(ligne(deSort, { nom: 'a', couleur: null }, { nom: 'b', couleur: '#112233' }));
+    assert.deepEqual([pourLeSort.conflit, pourLeSort.table_nom, JSON.parse(pourLeSort.cle), JSON.parse(pourLeSort.apres)], [undefined, 'sort', { id: sort }, { couleur: '#112233' }], 'la couleur vers le sort');
     assert.ok(m.db.prepare('SELECT 1 AS x FROM repere WHERE mot_cle_id = ?').get(aRepere), 'un mot-clé nu a son repère');
     const inchangee = ligne(aRepere, { nom: 'a' }, { nom: 'b' });
     assert.equal(adapte(inchangee), inchangee, 'un mot-clé qui a toujours son repère : la ligne telle quelle');

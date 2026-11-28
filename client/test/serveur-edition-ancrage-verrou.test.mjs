@@ -756,7 +756,7 @@ const premiereLigne = (m, p, table) => m.db.prepare('SELECT min(rang) AS n FROM 
 
 /**
  * Le lot de la relecture : le nom de la magie ; la clé du mot-clé de son sort la suit. Depuis la migration 0136, le lot ne porte plus de colonne du mot-clé
- * avec elle : un sort n'a ni définition, ni couleur, ni icône, et son nom se lit sur lui (la ligne { couleur, cle } n'existe plus, plus bas).
+ * avec elle : son nom se lit sur le sort (la ligne { couleur, cle } n'existe plus, plus bas).
  */
 async function lotDeLaMagie(m) {
   const avant = { magie: nomDeLaMagie(m, m.magie), ...motCle(m, m.sien) };
@@ -789,10 +789,12 @@ test('T8-annulation-recalcul : annuler la seule ligne de la magie rend son nom e
   m.db.close();
 });
 
-test('T8-annulation-recalcul : la seule ligne de la clé suivie ne s’annule pas ; la clé reste celle de la règle, sans verrou (un sort n’a pas de couleur)', async () => {
+test('T8-annulation-recalcul : la seule ligne de la clé suivie ne s’annule pas ; la clé reste celle de la règle, sans verrou (la couleur va sur le sort)', async () => {
   const m = mondeAuxSortsJumeaux();
-  // la couleur d'un mot-clé de sort (migration 0136 : un sort n'en porte pas) : refusée, sans numéro de décision, rien n'est écrit
-  await refuseSansNumero(m, [modifier(m, m.sien, { couleur: '#112233' })], m.sien);
+  // la couleur d'un mot-clé de sort (migration 0136, R309 (14) et (17)) : un lot l'écrit sur le sort
+  await deposerDirect(m, [modifier(m, m.sien, { couleur: '#112233' })]);
+  assert.equal(motCle(m, m.sien).couleur, '#112233');
+  assert.equal(m.db.prepare('SELECT couleur FROM sort WHERE mot_cle_id = ?').get(m.sien).couleur, '#112233');
   const { fait, avant, cleDuLot } = await lotDeLaMagie(m);
   const n = numeroDe(m, fait, m.sien);
   const ligne = lire(m.db, fait.id).lignes.find((l) => l.n === n);

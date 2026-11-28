@@ -121,7 +121,7 @@ export function outilsDesNotions({ ErreurEdition, refus, creerPage, creerMotCle,
       pageId = id;
     }
     creerPage(ctx, { type: 'guide', slug: pageId.slice('guide/'.length), titre: m.libelle, resume: null, corps: CORPS_D_UNE_PAGE_DE_NOTION, index, motCle: m.id });
-    reprendreLeRepere(db, w, m.id, { table: 'page', id: pageId }, (message) => { throw new ErreurEdition(409, message); });
+    reprendreLeRepere(db, w, m.id, { table: 'page', id: pageId });
     return pageId;
   }
 

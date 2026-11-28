@@ -103,12 +103,13 @@ const GROUPES_DE_COMPOSANT = {
 };
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
 /**
- * Les colonnes de la page qui portent la définition, la couleur et l'icône de son mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md §3 et
- * §4) : elles n'ont pas de ligne à elles, leur changement se dit par la ligne du mot-clé (serveur/notes-de-version.mjs#lireTables les y lit, comme le
- * nom et l'adresse), avec la même phrase qu'avant la migration.
+ * Les colonnes de la page et du sort qui portent la définition, la couleur et l'icône de leur mot-clé (migration 0136, docs/chantier-retrait-des-colonnes.md
+ * §3 et §4 ; R309 (14)) : elles n'ont pas de ligne à elles, leur changement se dit par la ligne du mot-clé (serveur/notes-de-version.mjs#lireTables les y
+ * lit, comme le nom et l'adresse), avec la même phrase qu'avant la migration.
  */
 const COLONNES_DU_MOT_CLE_SUR_LA_PAGE = Object.freeze(['definition', 'couleur', 'icone']);
-const colonnesDeLaPage = () => colonnesDe('page').filter((c) => !COLONNES_DU_MOT_CLE_SUR_LA_PAGE.includes(c.colonne));
+const sansLesColonnesDuMotCle = (table) => colonnesDe(table).filter((c) => !COLONNES_DU_MOT_CLE_SUR_LA_PAGE.includes(c.colonne));
+const colonnesDeLaPage = () => sansLesColonnesDuMotCle('page');
 /**
  * Les colonnes d'une amélioration que le site de dev modifie, selon sa cible : le coût et l'effet écrits d'une amélioration d'arme ou d'armure, les quatre
  * cases d'une amélioration de bouclier (demande du propriétaire, 2026-10-17 : son coût et son effet écrits en sont refaits, ils ne sont pas listés).
@@ -167,7 +168,7 @@ const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.
  */
 const DEFINITIONS = [
   {
-    table: 'sort', domaine: 'sorts', cle: ['id'], colonnes: colonnesDe('sort'), genre: 'Sort',
+    table: 'sort', domaine: 'sorts', cle: ['id'], colonnes: sansLesColonnesDuMotCle('sort'), genre: 'Sort',
     groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => r.nom,
     ordre: (r, x) => [x.ordre('magie', r.magie_id), r.niveau ?? 0, r.ordre ?? 0, r.nom],
   },

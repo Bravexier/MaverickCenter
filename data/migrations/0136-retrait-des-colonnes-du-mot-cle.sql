@@ -4,8 +4,9 @@
 -- Elle ne porte aucun texte : elle recopie des valeurs d'une colonne à l'autre, puis retire les colonnes. Elle ne perd rien, sur toute base :
 --   * un mot-clé de page : son nom est le titre de la page, son adresse celle de la page (calculée : lib/adresses-db.mjs), et sa définition, sa
 --     couleur et son icône passent sur la page (colonnes nouvelles page.definition, page.couleur, page.icone, mêmes contraintes que celles du repère) ;
---   * un mot-clé de sort : son nom est celui du sort, son adresse la place du sort dans la page de sa magie ; il n'a ni définition, ni couleur, ni
---     icône (aucun n'en porte : test/db-0136-retrait-des-colonnes.test.mjs le vérifie sur la copie du dépôt et sur une copie ancrée) ;
+--   * un mot-clé de sort (sans page) : son nom est celui du sort, son adresse la place du sort dans la page de sa magie, et sa définition, sa couleur
+--     et son icône passent sur le sort (colonnes nouvelles sort.definition, sort.couleur, sort.icone, mêmes contraintes ; décision R309 (14) et (17) :
+--     elles se corrigent sur l'élément, par un lot) ;
 --   * tout autre mot-clé garde ses cinq valeurs dans son repère : celui qu'il a déjà est réaligné sur les colonnes, qui font foi jusqu'ici, et
 --     celui qui n'en a pas en reçoit un. Sur une base dont aucune page n'est ancrée (la copie du dépôt), chaque mot-clé garde donc son nom dans
 --     un repère.
@@ -29,6 +30,20 @@ UPDATE page SET
   couleur    = (SELECT m.couleur     FROM mot_cle m WHERE m.id = page.mot_cle_id),
   icone      = (SELECT m.icone       FROM mot_cle m WHERE m.id = page.mot_cle_id)
 WHERE mot_cle_id IS NOT NULL;
+
+ALTER TABLE sort ADD COLUMN definition TEXT CHECK (definition IS NULL OR length(definition) > 0);
+
+ALTER TABLE sort ADD COLUMN couleur TEXT CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-'));
+
+ALTER TABLE sort ADD COLUMN icone TEXT CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'));
+
+-- celles d'un mot-clé de sort passent sur son sort (la page l'emporte : un mot-clé qui a les deux les a déjà sur sa page)
+UPDATE sort SET
+  definition = (SELECT m.description FROM mot_cle m WHERE m.id = sort.mot_cle_id),
+  couleur    = (SELECT m.couleur     FROM mot_cle m WHERE m.id = sort.mot_cle_id),
+  icone      = (SELECT m.icone       FROM mot_cle m WHERE m.id = sort.mot_cle_id)
+WHERE mot_cle_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM page p WHERE p.mot_cle_id = sort.mot_cle_id);
 
 -- pas de repère pour un mot-clé qui a une page ou un sort
 DELETE FROM repere
@@ -69,9 +84,9 @@ ALTER TABLE mot_cle__0136 RENAME TO mot_cle;
 CREATE VIEW v_mot_cle AS
   SELECT m.id, m.cle,
     coalesce(p.titre, s.nom, r.nom) AS libelle,
-    CASE WHEN p.id IS NOT NULL THEN p.definition WHEN s.id IS NULL THEN r.definition END AS description,
-    CASE WHEN p.id IS NOT NULL THEN p.couleur WHEN s.id IS NULL THEN r.couleur END AS couleur,
-    CASE WHEN p.id IS NOT NULL THEN p.icone WHEN s.id IS NULL THEN r.icone END AS icone,
+    CASE WHEN p.id IS NOT NULL THEN p.definition WHEN s.id IS NOT NULL THEN s.definition ELSE r.definition END AS description,
+    CASE WHEN p.id IS NOT NULL THEN p.couleur WHEN s.id IS NOT NULL THEN s.couleur ELSE r.couleur END AS couleur,
+    CASE WHEN p.id IS NOT NULL THEN p.icone WHEN s.id IS NOT NULL THEN s.icone ELSE r.icone END AS icone,
     m.verrou, m.monnaie_id,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages
   FROM mot_cle m

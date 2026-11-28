@@ -88,6 +88,17 @@ test('retrait des colonnes : définition, couleur, icône et nom vraiment chang�
   ]);
 });
 
+test('retrait des colonnes : la définition, la couleur et l’icône changées sur un sort (R309 (14)) se disent comme un changement du mot-clé, sans ligne de sort', () => {
+  const dev = baseNouvelle({ repere: true });
+  dev.prepare('UPDATE sort SET definition = ?, couleur = ?, icone = ? WHERE id = ?').run('Définition du sort.', '#0000aa', 'lucide:flame', SORT);
+  const lignes = lignesDe(baseAncienne({ repere: true }), dev);
+  assert.deepEqual(lignes.map((l) => [l.table_nom, l.cle.id, l.colonne, l.nature, l.apres]).sort((p, q) => p[2].localeCompare(q[2])), [
+    ['mot_cle', 2, 'couleur', 'ajoute', '#0000aa'],
+    ['mot_cle', 2, 'description', 'ajoute', 'Définition du sort.'],
+    ['mot_cle', 2, 'icone', 'ajoute', 'lucide:flame'],
+  ]);
+});
+
 test('retrait des colonnes : le nom d’un mot-clé de page renommé avec elle est dit par la ligne de la page (dejaDit), comme avant', () => {
   const dev = baseNouvelle({ repere: true });
   dev.prepare('UPDATE page SET titre = ? WHERE id = ?').run('Règle renommée', PAGE);

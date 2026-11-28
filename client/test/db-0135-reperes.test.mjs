@@ -1,19 +1,52 @@
 // Migration data/migrations/0135-reperes.sql (chantier 4 des mots-clés, « le retrait des colonnes » : docs/chantier-retrait-des-colonnes.md, §2 et §7) : la
 // table `repere`, l'élément d'un mot-clé sans page ni sort. Migration de structure seule : la table naît vide, les colonnes de mot_cle ne changent pas. Le test
 // lit la structure sur une base neuve du schéma et rejoue la migration sur le schéma d'avant ; les noms posés sont inventés, aucune valeur du site n'est lue.
+// La migration 0136 a depuis retiré de mot_cle les colonnes dont repere reprend les contraintes : la comparaison des contraintes se fait sur le schéma d'avant
+// la 0135 (structure 134, lu dans l'historique git : le parent du commit qui ajoute la migration), auquel la 0135 est appliquée ; un historique superficiel
+// saute ce test avec la raison.
 //   node --test test/db-0135-reperes.test.mjs
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
+const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const MIGRATION = readFileSync(new URL('../../data/migrations/0135-reperes.sql', import.meta.url), 'utf8');
 
-/** Une base neuve du schéma, clés étrangères actives, avec `n` mots-clés d'essai (ids 1 à n). */
-function baseNeuve(n = 2) {
+/** Le data/schema.sql d'avant la migration (structure 134 : le parent du commit qui l'ajoute, HEAD tant qu'elle n'est pas commitée), ou une raison. */
+function schemaDAvant() {
+  const git = (args) => spawnSync('git', args, { cwd: RACINE, maxBuffer: 1 << 28 });
+  const ajout = git(['log', '--diff-filter=A', '--format=%H', '-1', '--', 'data/migrations/0135-reperes.sql']);
+  if (ajout.status !== 0) return { raison: `historique git illisible : ${ajout.stderr}` };
+  const sha = ajout.stdout.toString().trim();
+  const rev = sha ? `${sha}^` : 'HEAD';
+  const schema = git(['show', `${rev}:data/schema.sql`]);
+  if (schema.status !== 0 || !/^PRAGMA user_version\s*=\s*134;/m.test(schema.stdout.toString())) {
+    return { raison: `${rev} : data/schema.sql n’est pas à la structure 134 (historique superficiel ?)` };
+  }
+  return { schema: schema.stdout.toString() };
+}
+const AVANT = schemaDAvant();
+
+/** Une base neuve de `schema`, clés étrangères actives, avec `n` mots-clés d'essai (ids 1 à n ; le nom sur la ligne tant que mot_cle a sa colonne libelle). */
+function baseNeuve(n = 2, schema = SCHEMA) {
   const essai = new DatabaseSync(':memory:', { enableForeignKeyConstraints: true });
-  essai.exec(SCHEMA);
+  essai.exec(schema);
+  const libelle = essai.prepare("SELECT 1 FROM pragma_table_info('mot_cle') WHERE name = 'libelle'").get();
+  for (let id = 1; id <= n; id += 1) {
+    if (libelle) essai.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(id, `Essai ${id}`, `essai-${id}`);
+    else essai.prepare('INSERT INTO mot_cle (id, cle) VALUES (?, ?)').run(id, `essai-${id}`);
+  }
+  return essai;
+}
+/** Une base du schéma d'avant (structure 134) à laquelle la migration est appliquée : la structure 135, celle où repere et les colonnes de mot_cle coexistent. */
+function baseA135(n = 2) {
+  const essai = new DatabaseSync(':memory:', { enableForeignKeyConstraints: true });
+  essai.exec(AVANT.schema);
+  essai.exec(MIGRATION);
   for (let id = 1; id <= n; id += 1) essai.prepare('INSERT INTO mot_cle (id, libelle, cle) VALUES (?, ?, ?)').run(id, `Essai ${id}`, `essai-${id}`);
   return essai;
 }
@@ -57,8 +90,9 @@ test('0135 : la migration rejouée sur le schéma d’avant donne la table de da
   neuve.close();
 });
 
-test('0135 : les contraintes sont celles des colonnes du mot-clé (nom non vide, adresse interne, définition non vide, forme de la couleur et de l’icône)', () => {
-  const essai = baseNeuve();
+test('0135 : les contraintes sont celles des colonnes du mot-clé (nom non vide, adresse interne, définition non vide, forme de la couleur et de l’icône)', { skip: AVANT.raison }, () => {
+  const essai = baseA135();
+  assert.ok(essai.prepare("SELECT 1 FROM pragma_table_info('mot_cle') WHERE name = 'libelle'").get(), 'la structure 135 : mot_cle a encore ses colonnes');
   // ce que mot_cle refuse, repere le refuse, et ce qu'il accepte, repere l'accepte : la même valeur est posée des deux côtés
   const paires = { nom: 'libelle', adresse: 'url', definition: 'description', couleur: 'couleur', icone: 'icone' };
   const essais = {

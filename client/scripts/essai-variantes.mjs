@@ -71,14 +71,14 @@ const PAR_GROUPE = 3;
 
 /**
  * La ligne qui porte l'icône du mot-clé `id`, dans la structure qu'a la base : { table, cle } — le mot-clé lui-même avant la migration 0136 (colonne
- * `mot_cle.icone`) ; depuis, son élément (docs/chantier-retrait-des-colonnes.md §1) : sa page ou son repère. Le mot-clé d'un sort n'a pas d'icône : erreur.
+ * `mot_cle.icone`) ; depuis, son élément (docs/chantier-retrait-des-colonnes.md §1) : sa page, son sort (R309 (14)) ou son repère.
  */
 function porteurDeLIcone(db, id) {
   if (colonnes(db, 'mot_cle').some((c) => c.name === 'icone')) return { table: 'mot_cle', cle: { id } };
   const e = elementDuMotCle(db, id);
-  if (e?.table === 'page') return { table: 'page', cle: { id: e.id } };
+  if (e?.table === 'page' || e?.table === 'sort') return { table: e.table, cle: { id: e.id } };
   if (e?.table === 'repere') return { table: 'repere', cle: { mot_cle_id: id } };
-  throw new Error(e ? 'le mot-clé d’un sort n’a pas d’icône' : 'mot-clé sans élément');
+  throw new Error('mot-clé sans élément');
 }
 
 export function v1IconesVariees(db) {

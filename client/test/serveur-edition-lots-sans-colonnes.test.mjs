@@ -1,11 +1,12 @@
 // Les lots de changements depuis le retrait des colonnes du mot-clé (chantier 4 des mots-clés, migration 0136 : docs/chantier-retrait-des-colonnes.md) :
 // `mot_cle` n'a plus `libelle`, `url`, `description`, `couleur`, `icone` ; ces valeurs se lisent et s'écrivent sur l'élément du mot-clé (sa page, sinon
 // son sort, sinon son repère). Le format « maverick-lot/1 » garde ces colonnes LOGIQUES (lib/lot-de-changements.mjs#COLONNES_LOGIQUES_DU_MOT_CLE) :
-//   - un lot qui crée un mot-clé nu crée son repère ; un lot qui modifie un champ du mot-clé l'écrit sur son élément ; un sort n'a pas où le recevoir ;
+//   - un lot qui crée un mot-clé nu crée son repère ; un lot qui modifie un champ du mot-clé l'écrit sur son élément, sort compris (R309 (17)) ;
 //   - le nom et l'adresse d'un mot-clé ancré suivent son élément : un lot ne les écrit pas ;
 //   - une page de notion reprend le repère de son mot-clé, et l'annulation le lui rend ;
-//   - une ligne du journal d'avant la migration (colonnes retirées notées sur `mot_cle`) s'annule : ses colonnes retirées sont écartées et l'annulation dit
-//     où le champ se corrige désormais ; un mot-clé créé par un lot ancien se supprime avec le repère que la migration lui a posé ;
+//   - une ligne du journal d'avant la migration (colonnes retirées notées sur `mot_cle`) s'annule seule (R291) : ses champs se remettent sur l'élément
+//     d'aujourd'hui, comparés sur lui ; ce que l'élément ne reçoit pas n'a rien à remettre, sans refus ; un mot-clé créé par un lot ancien se supprime avec
+//     le repère que la migration lui a posé ;
 //   - l'écart avec la production compare l'objet du mot-clé des deux côtés, même quand la production a encore l'ancienne structure.
 // Les noms et les textes sont ceux du test (absents de la base) ; aucune valeur de règle n'est lue.
 //   node --test test/serveur-edition-lots-sans-colonnes.test.mjs
@@ -48,7 +49,6 @@ async function essaye(m, operations) {
   const p = await deposer(() => m.db, lot(operations), { enArrierePlan: false, dossier: m.dossier });
   return { verdict: p.verdict, essai: lire(m.db, p.id).essai };
 }
-const refusDe = (essai) => essai.operations.filter((o) => o.etat === 'refusee').map((o) => String(o.message ?? o.motif ?? o.refus ?? '')).join(' | ');
 /** Le premier mot-clé de la base qui n'a qu'un repère (un mot-clé du lore sans page ni sort). */
 const unMotCleARepere = (db) => db.prepare('SELECT mot_cle_id AS id FROM repere ORDER BY mot_cle_id LIMIT 1').get().id;
 /** Les lignes du journal du lot `lotId`, pour les réécrire comme un lot d'avant la migration 0136. */
@@ -99,7 +99,7 @@ test('un lot crée un mot-clé nu : le service lui crée son repère, que l’an
   assert.deepEqual(reperesAPoser(m.db), [], 'sur la nouvelle structure, le lot des repères n’a plus rien à poser');
 });
 
-test('un lot modifie définition, couleur et icône sur l’élément : le repère, la page ; un mot-clé de sort les refuse', async () => {
+test('un lot modifie définition, couleur et icône sur l’élément : le repère, la page, le sort (R309 (17)), ligne annulable', async () => {
   const m = nouvelle();
   const aRepere = unMotCleARepere(m.db);
   const avant = lireUnMotCle(m.db, aRepere);
@@ -112,13 +112,25 @@ test('un lot modifie définition, couleur et icône sur l’élément : le repè
   assert.equal(m.db.prepare('SELECT definition FROM page WHERE id = ?').get(page).definition, 'Sur la page.');
   assert.equal(repere(m.db, deLaPage), null, 'un mot-clé de page n’a pas de repère');
 
-  const sort = m.db.prepare('SELECT id FROM sort WHERE mot_cle_id IS NULL ORDER BY id LIMIT 1').get();
-  if (sort) {
-    const duSort = ancrerUnMotCle(m.db, 'sort', sort.id);
-    const r = await essaye(m, [changer(duSort, { description: null }, { description: 'Sur le sort.' })]);
-    assert.equal(r.verdict, 'a_corriger', JSON.stringify(r.essai.operations));
-    assert.match(refusDe(r.essai), /sort/);
-  }
+  // R309 (17) : le mot-clé d'un sort reçoit sa définition, sa couleur et son icône sur son sort ; la ligne s'annule seule
+  const sort = m.db.prepare('SELECT id, mot_cle_id FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id LIMIT 1').get()
+    ?? (() => {
+      const s = m.db.prepare('SELECT id FROM sort ORDER BY id LIMIT 1').get();
+      return { id: s.id, mot_cle_id: ancrerUnMotCle(m.db, 'sort', s.id) };
+    })();
+  const duSort = sort.mot_cle_id;
+  const avantDuSort = lireUnMotCle(m.db, duSort);
+  const champsDuSort = () => sansPrototype(m.db.prepare('SELECT definition, couleur, icone FROM sort WHERE id = ?').get(sort.id));
+  const departDuSort = champsDuSort();
+  const surLeSort = await deposeEtApplique(m, [changer(duSort, { description: avantDuSort.description }, { description: 'Sur le sort.' })]);
+  assert.equal(champsDuSort().definition, 'Sur le sort.');
+  assert.equal(lireUnMotCle(m.db, duSort).description, 'Sur le sort.', 'le mot-clé lit sa définition sur son sort');
+  assert.equal(repere(m.db, duSort), null, 'un mot-clé de sort n’a pas de repère');
+  const rangDuSort = journal(m.db, surLeSort.fait.lot_id).find((l) => l.table_nom === 'sort').rang;
+  const ligneDuSort = lire(m.db, surLeSort.id).lignes.find((l) => l.n === rangDuSort);
+  assert.equal(ligneDuSort.annulable_seule, true, ligneDuSort.motif);
+  annulerUneLigne(m.db, surLeSort.id, ligneDuSort.n, {});
+  assert.deepEqual(champsDuSort(), departDuSort);
 });
 
 test('le nom et l’adresse d’un mot-clé ancré suivent sa page : un lot ne les écrit pas', async () => {
@@ -146,6 +158,21 @@ test('une page de notion reprend le repère de son mot-clé ; l’annuler lui re
   assert.deepEqual(sansPrototype(repere(m.db, motCle)), { nom: libelle, adresse: null, definition: 'Défini sur le repère.', couleur: null, icone: null });
 });
 
+test('la suppression d’une page écrite avant la 0136 (sans définition, couleur ni icône dans « avant ») est contrôlée, appliquée, puis annulée', async () => {
+  const m = nouvelle();
+  const libelle = nom('page ancienne');
+  const motCle = poserUnMotCle(m.db, { libelle }); // sans définition : la page de notion n'en reçoit pas
+  const pageId = `guide/${cleDe(libelle)}`;
+  await deposeEtApplique(m, [{ table: 'page', cle: { id: pageId }, operation: 'inserer', apres: { id: pageId, titre: libelle, mot_cle_id: motCle }, ancrage: { notion: true } }]);
+  const ligne = sansPrototype(m.db.prepare('SELECT * FROM page WHERE id = ?').get(pageId));
+  assert.equal(ligne.definition, null);
+  const { definition: _d, couleur: _c, icone: _i, ...avant } = ligne; // l'avant tel qu'un lot d'avant la 0136 l'écrivait
+  const { id } = await deposeEtApplique(m, [{ table: 'page', cle: { id: pageId }, operation: 'supprimer', avant }]);
+  assert.equal(m.db.prepare('SELECT 1 FROM page WHERE id = ?').get(pageId), undefined, 'la page est retirée');
+  annuler(m.db, id, {});
+  assert.deepEqual(sansPrototype(m.db.prepare('SELECT * FROM page WHERE id = ?').get(pageId)), ligne, 'la page revient telle qu’elle était');
+});
+
 test('annuler une création d’un lot ancien : le mot-clé part avec le repère que la migration lui a posé', async () => {
   const m = nouvelle();
   const libelle = nom('ancien');
@@ -162,7 +189,7 @@ test('annuler une création d’un lot ancien : le mot-clé part avec le repère
   assert.equal(repere(m.db, motCle), null);
 });
 
-test('annuler une ligne ancienne : les colonnes retirées sont écartées, le reste est remis ; une ligne qui n’écrivait qu’elles dit où le champ se corrige', async () => {
+test('annuler une ligne ancienne (R291) : une ligne mêlée remet le reste ; une ligne qui n’écrivait que la définition d’un mot-clé à repère la remet sur le repère', async () => {
   const m = nouvelle();
   const [a, b] = m.db.prepare('SELECT r.mot_cle_id AS id, r.definition FROM repere r JOIN mot_cle m ON m.id = r.mot_cle_id WHERE m.verrou = 0 ORDER BY r.mot_cle_id LIMIT 2').all();
   // une ligne mêlée : le verrou (encore une colonne) et la définition (retirée)
@@ -177,14 +204,53 @@ test('annuler une ligne ancienne : les colonnes retirées sont écartées, le re
   const deux = await deposeEtApplique(m, [changer(a.id, { description: a.definition }, { description: 'Première.' }), changer(b.id, { description: b.definition }, { description: 'Seconde.' })]);
   const [premiere] = journal(m.db, deux.fait.lot_id).filter((l) => l.table_nom === 'repere');
   reecrire(m.db, deux.fait.lot_id, premiere.rang, { table_nom: 'mot_cle', cle: { id: a.id }, avant: { description: a.definition }, apres: { description: 'Première.' } });
-  assert.throws(() => annulerUneLigne(m.db, deux.id, premiere.rang, {}), (e) => e instanceof ErreurEdition && e.statut === 409 && /Glossaire/.test(e.message));
   const vue = lire(m.db, deux.id).lignes.find((l) => l.n === premiere.rang);
-  assert.equal(vue.annulable_seule, false);
-  assert.match(vue.motif, /Glossaire/);
-  // le lot entier : la seconde ligne est remise, la première est gardée (rien à remettre)
+  assert.equal(vue.annulable_seule, true, vue.motif);
+  assert.equal(vue.etat, 'en_place');
+  annulerUneLigne(m.db, deux.id, premiere.rang, {});
+  assert.equal(repere(m.db, a.id).definition, a.definition, 'la définition d’avant revient sur le repère');
+  assert.equal(repere(m.db, b.id).definition, 'Seconde.', 'l’autre ligne reste en place');
+  // le lot entier : la seconde ligne est remise, la première n'a plus rien à remettre
   annuler(m.db, deux.id, {});
   assert.equal(repere(m.db, b.id).definition, b.definition);
-  assert.equal(repere(m.db, a.id).definition, 'Première.');
+  assert.equal(repere(m.db, a.id).definition, a.definition);
+});
+
+test('annuler une ligne ancienne (R291) : le « changé depuis » se compare sur l’élément ; la définition d’un mot-clé de page revient sur la page', async () => {
+  const m = nouvelle();
+  const a = unMotCleARepere(m.db);
+  const avantA = lireUnMotCle(m.db, a);
+  const surLeRepere = await deposeEtApplique(m, [changer(a, { description: avantA.description }, { description: 'Écrite par un lot ancien.' })]);
+  const ligneA = journal(m.db, surLeRepere.fait.lot_id).find((l) => l.table_nom === 'repere');
+  reecrire(m.db, surLeRepere.fait.lot_id, ligneA.rang, { table_nom: 'mot_cle', cle: { id: a }, avant: { description: avantA.description }, apres: { description: 'Écrite par un lot ancien.' } });
+  // le site a changé la définition depuis, sur le repère : le site prime, rien n'est remis, sans refus
+  m.db.prepare('UPDATE repere SET definition = ? WHERE mot_cle_id = ?').run('Changée depuis.', a);
+  const changee = lire(m.db, surLeRepere.id).lignes.find((l) => l.n === ligneA.rang);
+  assert.equal(changee.etat, 'modifiee_depuis');
+  assert.equal(changee.annulable_seule, false);
+  assert.throws(() => annulerUneLigne(m.db, surLeRepere.id, ligneA.rang, {}), (e) => e instanceof ErreurEdition && e.statut === 409 && /Rien à remettre/.test(e.message));
+  assert.equal(repere(m.db, a).definition, 'Changée depuis.');
+
+  // un mot-clé de page : la ligne ancienne ne nommait que le mot-clé, sa définition se remet sur la page
+  const page = m.db.prepare('SELECT id, definition FROM page WHERE mot_cle_id IS NULL AND id LIKE ? ORDER BY id LIMIT 1').get('lore/%');
+  const deLaPage = ancrerUnMotCle(m.db, 'page', page.id);
+  const avantPage = m.db.prepare('SELECT definition FROM page WHERE id = ?').get(page.id).definition;
+  const surLaPage = await deposeEtApplique(m, [changer(deLaPage, { description: avantPage }, { description: 'Sur la page, par un lot ancien.' })]);
+  const lignePage = journal(m.db, surLaPage.fait.lot_id).find((l) => l.table_nom === 'page' && Object.hasOwn(JSON.parse(l.apres ?? '{}'), 'definition'));
+  reecrire(m.db, surLaPage.fait.lot_id, lignePage.rang, { table_nom: 'mot_cle', cle: { id: deLaPage }, avant: { description: avantPage }, apres: { description: 'Sur la page, par un lot ancien.' } });
+  const vue = lire(m.db, surLaPage.id).lignes.find((l) => l.n === lignePage.rang);
+  assert.equal(vue.annulable_seule, true, vue.motif);
+  annulerUneLigne(m.db, surLaPage.id, lignePage.rang, {});
+  assert.equal(m.db.prepare('SELECT definition FROM page WHERE id = ?').get(page.id).definition, avantPage);
+
+  // le nom seul d'un mot-clé de page se lit sur la page, qui a son propre historique : rien à remettre, pas un refus
+  const renomme = await deposeEtApplique(m, [changer(deLaPage, { description: avantPage }, { description: 'Encore sur la page.' })]);
+  const ligneNom = journal(m.db, renomme.fait.lot_id).find((l) => l.table_nom === 'page' && Object.hasOwn(JSON.parse(l.apres ?? '{}'), 'definition'));
+  reecrire(m.db, renomme.fait.lot_id, ligneNom.rang, { table_nom: 'mot_cle', cle: { id: deLaPage }, avant: { libelle: 'Ancien nom' }, apres: { libelle: 'Nom d’un lot ancien' } });
+  const vueNom = lire(m.db, renomme.id).lignes.find((l) => l.n === ligneNom.rang);
+  assert.equal(vueNom.annulable_seule, false);
+  assert.match(vueNom.motif, /Rien à remettre/);
+  assert.throws(() => annulerUneLigne(m.db, renomme.id, ligneNom.rang, {}), (e) => e instanceof ErreurEdition && e.statut === 409 && /Rien à remettre/.test(e.message));
 });
 
 test('écart avec la production : l’objet du mot-clé est comparé, même quand la production a encore l’ancienne structure', async () => {

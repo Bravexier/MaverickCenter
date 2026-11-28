@@ -79,9 +79,11 @@ Ce que le code fait aujourd'hui :
 | --- | --- | --- | --- |
 | `libelle` | `page.titre` | `sort.nom` | `repere.nom` |
 | `url` | l'adresse de la page (`lib/adresses-db.mjs`) | la place du sort dans la page de sa magie | `repere.adresse` |
-| `description` | `page.definition` | (aucune) | `repere.definition` |
-| `couleur` | `page.couleur` | (aucune) | `repere.couleur` |
-| `icone` | `page.icone` | (aucune) | `repere.icone` |
+| `description` | `page.definition` | `sort.definition` | `repere.definition` |
+| `couleur` | `page.couleur` | `sort.couleur` | `repere.couleur` |
+| `icone` | `page.icone` | `sort.icone` | `repere.icone` |
+
+> **Correction de la revue (PR B, 2026-11-28).** La première version mettait « (aucune) » dans la colonne Sort, et le contrat C8 refusait (409) d'écrire une définition, une couleur ou une icône sur un mot-clé de sort. Cela contredisait R309 (14) (« Synonymes, couleurs et icônes passent sur l'élément ; rien n'est perdu ») et R309 (17) (« Type, couleur, icône, synonymes et définition d'un mot-clé ancré se corrigent par un lot, avec la clé de dépôt […], ligne annulable »). Le sort porte donc, comme la page, `definition`, `couleur` et `icone` (NULL permis, mêmes contraintes ; migration 0136). Aujourd'hui aucun sort n'en a : la migration recopie celles d'un mot-clé de sort sans page, et la page l'emporte pour un mot-clé qui a les deux.
 
 L'infobulle garde sa règle (chantier 1, §8) : la définition de l'élément, sinon son résumé (`page.resume`) ou ses effets (`sort.effets`).
 
@@ -117,7 +119,7 @@ Un **repère** est l'élément d'un mot-clé qui désigne un endroit du site qui
 - **Renommer** une page ou un sort : la clé est recalculée et les balises réécrites, comme aujourd'hui ; plus de copie du nom ni de l'adresse (`serveur/edition-ancrage.mjs#alignerMotCle`, `serveur/edition-adresses.mjs`).
 - **Glossaire** : un mot-clé ancré reste en lecture seule ; un mot-clé à repère se modifie, ses champs vont dans le repère.
 - **Fusion** : inchangée (un mot-clé à repère peut se fondre dans un autre ; son repère part avec lui).
-- **Lots `maverick-lot/1`** : un lot écrit la définition, la couleur ou l'icône sur l'élément (`page`, `repere`). Un lot écrit avant ce chantier, qui les écrit sur `mot_cle`, est traduit vers l'élément à l'application ; le nom et l'adresse d'un mot-clé ancré restent fermés aux lots.
+- **Lots `maverick-lot/1`** : un lot écrit la définition, la couleur ou l'icône sur l'élément (`page`, `sort`, `repere` ; le sort : correction de la revue, §1). Un lot écrit avant ce chantier, qui les écrit sur `mot_cle`, est traduit vers l'élément à l'application ; le nom et l'adresse d'un mot-clé ancré restent fermés aux lots.
 - **API v1** : la ressource `mots-cles` rend les mêmes champs ; elle n'accepte l'écriture de `libelle`, `url`, `description`, `couleur` et `icone` que pour un mot-clé à repère.
 
 ## 6. Le journal
@@ -125,6 +127,7 @@ Un **repère** est l'élément d'un mot-clé qui désigne un endroit du site qui
 Le journal du site de dev garde environ 4 900 lignes en attente, dont beaucoup notent les colonnes retirées. Rien ne s'y réécrit (comme la migration 0115).
 
 - **Annuler une ligne** (R291) : les colonnes retirées sont ignorées dans la comparaison et dans l'écriture ; annuler la création d'un mot-clé le retire toujours. Une ligne qui n'écrivait que des colonnes retirées se refuse avec un message qui dit où le champ se corrige désormais.
+  > **Correction de la revue (PR B, 2026-11-28).** Une ligne ancienne ne se refuse pas : elle s'annule sur l'élément du mot-clé (sa page, son sort ou son repère reprennent la définition, la couleur ou l'icône d'avant) ; quand rien n'y est à remettre (le nom ou l'adresse d'un mot-clé ancré, une copie), elle s'annule sans écriture, « rien à remettre » (R291 : chaque ligne s'annule).
 - **Rejeu** (bases d'essai, résolution d'un conflit) : un adaptateur lit une ancienne ligne de `mot_cle` dans la forme d'aujourd'hui. Une création perd ses colonnes retirées et crée le repère du mot-clé ; une modification de définition, de couleur ou d'icône vise l'élément ; une modification du nom ou de l'adresse d'un mot-clé ancré est sans effet (c'était une copie).
 - **Traces du paquet** : `repere` rejoint les tables qui partent avec un mot-clé supprimé (`scripts/mise-a-jour-github.mjs#tablesDuLot`).
 
@@ -134,7 +137,7 @@ Le journal du site de dev garde environ 4 900 lignes en attente, dont beaucoup n
 | --- | --- | --- | --- |
 | **PR A** | Table `repere`, vide ; un lot sait y écrire | inchangé : rien ne la lit | une migration qui la retire |
 | **Lot « repères »** (site de dev) | 26 lignes de `repere`, copies du nom, de l'adresse, de la définition et de la couleur | inchangé : les colonnes font encore foi | l'annulation du lot ou d'une ligne (R291) |
-| **PR B** | Migration : `page.definition`, `page.couleur`, `page.icone` ; les valeurs passent des mots-clés à leur élément ; tout mot-clé sans page ni sort qui n'a pas de repère en reçoit un ; les repères existants sont réalignés sur les colonnes, qui font foi jusqu'au bout ; les cinq colonnes partent. Code : lecture et écriture par l'élément | le service applique la migration au démarrage, avec le code qui la lit : un seul basculement | la sauvegarde que le service fait avant toute migration sur place (`structure-…-v135.db`), ou une migration inverse, sans perte puisque chaque valeur est sur l'élément |
+| **PR B** | Migration : `page.definition`, `page.couleur`, `page.icone`, et les mêmes sur `sort` (correction de la revue, §1) ; les valeurs passent des mots-clés à leur élément ; tout mot-clé sans page ni sort qui n'a pas de repère en reçoit un ; les repères existants sont réalignés sur les colonnes, qui font foi jusqu'au bout ; les cinq colonnes partent. Code : lecture et écriture par l'élément | le service applique la migration au démarrage, avec le code qui la lit : un seul basculement | la sauvegarde que le service fait avant toute migration sur place (`structure-…-v135.db`), ou une migration inverse, sans perte puisque chaque valeur est sur l'élément |
 | **Simulation de mise à jour** | rien | contrôle | |
 
 La migration de la PR B ne porte aucun texte : elle recopie des valeurs d'une colonne à l'autre (`INSERT … SELECT`, `UPDATE … SELECT`), comme les migrations 0115 et 0130. Elle est sûre sur toute base : sur la copie du dépôt, où les pages ne sont pas encore ancrées, chaque mot-clé garde son nom dans un repère.

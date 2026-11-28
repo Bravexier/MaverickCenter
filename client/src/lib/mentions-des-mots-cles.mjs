@@ -107,9 +107,11 @@ export function mentionsDesMotsCles(db, ids) {
   }
 
   const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db, { elements: false }));
-  // le mot-clé dont une page porte la définition (migration 0136 : page.definition) : ce texte est le sien, pas une mention
-  const motCleDeLaPage = aLaColonne(db, 'page', 'mot_cle_id')
-    ? new Map(db.prepare('SELECT id, mot_cle_id FROM page WHERE mot_cle_id IS NOT NULL').all().map((p) => [p.id, p.mot_cle_id])) : new Map();
+  // le mot-clé dont une page ou un sort porte la définition (migration 0136 : page.definition, sort.definition) : ce texte est le sien, pas une mention
+  const motCleDe = (table) => (aLaColonne(db, table, 'mot_cle_id')
+    ? new Map(db.prepare(`SELECT id, mot_cle_id FROM ${table} WHERE mot_cle_id IS NOT NULL`).all().map((p) => [p.id, p.mot_cle_id])) : new Map());
+  const motCleDeLaPage = motCleDe('page');
+  const motCleDuSort = motCleDe('sort');
   for (const { table, colonne, cle, markdown } of textesDeLaBase(db)) {
     if ((PAS_DES_TEXTES[table] ?? []).includes(colonne)) continue;
     for (const l of db.prepare(`SELECT ${[...new Set([...cle, colonne])].map(q).join(', ')} FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
@@ -119,10 +121,10 @@ export function mentionsDesMotsCles(db, ids) {
       for (const b of lireBalises(v, { markdown })) {
         const id = motCleDeLaRef(vocabulaire, b.ref)?.id;
         if (!id || !voulus.has(id)) continue;
-        // sa propre définition : sur sa ligne avant la migration 0136, sur son repère ou sa page depuis
+        // sa propre définition : sur sa ligne avant la migration 0136, sur son repère, sa page ou son sort depuis
         const sien = table === 'mot_cle' ? cleDeLigne.id : table === 'repere' ? cleDeLigne.mot_cle_id
           : table === 'page' && colonne === 'definition' ? motCleDeLaPage.get(cleDeLigne.id) : undefined;
-        if (sien === id) continue;
+        if (sien === id || (table === 'sort' && colonne === 'definition' && motCleDuSort.get(cleDeLigne.id) === id)) continue;
         let page = null;
         let libelle = null;
         // la définition d'un autre mot-clé : nommée par son libellé (son id est un entier depuis la migration 0113, il ne dit rien) ; celle que porte

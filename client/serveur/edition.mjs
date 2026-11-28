@@ -288,12 +288,10 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   }
   MOTS_CLES.refuserLesSynonymes(db, { id, libelle }, synonymes);
   // depuis la migration 0136, le mot-clé n'est qu'un identifiant : son nom et son adresse se lisent sur sa page ou son sort (rien n'est copié), et sa
-  // définition, sa couleur et son icône vont sur sa page ; un mot-clé sans page ni sort (nu, ou d'un type de sort) naît avec un repère qui les porte
+  // définition, sa couleur et son icône vont sur sa page ou son sort (R309 (14) et (17)) ; un mot-clé sans page ni sort (nu, ou d'un type de sort) naît
+  // avec un repère qui les porte
   const surLElement = nomSurLElement(db);
   const element = surLElement && (ancre?.table === 'page' || ancre?.table === 'sort') ? ancre.table : null;
-  if (element === 'sort' && (description || couleur || icone)) {
-    throw new ErreurEdition(409, `${motCleDansUnRefus(libelle)} est celui d’un sort : il n’a ni définition, ni couleur, ni icône.`, { champ: description ? 'description' : couleur ? 'couleur' : 'icone' });
-  }
   // un lot d'ancrage crée des centaines de mots-clés de suite : les adresses du site ne se relisent pas à chacun (`ctx.adressesDuLot`, oubliées par `appliquerUnLot`)
   if (url && element === null) refuserLeLien(db, { libelle, url }, ancre && ctx.voie === 'lot' ? (ctx.adressesDuLot ??= adressesDuSite(db)) : null);
   if (couleur) refuserLaCouleur({ libelle, couleur });
@@ -310,7 +308,7 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   MOTS_CLES.poserLesCategories(ctx, id, ids);
   if (synonymes.length) MOTS_CLES.poserLesSynonymes(ctx, id, synonymes);
   if (ancre) {
-    const portes = element === 'page' ? Object.fromEntries(Object.entries({ definition: description, couleur, icone }).filter(([, v]) => v)) : {};
+    const portes = element ? Object.fromEntries(Object.entries({ definition: description, couleur, icone }).filter(([, v]) => v)) : {};
     w.modifier(ancre.table, { id: ancre.id }, { mot_cle_id: id, ...portes });
   }
   MOTS_CLES.recalculerLesCles(ctx, { exiges: [id] });
@@ -506,7 +504,7 @@ function texteAvecMotsClesCanoniques(ctx, champ, valeur, avant, quoi) {
  * ordinaire du lot (modifier : dérivations, colonnes dérivées, journal). Les pages qui suivent leurs tables (races, classes, armes…) ne sont pas
  * réécrites ici : leur corps est refait quand leur table l'est ; seule leur définition (`page.definition`, celle de leur mot-clé : migration 0136) l'est, par
  * le journal. `sauf` : le mot-clé à laisser (le mot-clé supprimé lui-même) : sa ligne d'avant la migration 0136, sinon la définition de son élément (son
- * repère, sa page). Rend le nombre de lignes réécrites.
+ * repère ; la seule définition de sa page ou de son sort, dont le corps, le résumé et les autres textes sont réécrits). Rend le nombre de lignes réécrites.
  */
 function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
   const { db } = ctx;
@@ -519,9 +517,11 @@ function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
     if (!colonnes.length) continue;
     const lignes = db.prepare(`SELECT * FROM "${table}" WHERE ${colonnes.map((c) => `instr("${c}", '{{') > 0`).join(' OR ')}`).all();
     for (const l of lignes) {
-      if (sauf !== null && ((table === 'mot_cle' && l.id === sauf) || ((table === 'repere' || table === 'page') && l.mot_cle_id === sauf))) continue;
+      if (sauf !== null && ((table === 'mot_cle' && l.id === sauf) || (table === 'repere' && l.mot_cle_id === sauf))) continue;
+      // la définition de la page ou du sort du mot-clé `sauf` : la sienne, laissée ; le reste de la ligne est réécrit
+      const definitionLaissee = sauf !== null && (table === 'page' || table === 'sort') && l.mot_cle_id === sauf;
       // la définition d'une page (celle de son mot-clé), de toute page : écrite par le journal, aucune route ne l'écrit (PAGE.colonnes la refuse)
-      if (table === 'page' && typeof l.definition === 'string' && motsClesCites(l.definition, vocabulaire, { markdown: false }).includes(id)) {
+      if (table === 'page' && !definitionLaissee && typeof l.definition === 'string' && motsClesCites(l.definition, vocabulaire, { markdown: false }).includes(id)) {
         const definition = reecrire(l.definition, { markdown: false });
         if (definition !== l.definition) {
           ctx.w.modifier('page', { id: l.id }, { definition });
@@ -531,7 +531,7 @@ function reecrireLesBalises(ctx, id, reecrire, { sauf = null } = {}) {
       if (table === 'page' && !texteDePageModifiable(l.type, premiereSource(db, l.id))) continue; // une page qui suit ses tables : rien d'autre
       const valeurs = {};
       for (const c of colonnes) {
-        if (table === 'page' && c === 'definition') continue;
+        if ((table === 'page' && c === 'definition') || (definitionLaissee && c === 'definition')) continue;
         const markdown = modele.colonnes[c].type === 'markdown';
         if (typeof l[c] !== 'string' || !motsClesCites(l[c], vocabulaire, { markdown }).includes(id)) continue;
         const nouveau = reecrire(l[c], { markdown });
@@ -956,6 +956,9 @@ function deriverNomDuSort(ctx, avant, apres) {
 
 const SORT = {
   colonnes(ctx, ligne, valeurs = {}) {
+    // la définition, la couleur et l'icône du mot-clé du sort (migration 0136, R309 (14) et (17)) : comme celles d'une page, par un lot seulement
+    const duMotCle = champsDuMotCleDeLaPage(ctx, ligne, valeurs, 'sort');
+    if (Object.keys(valeurs).length && Object.keys(valeurs).every((c) => CHAMPS_DU_MOT_CLE_DE_LA_PAGE.includes(c))) return duMotCle;
     if (ligne.texte_niveau5 !== null && ligne.niveau !== 5) throw refus('Le texte du sort n’existe que pour un sort de niveau 5.');
     // décisions R105, R106 : « Coût » n'a que le chakra, le second coût ou sa précision va dans « Coût secondaire » (lib/sort-cout.mjs#ecritUnSecondCout) ;
     // la répartition est proposée quand l'écriture est celle du classeur
@@ -979,6 +982,7 @@ const SORT = {
     if (type.inconnus.length) throw refus(`Type « ${type.inconnus.join(', ')} » inconnu : les types sont ${TYPES_DE_SORT.join(', ')} (séparés par « / », le mode entre parenthèses)`);
     if (!type.types.length) throw refus('Type : au moins un type de sort, avant les parenthèses du mode');
     return {
+      ...duMotCle,
       dsb_brut: ligne.dsb_brut === '/' ? null : ligne.dsb_brut,
       mode_brut: type.mode_brut, ic_direct: type.ic_direct, ic_nm_min: type.ic_nm_min, imparable: type.imparable, inesquivable: type.inesquivable,
       ...analyserCout(ligne.cout_brut, ligne.cout_secondaire),
@@ -1866,23 +1870,26 @@ const APERCU_MAX = 2_000_000;
 const premiereSource = (db, pageId) =>
   db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? ORDER BY ps.ordre LIMIT 1').get(pageId)?.texte ?? null;
 
-/** Les colonnes d'une page qui sont celles de son mot-clé (migration 0136 : sa définition, sa couleur, son icône). */
+/** Les colonnes d'une page ou d'un sort qui sont celles de son mot-clé (migration 0136 : sa définition, sa couleur, son icône). */
 const CHAMPS_DU_MOT_CLE_DE_LA_PAGE = Object.freeze(['definition', 'couleur', 'icone']);
 
 /**
- * La définition, la couleur et l'icône d'une page, celles de son mot-clé (migration 0136 ; docs/chantier-retrait-des-colonnes.md, §3) : aucune route ne
- * les écrit (409 : elles se corrigent par un lot, R309 (17)) ; toute page qui a un mot-clé les reçoit, typée comprise ; une page sans mot-clé n'en a pas
- * (409) ; la couleur et l'icône sont contrôlées comme celles d'un mot-clé (400). Rend les colonnes canoniques (une définition vidée : NULL).
+ * La définition, la couleur et l'icône d'une page ou d'un sort (`table`), celles de son mot-clé (migration 0136 ; docs/chantier-retrait-des-colonnes.md,
+ * §3 ; R309 (14)) : aucune route ne les écrit (409 : elles se corrigent par un lot, R309 (17)) ; toute page ou tout sort qui a un mot-clé les reçoit,
+ * page typée comprise ; un élément sans mot-clé n'en a pas (409) ; la couleur et l'icône sont contrôlées comme celles d'un mot-clé (400). Rend les
+ * colonnes canoniques (une définition vidée : NULL).
  */
-function champsDuMotCleDeLaPage(ctx, ligne, valeurs) {
+function champsDuMotCleDeLaPage(ctx, ligne, valeurs, table = 'page') {
   const ecrits = CHAMPS_DU_MOT_CLE_DE_LA_PAGE.filter((c) => c in valeurs);
   if (!ecrits.length) return {};
-  if (ctx.voie === 'route') throw new ErreurEdition(409, `${ligne.id} : la définition, la couleur et l’icône d’une page sont celles de son mot-clé ; elles se corrigent par un lot de changements.`, { champ: ecrits[0] });
-  if (ligne.mot_cle_id === null && ecrits.some((c) => (ligne[c] ?? null) !== null)) {
-    throw new ErreurEdition(409, `${ligne.id} : cette page n’a pas de mot-clé ; elle ne porte ni définition, ni couleur, ni icône.`, { champ: ecrits[0] });
+  const [lElement, cetElement, pronom] = table === 'sort' ? ['d’un sort', 'ce sort', 'il'] : ['d’une page', 'cette page', 'elle'];
+  if (ctx.voie === 'route') throw new ErreurEdition(409, `${ligne.id} : la définition, la couleur et l’icône ${lElement} sont celles de son mot-clé ; elles se corrigent par un lot de changements.`, { champ: ecrits[0] });
+  if ((ligne.mot_cle_id ?? null) === null && ecrits.some((c) => (ligne[c] ?? null) !== null)) {
+    throw new ErreurEdition(409, `${ligne.id} : ${cetElement} n’a pas de mot-clé ; ${pronom} ne porte ni définition, ni couleur, ni icône.`, { champ: ecrits[0] });
   }
-  if (ecrits.includes('couleur')) refuserLaCouleur({ libelle: ligne.titre, couleur: ligne.couleur ?? null });
-  if (ecrits.includes('icone')) refuserLIcone({ libelle: ligne.titre, icone: ligne.icone ?? null });
+  const libelle = table === 'sort' ? ligne.nom : ligne.titre;
+  if (ecrits.includes('couleur')) refuserLaCouleur({ libelle, couleur: ligne.couleur ?? null });
+  if (ecrits.includes('icone')) refuserLIcone({ libelle, icone: ligne.icone ?? null });
   return ecrits.includes('definition') ? { definition: ligne.definition || null } : {};
 }
 
@@ -3515,13 +3522,13 @@ const COLONNES_DE_LA_PAGE_DU_MOT_CLE = Object.freeze({ description: 'definition'
  * journal (il lit toutes les lignes avant qu'aucune ne soit rejouée) : la base au départ, puis chaque ligne de `page` ou de `sort` qui écrit `mot_cle_id`.
  *   - une insertion perd les colonnes retirées et crée le repère du mot-clé (`aCreer`, avec ces valeurs) s'il n'a ni page ni sort ; de même un mot-clé que
  *     ancienneEcritureDesMotsCles fait créer ;
- *   - une modification : d'un mot-clé à repère, elle vise son repère ; d'un mot-clé de page, son nom et son adresse (une copie) sont sans effet, sa
- *     définition, sa couleur et son icône visent la page ; d'un mot-clé de sort, sans effet, sauf une définition, une couleur ou une icône (`conflit` : il
- *     n'en a pas) ; une modification qui mêle une colonne retirée et une autre n'a pas d'équivalent (`conflit`) ;
+ *   - une modification : d'un mot-clé à repère, elle vise son repère ; d'un mot-clé de page ou de sort, son nom et son adresse (une copie) sont sans
+ *     effet, sa définition, sa couleur et son icône visent la page ou le sort ; une modification qui mêle une colonne retirée et une autre n'a pas
+ *     d'équivalent (`conflit`) ;
  *   - une suppression : `avant` réduit aux colonnes en place (sa ligne n'a plus les autres), son nom et sa définition gardés à part (`motCleRetire`) pour
  *     balisesRetireesParLeLot ; son repère part avec lui par la cascade du schéma ;
  *   - une modification d'un repère (forme d'aujourd'hui) dont le mot-clé a, depuis, une page ou un sort (versLElementDuRepere) : la même règle qu'une
- *     modification du mot-clé, son nom et son adresse sans effet, sa définition, sa couleur et son icône vers la page.
+ *     modification du mot-clé, son nom et son adresse sans effet, sa définition, sa couleur et son icône vers la page ou le sort.
  * Sur une base d'avant la migration 0136 : rien n'est adapté.
  */
 export function ancienneEcritureDesColonnesDuMotCle(db) {
@@ -3561,7 +3568,7 @@ export function ancienneEcritureDesColonnesDuMotCle(db) {
   /**
    * Une modification du repère d'un mot-clé qui a, depuis, une page ou un sort (le repère est parti : C0) : comme une modification ancienne du
    * mot-clé, son nom et son adresse sont sans effet (ils se lisent sur l'élément, qui a son propre historique), sa définition, sa couleur et son icône
-   * visent la page ; pour un sort, sans effet si elles sont vides, sinon `conflit` (il n'en a pas).
+   * visent la page ou le sort.
    */
   const versLElementDuRepere = (m) => {
     const id = jsonOuNull(m.cle)?.mot_cle_id;
@@ -3570,12 +3577,8 @@ export function ancienneEcritureDesColonnesDuMotCle(db) {
     const apres = jsonOuNull(m.apres) ?? {};
     const colonnes = Object.keys(apres).filter((c) => c === 'definition' || c === 'couleur' || c === 'icone');
     if (!colonnes.length) return { ...m, sansEffet: true };
-    if (e.table === 'sort') {
-      if (colonnes.every((c) => (apres[c] ?? null) === null)) return { ...m, sansEffet: true };
-      return { ...m, conflit: 'le mot-clé d’un sort n’a ni définition, ni couleur, ni icône (migration 0136) : cette écriture de son ancien repère n’a pas d’équivalent' };
-    }
     const garder = (l) => (l ? Object.fromEntries(colonnes.filter((c) => c in l).map((c) => [c, l[c]])) : l);
-    return { ...m, table_nom: 'page', cle: JSON.stringify({ id: e.id }), avant: enJson(garder(jsonOuNull(m.avant))), apres: enJson(garder(apres)) };
+    return { ...m, table_nom: e.table, cle: JSON.stringify({ id: e.id }), avant: enJson(garder(jsonOuNull(m.avant))), apres: enJson(garder(apres)) };
   };
   return (m) => {
     // le suivi des éléments : une page ou un sort qui reçoit, change ou perd son mot-clé
@@ -3621,19 +3624,15 @@ export function ancienneEcritureDesColonnesDuMotCle(db) {
     // son nom et son adresse se lisent sur sa page ou son sort : l'ancienne écriture n'en était que la copie
     const portes = Object.keys(apres).filter((c) => COLONNES_DE_LA_PAGE_DU_MOT_CLE[c]);
     if (!portes.length) return { ...m, sansEffet: true };
-    if (e.table === 'sort') {
-      if (portes.every((c) => (apres[c] ?? null) === null)) return { ...m, sansEffet: true };
-      return { ...m, conflit: 'le mot-clé d’un sort n’a ni définition, ni couleur, ni icône (migration 0136) : cette écriture n’a pas d’équivalent' };
-    }
     const garder = Object.fromEntries(portes.map((c) => [c, COLONNES_DE_LA_PAGE_DU_MOT_CLE[c]]));
-    return { ...m, table_nom: 'page', cle: JSON.stringify({ id: e.id }), avant: enJson(renommer(avant, garder)), apres: enJson(renommer(apres, garder)) };
+    return { ...m, table_nom: e.table, cle: JSON.stringify({ id: e.id }), avant: enJson(renommer(avant, garder)), apres: enJson(renommer(apres, garder)) };
   };
 }
 
 /**
  * Après chaque lot rejoué (`apresLeLot` de rejouerLeJournal, décision B3-6 du chantier 4) : un mot-clé auquel le lot a donné une page ou un sort (`page` ou
  * `sort` qui écrit `mot_cle_id` : un lot ancien qui ancre un mot-clé à repère) perd son repère, dont la définition, la couleur et l'icône passent sur la
- * page (serveur/edition-mots-cles.mjs#reprendreLeRepere, par écriture brute) ; un repère qui en porte, pour un sort, met le lot en conflit. Rend ces
+ * page ou le sort (serveur/edition-mots-cles.mjs#reprendreLeRepere, par écriture brute). Rend ces
  * écritures comme des modifications rejouées ({ …, reperes: true }), pour `tablesCompletees`.
  */
 function reperesReprisParLeLot(db, lot) {
@@ -3658,7 +3657,7 @@ function reperesReprisParLeLot(db, lot) {
         note(table, k, 'supprimer', avant, null);
       },
     };
-    reprendreLeRepere(db, brut, motCle, { table: m.table_nom, id: cle.id }, (message) => { throw new Error(message); });
+    reprendreLeRepere(db, brut, motCle, { table: m.table_nom, id: cle.id });
   }
   return ecrites;
 }

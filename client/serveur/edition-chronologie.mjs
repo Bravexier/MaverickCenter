@@ -669,9 +669,11 @@ export function domainesDeLaChronologie({
       else w.modifier('page_tag', { page_id: t.page_id, ordre: t.ordre }, { tag_id: cible.id });
     }
     // l'adresse et la couleur (migration 0098), l'icône (migration 0116) ; colonnes absentes d'une base d'avant : rien à reprendre. Depuis la migration 0136,
-    // elles s'écrivent dans le repère de la cible : une cible qui a une page ou un sort (relié à son élément) ne prend rien
+    // elles s'écrivent sur l'élément de la cible : son repère prend les trois ; sa page ou son sort la couleur et l'icône (R309 (14)), pas l'adresse,
+    // qui est la leur
     const surLeRepere = nomSurLElement(db);
-    const accueille = !surLeRepere || cible.element?.table === 'repere';
+    const table = surLeRepere ? cible.element?.table ?? null : 'mot_cle';
+    const accueille = (colonne) => table === 'mot_cle' || table === 'repere' || ((table === 'page' || table === 'sort') && colonne !== 'url');
     const reprises = {};
     const gardees = [];
     const laissees = []; // ce qu'une cible verrouillée n'a pas et ne prend pas
@@ -679,12 +681,13 @@ export function domainesDeLaChronologie({
     for (const [colonne, nom] of Object.entries(NOMS_REPRIS)) {
       const deLaSource = source[colonne] ?? null;
       if (deLaSource === null) continue;
-      if ((cible[colonne] ?? null) === null) (cibleAncree || !accueille || (estVerrouille(cible) && ctx.gel !== false) ? laissees.push(nom) : (reprises[colonne] = deLaSource));
+      if ((cible[colonne] ?? null) === null) (cibleAncree || !accueille(colonne) || (estVerrouille(cible) && ctx.gel !== false) ? laissees.push(nom) : (reprises[colonne] = deLaSource));
       else if (cible[colonne] !== deLaSource) gardees.push(nom);
     }
-    if (Object.keys(reprises).length && surLeRepere) {
+    if (Object.keys(reprises).length && table === 'repere') {
       w.modifier('repere', { mot_cle_id: cible.id }, Object.fromEntries(Object.entries(reprises).map(([c, v]) => [COLONNES_DU_REPERE[c], v])));
-    } else if (Object.keys(reprises).length) w.modifier('mot_cle', { id: cible.id }, reprises);
+    } else if (Object.keys(reprises).length && table === 'mot_cle') w.modifier('mot_cle', { id: cible.id }, reprises);
+    else if (Object.keys(reprises).length) w.modifier(table, { id: cible.element.id }, reprises); // couleur, icone : mêmes noms sur la page et le sort
     // au rejeu, les textes que le site de dev n'avait pas (pages d'exemple, règles d'une autre base) citent la cible eux aussi : le rejeu la reconnaît
     // aux étiquettes et aux balises que ce lot reporte (serveur/edition.mjs#cibleReportee, balisesRetireesParLeLot)
     // R233 (11), « Oui, tout transmettre » : ses clés quittées passent à la cible, ses catégories et ses synonymes sont retirés (notés au journal),
@@ -703,7 +706,7 @@ export function domainesDeLaChronologie({
       ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => NOMS_REPRIS[c]).join(' et ')}`] : []),
       ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
       ...(references.length ? [`${references.length > 1 ? 'ses références' : 'sa référence'} (${references.map((r) => `${r.table} ${r.id}`).join(', ')}) ${references.length > 1 ? 'passent' : 'passe'} à la cible`] : []),
-      ...(laissees.length ? [`« ${cible.libelle} », ${cibleAncree || !accueille ? 'relié à un élément' : 'verrouillé'}, n’en prend pas ${laissees.join(' ni ')}`] : []),
+      ...(laissees.length ? [`« ${cible.libelle} », ${cibleAncree || table === 'page' || table === 'sort' ? 'relié à un élément' : 'verrouillé'}, n’en prend pas ${laissees.join(' ni ')}`] : []),
       ...(legs.repris.length ? [`il en prend ${legs.repris.length > 1 ? 'les synonymes' : 'le synonyme'} ${legs.repris.map((x) => `« ${x} »`).join(', ')}`] : []),
       ...(legs.ecartes.length ? [`synonymes écartés : ${legs.ecartes.map((e) => `« ${e.synonyme} » (${e.raison})`).join(', ')}`] : []),
     ];

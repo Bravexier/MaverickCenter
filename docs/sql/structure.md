@@ -602,6 +602,9 @@ SORT : une ligne par sort des tables de sorts du classeur de Décembre (migratio
 | `cout_secondaire` | TEXT | non |  | « 1 Sang », « 2 âmes », « X Sang », « 20% PV », « Par tour et par cible », « Pour 1 barrière » ; NULL = pas de second coût |
 | `specialisation_id` | TEXT | non | → magie_specialisation.id |  |
 | `mot_cle_id` | INTEGER | non | → mot_cle.id, unique | le mot-clé que le sort ancre (R309) ; NULL = sort pas encore ancré |
+| `definition` | TEXT | non |  | la définition du glossaire : texte simple, balises du glossaire comprises ; NULL : aucune |
+| `couleur` | TEXT | non |  |  |
+| `icone` | TEXT | non |  |  |
 
 ### `sort_type`
 
@@ -3105,7 +3108,7 @@ Graphe de pages tel que le calcule wiki.ts : paires (depuis, vers) distinctes, l
 
 *vue*
 
-Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de nb_pages pages). Refaite par la migration 0136 (le retrait des colonnes) : le nom (`libelle`), la définition (`description`), la couleur et l'icône se lisent sur l'élément du mot-clé. `libelle` : le titre de sa page, sinon le nom de son sort, sinon le nom de son repère. `description`, `couleur`, `icone` : ceux de la page si le mot-clé en a une, sinon ceux du repère ; NULL pour un mot-clé de sort, qui n'en porte pas. Sans l'adresse : celle d'une page ne se calcule pas en SQL (client/src/lib/adresses-db.mjs#adresseDeLaPage ; client/src/lib/mots-cles-db.mjs#lireUnMotCle la rend). Une ligne par mot-clé (un mot-clé ancre au plus une page et au plus un sort, et n'a qu'un repère). Les catégories sont dans mot_cle_categorie, les synonymes dans mot_cle_synonyme. Le corps de la vue est sans commentaire : il reste identique à celui de la migration.
+Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de nb_pages pages). Refaite par la migration 0136 (le retrait des colonnes) : le nom (`libelle`), la définition (`description`), la couleur et l'icône se lisent sur l'élément du mot-clé. `libelle` : le titre de sa page, sinon le nom de son sort, sinon le nom de son repère. `description`, `couleur`, `icone` : ceux de la page si le mot-clé en a une, sinon ceux de son sort, sinon ceux du repère. Sans l'adresse : celle d'une page ne se calcule pas en SQL (client/src/lib/adresses-db.mjs#adresseDeLaPage ; client/src/lib/mots-cles-db.mjs#lireUnMotCle la rend). Une ligne par mot-clé (un mot-clé ancre au plus une page et au plus un sort, et n'a qu'un repère). Les catégories sont dans mot_cle_categorie, les synonymes dans mot_cle_synonyme. Le corps de la vue est sans commentaire : il reste identique à celui de la migration.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

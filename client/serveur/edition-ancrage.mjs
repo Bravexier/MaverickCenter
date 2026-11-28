@@ -239,8 +239,8 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
   /**
    * Pose l'ancre d'un élément sur le mot-clé `mot_cle_id`. Retirer une ancre (`null`) ou la remplacer n'est permis qu'à l'annulation d'un lot (`ctx.annulation`) :
    * c'est elle qui remet la valeur d'avant. Un mot-clé a un repère si et seulement s'il n'a ni page ni sort (docs/chantier-retrait-des-colonnes.md, §2) :
-   * celui qui reçoit une page ou un sort perd le sien dans la même opération (sa définition, sa couleur et son icône passent sur la page ; sur un sort, un
-   * repère qui en porte est refusé, 409) ; celui que l'annulation laisse sans page ni sort en retrouve un, fait de la page ou du sort quitté
+   * celui qui reçoit une page ou un sort perd le sien dans la même opération (sa définition, sa couleur et son icône passent sur la page ou le sort,
+   * R309 (14)) ; celui que l'annulation laisse sans page ni sort en retrouve un, fait de la page ou du sort quitté
    * (repereDeLElementQuitte), si le lot ne l'a pas déjà remis.
    */
   function ancrerElement(ctx, { table, id, mot_cle_id }) {
@@ -255,25 +255,25 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
     if (mot_cle_id !== null && !lireLigne(db, 'mot_cle', { id: mot_cle_id })) throw new ErreurEdition(404, `Mot-clé introuvable : ${JSON.stringify(mot_cle_id)}`);
     w.modifier(table, { id }, { mot_cle_id });
     if (table === 'type_sort') return; // un type de sort n'est pas l'élément de son mot-clé : sa page de notion l'est, sinon son repère
-    if (mot_cle_id !== null) reprendreLeRepere(db, w, mot_cle_id, { table, id }, (message) => { throw new ErreurEdition(409, message); });
+    if (mot_cle_id !== null) reprendreLeRepere(db, w, mot_cle_id, { table, id });
     if (ligne.mot_cle_id !== null && ligne.mot_cle_id !== mot_cle_id) repereDeLElementQuitte(ctx, ligne.mot_cle_id, table, id);
   }
 
   /**
    * L'annulation d'un lot a retiré au mot-clé `motCleId` sa page ou son sort (`table`, `id`) : s'il reste sans page, sans sort et sans repère, il en reçoit un,
-   * fait de l'élément quitté (le titre, l'adresse, la définition, la couleur et l'icône de la page, vidées sur elle ; le nom d'un sort), pour garder un nom.
+   * fait de l'élément quitté (le titre, l'adresse, la définition, la couleur et l'icône de la page, vidées sur elle ; le nom, la définition, la couleur et
+   * l'icône d'un sort, vidées sur lui, sans adresse), pour garder un nom.
    */
   function repereDeLElementQuitte(ctx, motCleId, table, id) {
     const { db, w } = ctx;
     if (!nomSurLElement(db) || !lireLigne(db, 'mot_cle', { id: motCleId }) || elementDuMotCle(db, motCleId)) return;
-    if (table === 'sort') {
-      creerLeRepere(w, motCleId, { nom: db.prepare('SELECT nom FROM sort WHERE id = ?').get(id).nom });
-      return;
-    }
-    const p = db.prepare('SELECT titre, definition, couleur, icone FROM page WHERE id = ?').get(id);
-    creerLeRepere(w, motCleId, { nom: p.titre, adresse: adresseDeLaPageEnBase(db, id), definition: p.definition, couleur: p.couleur, icone: p.icone });
+    const p = table === 'sort'
+      ? db.prepare('SELECT nom AS titre, definition, couleur, icone FROM sort WHERE id = ?').get(id)
+      : db.prepare('SELECT titre, definition, couleur, icone FROM page WHERE id = ?').get(id);
+    const adresse = table === 'sort' ? null : adresseDeLaPageEnBase(db, id);
+    creerLeRepere(w, motCleId, { nom: p.titre, adresse, definition: p.definition, couleur: p.couleur, icone: p.icone });
     const portes = Object.fromEntries(['definition', 'couleur', 'icone'].filter((c) => p[c] !== null).map((c) => [c, null]));
-    if (Object.keys(portes).length) w.modifier('page', { id }, portes);
+    if (Object.keys(portes).length) w.modifier(table, { id }, portes);
   }
 
   /** L'élément que le mot-clé `id` ancre : { table, elementId } (la page, sinon le sort, sinon le type de sort), ou null. */
@@ -386,7 +386,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
    * Après l'élément : retire le mot-clé `id`, ses catégories, synonymes et clés quittées. Le recalcul des clés (un homonyme peut retrouver la sienne) est noté dû, et fait une
    * fois en fin de lot par `suivreLesElements` : un état entre deux opérations n'a pas à satisfaire la règle. Tenu par un autre élément (une ancre, une magie, un type de
    * dégâts, une monnaie, un sort qui le porte : R289), il reste ; sans autre page ni sort, il reçoit alors un repère au nom de l'élément parti (`element` : la
-   * ligne de la page ou du sort supprimé), avec la définition, la couleur et l'icône d'une page, sans adresse : le lecteur voit le même nom et la même
+   * ligne de la page ou du sort supprimé), avec sa définition, sa couleur et son icône, sans adresse : le lecteur voit le même nom et la même
    * infobulle, la balise ne mène plus nulle part. Sur une base d'avant la migration 0136, son adresse se vide s'il menait à l'élément parti (`adresse`).
    */
   function retirerLeMotCle(ctx, id, { adresse = null, element = null } = {}) {
@@ -409,7 +409,7 @@ export function outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle, ADRESS
   /**
    * Le mot-clé `id` vient de perdre sa page ou son sort (`element` : la ligne supprimée), par un lot ou par l'annulation d'un lot (R289 ; décisions B3-3 et
    * B3-4 du chantier 4) : s'il existe encore sans page, sans sort ni repère, il reçoit un repère au nom `nom`, avec la définition, la couleur et l'icône
-   * de la page, sans adresse (la page partie n'en a plus). Jamais un second : un repère déjà là (remis par l'annulation elle-même) reste tel quel.
+   * de la page ou du sort (R309 (14)), sans adresse (l'élément parti n'en a plus). Jamais un second : un repère déjà là (remis par l'annulation elle-même) reste tel quel.
    */
   function repereDuSurvivant(ctx, id, nom, element) {
     const { db, w } = ctx;
