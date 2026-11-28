@@ -19,8 +19,8 @@ import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const JSON_ = { 'content-type': 'application/json' };
 /**
- * La version livrée (la dernière migration de la livraison des tests, test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher
- * quand les migrations mixtes sont sorties) et les migrations que la base d'avant reçoit : celle qui crée `migration_recue` et les suivantes.
+ * La version livrée (la dernière migration de la livraison des tests, test/aide-structure-sur-place.mjs#LIVRAISON : la migration de
+ * `migration_recue` reprise au-dessus du plancher) et les migrations que la base d'avant reçoit : celle qui crée `migration_recue` et les suivantes.
  */
 const LIVREES = lireLesMigrations({ ...LIVRAISON, schema: false }).migrations;
 const V = LIVREES.at(-1).numero;

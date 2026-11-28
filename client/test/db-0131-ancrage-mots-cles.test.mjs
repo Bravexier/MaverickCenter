@@ -27,9 +27,14 @@ test('0131 (R309) : page et sort citent mot_cle, sans cascade, NULL permis', () 
     assert.equal(fk.on_delete, 'NO ACTION', `${t} : un mot-clé ancré ne se supprime pas en cascade`);
     assert.equal(essai.prepare(`SELECT "notnull" n FROM pragma_table_info('${t}') WHERE name = 'mot_cle_id'`).get().n, 0, `${t} : NULL permis`);
   }
-  // une colonne ajoutée va en dernier (règle des migrations) : la colonne d'ancrage ferme sort ; sur page, les migrations suivantes (0133 : slug_adresse, R316) viennent après elle
+  // une colonne ajoutée va en dernier (règle des migrations) : à son époque, la colonne d'ancrage fermait sort, juste après la dernière d'alors
+  // (specialisation_id, 0117) ; seules la suivent celles de la 0136 (definition, couleur, icone : l'élément du mot-clé, R309 (14) et (17)). Sur page,
+  // les migrations suivantes (0133 : slug_adresse, R316 ; 0136) viennent après elle
   const colonnesDe = (t) => essai.prepare(`SELECT name FROM pragma_table_info('${t}') ORDER BY cid`).all().map((c) => c.name);
-  assert.equal(colonnesDe('sort').at(-1), 'mot_cle_id', 'sort');
+  const sort = colonnesDe('sort');
+  const i = sort.indexOf('mot_cle_id');
+  assert.equal(sort[i - 1], 'specialisation_id', 'sort : ajoutée après la dernière colonne d’avant la 0131');
+  assert.deepEqual(sort.slice(i + 1), ['definition', 'couleur', 'icone'], 'sort : suivie des seules colonnes de la 0136');
   const page = colonnesDe('page');
   assert.ok(page.includes('mot_cle_id') && page.indexOf('mot_cle_id') > page.indexOf('source_ref'), 'page : mot_cle_id vient après les colonnes d’origine');
   if (page.includes('slug_adresse')) assert.ok(page.indexOf('mot_cle_id') < page.indexOf('slug_adresse'), 'page : slug_adresse (0133) vient après mot_cle_id');

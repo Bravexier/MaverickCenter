@@ -1,7 +1,8 @@
 // Le changement de structure appliqué sur place (client/serveur/structure-sur-place.mjs ; lot 7 du chantier « la base du site de dev devient la source de
 // vérité », R274, R275 ; docs/serveur.md, « Changement de structure appliqué sur place ») : le service sait appliquer les migrations livrées à une base en
 // place, mais il n'applique JAMAIS à sa vraie base avant le lot 8 (rien n'est branché au démarrage).
-//   - le cœur : une base de la version 128 REMPLIE (fiches, journal de l'édition, historique), la migration 0129 appliquée sur place : schéma identique à
+//   - le cœur : une base d'avant REMPLIE (fiches, journal de l'édition, historique ; au plancher de la livraison des tests, sans `migration_recue`), la
+//     migration qui crée `migration_recue` (la 0129, reprise au-dessus du plancher) appliquée sur place : schéma identique à
 //     data/schema.sql, toutes les autres tables d'empreinte inchangée, une ligne `sur_place` notée, une sauvegarde d'avant ;
 //   - les refus, avec retour arrière complet (le bloc entier, jamais une moitié) : PRAGMA, versions qui ne se suivent pas, SQL en échec, clé étrangère rompue,
 //     schéma inattendu, schema.sql absent ou d'une autre version ;
@@ -26,18 +27,19 @@ import {
 } from '../serveur/structure-sur-place.mjs';
 import { LIVRAISON, NUMERO, RACINE, baseDesRegles, baseRemplie, etatDeLaBase, etatDuFichier, nouveauChemin, nouveauDossier, schemaDuDepot, tablesDeDonnees } from './aide-structure-sur-place.mjs';
 
-/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties). */
+/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : la migration de `migration_recue` reprise au-dessus du plancher, le schema.sql). */
 const livre = lireLesMigrations(LIVRAISON);
 /** La version de la base du dépôt (celle de la dernière migration livrée) : les migrations d'essai portent les numéros qui suivent. */
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
 /**
- * Les tables que les migrations livrées après la 128 changent (la 0129 crée `migration_recue`) : les autres gardent leur empreinte quand elles sont
- * appliquées sur place. Une migration plus récente qui touche une autre table l'ajoute ici.
+ * Les tables que les migrations livrées au-dessus de la base d'avant changent : la livraison des tests met le plancher au schema.sql et n'y remet que la
+ * migration qui crée `migration_recue` (test/aide-structure-sur-place.mjs#livraisonDesTests : depuis la 0136, les migrations d'après la 0129 ne se
+ * défont plus) ; les autres tables gardent leur empreinte quand elle est appliquée sur place.
  */
 const TABLES_QUE_LES_MIGRATIONS_CHANGENT = ['migration_recue'];
-/** Les tables à qui une migration livrée ajoute une colonne (0131 : mot_cle_id sur page et sur sort ; 0133 : slug_adresse sur page) : leur empreinte suit leur forme, leurs lignes ne bougent pas. */
-const COLONNES_AJOUTEES = { page: ['mot_cle_id', 'slug_adresse'], sort: ['mot_cle_id'] };
+/** Les tables à qui une migration livrée ajoute une colonne (leur empreinte suit leur forme, leurs lignes ne bougent pas) : aucune au-dessus du plancher. */
+const COLONNES_AJOUTEES = {};
 const TABLES_A_COLONNE_AJOUTEE = Object.keys(COLONNES_AJOUTEES);
 const lire = (chemin) => new DatabaseSync(chemin, { readOnly: true });
 /** Une base ouverte comme celle du service (clés étrangères contrôlées). */
@@ -189,7 +191,7 @@ test('une base 128 remplie : les migrations livrées (la 0129) appliquées sur p
   const db = ouvrir(chemin);
   try {
     assert.ok(comparerLesSchemas(db, attendu).includes('table migration_recue : absent de la base migrée'), 'la base d’essai est bien celle d’avant la 0129');
-    // le prétiré ; pas de fiche de joueur, faute de compte avant la migration 0132 (scripts/base-remplie-lib.mjs, R310)
+    // le prétiré (la fiche de joueur n'a de compte qu'à partir de la version de la migration 0132 : scripts/base-remplie-lib.mjs, R310)
     assert.ok(db.prepare('SELECT count(*) AS n FROM personnage').get().n >= 1, 'des fiches');
     assert.ok(db.prepare('SELECT count(*) AS n FROM modification_lot').get().n >= 1, 'un lot du journal');
     assert.ok(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n >= 1, 'une ligne de l’historique');
@@ -420,8 +422,8 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.equal(bilan.verdict, 'accepte');
   assert.deepEqual(bilan.versions, { avant: NUMERO - 1, apres: V });
   assert.deepEqual(bilan.migrations, livrees.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte })));
-  // (ce bilan est celui de la 0129 : une migration livrée plus tard qui change des lignes ou des tables ajoute son écart ici)
-  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles que les migrations suivantes créent (vides, sauf les lignes que la migration pose elle-même : les dix types de sort de la 0131)
+  // (ce bilan est celui de la migration de `migration_recue`, reprise au-dessus du plancher : test/aide-structure-sur-place.mjs#livraisonDesTests)
+  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles qu'une migration livrée avec elle créerait (vides, sauf les lignes qu'elle pose elle-même)
   const dAvant = lire(chemin);
   const courantes = lire(baseDesRegles());
   let creees;
@@ -440,11 +442,11 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.tables.retirees, []);
   assert.deepEqual(bilan.tables.renommees, []);
   assert.deepEqual(bilan.tables.modifiees, Object.fromEntries(Object.entries(COLONNES_AJOUTEES).map(([table, colonnes]) => [table,
-    { ajoutees: 0, retirees: 0, modifiees: 0, structure_changee: true, colonnes_ajoutees: colonnes, colonnes_retirees: [] }])), 'aucune ligne de contenu ne bouge : seules page et sort changent de forme (colonne ajoutée)');
+    { ajoutees: 0, retirees: 0, modifiees: 0, structure_changee: true, colonnes_ajoutees: colonnes, colonnes_retirees: [] }])), 'aucune ligne de contenu ne bouge, aucune table ne change de forme');
   assert.deepEqual(bilan.totaux, { ajoutees: 0, retirees: 0, modifiees: 0 });
-  // les index d'ancrage de la 0131 (un mot-clé ancre au plus une page, un sort, un type de sort) et celui des anciennes adresses de la 0133
-  assert.deepEqual(bilan.objets, { crees: ['index page_ancre_mot_cle', 'index sort_ancre_mot_cle', 'index type_sort_ancre_mot_cle', 'index page_ancienne_adresse_page'], retires: [], modifies: [] });
-  // toutes les autres tables sont listées inchangées : fiches, journal, historique et règles comprises (page et sort, qui gagnent une colonne, sont dites modifiées)
+  // la migration de `migration_recue` ne crée ni index, ni vue, ni déclencheur
+  assert.deepEqual(bilan.objets, { crees: [], retires: [], modifies: [] });
+  // toutes les autres tables sont listées inchangées : fiches, journal, historique et règles comprises
   const db = lire(chemin);
   try {
     assert.deepEqual(bilan.tables.inchangees, tablesDeDonnees(db).filter((n) => !TABLES_A_COLONNE_AJOUTEE.includes(n)));

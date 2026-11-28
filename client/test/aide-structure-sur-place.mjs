@@ -3,15 +3,14 @@
 // à la version d'avant `NUMERO` (sans `migration_recue` ni rien de ce que les migrations livrées depuis ont ajouté)
 // et REMPLIE — fiches, journal de l'édition et historique —, et l'état d'une base (empreinte de chaque table, structure, version) pour prouver qu'un refus
 // ne laisse rien. Module sans test propre (n'est pas un *.test.mjs).
-// La livraison des tests (`LIVRAISON` : dossier des migrations et schema.sql) est celle du dépôt tant que les migrations mixtes y sont ; sorties
-// (mixtesSorties()), le schema.sql est le plancher et la livraison d'essai remet une vraie migration au-dessus (livraisonDesTests).
+// La livraison des tests (`LIVRAISON` : dossier des migrations et schema.sql) met le plancher au schema.sql et remet une vraie migration au-dessus
+// (livraisonDesTests) : depuis la 0136, les migrations livrées après la 0129 ne se défont plus par simple retrait.
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { empreinteDeLaTable } from '../serveur/empreintes.mjs';
 import { versionDuSchemaSql } from '../serveur/structure-sur-place.mjs';
 import { trouverRacine } from '../src/lib/donnees.mjs';
-import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { OMBRES_DE_RECHERCHE } from '../src/lib/tables-de-la-base.mjs';
 import { remplirUneBase } from '../scripts/base-remplie-lib.mjs';
 import { baseDeDepart } from './aide-base-de-depart.mjs';
@@ -25,17 +24,21 @@ const sansCommentaires = (sql) => sql.replace(/--[^\n]*/g, '');
 const avecLaVersion = (schema, version) => schema.replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);
 
 /**
- * La livraison des tests du changement de structure : { migrations (dossier), schema (fichier) }. Tant que les migrations mixtes sont dans le dépôt
- * (aujourd'hui) : data/migrations et data/schema.sql eux-mêmes, rien ne change. Sorties (mixtesSorties() : la passe S --avec-mixtes, puis le jour où elles
- * quittent le dépôt), le schema.sql est le PLANCHER (serveur/structure-sur-place.mjs#versionLivree) : la base qu'il décrit ne reçoit que les migrations
- * de numéro supérieur, et la migration qui crée `migration_recue` (structure seule, elle reste) est en dessous. La livraison d'essai est alors une copie :
- * les migrations du dépôt jusqu'au plancher, cette migration reprise telle quelle au numéro plancher + 1, puis celles du dépôt au-dessus du plancher,
- * chacune décalée d'un numéro ; le schema.sql à la version de la dernière. Les tests appliquent ainsi sur place, à la base d'avant (le plancher, sans
- * `migration_recue` : annulerLesMigrations), une vraie migration au-dessus du plancher, comme le service appliquera la suivante.
+ * La livraison des tests du changement de structure : { migrations (dossier), schema (fichier) }. Le schema.sql y est le PLANCHER
+ * (serveur/structure-sur-place.mjs#versionLivree) : la base qu'il décrit ne reçoit que les migrations de numéro supérieur, et la migration qui crée
+ * `migration_recue` (structure seule, elle reste) est en dessous. La livraison d'essai est une copie : les migrations du dépôt jusqu'au plancher, cette
+ * migration reprise telle quelle au numéro plancher + 1, puis celles du dépôt au-dessus du plancher, chacune décalée d'un numéro ; le schema.sql à la
+ * version de la dernière. Les tests appliquent ainsi sur place, à la base d'avant (le plancher, sans `migration_recue` : annulerLesMigrations), une vraie
+ * migration au-dessus du plancher, comme le service appliquera la suivante.
+ * Pourquoi le plancher, même avec les migrations mixtes dans le dépôt (mixtesSorties() faux) : la base d'avant se tire de la base courante en défaisant ce
+ * que les migrations au-dessus d'elle ont fait, ce qui ne vaut que pour une migration qui AJOUTE (table, colonne, vue, index). La 0136 refait mot_cle sans
+ * cinq colonnes et en déplace les valeurs (page, sort, repere) : la base 128 ne se retrouve plus depuis la base courante (ces colonnes et leurs valeurs n'y
+ * sont plus). Au plancher, il n'y a rien à défaire que `migration_recue` : la base d'avant est juste, quelle que soit la migration suivante. Les vraies
+ * migrations nouvelles sur une base remplie sont éprouvées par le contrôle des migrations de la CI (scripts/controler-les-migrations-base.mjs : la base du
+ * merge-base, refaite depuis son data/schema.sql et son data/rows).
  */
 function livraisonDesTests() {
   const depot = { migrations: join(RACINE, 'data', 'migrations'), schema: join(RACINE, 'data', 'schema.sql') };
-  if (!mixtesSorties()) return depot;
   const schema = readFileSync(depot.schema, 'utf8');
   const plancher = versionDuSchemaSql(schema);
   const fichiers = readdirSync(depot.migrations).filter((f) => MIGRATION.test(f)).sort();
@@ -81,8 +84,8 @@ export function baseDesRegles() {
   const db = new DatabaseSync(construite);
   try {
     viderLesAjoutsDesMigrations(db);
-    // les mixtes sorties : la base courante a la structure de la livraison d'essai (la reprise de la migration de `migration_recue` ne change que la version)
-    if (mixtesSorties()) db.exec(`PRAGMA user_version = ${versionDuSchemaSql(schemaDuDepot())}`);
+    // la base courante a la structure de la livraison d'essai (la reprise de la migration de `migration_recue` ne change que la version)
+    db.exec(`PRAGMA user_version = ${versionDuSchemaSql(schemaDuDepot())}`);
   } finally {
     db.close();
   }

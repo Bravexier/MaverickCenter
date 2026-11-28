@@ -41,8 +41,13 @@ const dImport = () => baseDImport();
 
 test('structure : magie_specialisation, et sort.specialisation_id ajoutée en dernier ; amelioration_cadaverique retirée (R237 (7))', () => {
   const colonnes = db.prepare('PRAGMA table_info(sort)').all();
-  // la colonne ajoutée par la 0117 est suivie de celle de la 0131 (mot_cle_id, R309) : une colonne ajoutée va toujours en dernier
-  assert.deepEqual(colonnes.slice(-2).map((c) => c.name), ['specialisation_id', 'mot_cle_id']);
+  // à son époque, la colonne ajoutée par la 0117 va en dernier, juste après la dernière d'alors (cout_secondaire, 0063) ; seules la suivent les colonnes
+  // que des migrations ultérieures ajoutent à leur tour en dernier : celle de la 0131 (mot_cle_id, R309), puis celles de la 0136 (definition, couleur,
+  // icone : l'élément du mot-clé, R309 (14) et (17))
+  const noms = colonnes.map((c) => c.name);
+  const i = noms.indexOf('specialisation_id');
+  assert.equal(noms[i - 1], 'cout_secondaire', 'ajoutée après la dernière colonne d’avant la 0117');
+  assert.deepEqual(noms.slice(i + 1), ['mot_cle_id', 'definition', 'couleur', 'icone'], 'suivie des seules colonnes ajoutées depuis (0131, 0136)');
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'magie_specialisation'").get());
   assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'amelioration_cadaverique'").get().n, 0);
   const cle = db.prepare('PRAGMA foreign_key_list(sort)').all().find((f) => f.from === 'specialisation_id');
