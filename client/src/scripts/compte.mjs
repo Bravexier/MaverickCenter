@@ -1,8 +1,8 @@
 // Le compte du visiteur dans les pages (R310 : « Dans le menu en haut à droite je veux un lien vers le profil. Si non connecté, le bouton "connexion via
 // Discord". ») : UN seul script, posé par layouts/Base.astro (components/Compte.astro), qui demande UNE fois `GET /api/moi/` (docs/serveur.md « Connexion
 // par Discord ») et en tire trois choses selon ce que la page porte :
-//   - le menu (`[data-compte]`, à droite de l'en-tête) : connecté, l'avatar et le nom (lien vers /profil/) ; sinon le bouton « Connexion via Discord » ;
-//     la requête échoue ou la connexion n'est pas réglée : rien, pas de bouton mort ;
+//   - le menu (`[data-compte]`, à droite de l'en-tête) : connecté, l'avatar et le pseudo, qui ouvrent le menu du profil (R319 (1) : Mon profil, Se déconnecter…) ; sinon le
+//     bouton « Connexion via Discord » à côté du petit menu (Glossaire, Recherche) ; la requête échoue ou la connexion n'est pas réglée : le petit menu seul, pas de bouton mort ;
 //   - la page /profil/ (`[data-profil-page]`) : avatar, bannière, nom, niveau, date d'arrivée sur le serveur, « Se déconnecter » ; ou l'invitation à se connecter ;
 //   - la page /connexion/ (`[data-connexion-page]`) : le message du code `?erreur=`, le bouton de connexion qui garde `retour`, et, si l'on est connecté,
 //     de quoi se déconnecter (un niveau trop bas n'est pas une impasse).
@@ -13,7 +13,7 @@
 // Les images (avatar, bannière) sont chargées depuis cdn.discordapp.com par le navigateur (R310 (5)), jamais copiées. La logique (choix du menu, `retour`
 // filtré, messages, dates) est dans lib/compte.mjs, que ce script est seul à importer (skill site-version-portable). Absent de la version portable (le
 // composant n'est pas posé) et de la page de maintenance.
-import { MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, choixDuMenu, etatDuCompte, messageDErreur, profilAAfficher, retourDeLaPage } from '../lib/compte.mjs';
+import { MESSAGE_DU_NON_MEMBRE, adresseDeConnexion, categoriesVisibles, choixDuMenu, etatDuCompte, messageDErreur, profilAAfficher, retourDeLaPage } from '../lib/compte.mjs';
 
 const zone = document.querySelector('[data-compte]');
 
@@ -42,13 +42,29 @@ function image(src, classe) {
   return img;
 }
 
-function afficherLeMenu(choix) {
+/**
+ * Le menu du compte (R310 (7), R319 (1)) : le panneau du menu du profil est déjà dans la zone (components/MenuDuProfil.astro, le public seulement) ; on y montre les
+ * entrées que l'état du compte permet (lib/compte.mjs#categoriesVisibles), et les blocs qui en ont. Connecté : l'avatar et le pseudo (un bouton) ouvrent le menu à la place
+ * du petit bouton ; sinon le bouton « Connexion via Discord » s'ajoute au petit bouton ; la requête échoue ou la connexion n'est pas réglée : le petit menu seul,
+ * pas de bouton mort. Le script en ligne du composant ouvre et ferme le panneau (`[data-profil-ouvrir]`, délégué : ce bouton-ci est créé ici).
+ */
+function afficherLeMenu(choix, etat, config) {
+  const visibles = new Set(categoriesVisibles(etat));
+  for (const li of zone.querySelectorAll('[data-categorie]')) li.hidden = !visibles.has(li.getAttribute('data-categorie'));
+  for (const bloc of zone.querySelectorAll('.site-compte__bloc')) bloc.hidden = ![...bloc.querySelectorAll('[data-categorie]')].some((li) => !li.hidden);
+  zone.setAttribute('data-etat', etat);
+  brancherLaDeconnexion(zone, config, (texte) => { const e = zone.querySelector('[data-profil-erreur]'); if (e) { e.textContent = texte; e.hidden = false; } });
+  zone.removeAttribute('data-attente');
+  const petit = zone.querySelector('.site-compte__petit');
   if (choix.type === 'rien') return;
-  const lien = document.createElement('a');
   if (choix.type === 'compte') {
-    lien.className = 'site-compte__lien';
-    lien.setAttribute('href', choix.href);
-    lien.title = `Mon profil : ${choix.nom}`;
+    const bouton = document.createElement('button');
+    bouton.setAttribute('type', 'button');
+    bouton.className = 'site-compte__lien';
+    bouton.setAttribute('aria-expanded', 'false');
+    bouton.setAttribute('aria-controls', 'menu-du-profil');
+    bouton.setAttribute('data-profil-ouvrir', '');
+    bouton.title = `Menu du profil : ${choix.nom}`;
     const rond = choix.avatar ? image(choix.avatar, 'site-compte__avatar') : document.createElement('span');
     if (!choix.avatar) { rond.className = 'site-compte__avatar site-compte__avatar--vide'; rond.textContent = [...choix.nom][0] ?? ''; }
     rond.setAttribute('width', '32');
@@ -56,8 +72,14 @@ function afficherLeMenu(choix) {
     const nom = document.createElement('span');
     nom.className = 'site-compte__nom';
     nom.textContent = choix.nom;
-    lien.append(rond, nom);
+    const chevron = document.createElement('span');
+    chevron.className = 'site-compte__chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    bouton.append(rond, nom, chevron);
+    zone.prepend(bouton);
+    if (petit) petit.hidden = true;
   } else {
+    const lien = document.createElement('a');
     lien.className = 'site-compte__connexion';
     lien.setAttribute('href', choix.href);
     const icone = document.createElement('span');
@@ -68,9 +90,8 @@ function afficherLeMenu(choix) {
     libelle.textContent = 'Connexion via Discord';
     lien.title = 'Connexion via Discord';
     lien.append(icone, libelle);
+    zone.prepend(lien);
   }
-  zone.append(lien);
-  zone.hidden = false;
 }
 
 /** « Se déconnecter » : le service retire le cookie, puis retour à l'accueil. */
@@ -162,7 +183,7 @@ async function demarrer() {
   };
   const moi = await lireMoi(config.api);
   publier(moi);
-  afficherLeMenu(choixDuMenu(moi, { ...config, chemin: location.pathname, recherche: location.search ?? '' }));
+  afficherLeMenu(choixDuMenu(moi, { ...config, chemin: location.pathname, recherche: location.search ?? '' }), etatDuCompte(moi), config);
   const profil = document.querySelector('[data-profil-page]');
   if (profil) afficherLeProfil(profil, moi, config);
   const connexion = document.querySelector('[data-connexion-page]');

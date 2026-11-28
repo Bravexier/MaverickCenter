@@ -87,7 +87,9 @@ testDuSql('le partage : ce qui passe aujourd’hui (a), ce qui est refusé (b, p
   };
   // (b), la liste épinglée : des tables que le service d’édition ne sait pas écrire (lot 8). Quand le lot 8 ouvre une table, sa ligne sort d’ici.
   const hors = { hors_edition: 1 };
-  assert.deepEqual(b(migrations[0]), { regle_constante: hors, regles_onglet: hors, mot_cle_ancienne_cle: hors });
+  // `regles_onglet` en est sortie : son titre est ouvert à l'édition (R319 (5), lib/edition-modele.mjs#TABLES), la table est connue du service ; la ligne de la
+  // 0122 qui change sa page d'ouverture passe par la voie générique du journal, comme avant sur le site de dev (base source)
+  assert.deepEqual(b(migrations[0]), { regle_constante: hors, mot_cle_ancienne_cle: hors });
   assert.deepEqual(b(migrations[1]), { mot_cle_categorie: { hors_edition: 9 } });
   assert.deepEqual(b(migrations[2]), { regle_constante: hors, mot_cle_ancienne_cle: hors });
   // la raison « entité que le service ne crée pas / ne supprime pas » n’y figure plus : un mot-clé se crée par le service (traduire), une page se supprime par lui

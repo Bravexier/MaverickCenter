@@ -131,8 +131,6 @@ export const NOMS_DES_TABLES = Object.freeze({
   recette_ingredient: 'Élément de recette',
   recette_produit: 'Produit de recette',
   regle_constante: 'Constante de règle',
-  // un onglet des Règles (migration 0091, R184), cité par son menu latéral (regles_onglet_entree, dans TABLES : son nom vient de là) ; fixe
-  regles_onglet: 'Onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
   // les types de dégâts à valeur fermée (migrations 0125 et 0130) : leur mot-clé ou leur magie ; une ligne s'ajoute par un lot de changements (R298)
   type_degats: 'Type de dégâts',

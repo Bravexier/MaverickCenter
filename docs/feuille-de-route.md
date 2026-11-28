@@ -18,7 +18,7 @@ n'est encore réalisé au-delà de la première étape.
    modifications versées dans `historique_modification`, que les tests relisent pour ne plus épingler ce que le site a changé : `client/src/lib/historique-site.mjs`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
    **API REST et page Debug** (2026-10-15, en place) : sur le site de dev seulement, `/api/v1/` sert chaque élément du jeu rangé dans la base
    (104 ressources en 8 modules, description OpenAPI pour les outils externes) et écrit, par le journal de l'édition, ce que le service sait déjà
-   modifier ; la page Debug (menu Outils) montre le système, les performances, les journaux du serveur et le schéma de la base, en quatre menus
+   modifier ; la page Debug (rubrique Taverne) montre le système, les performances, les journaux du serveur et le schéma de la base, en quatre menus
    fermés par défaut (son testeur de l'API a été retiré le 2026-10-15, « devenu inutile après le schéma » : [`api.md`](api.md)). Fermée en
    production (décision du propriétaire : la base n'y est ouverte que par le front). **Le CRUD complet reste à étendre domaine par domaine** : armures, boucliers, potions, accessoires, ethnies,
    états, postures, dieux, familiers, créatures… sont en lecture seule tant que le service d'édition ne sait pas les écrire (recette :
@@ -44,12 +44,12 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure_partie`… |
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | **premier jet en place** (2026-10-13) : `/chronologie/`, une page par événement daté du Codex et des races, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas ([`chronologie.md`](chronologie.md)) |
-| E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
+| E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » « Lieux » du menu Le monde (R319) |
 | E7 | Connexion par Discord seulement : Observateur, Joueur, MJ, Créateur (R310) | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
-| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrées « bientôt » « Groupes d’aventures » (Espace joueur) et « Groupes de jeu » (Espace MJ) du menu |
+| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrées « bientôt » « Parties » et « Planning » (Taverne), « Mes groupes » et « Mes scénarios » (menu du profil) (R319) |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
-| E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
+| E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » « Suggestions » (Taverne, R319) |
 | E12 | Statistiques | E · V1.4 | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
 
 Jalons proposés :
@@ -57,7 +57,7 @@ Jalons proposés :
 - **A — avant la 1.0, sans comptes** : ce qui se fait avec la base actuelle et le mot de passe partagé d'aujourd'hui.
 - **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes) ; le
   « CODEX Maverick » est importé (2026-10-11, [`codex.md`](codex.md)) : une page `lore/` par divinité, temple ou guilde, civilisation et objet légendaire,
-  Codex › Mythologie et Codex › Factions mènent à leurs sommaires ; le « Bestiaire 2.0 » aussi (2026-10-11, [`bestiaire.md`](bestiaire.md)) : Codex › Bestiaire.
+  Le monde › Mythologie et Le monde › Factions mènent à leurs sommaires ; le « Bestiaire 2.0 » aussi (2026-10-11, [`bestiaire.md`](bestiaire.md)) : Le monde › Bestiaire.
 - **C — la 1.0** : la connexion par Discord arrive dans la **dernière version 0.x** (V0.6 visée), qui reste en service le temps d'en corriger les bugs ;
   la **V1.0.0** vient quand la connexion est éprouvée et testée et l'ouvre à tout le Discord (précision du propriétaire, 2026-10-11). Le passage en 1.0
   reste son signal ([`flux-git.md`](flux-git.md)). Les fiches liées au compte (E8) sont proposées dans la même V0.6, pour être éprouvées avec la connexion.
@@ -120,7 +120,7 @@ flowchart LR
 
 ### E2 — Page du Bestiaire (jalon A, puis B)
 
-- **Déjà là** (premier jet, 2026-10-11, `docs/bestiaire.md`) : `/bestiaire/` (menu Codex › Bestiaire) en deux onglets, chacun un grand tableau avec recherche,
+- **Déjà là** (premier jet, 2026-10-11, `docs/bestiaire.md`) : `/bestiaire/` (menu Le monde › Bestiaire) en deux onglets, chacun un grand tableau avec recherche,
   filtres à cases et tri : les **monstres** du « Bestiaire 2.0 » (copie du propriétaire, migration `0029-bestiaire-monstres` : 144 espèces, 315 cartes, butin,
   échelles de puissance, glossaire) et, à part, les 63 **créatures invoquées** (section 8). Les questions au propriétaire sont dans `docs/bestiaire.md`.
 - **Premier pas** : une page `/bestiaire/` et des fiches de créature rendues depuis les tables, sur le modèle des magies, des races et des classes
@@ -156,7 +156,7 @@ flowchart LR
 
 ### E5 — Chronologie (jalon B)
 
-- **Déjà là** (premier jet, 2026-10-13, [`chronologie.md`](chronologie.md)) : `/chronologie/` (menu Codex › Chronologie), une page par événement, ouverte à droite
+- **Déjà là** (premier jet, 2026-10-13, [`chronologie.md`](chronologie.md)) : `/chronologie/` (menu Le monde › Chronologie), une page par événement, ouverte à droite
   d'une frise verticale en dégradé (refaite à la demande du propriétaire : la date à gauche de la barre, le titre à droite, chevrons Haut et Bas) ; 74 événements : la liste « Les Impacts mineur et
   majeur » du Codex en entier, les dates des autres pages du Codex (fondations, guerres, objets légendaires…) et des pages de race (apparitions), chacun avec
   les extraits copiés de ses pages sources (tables `evenement`, `evenement_extrait`, migration `0035-chronologie`).
@@ -168,7 +168,7 @@ flowchart LR
 
 - **Prérequis** : l'image (ou les images) de la carte en haute définition et la liste des lieux avec leur description (salon « cartes », non importé).
 - **À faire** : une table des lieux (nom, nature — ville, région, donjon… —, position sur la carte, lieu parent, description, sources) ; une page
-  Codex › Carte & lieux : carte zoomable (tuiles fabriquées au build depuis l'image), un repère par lieu, sa fiche au clic, une page par lieu pour la
+  Le monde › Lieux : carte zoomable (tuiles fabriquées au build depuis l'image), un repère par lieu, sa fiche au clic, une page par lieu pour la
   recherche et les `[[liens]]` ; liens avec la chronologie (E5), le bestiaire (où vit une créature) et le lieu d'origine des fiches ; un outil de placement
   des repères sur le site de dev.
 - **Choix technique au prototype** : une bibliothèque de carte embarquée (Leaflet en coordonnées simples, sans fond de carte en ligne) ou un SVG maison ;
@@ -198,7 +198,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
   `v_personnage_visible`), voir « Fiches de personnages » plus bas.
 - **Entamé** (R318, lot `feature/fiches-de-joueur`) : `v_personnage_visible` suit `utilisateur.niveau` (migration 0134 ; `utilisateur_role` reste, vide) ; le
   service lit les fiches de joueur selon la vue (prétirés ouverts à tout visiteur, R307) et ne les écrit que pour leur propriétaire ou un Créateur ; le
-  Créateur range une fiche à un compte ; menu « Visible par » (Tous, MJ, Privé) ; « Mes personnages » dans l’Espace joueur, `/personnages/` ne liste que
+  Créateur range une fiche à un compte ; menu « Visible par » (Tous, MJ, Privé) ; « Mes personnages » dans le menu du profil (R319), `/personnages/` ne liste que
   les fiches visibles.
 - **À faire** : création d'une fiche à son nom par un joueur ; partage à des utilisateurs désignés ; copie d'un prétiré vers un joueur ; écriture de sa fiche
   par un MJ propriétaire sur le site de dev (la porte demande aujourd'hui le Créateur).
@@ -230,7 +230,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 
 ### E11 — Boîte à idées, tickets et rapports de bugs (jalon D)
 
-- **But** : un seul endroit (Outils › Boîte à idée) pour proposer une idée, signaler un bug du site ou une erreur de règle, poser une question.
+- **But** : un seul endroit (Taverne › Suggestions) pour proposer une idée, signaler un bug du site ou une erreur de règle, poser une question.
 - **À faire** : tables de la base vivante — ticket (nature idée / bug / règle / question, titre, texte, page concernée, auteur, statut nouveau / accepté /
   en cours / fait / refusé, réponse), commentaires, votes sur les idées ; un bouton « Signaler » sur chaque page (adresse préremplie) ; une vue de tri pour
   les administrateurs ; notifications par le bot (E10).
@@ -241,7 +241,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; la déc
 
 - **Des fiches** (après E8, dans la base vivante) : popularité des races, des magies innées et acquises, des classes, des spécialités, des métiers et des
   dieux ; niveau moyen et répartition des niveaux (`v_personnage_niveau`), en tout et par groupe ; calculées par le service, en agrégats seulement (aucune
-  fiche privée n'est montrée), page Outils › Statistiques.
+  fiche privée n'est montrée), page Règles › Statistiques.
 - **Des règles** (sans comptes, dès le jalon A) : nombre de sorts par magie et par NPM, classes accessibles par race…, tirés de la base au build.
   Les résistances et faiblesses des combinaisons de deux magies y vont (vue `v_resistance_combinaison`, R85, R86) : « Il seront dans leur onglet
   statistiques après qu'on ai finalisé toute la fiche de personnages. », puis « Non c'est pour la page du site plus tard » (le propriétaire, 2026-10-16).
@@ -307,11 +307,16 @@ de dev, table `annonce`).
    sous-menu "pièce élémentaire" et sa page associé seront supprimées »). Pages `/ressources/…` hors menu (réponse du 2026-10-29) : « Famillier devrai
    être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) » (sic) : Familiers (`/ressources/familiers/`) au Personnage ;
    « Autres » mène à la liste de toutes les pages de ressources, `/ressources/`, en attendant que le propriétaire range les autres pages.
+   **Depuis le 2026-11-27 (R319), cinq rubriques sur une seule ligne d'en-tête** : **Le Jeu**, **Règles**, **Ressources**, **Le monde**, **Taverne**, avec un menu
+   latéral par rubrique (réductible ; tiroir sur écran étroit) et un menu du profil à droite (Mon profil, Mes personnages, Mes groupes, Mes scénarios, Glossaire,
+   Recherche, Site de dev, Voir le site en tant que…, Se déconnecter) ; détail : `docs/decisions-regles.md` (R319) et `docs/content-guide.md`, « Menu du site ».
 2. **Visibilité** : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
    onglets » ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic ; le site n'est utilisé que par deux personnes avant une
    version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que les deux premières rubriques : **Règles et Personnage**
    depuis le menu en sept rubriques (réponse du propriétaire du 2026-10-29), avant **Découvrir** et **Règles** ; aujourd'hui, rien n'est caché ni
    filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
+   **Depuis R319 (2026-11-27)** : les niveaux ([J] joueur, [MJ], [C] créateur, [Prod], [Dev]) sont portés par les données du menu (`lib/nav.mjs`) ; rien n'est encore masqué selon le niveau, ce
+   masquage est le **lot 4** (« Structure d'abord »), sauf [Dev] (Debug), déjà appliqué.
 3. **Ressources** : « Composants en Artisanat ok. Pieces élémentaires seront ammenée directement dans armes et armures . Livre et parchemin seront dans
    la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous
    Artisanat (`/regles/artisanat/`). **Fait le 2026-10-29** : les Pièces élémentaires sont fusionnées dans Armes et Armures (« Fusionner dans Armes et
@@ -347,12 +352,12 @@ en tête du sommaire `/regles/`), après Découvrir ; « Créer son personnage �
 ### Questions encore ouvertes
 
 1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ? — *Répondue le 2026-10-18* (ci-dessus) :
-   à terme, Règles et Personnage seulement (menu en sept rubriques, 2026-10-29 ; Découvrir et Règles avant) ; rien n'est caché aujourd'hui.
+   à terme, Règles et Personnage seulement (menu en sept rubriques, 2026-10-29 ; Découvrir et Règles avant) ; rien n'est caché aujourd'hui. Depuis R319, le menu a cinq rubriques et les niveaux sont portés par ses données : le masquage est le lot 4.
 2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
 3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
 4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les fiches
    inachevées (celles qui ont des règles à revoir) comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
-5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (Espace joueur du menu) sert-il aux
+5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Parties » (Taverne) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
 6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
 7. **Copie de la production vers le dev après la mise en production** (réponse 2 ci-dessus, 2026-10-15) : aujourd'hui, le serveur de test

@@ -106,12 +106,17 @@ const ONGLETS = [
   { id: 'exploration', titre: 'Exploration', ordre: 4, ouverture_page_id: 'guide/equipement-et-butin' },
 ];
 
-test('R184, R185 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique Règles, chacun avec sa page d’ouverture ; l’édition n’y touche pas', () => {
+test('R184, R185, R319 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique Règles, chacun avec sa page d’ouverture ; l’édition n’en change que le titre', () => {
   const tri = (l) => [...l].sort((a, b) => a.ordre - b.ordre || (a.id < b.id ? -1 : 1));
   assert.deepEqual(tri(historique.lignesDImport('regles_onglet')).map((r) => ({ ...r })), ONGLETS);
-  // l'ordre des onglets et leur page d'ouverture sont fixes (choix du propriétaire : « Non, fixe ») : l'état courant est celui de l'import
-  assert.deepEqual(db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all().map((r) => ({ ...r })), ONGLETS);
-  assert.equal(historique.tables().includes('regles_onglet'), false, 'aucune modification du site sur regles_onglet');
+  // l'ordre des onglets et leur page d'ouverture sont fixes (choix du propriétaire : « Non, fixe » ; R319 (5) n'ouvre que le titre, que le site peut
+  // renommer : il se lit à l'import ci-dessus, ici il reste un texte non vide) : l'état courant garde le reste
+  const courant = db.prepare('SELECT id, titre, ordre, ouverture_page_id FROM regles_onglet ORDER BY ordre, id').all().map((r) => ({ ...r }));
+  assert.deepEqual(courant.map(({ titre, ...reste }) => reste), ONGLETS.map(({ titre, ...reste }) => reste));
+  assert.ok(courant.every((o) => o.titre.length > 0));
+  for (const { id } of ONGLETS) {
+    for (const colonne of ['ordre', 'ouverture_page_id']) assert.equal(historique.modifiee('regles_onglet', { id }, colonne), false, `${id}.${colonne} : aucune modification du site`);
+  }
 });
 
 test('R184, R185 : à l’import, chaque menu latéral suit la spécification, une page par entrée, rangs de 1 à n ; « Artisanat » est un lien', () => {

@@ -1,0 +1,204 @@
+/* Le menu latéral du site (components/MenuDuSite.astro ; R319 (2) : « chaque sous partie du menu latéral peut être enroulée, déroulée », « un bouton pour pouvoir
+   réduire le menu latéral », « le menu "tiroir" sur mobile »). Maquette du propriétaire : le menu à gauche de la page, 15,5 rem ouvert, une bande étroite (à la mesure du
+   bouton, qui ne bouge pas) réduit ; la largeur s'anime (0,3 s) ; une entrée à sous-pages se déplie par `grid-template-rows` 0fr/1fr. Jetons du thème seulement (skill
+   ui-couleurs-theme). Le menu est collé au bord gauche de l'écran, la page (<main>) s'étend dans le reste de la largeur, centrée dans sa largeur maximale ; l'en-tête, lui,
+   reste aligné sur le texte de la page (R317 (3)), sa pointe d'épée dépasse sur le haut du menu : la place laissée en haut (--menu-haut).
+   - `.menu-site[data-reduit='oui']` : la bande étroite.
+   - Écran étroit (<= 56rem) : le menu est un tiroir de 18,75 rem qui glisse depuis la gauche sous l'en-tête, sur la page voilée ; `data-reduit='oui'` : fermé.
+   - Les animations ne commencent qu'avec `[data-anime]` (posé après le premier affichage) et se retirent sous `prefers-reduced-motion`. */
+:root {
+  --menu-largeur: 15.5rem;
+  --menu-bouton: 2rem;
+  --menu-bande: 3.5rem; /* la bande réduite : le bouton et son air, la même ouverte ou réduite */
+  --menu-largeur-reduite: var(--menu-bande);
+  /* la place que la pointe de l'épée, qui dépasse sous la bande, prend en haut du menu, puis un peu d'air */
+  --menu-haut: calc(var(--logo-hauteur) + 0.5rem - var(--bande-entete) + 0.5rem);
+  --menu-duree: 0.3s;
+  --menu-courbe: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* L'en-tête suit la même colonne que la page : son contenu, centré comme <main> dans la place qui reste à droite du menu latéral, garde le logo aligné sur le texte, que le menu
+   soit ouvert ou réduit ; `--menu-courante` est la largeur du menu (celle de l'état courant : le menu pose `data-reduit`), animée comme lui. Sous 56 rem (tiroir), le menu ne prend rien. */
+:root { --menu-courante: var(--menu-largeur); }
+:root:has(.menu-site[data-reduit='oui']) { --menu-courante: var(--menu-bande); }
+.site-header { padding-left: var(--menu-courante); }
+:root:has(.menu-site[data-anime]) .site-header { transition: padding-left var(--menu-duree) var(--menu-courbe); }
+:root:has(.menu-site[data-anime]) .site-compte { transition: right var(--menu-duree) var(--menu-courbe); }
+.site-corps { display: flex; align-items: stretch; }
+.site-corps > main { flex: 1 1 0; min-width: 0; }
+.menu-site {
+  flex: none;
+  box-sizing: border-box;
+  width: var(--menu-largeur);
+  padding-top: var(--menu-haut);
+  overflow: clip;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.menu-site[data-reduit='oui'] { width: var(--menu-largeur-reduite); }
+.menu-site[data-anime] { transition: width var(--menu-duree) var(--menu-courbe); }
+/* le cadre garde sa largeur d'ouvert : la bande le coupe, rien ne se remet en page pendant l'animation ; il reste en haut de l'écran quand la page défile */
+.menu-site__cadre {
+  position: sticky;
+  top: 0;
+  box-sizing: border-box;
+  width: var(--menu-largeur);
+  max-height: 100vh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 0.5rem 1rem 1.5rem 0;
+}
+.menu-site__tete { display: flex; align-items: center; gap: 0.75rem; padding-left: calc((var(--menu-bande) - var(--menu-bouton)) / 2); }
+.menu-site__reduire {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--menu-bouton);
+  height: var(--menu-bouton);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-site__reduire:hover { border-color: var(--accent); color: var(--accent); }
+.menu-site__reduire:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.menu-site__fleche { width: 0; height: 0; border-block: 5px solid transparent; border-right: 6px solid currentColor; }
+.menu-site[data-anime] .menu-site__fleche { transition: transform var(--menu-duree) ease; }
+.menu-site[data-reduit='oui'] .menu-site__fleche { transform: rotate(180deg); }
+.menu-site__titres, .menu-site__contenu { min-width: 0; }
+.menu-site[data-anime] :is(.menu-site__titres, .menu-site__contenu) { transition: opacity 0.2s ease, visibility var(--menu-duree); }
+/* réduit : le nom de la rubrique et les entrées disparaissent (ni vus ni atteints au clavier) */
+.menu-site[data-reduit='oui'] :is(.menu-site__titres, .menu-site__contenu) { visibility: hidden; opacity: 0; }
+.menu-site__titre { margin: 0; font-weight: 700; white-space: nowrap; }
+/* une liste ou un titre `hidden` (les rubriques qu'on ne montre pas) : sans !important, le `display` des règles plus bas (liste en colonne, entrées) l'emporterait et toutes les rubriques s'afficheraient à la suite */
+.menu-site [hidden] { display: none !important; }
+.menu-site__contenu { margin-top: 0.9rem; padding-left: 0.75rem; }
+.menu-site :is(.menu-site__liste, .menu-site__sous-liste) { display: flex; flex-direction: column; gap: 0.1rem; margin: 0; padding: 0; list-style: none; }
+
+/* une entrée : un lien (de mot-clé quand elle en a un), un texte grisé « bientôt », ou le bouton d'une entrée à sous-pages */
+.menu-site :is(.menu-site__liste, .menu-site__sous-liste) a,
+.menu-site__replier,
+.menu-site .nav-soon {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.2rem 0.5rem 0.2rem 0.65rem;
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.menu-site__lien { color: var(--text); text-decoration: none; }
+.menu-site :is(.menu-site__liste, .menu-site__sous-liste) a:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.menu-site__lien:hover { color: var(--accent); }
+.menu-site :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* la page affichée : un filet de l'accent et une teinte (sans changer la couleur du texte : un mot-clé coloré garde la sienne) ; l'onglet du plan qui y mène : le filet seul */
+.menu-site a[aria-current='page'] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-weight: 700; }
+.menu-site a[aria-current='true'] { border-left-color: var(--accent); font-weight: 700; }
+.menu-site__lien[aria-current] { color: var(--accent); }
+
+/* une entrée à sous-pages : le bouton, et ses sous-pages en retrait sous un filet */
+.menu-site__replier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-site__replier:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); }
+.menu-site__groupe[data-contient-la-page] > .menu-site__replier { color: var(--accent); font-weight: 700; }
+.menu-site__chevron { flex: none; width: 0; height: 0; border-inline: 5px solid transparent; border-top: 6px solid var(--muted); }
+.menu-site[data-anime] .menu-site__chevron { transition: transform 0.25s ease; }
+.menu-site__groupe[data-replie='oui'] > .menu-site__replier .menu-site__chevron { transform: rotate(-90deg); }
+.menu-site__sous { display: grid; grid-template-rows: 1fr; }
+.menu-site[data-anime] .menu-site__sous { transition: grid-template-rows 0.28s var(--menu-courbe), visibility 0.28s; }
+.menu-site__groupe[data-replie='oui'] > .menu-site__sous { grid-template-rows: 0fr; visibility: hidden; }
+.menu-site .menu-site__sous-liste { min-height: 0; overflow: hidden; margin-left: 0.8rem; padding: 0.1rem 0 0.2rem; border-left: 1px solid var(--border); }
+.menu-site__sous-liste a { margin-left: -1px; padding-left: 0.75rem; }
+
+/* page de maintenance, ou page qui y part : le menu latéral est grisé et inerte comme l'en-tête (styles/global/site-shell.css) */
+.menu-site--maintenance, html[data-maintenance] .menu-site { opacity: 0.35; filter: grayscale(1); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-site[data-anime], .menu-site[data-anime] * { transition: none !important; }
+}
+/* le bouton à trois barres de l'en-tête (écran étroit, avec JavaScript : il l'ôte de `hidden`) et le voile du tiroir : cachés sur grand écran */
+.menu-site__burger, .menu-site__voile { display: none; }
+/* Écran étroit (<= 56rem) : un tiroir (R319 (2) : « sur mobile [...] un comportement "tiroir" »), sur le modèle de ceux des classes et de la chronologie. Sans JavaScript, le
+   menu est un bloc ouvert au-dessus de la page. Avec : il glisse depuis la gauche, de 18,75 rem, sous l'en-tête (dont les rubriques restent visibles : en toucher une l'ouvre),
+   sur la page voilée ; le bouton à trois barres, son bouton, le voile, Échap ou le choix d'une entrée le ferment (components/MenuDuSite.astro). `data-reduit='oui'` : fermé. */
+@media (max-width: 56rem) {
+  :root, :root:has(.menu-site[data-reduit='oui']) { --menu-courante: 0px; }
+  .site-corps { display: block; }
+  .menu-site { width: auto; padding-top: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+  .menu-site[data-reduit='oui'] { width: auto; }
+  .menu-site__cadre { position: static; width: auto; max-height: none; overflow: visible; padding: 0.5rem 1rem; }
+  .menu-site__tete { padding-left: 0; }
+  .menu-site__burger:not([hidden]) {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    margin-right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: transparent;
+    cursor: pointer;
+  }
+  .menu-site__burger[aria-expanded='true'] { background: var(--border); }
+  .menu-site__burger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .menu-site__burger > span { width: 1.25rem; height: 2px; border-radius: 1px; background: var(--text); }
+
+  .menu-site[data-js] {
+    position: fixed;
+    z-index: 41;
+    top: var(--entete-bas, 0px);
+    bottom: 0;
+    left: 0;
+    width: min(18.75rem, calc(100vw - 2.75rem));
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+    box-shadow: var(--ombre-tiroir);
+    transform: translateX(0);
+  }
+  .menu-site[data-js][data-reduit='oui'] { width: min(18.75rem, calc(100vw - 2.75rem)); transform: translateX(-100%); visibility: hidden; box-shadow: none; }
+  /* la visibilité : aussitôt à l'ouverture (le focus s'y pose), après le glissement à la fermeture */
+  .menu-site[data-js][data-anime] { transition: transform 0.32s var(--menu-courbe), box-shadow 0.32s ease, visibility 0s; }
+  .menu-site[data-js][data-anime][data-reduit='oui'] { transition: transform 0.32s var(--menu-courbe), box-shadow 0.32s ease, visibility 0s linear 0.32s; }
+  .menu-site[data-js] .menu-site__cadre { box-sizing: border-box; height: 100%; max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom)) 0.75rem; }
+  .menu-site[data-js][data-reduit='oui'] :is(.menu-site__titres, .menu-site__contenu) { visibility: visible; opacity: 1; }
+  .menu-site[data-js] .menu-site__tete { gap: 0.6rem; }
+  .menu-site[data-js] .menu-site__reduire { width: 2.75rem; height: 2.75rem; }
+  .menu-site[data-js] .menu-site__titre { font-size: 1.15rem; }
+  .menu-site[data-js] .menu-site__contenu { margin-top: 0.5rem; padding-left: 0; }
+  /* des cibles de 44 px */
+  .menu-site[data-js] :is(.menu-site__liste, .menu-site__sous-liste) a,
+  .menu-site[data-js] .menu-site__replier,
+  .menu-site[data-js] .nav-soon { display: flex; align-items: center; gap: 0.3em; min-height: 2.75rem; }
+  .menu-site[data-js] .menu-site__replier { justify-content: space-between; }
+  .menu-site[data-js] .menu-site__chevron { border-inline-width: 6px; border-top-width: 7px; }
+  /* le voile sur la page, sous l'en-tête : un appui ferme le tiroir */
+  .menu-site__voile:not([hidden]) { display: block; position: fixed; z-index: 40; top: var(--entete-bas, 0px); right: 0; bottom: 0; left: 0; background: var(--voile-tiroir); animation: menu-voile 0.22s ease-out; }
+  @keyframes menu-voile { from { opacity: 0; } }
+  html.menu-ouvert { overflow: hidden; }
+}
+@media (max-width: 56rem) and (prefers-reduced-motion: reduce) {
+  .menu-site__voile:not([hidden]) { animation: none; }
+}
+@media print { .menu-site { display: none; } .site-corps { display: block; } .menu-site__burger, .menu-site__voile { display: none !important; } }

@@ -7,7 +7,7 @@ user-invocable: false
 # Mise à jour
 
 ## Fichiers
-- Page : `src/pages/mise-a-jour.astro` (menu Outils), `src/scripts/mise-a-jour.mjs`, `styles/mise-a-jour/`.
+- Page : `src/pages/mise-a-jour.astro` (rubrique Règles du menu), `src/scripts/mise-a-jour.mjs`, `styles/mise-a-jour/`.
 - Notes de version : `lib/notes-de-version.mjs`, `lib/notes-de-version-sens.mjs` (couleurs R29), `lib/notes-de-version-rendu.mjs`. Section « Modifications de l'équipe » (lots, R291) : skill `zone-mise-a-jour-lots`.
 - Service : `serveur/notes-de-version.mjs` (note en préparation, lot figé, états du lancement). Référence : `scripts/db-reference.mjs` (base de master).
 - Sous-skills : paquet, copie, jobs `preparer` et `livrer`, interrupteurs de GitHub, refus et identité sous `db/bascule-2` : `zone-mise-a-jour-paquet` ; lots du journal en conflit (circuit sans marqueur) : `zone-mise-a-jour-conflits` ; maintenance : `zone-maintenance` ; ce que le service fait d'un lot de changements : `zone-edition-lots`.

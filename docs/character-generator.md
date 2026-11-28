@@ -7,8 +7,9 @@ Deux pages (demande du propriétaire), branchées sur le service des personnages
 | `/fiche/` (et `/fiche/?id=<id>`) | **Créer et modifier** un prétiré, sur le même écran | `client/src/pages/fiche/index.astro`, `src/scripts/fiche.mjs`, `styles/fiche/fiche.css` |
 | `/personnages/` | **Rechercher** les personnages : filtres, puis une liste (portrait, nom, race, magies, niveau) triée par la colonne choisie, chaque ligne étant le lien vers la fiche | `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs` |
 
-L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, la rubrique « Espace joueur » réunit
-« Fiche de personnage » (`/fiche/`) et « Personnages » (`/personnages/`), puis « Groupes d’aventures », « Table de jeu » et « Chroniques » (bientôt).
+L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Le générateur n'a pas d'entrée au menu (R319 (6),
+jusqu'à E8) : on y arrive par « Personnages prétirés » (`/personnages/`, rubrique Le Jeu : chaque ligne mène à `/fiche/?id=…`) et par l'onglet « Fiche de personnage »
+des Règles ; sa page ouvre tout de même la rubrique Le Jeu (`autres` de `lib/nav.mjs`).
 
 ## La page `/fiche/`
 

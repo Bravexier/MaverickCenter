@@ -16,6 +16,7 @@ import {
   adresseDuSysteme, echapper, suivreLOuverture,
 } from '../src/lib/debug-metriques.mjs';
 import { NIVEAUX as NIVEAUX_DU_SERVICE, creerJournalDuService } from '../serveur/journal-du-service.mjs';
+import { entreesDeLaListe, listeDeLaRubrique } from './aide-menu-html.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
 
@@ -475,8 +476,7 @@ const construit = existsSync(new URL('index.html', dist)) ? {} : { skip: 'site n
 test('site construit : /debug/ selon le mode — quatre menus fermés (Système, Performances, Journaux, DB) et leurs scripts hors production ; une phrase et rien au menu en production', construit, () => {
   const html = readFileSync(new URL('debug/index.html', dist), 'utf8');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-  const outils = html.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  const auMenu = /<a href="\/debug\/"[^>]*>Debug<\/a>/.test(outils);
+  const auMenu = entreesDeLaListe(listeDeLaRubrique(html, 'taverne')).some((e) => e.href === '/debug/'); // R319 : Debug est dans la Taverne
   if (main.includes('class="debug-reservee"')) {
     // build de production (SITE_MODE=prod ; la CI en fait un : ci.yml) : ni entrée de menu, ni menus, ni leurs scripts — dans toute la page, pas
     // seulement dans <main> : un composant qui poserait le script hors de la condition `actif` l'y ferait charger. Astro construit le script même
@@ -497,7 +497,7 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
     }
     return;
   }
-  assert.equal(auMenu, true, 'au menu Outils du site de dev');
+  assert.equal(auMenu, true, 'au menu de la Taverne du site de dev (R319)');
   assert.match(main, /<div class="debug" data-debug data-api="\/api\/">/);
   // quatre menus déroulants fermés, dans l'ordre ; Système, Performances et Journaux cachés tant que le service n'a pas répondu, DB visible
   assert.match(main, /<details class="debug-bloc debug-systeme" data-debug-systeme hidden>/);

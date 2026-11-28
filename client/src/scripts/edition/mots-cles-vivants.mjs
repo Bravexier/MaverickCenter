@@ -184,6 +184,7 @@ function rafraichir() {
   const cles = new Set(); // les clés des bulles à refaire : celles des mots-clés de la page, et celles des bulles et déclencheurs déjà posés
   for (const el of document.querySelectorAll('[data-mot-cle][data-balise]')) {
     if (el.closest('[contenteditable=""], [contenteditable="true"]')) continue; // un texte en cours de saisie : il sera relu tel qu'il est
+    if (el.closest('[data-menu-site]')) continue; // le menu latéral du site (R319) : ses liens portent la page courante et le côté de leur bulle, que la balise ne dit pas ; il suit le glossaire au build
     const b = lireUneBalise(el.dataset.balise);
     const m = b && motCleDeLaRef(vocabulaire, b.ref);
     if (!b) continue;

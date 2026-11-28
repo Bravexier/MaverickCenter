@@ -1,6 +1,6 @@
 // Pages /chronologie/ construites (dist/) : la frise verticale à gauche (une ligne par événement, la date à gauche de la barre, le titre à droite, le
 // dégradé porté par chaque ligne), à droite la page de l'événement (ou, sur /chronologie/, le mode d'emploi), tout à droite les chevrons Haut
-// (précédent) et Bas (suivant), grisés aux bords ; extraits et date surlignée, scripts en ligne sans import, entrée du menu Codex. Se saute sans
+// (précédent) et Bas (suivant), grisés aux bords ; extraits et date surlignée, scripts en ligne sans import, entrée du menu Le monde. Se saute sans
 // dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -14,6 +14,7 @@ import { classeDEvenement, cssDesEvenements } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
+import { entreesDeLaListe, listeDeLaRubrique } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'chronologie', 'index.html'));
@@ -246,7 +247,7 @@ test('catégories (migration 0043) : chaque ligne de la frise porte les siennes 
   }
 });
 
-test('scripts en ligne sans import (version portable) ; le menu Codex mène à la chronologie ; transition entre les pages de la chronologie', options, () => {
+test('scripts en ligne sans import (version portable) ; le menu Le monde mène à la chronologie ; transition entre les pages de la chronologie', options, () => {
   for (const chemin of ['chronologie', adresseDEvenement(evenements[0].id)]) {
     const html = lireChemin(chemin);
     for (const [, code] of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) assert.ok(!/(^|[;}\n])\s*import[\s{*"']|\bimport\(/.test(code), `${chemin} : script de page sans import`);
@@ -256,5 +257,6 @@ test('scripts en ligne sans import (version portable) ; le menu Codex mène à l
     assert.match(html, /ArrowLeft/, `${chemin} : ← → au clavier`);
     assert.match(html, /@view-transition \{ navigation: auto; \}/, 'la page glisse d’un événement à l’autre (navigateurs qui le savent)');
   }
-  assert.match(lireChemin('chronologie'), /<a href="\/chronologie\/" aria-current="page">Chronologie<\/a>/);
+  // le menu latéral (rubrique Le monde, R319) : l'entrée de la chronologie, courante
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(lireChemin('chronologie'), 'monde')).filter((e) => e.href === '/chronologie/').map((e) => e.courant), ['page']);
 });

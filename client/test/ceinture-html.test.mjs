@@ -20,6 +20,7 @@ import { SOUS_ONGLETS_DE_LA_CEINTURE } from '../src/lib/equipement.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
+import { entreesDeLaListe, listeDeLaRubrique } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'objets-a-la-ceinture', 'index.html');
@@ -60,7 +61,8 @@ test('l’onglet Ceinture : ses trois sous-onglets dans l’ordre, chacun un lie
   }
   // la page est à l'adresse de l'ancienne page « Objets à la ceinture » (identifiants figés), plus de page « Équipement » (test/equipement-html.test.mjs)
   assert.ok(!existsSync(join(dist, 'ressources', 'equipement')), 'pas de page /ressources/equipement/');
-  assert.ok(html.includes('<a href="/ressources/objets-a-la-ceinture/" aria-current="page">Ceinture</a>'), 'son entrée du menu, courante');
+  // son entrée du menu latéral (rubrique Ressources, R319), courante : le libellé est celui du mot-clé de la page, pas écrit ici
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'ressources')).filter((e) => e.href === '/ressources/objets-a-la-ceinture/').map((e) => e.courant), ['page'], 'son entrée du menu, courante');
 });
 
 test('mode modification (site de dev) : les quatre cases saisies de chaque potion, et rien d’autre de l’onglet hors du panneau de règles des bâtons', options, () => {

@@ -1,10 +1,10 @@
 ---
 name: zone-archives
-description: "Page /archives/ (menu Outils) : les Google Docs et Sheets (registre des copies sources/copies-drive.json, manifeste sources/sources.json) et l'ancien wiki Fandom, documents retirés, copies du propriétaire. À charger avant de lire, modifier ou relire cette page, lib/archives.mjs ou leurs tests."
+description: "Page /archives/ (rubrique Taverne) : les Google Docs et Sheets (registre des copies sources/copies-drive.json, manifeste sources/sources.json) et l'ancien wiki Fandom, documents retirés, copies du propriétaire. À charger avant de lire, modifier ou relire cette page, lib/archives.mjs ou leurs tests."
 paths: ["client/src/pages/archives.astro", "client/src/lib/archives.mjs", "sources/copies-drive.json", "client/src/styles/archives/**", "client/test/archives.test.mjs"]
 user-invocable: false
 ---
-# Archives (`/archives/`, menu Outils)
+# Archives (`/archives/`, rubrique Taverne)
 
 ## Fichiers
 

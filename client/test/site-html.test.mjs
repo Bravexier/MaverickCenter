@@ -25,6 +25,8 @@ import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesDeLEntete } from './aide-menu-html.mjs';
+import { NAV, entreesAPlat } from '../src/lib/nav.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
@@ -175,69 +177,98 @@ test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', 
   assert.ok(Object.values(renvois).every((c) => !c.startsWith('guide/') && existsSync(join(dist, c.split('#')[0], 'index.html'))), 'chaque renvoi mène à une page construite');
 });
 
-test('en-tête : le logo à la place du titre, le menu à côté ; le logo en icône', options, () => {
+test('en-tête : le logo à la place du titre, les rubriques à côté sur une seule ligne ; le menu latéral hors de la bande, à gauche de la page ; le logo en icône', options, () => {
   const html = lire('index.html');
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.match(entete, /<a class="brand" href="\/"><img src="\/logo\.webp" alt="Maverick Center" width="\d+" height="\d+"\s*\/?><\/a>/);
-  assert.ok(entete.indexOf('class="site-nav"') > entete.indexOf('class="site-header__menu"'), 'menu dans la même bande que le logo');
+  assert.ok(entete.indexOf('class="site-nav"') > entete.indexOf('class="site-header__menu"'), 'les rubriques dans la même bande que le logo');
+  assert.ok(!entete.includes('site-nav__items') && !entete.includes('<nav class="menu-site'), 'R319 (1) : plus de deuxième ligne dans l’en-tête');
+  // le bouton à trois barres du tiroir (écran étroit) est dans l'en-tête, avant le logo, caché jusqu'à ce que le script du menu le montre
+  assert.ok(entete.indexOf('data-menu-burger') >= 0 && entete.indexOf('data-menu-burger') < entete.indexOf('class="brand"'));
+  assert.match(entete, /<button type="button" class="menu-site__burger" aria-expanded="false" aria-controls="menu-du-site" aria-label="[^"]+" data-menu-burger hidden>/);
+  assert.ok(html.includes('data-menu-voile'), 'le voile du tiroir, avant le menu');
+  // le menu latéral : après l'en-tête, avant la page, dans le même cadre
+  assert.match(html, /<\/header><div class="site-corps"><div class="menu-site__voile" data-menu-voile hidden><\/div><nav class="menu-site" id="menu-du-site" aria-label="[^"]+" data-menu-site>/);
+  assert.ok(html.indexOf('<nav class="menu-site"') < html.indexOf('<main') && html.indexOf('</main>') < html.indexOf('<footer'));
+  assert.equal(html.match(/<script[^>]*>(?:(?!<\/script>)[\s\S])*menu-du-site:etat/g).length, 1, 'un seul script du menu, en ligne');
+  assert.doesNotMatch(html.match(/<script[^>]*>(?:(?!<\/script>)[\s\S])*menu-du-site:etat/)[0], /^<script[^>]* src=|\bimport\b/, 'sans import (version portable)');
   assert.match(html, /<link rel="icon" type="image\/png" sizes="32x32" href="\/favicon\.png"/);
   assert.match(html, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"/);
   for (const fichier of ['logo.webp', 'favicon.png', 'apple-touch-icon.png']) assert.ok(existsSync(join(dist, fichier)), fichier);
   assert.ok(!existsSync(join(dist, 'favicon.svg')), 'ancienne icône retirée');
 });
 
-test('en-tête : plus de barre de recherche (une page à part, avec les mots-clés) ; le menu voulu par le propriétaire', options, () => {
+test('R319 : plus de barre de recherche, cinq rubriques ; une liste par rubrique rendue côté serveur, la bonne montrée ; entrées de la rubrique de la page marquées', options, () => {
   const html = lire('index.html');
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
-  assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['regles Règles', 'personnage Personnage', 'equipement Équipement', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
-  assert.match(entete, /data-group="regles" aria-pressed="true"/, 'l’accueil ouvre les Règles');
-  const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
-  // (test/debug-page.test.mjs)
+  assert.deepEqual(rubriquesDeLEntete(html).map((r) => `${r.cle} ${r.libelle}`), NAV.map((g) => `${g.key} ${g.label}`));
+  // l'accueil et les pages du menu du profil : aucune rubrique courante, le menu du Jeu montré
+  for (const rel of ['index.html', 'recherche/index.html', 'regles/glossaire/index.html']) {
+    assert.deepEqual(rubriquesDeLEntete(lire(rel)).filter((r) => r.montree || r.courante), [{ cle: 'jeu', libelle: 'Le Jeu', montree: true, courante: false }], rel);
+  }
+  // une liste par rubrique, toutes rendues, une seule visible (`hidden` sur les autres)
+  assert.deepEqual([...menuLateral(html).matchAll(/<ul class="menu-site__liste" data-group="([^"]+)"( hidden)?/g)].map((m) => `${m[1]}${m[2] ? ' caché' : ''}`),
+    ['jeu', 'regles caché', 'ressources caché', 'monde caché', 'taverne caché']);
+  // le bouton de réduction, ouvert au départ (sans JavaScript, le menu est ouvert) ; le titre de la rubrique montrée
+  assert.match(menuLateral(html), /<button type="button" class="menu-site__reduire" aria-expanded="true" aria-controls="menu-du-site-contenu" aria-label="[^"]+" data-menu-reduire>/);
+  assert.match(menuLateral(html), /<p class="menu-site__titre" data-group="jeu">Le Jeu<\/p>/);
+  // la Taverne : ses pages, par adresse ; Debug au menu du site de dev seulement (lib/nav.mjs#entreesVisibles) ; un build de production (SITE_MODE=prod) a la page réservée
   const production = lire('debug/index.html').includes('class="debug-reservee"');
-  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
-    ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="equipement" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Équipement');
-  // les onglets des Règles (R184), lus dans leur menu latéral : leurs pages ouvrent les Règles et marquent l'entrée de leur onglet, tirée du plan
-  // (`entree` de layouts/Base.astro), elle seule ; l'adresse de l'onglet (ouverte sur sa page d'ouverture) en est la page ; /regles/ montre la page
-  // d'ouverture du premier onglet. L'Artisanat (/regles/artisanat/, entrée lien d'Exploration) ouvre les Règles et marque Exploration, plus l'Équipement.
-  // Les onglets sont fixes ; le site de dev range une page dans un autre onglet (regles_onglet_entree.onglet_id) : la page d'un onglet est lue dans la base
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'taverne')).filter((e) => e.href).map((e) => e.href), ['/galeries/', '/archives/', ...(production ? [] : ['/debug/'])]);
+  // une entrée « bientôt » : ni lien ni page
+  assert.ok(entreesDeLaListe(listeDeLaRubrique(html, 'taverne')).some((e) => e.bientot && e.href === null));
+  // les entrées à sous-pages : un bouton qui déplie, les sous-pages dans un bloc nommé par lui
+  const jeu = listeDeLaRubrique(html, 'jeu');
+  assert.match(jeu, /<li class="menu-site__groupe" data-cle="jeu\/introduction"[^>]*><button type="button" class="menu-site__replier" aria-expanded="true" aria-controls="(menu-du-site-jeu-introduction)" data-menu-replier="jeu\/introduction">/);
+  assert.ok(jeu.includes('<div class="menu-site__sous" id="menu-du-site-jeu-introduction">'));
+  assert.ok(entreesDeLaListe(jeu).slice(0, 2).every((e) => e.href && e.motCle), 'Découvrir et L’univers : des liens de mot-clé, sous Introduction');
+  // un lien de mot-clé (R319 (4)) : la balise d'un texte, l'infobulle sur le côté ; un lien simple pour une entrée sans mot-clé
+  assert.match(jeu, /<a data-placement="cote" class="mot-cle[^"]*" href="\/races\/" data-mot-cle="[^"]+"/);
+  assert.match(jeu, /<a class="menu-site__lien" href="\/personnages\/">/);
+  // une ressource hors menu ouvre les Ressources ; Autres en dernière entrée
+  assert.deepEqual(rubriquesDeLEntete(lire('ressources/alchimie/index.html')).filter((r) => r.montree || r.courante), [{ cle: 'ressources', libelle: 'Ressources', montree: true, courante: true }]);
+  const autres = lire('ressources/index.html');
+  assert.deepEqual(rubriquesDeLEntete(autres).filter((r) => r.courante).map((r) => r.cle), ['ressources'], 'la liste des pages de ressources ouvre les Ressources');
+  const ressources = entreesDeLaListe(listeDeLaRubrique(autres, 'ressources'));
+  assert.deepEqual([ressources.at(-1).href, ressources.at(-1).courant], ['/ressources/', 'page'], 'Autres, en dernière entrée, courante');
+  assert.equal(ressources.filter((e) => e.courant).length, 1);
+  // Les familiers : adresse plus longue que ressources/, donc Le Jeu ; son entrée est courante
+  const familiers = lire('ressources/familiers/index.html');
+  assert.deepEqual(rubriquesDeLEntete(familiers).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, true]]);
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(familiers, 'jeu')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/ressources/familiers/', 'page']]);
+  // le générateur de fiche n'a pas d'entrée (R319 (6)) : aucune entrée n'y mène, et sa page est du Jeu
+  assert.ok(!NAV.flatMap((g) => entreesAPlat(g.items)).some((e) => e.path === 'fiche/'));
+  assert.ok(!entreesDeLaListe(menuLateral(html)).some((e) => e.href === '/fiche/'));
+  assert.deepEqual(rubriquesDeLEntete(lire('fiche/index.html')).filter((r) => r.courante).map((r) => r.cle), ['jeu']);
+  // l'Artisanat (une page de l'onglet Exploration) : une entrée des Ressources, courante ; l'onglet du plan est marqué dans sa liste (`aria-current="true"`)
+  const artisanat = lire('regles/artisanat/index.html');
+  assert.deepEqual(rubriquesDeLEntete(artisanat).filter((r) => r.courante).map((r) => r.cle), ['ressources']);
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(artisanat, 'ressources')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/artisanat/', 'page']]);
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(artisanat, 'regles')).filter((e) => e.courant).map((e) => e.courant), ['true'], 'l’onglet Exploration, qui y mène');
+});
+
+test('R184, R319 (5) : les onglets des Règles (Fiche de personnage au Jeu, les autres aux Règles), lus dans la table : leurs pages ouvrent leur rubrique et marquent l’entrée de leur onglet, tirée du plan', options, () => {
+  // (`entree` de layouts/Base.astro) elle seule ; l'adresse de l'onglet (ouverte sur sa page d'ouverture) en est la page ; /regles/ montre la page d'ouverture du
+  // premier onglet. Les onglets sont fixes ; le site de dev range une page dans un autre onglet (regles_onglet_entree.onglet_id) : la page d'un onglet est lue dans la base
   const base = ouvrirBase();
+  const onglets = base.prepare('SELECT id FROM regles_onglet ORDER BY ordre, id').all().map((o) => o.id);
+  const rubriqueDe = (id) => (id === 'fiche-de-personnage' ? 'jeu' : 'regles');
   const pageDuMenu = (onglet) => base.prepare(`SELECT e.page_id FROM regles_onglet_entree e JOIN regles_onglet o ON o.id = e.onglet_id
     WHERE e.onglet_id = ? AND e.page_id IS NOT NULL AND e.page_id <> o.ouverture_page_id ORDER BY e.rang, e.id`).get(onglet)?.page_id;
-  const deLOnglet = (onglet, chemin, libelle) => [`${cheminDePage(pageDuMenu(onglet))}index.html`, chemin, libelle, 'true'];
-  for (const [rel, chemin, libelle, courant] of [
-    ['regles/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
-    ['regles/fiche-de-personnage/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'page'],
-    deLOnglet('fiche-de-personnage', '/regles/fiche-de-personnage/', 'Fiche de personnage'),
-    ['regles/mecaniques-generales/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'page'],
-    deLOnglet('mecaniques-generales', '/regles/mecaniques-generales/', 'Mécaniques générales'),
-    ['regles/combats/index.html', '/regles/combats/', 'Les combats', 'page'], deLOnglet('combats', '/regles/combats/', 'Les combats'),
-    ['regles/exploration/index.html', '/regles/exploration/', 'Exploration', 'page'], deLOnglet('exploration', '/regles/exploration/', 'Exploration'),
-    ['regles/artisanat/index.html', '/regles/exploration/', 'Exploration', 'true'],
+  for (const [rel, onglet, courant] of [
+    ['regles/index.html', onglets[0], 'true'],
+    ...onglets.flatMap((o) => [[`regles/${o}/index.html`, o, 'page'], [`${cheminDePage(pageDuMenu(o))}index.html`, o, 'true']]),
   ]) {
     const page = lire(rel);
-    assert.match(page, /data-group="regles" aria-pressed="true" aria-current="true"/, `${rel} : les Règles`);
-    assert.match(page, /data-group="equipement" aria-pressed="false">/, `${rel} : pas l’Équipement`);
-    assert.ok(page.includes(`<a href="${chemin}" aria-current="${courant}">${libelle}</a>`), `${rel} : l’entrée « ${libelle} »`);
-    assert.equal(page.match(/<a href="\/regles\/[a-z-]+\/" aria-current=/g).length, 1, `${rel} : une seule entrée des onglets marquée`);
+    const courantes = rubriquesDeLEntete(page).filter((r) => r.courante || r.montree);
+    assert.deepEqual(courantes.map((r) => [r.cle, r.montree, r.courante]), [[rubriqueDe(onglet), true, true]], `${rel} : la rubrique de l’onglet ${onglet}`);
+    const marquees = entreesDeLaListe(menuLateral(page)).filter((e) => e.href?.startsWith('/regles/') && e.courant);
+    assert.deepEqual(marquees.map((e) => [e.href, e.courant]), [[`/regles/${onglet}/`, courant]], `${rel} : une seule entrée des onglets marquée`);
   }
   // l'ouverture d'un onglet n'est pas une seconde page : son adresse canonique est celle de la page montrée
   assert.match(lire('regles/fiche-de-personnage/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
   assert.match(lire('regles/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
-  assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
-  // réponse du propriétaire du 2026-10-29 : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »
-  const familiers = lire('ressources/familiers/index.html');
-  assert.match(familiers, /data-group="personnage" aria-pressed="true" aria-current="true"/, 'Familiers ouvre le Personnage');
-  assert.match(familiers, /data-group="equipement" aria-pressed="false">/, 'pas l’Équipement');
-  assert.ok(familiers.includes('<a href="/ressources/familiers/" aria-current="page">Familiers</a>'), 'son entrée, courante');
-  const autres = lire('ressources/index.html');
-  assert.match(autres, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la liste des pages de ressources ouvre l’Équipement');
-  assert.ok(autres.includes('<a href="/ressources/" aria-current="page">Autres</a>'), 'son entrée Autres, courante');
-  const equipement = entete.match(/<ul class="site-nav__items" data-group="equipement"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.match(equipement, /<a href="\/ressources\/">Autres<\/a><\/li>\s*$/, 'Autres, en dernière entrée de l’Équipement');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
@@ -520,7 +551,10 @@ test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l
   // bureau : l'image hors du flux (la hauteur de la bande vient du menu), le lien garde sa largeur et prend la hauteur de la bande, l'en-tête passe devant la page
   assert.ok(regles(bureau, '.brand img').some((d) => d.includes('position:absolute') && d.includes('top:0') && d.includes('pointer-events:none')), 'image en absolu, sans capter les clics');
   assert.ok(regles(bureau, '.brand').some((d) => d.includes('align-self:stretch') && d.includes('position:relative') && d.some((x) => x.startsWith('width:'))), 'lien : largeur du logo, hauteur de la bande');
-  assert.ok(regles(bureau, '.site-header').some((d) => d.includes('position:relative') && d.some((x) => x.startsWith('z-index:'))), 'la pointe passe devant le contenu');
+  // R317 (3), R319 : l'en-tête garde sa place d'origine (aligné sur le texte, sans pointe d'épée calculée) ; la hauteur de la bande est fixée (la place de la pointe en haut du menu latéral)
+  assert.ok(!bureau.includes('--pointe-epee'), 'plus de bande réduite calée sur la pointe de l’épée');
+  assert.ok(!regles(bureau, '.site-header__inner').some((d) => d.includes('max-width:none')), 'l’en-tête garde la largeur du contenu');
+  assert.ok(regles(bureau, '.site-header__inner').some((d) => d.some((x) => x.startsWith('min-height:'))), 'la hauteur de la bande');
   // téléphone : le menu passe sous le logo, qui reprend sa place dans le flux
   assert.ok(regles(petit, '.brand img').some((d) => d.includes('position:static')), 'logo dans le flux sur téléphone');
 });
@@ -585,13 +619,13 @@ test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) de
   assert.ok(lire('races/index.html').indexOf(SCRIPT.exec(lire('races/index.html'))[0]) < lire('races/index.html').indexOf('</head>'), 'dans <head> : la question part tôt');
   /** Exécute le script de la page dans un faux navigateur ; `reponse` : ce que rend fetch. */
   const executer = async (reponse) => {
-    const vu = { appels: [], remplacements: [], attributs: {}, entete: { inert: false } };
+    const vu = { appels: [], remplacements: [], attributs: {}, entete: { inert: false }, lateral: { inert: false } };
     vm.runInNewContext(code, {
       document: {
         currentScript: { getAttribute: (n) => ({ 'data-maintenance-api': api, 'data-maintenance-page': page })[n] },
         hidden: false,
         documentElement: { setAttribute: (n, v) => { vu.attributs[n] = v; } },
-        querySelector: (sel) => (sel === '.site-header__inner' ? vu.entete : null),
+        querySelector: (sel) => ({ '.site-header__inner': vu.entete, '.menu-site': vu.lateral })[sel] ?? null,
         addEventListener: () => {},
       },
       location: { pathname: '/races/elfe/', search: '?a=1', hash: '#don', replace: (u) => vu.remplacements.push(u) },
@@ -607,11 +641,12 @@ test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) de
   assert.deepEqual(en.remplacements, ['/maintenance/?retour=%2Fraces%2Felfe%2F%3Fa%3D1%23don'], 'retour à la même page, paramètres et ancre compris');
   assert.equal(en.attributs['data-maintenance'], '', 'menus grisés tout de suite');
   assert.equal(en.entete.inert, true);
+  assert.equal(en.lateral.inert, true, 'le menu latéral aussi');
   for (const [nom, reponse] of [['pas en maintenance', () => ({ ok: true, json: async () => ({ active: false }) })],
     ['service arrêté (502)', () => ({ ok: false, json: async () => ({}) })], ['site sans service', () => { throw new Error('réseau'); }],
     ['réponse inattendue', () => ({ ok: true, json: async () => 'oui' })]]) {
     const vu = await executer(reponse);
-    assert.deepEqual([vu.remplacements, vu.attributs, vu.entete.inert], [[], {}, false], nom);
+    assert.deepEqual([vu.remplacements, vu.attributs, vu.entete.inert, vu.lateral.inert], [[], {}, false, false], nom);
   }
 });
 
@@ -662,6 +697,10 @@ test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », 
   const css = readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.css')).map((f) => lire(`_astro/${f}`)).join('\n');
   const grise = css.match(/\.site-header--maintenance \.site-nav,html\[data-maintenance\] \.site-nav\{([^}]*)\}/);
   assert.ok(grise && /opacity:/.test(grise[1]) && /pointer-events:none/.test(grise[1]), 'menu grisé, sur la page de maintenance et sur une page qui y part');
+  // le menu latéral : inerte et grisé de même (R319)
+  assert.match(html, /<nav class="menu-site menu-site--maintenance" id="menu-du-site" aria-label="[^"]+" data-menu-site inert>/);
+  const lateralGrise = css.match(/\.menu-site--maintenance,html\[data-maintenance\] \.menu-site\{([^}]*)\}/);
+  assert.ok(lateralGrise && /opacity:/.test(lateralGrise[1]) && /pointer-events:none/.test(lateralGrise[1]), 'menu latéral grisé');
   assert.ok(!lire('index.html').includes('href="/maintenance/"'), 'pas dans le menu');
 });
 

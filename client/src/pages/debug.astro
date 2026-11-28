@@ -8,7 +8,7 @@ import { COLONNES_DES_ROUTES, INSTANCES, MESURES_DE_PAGE, PERIODES, PERIODE_PAR_
 import { url } from '../lib/wiki';
 import SchemaDeLaBase from '../components/debug/SchemaDeLaBase.astro';
 
-// Debug (menu Outils, site de dev seulement ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev »). Demande du
+// Debug (rubrique Taverne, site de dev seulement ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev »). Demande du
 // propriétaire du 2026-10-15 : « mettre les journaux du serveur dans un menu déroulant fermé de base. Performance et système aussi sont fermés par
 // défaut. L'ordre des menus est : 1) Système 2) Performance 3) Journaux 4) DB […] Tester l'API sera donc supprimé », et la jauge de l'espace disque :
 // « Inclus-la directement dans Système ». Sous le titre et la ligne d'état du service, quatre menus déroulants FERMÉS (ni `open`, ni état
@@ -34,7 +34,7 @@ import SchemaDeLaBase from '../components/debug/SchemaDeLaBase.astro';
 // Le script (scripts/debug.mjs) lit d'abord GET <base>api/etat/ : sans `edition: true`, le service n'est pas celui du site de dev et il s'arrête
 // (Système, Performances et Journaux restent cachés).
 // Build de production (SITE_MODE=prod) et version portable (pas de service ; tools/build-artifact.mjs ne l'emporte pas) : une phrase, sans script.
-// Hors du menu ailleurs que sur le site de dev (lib/nav.mjs#entreesDuMenu). CSS : styles/debug/, inséré ici (?raw).
+// Hors du menu ailleurs que sur le site de dev (lib/nav.mjs#entreesVisibles). CSS : styles/debug/, inséré ici (?raw).
 const site = modeDuSite(process.env, packageInfo.version);
 const portable = process.env.INLINE_CSS === '1';
 const actif = !site.prod && !portable;

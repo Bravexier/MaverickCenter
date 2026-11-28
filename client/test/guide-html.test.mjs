@@ -31,6 +31,7 @@ import { chargerModeHyper } from '../src/lib/guide-db.mjs';
 import { chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral as menuDuSite, rubriquesDeLEntete } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -208,12 +209,12 @@ const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
   // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
   assert.match(menu, /<details class="lateral-menu__repli" open data-lateral-repli>/, `${chemin} : ouvert sans JavaScript`);
   assert.doesNotMatch(sansLeScriptDesOnglets(main), /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
-  // l'entrée de l'onglet du menu du site, marquée sur chacune de ces pages, elle seule dans la rubrique Règles
-  assert.match(html, new RegExp(`<a href="/${rubrique.chemin}" aria-current="(?:page|true)">${rubrique.titre}</a>`), `${chemin} : l’entrée « ${rubrique.titre} » du menu du site`);
-  const enTete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
-  for (const o of ongletsDesRegles().filter((x) => x.chemin !== rubrique.chemin)) {
-    assert.doesNotMatch(enTete, new RegExp(`<a href="/${o.chemin}" aria-current=`), `${chemin} : « ${o.titre} » n’est pas marqué`);
-  }
+  // l'entrée de l'onglet du menu latéral du site (R319), marquée sur chacune de ces pages, elle seule parmi les onglets (son libellé est le titre de l'onglet)
+  const marquees = entreesDeLaListe(menuDuSite(html)).filter((e) => e.courant && e.href?.startsWith('/regles/') && ongletsDesRegles().some((o) => `/${o.chemin}` === e.href));
+  assert.deepEqual(marquees.map((e) => e.href), [`/${rubrique.chemin}`], `${chemin} : l’entrée de l’onglet « ${rubrique.titre} » du menu du site, seule marquée`);
+  assert.match(marquees[0].courant, /^(?:page|true)$/);
+  // son libellé : le titre de l'onglet, sauf l'onglet Fiche de personnage, qui garde le nom de l'arborescence (`libelleArbo`, R319 (4) : dix entrées)
+  if (rubrique.chemin !== 'regles/fiche-de-personnage/') assert.equal(marquees[0].libelle, rubrique.titre, `${chemin} : son libellé est le titre de l’onglet`);
   return { html, main, droite };
 };
 
@@ -236,14 +237,15 @@ test('R184 : chaque onglet des Règles, à gauche le menu latéral de ses entré
     const html = lire(onglet.chemin.slice(0, -1)).html;
     assert.match(html, new RegExp(`<link rel="canonical" href="/${cheminDePage(onglet.ouverture)}">`), onglet.chemin);
     assert.match(html, new RegExp(`<title>${echappe(onglet.titre)} — Maverick Center</title>`), onglet.chemin);
-    assert.match(html, new RegExp(`<a href="/${onglet.chemin}" aria-current="page">${echappe(onglet.titre)}</a>`), `${onglet.chemin} : l’entrée du menu du site, la page elle-même`);
+    const marquee = entreesDeLaListe(menuDuSite(html)).filter((e) => e.href === `/${onglet.chemin}`).map((e) => [e.courant, onglet.id === 'fiche-de-personnage' ? null : e.libelle]);
+    assert.deepEqual(marquee, [['page', onglet.id === 'fiche-de-personnage' ? null : onglet.titre]], `${onglet.chemin} : l’entrée du menu du site, la page elle-même (libellé : le titre de l’onglet, sauf la Fiche de personnage, au nom de l’arborescence)`);
     for (const p of pages) assert.doesNotMatch(lire(cheminDePage(p.id)).html, /rel="canonical"/, `${p.id} : à sa propre adresse, pas de canonique`);
   }
   // /regles/ : le premier onglet, ouvert sur « Créer son personnage »
   const regles = lire('regles').html;
   assert.match(regles, /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
   assert.match(regles, /<title>Fiche de personnage — Maverick Center<\/title>/);
-  assert.match(regles, /<a href="\/regles\/fiche-de-personnage\/" aria-current="true">Fiche de personnage<\/a>/);
+  assert.deepEqual(entreesDeLaListe(menuDuSite(regles)).filter((e) => e.href === '/regles/fiche-de-personnage/').map((e) => e.courant), ['true'], 'R319 : l’entrée de l’onglet Fiche de personnage (au Jeu), marquée');
   // une entrée « bientôt » : aucune aujourd'hui (R184, bilan) ; son rendu (grisée, sans lien) est épinglé par test/livres.test.mjs et le composant
   for (const onglet of onglets) assert.doesNotMatch(sansStyles(lire(onglet.chemin.slice(0, -1)).main), /class="lateral-menu__bientot/);
   // le Lexique (2026-11-05, migration 0090) : plus construit, son adresse mène au Glossaire, /regles/glossaire/ (R190 ; page 404 : test/site-html.test.mjs)
@@ -407,8 +409,8 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   const { entrees } = menuLateral(main, 'Exploration');
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
-  assert.match(html, /<a href="\/regles\/exploration\/" aria-current="true">Exploration<\/a>/);
-  assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la rubrique Règles ouverte');
+  assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'regles')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/exploration/', 'true']], 'l’onglet Exploration, marqué au menu');
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], 'R319 : l’Artisanat est une entrée des Ressources');
   // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)
   assert.match(html, /<div data-edition data-api="\/api\/" data-page="regles\/artisanat"/, 'le mode modification');
   assert.match(main, /<ol class="lateral-menu__liste" data-ed-menu="onglet:exploration">/);
@@ -440,7 +442,7 @@ test('Découvrir : une page par entrée du menu, dans l’ordre ; plus de « Rej
   assert.deepEqual(pagesDeLaRubrique(DECOUVRIR).map((p) => `/${cheminDePage(p.id)}`), ['/decouvrir/', '/decouvrir/l-univers/']);
   for (const { id } of pagesDeLaRubrique(DECOUVRIR)) assert.ok(pageDe(id), `${id} : construite`);
   const accueil = lire('decouvrir').html;
-  const menu = accueil.slice(accueil.indexOf('<header'), accueil.indexOf('</header>'));
+  const menu = menuDuSite(accueil); // R319 : le menu latéral du site (Introduction : Découvrir et L'univers ; les onglets sont des entrées du Jeu et des Règles)
   for (const chemin of ['/decouvrir/', '/decouvrir/l-univers/', ...ongletsDesRegles().map((o) => `/${o.chemin}`)]) {
     assert.ok(menu.includes(`href="${chemin}"`), `menu : ${chemin}`);
   }

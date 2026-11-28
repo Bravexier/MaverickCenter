@@ -44,3 +44,12 @@ test('la page porte la date de son dernier changement : une date valide, pas dan
   assert.ok(jour.getTime() <= Date.now(), 'pas dans le futur');
   if (present) assert.match(lire('confidentialite'), new RegExp(`<time datetime="${date}" data-mise-a-jour>[^<]+</time>`), 'rendue dans la page');
 });
+
+test('R319 : la page dit le stockage local du menu latéral, sous la clé que le script du menu écrit (jamais envoyée au serveur)', options, () => {
+  const script = readFileSync(fileURLToPath(new URL('../src/components/MenuDuSite.astro', import.meta.url)), 'utf8');
+  const cle = script.match(/var CLE = '([^']+)';/)[1];
+  const source = readFileSync(fileURLToPath(new URL('../src/pages/confidentialite.astro', import.meta.url)), 'utf8');
+  assert.ok(source.includes(`<code>${cle}</code>`), 'la clé du stockage local, telle que le script l’écrit');
+  assert.match(lire('confidentialite'), new RegExp(`<code>${cle}</code>`), 'rendue dans la page');
+  assert.ok(/localStorage/.test(source), 'le commentaire de tenue à jour de la page cite le stockage local');
+});

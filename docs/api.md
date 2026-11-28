@@ -3,7 +3,7 @@
 Demande du propriétaire : « une entrée pour TOUS les éléments possibles, avec une API REST et un CRUD ». Chaque élément du jeu rangé dans la base
 (races, classes, dons, sorts, armes, composants, monstres, événements de la chronologie, pages du guide…) a une adresse sous `/api/v1/`, où il se lit
 et, quand le service d'édition sait le faire, se crée, se modifie et se supprime. La description OpenAPI (`GET /api/v1/openapi.json`) sert aux outils
-externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur depuis qu'elle montre le schéma de la base (« Page Debug », plus bas).
+externes ; la page **Debug** du site de dev (rubrique Taverne, R319) n'a plus de testeur depuis qu'elle montre le schéma de la base (« Page Debug », plus bas).
 
 ## Principes
 
@@ -345,7 +345,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `pages-du-codex/` | Pages du Codex | `page` (partie) | modifier | — |
 | `pages/` | Pages du wiki | `page` (partie) | lecture seule | — |
 | `annonces/` | Annonces | `annonce` | modifier | — |
-| `onglets-des-regles/` | Onglets des Règles | `regles_onglet` | lecture seule | `entrees` |
+| `onglets-des-regles/` | Onglets des Règles | `regles_onglet` | modifier | `entrees` |
 | `alias-des-pages/` | Alias des pages | `alias` | lecture seule | — |
 | `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages`, `categories` (créer, supprimer), `synonymes` (créer, supprimer), `anciennes-cles` |
 | `categories-de-mots-cles/` | Catégories de mots-clés | `categorie_mot_cle` | créer, modifier, supprimer | — |
@@ -362,7 +362,9 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 `onglets-des-regles/` est le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les quatre onglets qui suivent Découvrir et
 L'univers, chacun avec sa page d'ouverture, et leur menu latéral en sous-ressource `entrees` (une page du guide, un lien comme « Artisanat », ou une
-entrée « bientôt »), dans l'ordre de `rang`. Les onglets sont fixes (ordre, titre, page d'ouverture : réponse du propriétaire « Non, fixe ») ;
+entrée « bientôt »), dans l'ordre de `rang`. Seul leur titre se modifie (`PATCH onglets-des-regles/<onglet>/` avec `titre` : obligatoire, d'une ligne, qui n'est pas celui d'un autre
+onglet, `409` ; décision R319 (5), « Ouvrir le titre, adresses renommées ») ; l'ordre, la page d'ouverture et l'adresse sont fixes (réponse « Non, fixe »,
+`400` pour une autre colonne), aucun onglet ne se crée ni ne se retire ;
 leur menu se modifie sur le site de dev (lot de l'édition des menus, `serveur/edition-plan.mjs`), mais la sous-ressource `entrees` reste en lecture
 seule ici (choix du leader-technique ; `lib/ressources.mjs#TABLES_SANS_ECRITURE_DIRECTE`, bien que `regles_onglet_entree` soit dans `TABLES`) :
 l'ordre d'un menu passe par l'action `ordre` de l'onglet, et une entrée naît et part avec sa page des Règles, créée (`POST pages-du-guide/` :
@@ -477,7 +479,7 @@ Ne jamais faire écrire l'API en SQL direct, ni déduire une valeur absente (rè
 
 ## Page Debug
 
-`/debug/` (menu Outils, **site de dev seulement** ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev ») : sous le
+`/debug/` (rubrique Taverne, R319, **site de dev seulement** ; demande du propriétaire : « une page Debug, visible uniquement sur le serveur dev ») : sous le
 titre et la ligne d'état du service, **quatre menus déroulants, tous fermés par défaut** (ni `open`, ni état mémorisé qui les rouvrirait), dans
 l'ordre voulu par le propriétaire (2026-10-15 : « Il faudra mettre les journaux du serveur dans un menu déroulant fermé de base. Performance et
 système aussi sont fermés par défaut. L'ordre des menus est : 1) Système 2) Performance 3) Journaux 4) DB (ton futur schéma). Tester l'API sera
@@ -595,7 +597,7 @@ La page lit d'abord `GET /api/etat/` : sans `edition: true`, le service n'est pa
 Code : `src/pages/debug.astro`, `src/scripts/debug.mjs` (Système, Performances, Journaux ; n'importe que `lib/debug-journaux.mjs` et
 `lib/debug-metriques.mjs`, purs), `styles/debug/` ; DB : `components/debug/SchemaDeLaBase.astro`, son script `src/scripts/debug-schema.mjs` (n'importe
 que `lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendus échappés ; aucun module commun avec `debug.mjs`),
-`lib/schema-structure.mjs` (au build), `styles/debug/schema.css` ; menu : `lib/nav.mjs#entreesDuMenu` (`devSeulement`) ; service :
+`lib/schema-structure.mjs` (au build), `styles/debug/schema.css` ; menu : `lib/nav.mjs#entreesVisibles` (`devSeulement`) ; service :
 `serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
 `serveur/debug-tables.mjs` (contenu des tables, version de la base).
 

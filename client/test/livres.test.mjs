@@ -424,18 +424,29 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.ok(db.prepare('SELECT 1 FROM annonce WHERE id = ?').get(LIENS_ET_RENCONTRE.rencontre.annonce), 'l’annonce de l’encart est dans la base (migration 0068)');
 });
 
-test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les onglets), Espace MJ (Guide du MJ) ; chaque page ouvre sa rubrique', () => {
+test('le menu s’accorde au plan (R319) : Découvrir et les onglets des Règles, Guide du MJ ; chaque page ouvre sa rubrique, l’onglet du plan faisant foi', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
-  assert.deepEqual(rubrique('regles').items.slice(0, 2).map((i) => i.path), DECOUVRIR.groupes[0].pages.map((id) => cheminDePage(id)));
-  // les onglets, puis le Glossaire (une page seule, hors du plan)
-  assert.deepEqual(rubrique('regles').items.slice(2, -1).map((i) => [i.label, i.path]), ongletsDesRegles().map((o) => [o.titre, o.chemin]));
-  assert.equal(rubrique('regles').items.at(-1).path, 'regles/glossaire/');
-  assert.ok(!NAV.some((g) => g.items.some((i) => i.path === ARTISANAT.chemin)), 'l’Artisanat n’est plus au menu du site (menu latéral d’Exploration)');
-  assert.ok(rubrique('mj').items.some((i) => i.label === GUIDE_DU_MJ.titre && i.path === GUIDE_DU_MJ.chemin));
-  assert.equal(activeGroup('/').key, 'regles', 'l’accueil ouvre les Règles');
-  for (const id of ids) assert.equal(activeGroup(`/${cheminDePage(id)}`).key, estDuGuideDuMj(id) ? 'mj' : 'regles', id);
-  for (const o of ongletsDesRegles()) assert.equal(activeGroup(`/${o.chemin}`).key, 'regles', o.chemin);
-  assert.equal(activeGroup(`/${ARTISANAT.chemin}`).key, 'regles', 'l’Artisanat ouvre les Règles (R184)');
+  const entrees = NAV.flatMap((g) => g.items.flatMap((i) => [i, ...(i.enfants ?? [])]));
+  // Découvrir et L'univers : les pages de DECOUVRIR, sous Introduction (Le Jeu)
+  assert.deepEqual(rubrique('jeu').items[0].enfants.map((i) => i.path), DECOUVRIR.groupes[0].pages.map((id) => cheminDePage(id)));
+  // les onglets : chacun une entrée (id et chemin de la table regles_onglet), la Fiche de personnage dans Le Jeu, les autres dans les Règles, dans l'ordre du plan
+  const onglets = ongletsDesRegles();
+  assert.deepEqual(entrees.filter((i) => i.onglet).map((i) => [i.onglet, i.path]).sort(), onglets.map((o) => [o.id, o.chemin]).sort());
+  assert.deepEqual(rubrique('regles').items.filter((i) => i.onglet).map((i) => i.path), onglets.filter((o) => o.id !== 'fiche-de-personnage').map((o) => o.chemin));
+  // le Glossaire n'est pas un onglet du plan : une page du menu du profil (R319)
+  assert.ok(!entrees.some((i) => i.path === 'regles/glossaire/'), 'le Glossaire n’est pas une entrée d’une rubrique');
+  // l'Artisanat (une page de l'onglet Exploration) est une entrée des Ressources (R319 : « Artisanat et composant dans ressources »)
+  assert.ok(rubrique('ressources').items.some((i) => i.path === ARTISANAT.chemin), 'l’Artisanat est au menu des Ressources');
+  assert.ok(rubrique('regles').items.some((i) => i.path === GUIDE_DU_MJ.chemin), 'le Guide du MJ est au menu des Règles');
+  assert.equal(activeGroup('/').key, 'jeu', 'l’accueil montre le menu du Jeu');
+  // une page du guide : la rubrique de son onglet (`entree` de Base.astro : le chemin de l'onglet du plan) ; le Guide du MJ et l'Artisanat sont des entrées
+  for (const id of ids) {
+    const onglet = ongletDe(id);
+    if (onglet) assert.equal(activeGroup(`/${cheminDePage(id)}`, '/', NAV, onglet.chemin).key, onglet.id === 'fiche-de-personnage' ? 'jeu' : 'regles', id);
+    else if (estDuGuideDuMj(id)) assert.equal(activeGroup(`/${cheminDePage(id)}`).key, 'regles', id);
+  }
+  for (const o of onglets) assert.equal(activeGroup(`/${o.chemin}`).key, o.id === 'fiche-de-personnage' ? 'jeu' : 'regles', o.chemin);
+  assert.equal(activeGroup(`/${ARTISANAT.chemin}`, '/', NAV, 'regles/exploration/').key, 'ressources', 'l’Artisanat ouvre les Ressources : sa page est une entrée');
 });
 
 test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées ; R190 : le Lexique, au Glossaire (réponses du propriétaire du 2026-11-06)', () => {

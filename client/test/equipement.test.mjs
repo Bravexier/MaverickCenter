@@ -137,15 +137,17 @@ test('paramètres de l’adresse (l’état d’une page : ?arme=, ?forme=…) :
   for (const nom of ['forme', 'matiere', 'amelioration-bouclier']) assert.ok(lus(source('armures.mjs')).has(nom), `armures.mjs lit ${nom}`);
 });
 
-test('rubrique Équipement (2026-10-29, entre Personnage et Espace joueur) : une entrée par page de l’équipement, son libellé et son adresse, puis Livres & Parchemins et Autres (R184 : l’Artisanat est dans l’onglet Exploration des Règles)', () => {
-  assert.deepEqual(NAV.map((g) => g.key).slice(1, 4), ['personnage', 'equipement', 'joueur']);
-  const items = NAV.find((g) => g.key === 'equipement').items;
-  assert.deepEqual(items.slice(0, PAGES_DE_L_EQUIPEMENT.length), PAGES_DE_L_EQUIPEMENT.map((o) => ({ label: o.nom, path: o.chemin })));
-  assert.deepEqual(items.slice(PAGES_DE_L_EQUIPEMENT.length).map((i) => i.label), ['Livres & Parchemins', 'Autres']);
-  // « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du propriétaire du 2026-10-29) : la liste des pages de ressources
+test('R319 : la rubrique Ressources, une entrée par page de l’équipement (son adresse), puis Livres & Parchemins, l’Artisanat, Composants et Autres ; l’ancienne page « Équipement » et « Pièces élémentaires » n’y sont plus', () => {
+  assert.deepEqual(NAV.map((g) => g.key), ['jeu', 'regles', 'ressources', 'monde', 'taverne']);
+  const items = NAV.find((g) => g.key === 'ressources').items;
+  // les cinq pages de l'équipement : leur adresse (lib/equipement.mjs) ; le libellé vient du mot-clé de la page (lib/menu-db.mjs), pas d'ici
+  const adresses = (os) => os.map((o) => o.chemin).sort();
+  assert.deepEqual(items.filter((i) => PAGES_DE_L_EQUIPEMENT.some((o) => o.chemin === i.path)).map((i) => i.path).sort(), adresses(PAGES_DE_L_EQUIPEMENT));
+  assert.deepEqual(items.slice(0, PAGES_DE_L_EQUIPEMENT.length).map((i) => i.path).sort(), adresses(PAGES_DE_L_EQUIPEMENT), 'les pages de l’équipement d’abord');
+  assert.deepEqual(items.slice(PAGES_DE_L_EQUIPEMENT.length).map((i) => i.path), ['ressources/livre-parchemin/', 'regles/artisanat/', 'ressources/composants/', 'ressources/']);
+  // « Le reste dans equipement (sous menu-autres pour commencer) » (réponse du propriétaire du 2026-10-29) : la liste des pages de ressources, en dernier
   assert.equal(items.at(-1).path, 'ressources/', 'Autres : la liste des pages /ressources/');
   assert.ok(!NAV.some((g) => g.items.some((i) => /ressources\/(equipement|pieces-elementaires)\//.test(i.path ?? ''))), 'ni l’ancienne page « Équipement » ni « Pièces élémentaires »');
-  assert.ok(!NAV.some((g) => g.key === 'ressources'), 'plus de rubrique Ressources');
 });
 
 test('« Pièces élémentaires » fusionnée dans Armes et Armures : son texte (avant ses tableaux) lu tel qu’écrit, « ▸ Armes » à la page Armes, « ▸ Armures » et « ▸ Vêtements » à la page Armures, le reste aux deux', () => {

@@ -32,6 +32,7 @@ import { adresseDuMotCle, htmlDuNomDuMotCle, motsClesCites, texteSansBalises } f
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ancreDuPanneau } from '../src/lib/panneaux-regles-rendu.mjs';
 import { texteDesPiecesElementaires } from '../src/lib/pieces-elementaires.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, rubriquesDeLEntete } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichierDe = (chemin) => join(dist, ...chemin.split('/').filter(Boolean), 'index.html');
@@ -58,15 +59,17 @@ test('cinq pages, chacune à son adresse : son titre, son panneau (`section.equi
     assert.deepEqual(panneaux.map((x) => [x[2], x[3]]), [[p.id, p.id]], `${p.id} : un panneau, étiqueté par le titre de la page`);
     assert.ok(!/\bis-active\b/.test(panneaux[0][1]), `${p.id} : plus d’onglet de page`);
     assert.ok(!m.includes('equipement-onglets') && !m.includes('data-onglets="Équipement"') && !m.includes('equipement-panneau__titre'), `${p.id} : plus de barre d’onglets`);
-    // la rubrique Équipement du menu (2026-10-29) : une entrée par page, vers son adresse ; celle de la page courante
+    // la rubrique Ressources du menu (R319) : une entrée par page, vers son adresse (son libellé est celui du mot-clé de la page : lib/menu-db.mjs) ; celle de la page courante
+    const entrees = entreesDeLaListe(listeDeLaRubrique(html[p.id], 'ressources'));
     for (const q of PAGES_DE_L_EQUIPEMENT) {
-      const entree = q === p ? `<a href="/${q.chemin}" aria-current="page">${q.nom}</a>` : `<a href="/${q.chemin}">${q.nom}</a>`;
-      assert.ok(html[p.id].includes(entree), `${p.id} : l’entrée du menu ${q.nom}`);
+      const entree = entrees.find((e) => e.href === `/${q.chemin}`);
+      assert.ok(entree, `${p.id} : l’entrée du menu ${q.nom}`);
+      assert.equal(entree.courant, q === p ? 'page' : null, `${p.id} : ${q.nom}, courante seulement sur sa page`);
     }
-    assert.match(html[p.id], /data-group="equipement" aria-pressed="true" aria-current="true"/, `${p.id} : la rubrique Équipement, ouverte`);
-    // un seul lien vers /ressources/ : l'entrée Autres du menu Équipement (« sous menu-autres », 2026-10-29), aucun dans la page
+    assert.deepEqual(rubriquesDeLEntete(html[p.id]).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], `${p.id} : la rubrique Ressources, ouverte`);
+    // un seul lien vers /ressources/ : l'entrée Autres du menu Ressources (« sous menu-autres », 2026-10-29), la dernière, aucun dans la page
     assert.equal(html[p.id].split('href="/ressources/"').length - 1, 1, 'un seul lien vers /ressources/');
-    assert.ok(html[p.id].includes('<a href="/ressources/">Autres</a>'), 'celui de l’entrée Autres du menu');
+    assert.equal(entrees.at(-1).href, '/ressources/', 'celui de l’entrée Autres du menu');
     // une entrée du menu, sans fil d'Ariane comme les autres (Races, Métiers, Artisanat…)
     assert.doesNotMatch(m, /<p class="muted"><a href="\/">Accueil<\/a>/);
   }

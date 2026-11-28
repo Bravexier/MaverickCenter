@@ -4,7 +4,7 @@ import Chronologie from '../../components/chronologie/Chronologie.astro';
 import { chargerChronologie } from '../../lib/chronologie-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 
-// La chronologie (menu Codex › Chronologie ; lib/chronologie.mjs) : la frise seule, et à sa droite le mode d'emploi ; chaque événement est à
+// La chronologie (rubrique Le monde › Chronologie ; lib/chronologie.mjs) : la frise seule, et à sa droite le mode d'emploi ; chaque événement est à
 // /chronologie/<id>/ ([slug].astro).
 const evenements = chargerChronologie(ouvrirBase());
 ---

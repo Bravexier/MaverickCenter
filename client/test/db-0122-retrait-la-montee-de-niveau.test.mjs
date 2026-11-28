@@ -70,7 +70,8 @@ test('0122 : la page retirée n’existe plus, ni ses lignes d’import, ni la s
 });
 
 test('0122 : Exploration s’ouvre sur « Équipement et butin », une page de son menu ; les autres entrées gardent leur rang', () => {
-  // regles_onglet ne se modifie pas sur le site de dev (choix du propriétaire « Non, fixe » ; db-r184-plan-des-regles.test.mjs) : la valeur se lit telle quelle
+  // la page d'ouverture d'un onglet ne se modifie pas sur le site de dev (choix du propriétaire « Non, fixe » ; R319 (5) n'ouvre que le titre ;
+  // db-r184-plan-des-regles.test.mjs) : la valeur se lit telle quelle
   assert.equal(db.prepare("SELECT ouverture_page_id AS p FROM regles_onglet WHERE id = 'exploration'").get().p, OUVERTURE);
   assert.ok(db.prepare("SELECT 1 FROM regles_onglet_entree WHERE onglet_id = 'exploration' AND page_id = ?").get(OUVERTURE));
   // à l'import : l'entrée retirée laisse son rang (1) libre, sans renumérotation (rang n'est ni UNIQUE ni continu)

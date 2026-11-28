@@ -13,6 +13,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral, rubriquesDeLEntete } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'composants', 'index.html');
@@ -50,18 +51,18 @@ test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, ge
   assert.ok(!/<details class="[^"]*comp-tableau/.test(main), 'plus de tableaux repliables');
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
   // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat ; la rubrique Équipement ouverte
-  // (toute page de ressources/ l'ouvre, lib/nav.mjs ; R184 : la page reste dans l'Équipement)
-  assert.match(html, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la page ouvre l’Équipement');
+  // (toute page de ressources/ l'ouvre, lib/nav.mjs ; R319 : la rubrique Ressources, où Composants est une entrée)
+  assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['ressources', true, true]], 'la page ouvre les Ressources');
   assert.match(readFileSync(join(dist, 'regles', 'artisanat', 'index.html'), 'utf8'), /<a href="\/ressources\/composants\/">Composants<\/a>/, 'dans l’Artisanat');
   // l'Artisanat, son sommaire, est son fil d'Ariane ; il n'est plus une entrée du menu du site (R184 : une entrée du menu latéral de l'onglet
   // Exploration des Règles) : aucune entrée marquée
   assert.ok(main.includes('<p class="muted"><a href="/">Accueil</a> › <a href="/regles/artisanat/">Artisanat</a></p>'), 'fil d’Ariane vers l’Artisanat');
-  assert.ok(!html.includes('<a href="/regles/artisanat/" aria-current'), 'plus d’entrée Artisanat au menu du site');
-  assert.doesNotMatch(html, /<a href="[^"]*" aria-current="true">/, 'aucune entrée du menu marquée');
-  // un seul lien vers /ressources/ : l'entrée Autres du menu Équipement (« sous menu-autres », 2026-10-29), aucun dans la page
+  // R319 : l'Artisanat et Composants sont des entrées des Ressources ; la page Composants est la seule marquée, aucune entrée d'onglet
+  const marquees = entreesDeLaListe(menuLateral(html)).filter((e) => e.courant).map((e) => [e.href, e.courant]);
+  assert.deepEqual(marquees, [['/ressources/composants/', 'page']], 'sa seule entrée est marquée');
+  // un seul lien vers /ressources/ : l'entrée Autres du menu Ressources (« sous menu-autres », 2026-10-29), aucun dans la page
   assert.equal(html.split('href="/ressources/"').length - 1, 1, 'un seul lien vers /ressources/');
-  assert.ok(html.includes('<a href="/ressources/">Autres</a>'), 'celui de l’entrée Autres du menu');
-  assert.ok(!html.includes('aria-current="page"'), 'la page n’est pas une entrée du menu');
+  assert.equal(entreesDeLaListe(listeDeLaRubrique(html, 'ressources')).at(-1).href, '/ressources/', 'celui de l’entrée Autres du menu, la dernière');
 });
 
 test('le titre et la note d’un onglet viennent de la base et se modifient (composant_onglet)', options, () => {

@@ -643,8 +643,8 @@ fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" » ; « J'aim
 Au menu, la rubrique **Équipement** a une entrée par page (libellé et adresse de `lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT`), puis Artisanat, Livres &
 Parchemins et **Autres** : la liste de toutes les pages de ressources, `/ressources/` (`pages/[type]/index.astro`). Réponse du propriétaire du 2026-10-29
 sur les pages `/ressources/…` hors menu : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) » (sic) :
-Familiers (`/ressources/familiers/`) est la dernière entrée de la rubrique Personnage et ouvre le Personnage ; toute autre page `/ressources/…` ouvre
-l'Équipement (`lib/nav.mjs`, plus long début d'adresse). Chaque page est rendue depuis la base, sans page du wiki, dans le cadre commun
+Familiers (`/ressources/familiers/`) est une entrée de la rubrique Le Jeu et ouvre Le Jeu ; toute autre page `/ressources/…` ouvre
+les Ressources (`lib/nav.mjs`, plus long début d'adresse ; R319). Chaque page est rendue depuis la base, sans page du wiki, dans le cadre commun
 `components/equipement/EquipementPage.astro` (titre `h1#titre-<id>`, `components/Onglets.astro` posé une fois, `styles/equipement/equipement.css`) ;
 ses règles sont rendues par `lib/equipement-rendu.ts` :
 
@@ -1385,9 +1385,10 @@ la recherche n'y lit aucun texte. Le service la crée (`serveur/edition-notions.
   ni chevrons, ni ← → ; sous 56rem, il est replié au-dessus de la page (un `<details>`, ouvert sans JavaScript ; un script en ligne, sans import, le
   replie sur petit écran). Feuille : `styles/guide/menu-lateral.css` (jetons du thème ; une entrée « bientôt » prend la classe `nav-soon` du menu
   du site). **L'onglet marqué au menu du site** (`entree` de `layouts/Base.astro`) vient du plan, pas de l'adresse ; toute adresse sous `/regles/`
-  ouvre la rubrique Règles (`autres` de `lib/nav.mjs`). `lib/nav.mjs` n'importe rien : ses libellés et chemins des onglets sont écrits à part, et
-  `test/nav.test.mjs` les compare à la table `regles_onglet`. Fil d'Ariane « Accueil › <onglet> ». La page « Artisanat » (`/regles/artisanat/`) est
-  une entrée lien d'Exploration : elle est à côté de ce menu, son entrée marquée, et l'onglet marqué au menu du site. Le mode modification du site de
+  ouvre la rubrique Règles (`autres` de `lib/nav.mjs`), sauf l'onglet Fiche de personnage, entrée de la rubrique Le Jeu (R319 : la rubrique d'une page
+  d'onglet suit son onglet du plan, `rubriqueCourante`). `lib/nav.mjs` n'importe rien : les chemins des onglets sont écrits à part (leur libellé est le
+  titre de la table `regles_onglet`, lu par `lib/menu-db.mjs`), et `test/nav.test.mjs` les compare à la table. Fil d'Ariane « Accueil › <onglet> ». La page « Artisanat » (`/regles/artisanat/`) est
+  une entrée lien d'Exploration : elle est à côté de ce menu, son entrée marquée ; au menu du site, c'est une entrée des Ressources (R319), et l'onglet Exploration reste marqué dans les Règles. Le mode modification du site de
   dev porte sur la page affichée (adresses des onglets comprises). Le texte des pages reste celui de la base : rien n'est réécrit.
   **Sur le site de dev** (lot de l'édition des menus ; demandes du propriétaire : « changer l'ordre des menu latéraux (par un glisser déposer) », « ajouter
   / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », « Titre, onglet, résumé », « Refus si citée, puis 404 » ;
@@ -1410,7 +1411,7 @@ la recherche n'y lit aucun texte. Le service la crée (`serveur/edition-notions.
   avis « Page supprimée sur le site de dev » et un lien vers son onglet, et `/races/` (pastilles et tableau des magies innées) suit le nouvel ordre
   des races, comme leur menu ; le libellé d'une entrée de page suit le titre de
   la page modifié (demande du propriétaire : « Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »), même pendant sa
-  saisie. Les onglets eux-mêmes (ordre, titre, ouverture) restent fixes (réponse « Non, fixe »).
+  saisie. Les onglets eux-mêmes : le titre se modifie (R319 (5) ; il était fixe, réponse « Non, fixe »), l'ordre et la page d'ouverture restent fixes.
   **Plan strict** (`verifierLePlan`, au build) : toute page `guide/…` qui n'est pas d'exemple est dans Découvrir, un onglet ou le Guide du MJ, sinon
   le build s'arrête en la nommant (l'ajouter à `regles_onglet_entree`) ; la cible d'un renvoi figé d'une ancienne adresse (ci-dessous) peut, elle,
   manquer (une page des Règles supprimée sur le site de dev : rien ne la protège pour cela) : son ancienne adresse donne alors la 404 (R185 (6)) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
@@ -1436,7 +1437,7 @@ la recherche n'y lit aucun texte. Le service la crée (`serveur/edition-notions.
   système et aucune règle CSS ne le bloque. Les pages du Guide du MJ gardent le badge « Guide » à côté du titre et la ligne « Aussi appelé » ; celles
   de Découvrir et des onglets n'ont ni l'un ni l'autre (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »).
 - **Un sommaire** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
-  pas ; aucune couleur de partie) : « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
+  pas ; aucune couleur de partie) : « **Guide du MJ** » (`/mj/`, rubrique Règles, [MJ] (R319) : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
   « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/` ; le même composant sert à l'Artisanat. Les
   onglets des Règles n'ont pas de sommaire (menu latéral, plus haut). « Les documents des règles » et son bloc `documents` sont supprimés (R184 (9)).
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
@@ -1596,6 +1597,17 @@ la recherche n'y lit aucun texte. Le service la crée (`serveur/edition-notions.
 - **Couleur d'une case de tableau** : `{couleur:vert}` en tête de case (`| {couleur:vert} Réussite | … |`) ; couleurs : rouge, orange, jaune, vert,
   bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` et la classe de la palette
   `couleur-case-<couleur>` (famille `case`, « Couleurs du site : la palette en classes ») ; tout autre texte entre accolades reste tel quel.
+
+## Menu du site : cinq rubriques et un menu latéral (R319)
+
+- **En-tête sur une seule ligne**, à sa place d'origine (R317 (3) : aligné sur le texte de la page, le compte déborde à droite ; l'en-tête garde la place du menu latéral à sa gauche, `padding-left: var(--menu-courante)` animé comme lui, et son contenu est centré dans le reste comme `<main>` : le logo reste aligné sur le texte, menu ouvert ou réduit) : le logo (lien vers l'accueil), les cinq rubriques (Le Jeu, Règles, Ressources, Le monde, Taverne), puis le compte. La rubrique de la page est marquée (`aria-current`, accent) ; celle dont le menu est montré est enfoncée (`aria-pressed`). L'accueil et les pages du menu du profil (Glossaire, Recherche, profil) ne sont d'aucune rubrique : le menu du Jeu est montré.
+- **Menu latéral** (`components/MenuDuSite.astro`, `styles/global/menu-site.css`) : collé au bord gauche de l'écran, sous l'en-tête, la page à côté (centrée dans sa largeur maximale). Une liste par rubrique rendue côté serveur (la bonne montrée, sans JavaScript) ; cliquer une rubrique change la liste sans changer de page et rouvre un menu réduit. Une entrée à sous-pages (Introduction) se plie et se déplie (animée, `grid-template-rows`) ; ouverte d'office si la page courante est dedans. Le bouton en tête réduit le menu en une bande de 3,5 rem, à la mesure du bouton, qui ne bouge pas ouvert ou réduit ; largeur animée en 0,3 s, aucune animation sous `prefers-reduced-motion`. En haut du menu, la place de la pointe de l'épée du logo, qui dépasse sous l'en-tête.
+- **Écran étroit (<= 56 rem) : un tiroir** de 18,75 rem qui glisse depuis la gauche, sous l'en-tête, sur la page voilée (`--voile-tiroir`, `--ombre-tiroir`). Les rubriques restent en ligne défilante sous le logo ; le bouton à trois barres, à gauche du logo, ou le toucher d'une rubrique l'ouvre ; son bouton, le voile, Échap ou le choix d'une entrée le ferment. Le reste de la page est inerte, le focus est piégé dans l'en-tête et le tiroir et rendu au bouton qui l'a ouvert ; cibles de 44 px. Il se ferme quand le menu du profil s'ouvre (et inversement), et les tiroirs des classes et de la chronologie rendent aussi le menu inerte (`.menu-site`). Sans JavaScript, c'est un bloc ouvert au-dessus de la page.
+- **État gardé** d'une page à l'autre dans `localStorage`, clé `menu-du-site:etat` : `{ reduit, replie: ["<rubrique>/<cle>"] }` (absent ou refusé : toléré ; dite sur `/confidentialite/`). Le menu démarre réduit, sans l'écrire, sur une page qui a déjà son menu de gauche (guide, races, classes, magies, armes, chronologie) et sur écran étroit (tiroir fermé).
+- **Les entrées** (`lib/nav.mjs`, résolues par `lib/menu-db.mjs`, rendues par `lib/menu-rendu.mjs`) : une entrée qui a un mot-clé prend son adresse, son habillage (couleur, icône, infobulle sur le côté) et son libellé, comme la balise d'un mot-clé dans un texte ; dix entrées gardent le nom de l'arborescence (`libelleArbo`) ; une entrée d'onglet des Règles prend le titre de la table `regles_onglet` ; sinon un lien simple, ou « bientôt ». La page courante : `aria-current="page"` ; l'onglet du plan qui y mène (`entree` de `layouts/Base.astro`) : `aria-current="true"` et c'est sa rubrique qui est courante.
+- **Menu du profil** (`MENU_DU_PROFIL`, `components/MenuDuProfil.astro`, `components/Compte.astro`, `scripts/compte.mjs`) : connecté, l'avatar et le pseudo ouvrent un menu déroulant (Mon profil ; Mes personnages, Mes groupes, Mes scénarios, « bientôt » ; Glossaire, Recherche ; Site de dev, en production seulement ; Voir le site en tant que… « bientôt » ; Se déconnecter) ; un compte connecté non membre garde « Connexion via Discord » et voit le même menu qu'un membre (rien n'est masqué selon le niveau avant le lot 4) ; un visiteur non connecté garde « Connexion via Discord » et un petit bouton qui ouvre Glossaire et Recherche ; la version portable ne pose que ce petit menu. Les entrées montrées suivent l'état du compte (`lib/compte.mjs#categoriesVisibles`) ; le panneau s'ouvre au bouton (`aria-expanded`) et se ferme à Échap, au clic dehors, au focus qui sort. Seul l'avatar reste sur écran étroit (R317 (3)). Un seul `GET /api/moi/` par page.
+- **Niveaux** (`niveau`, `prodSeulement` : joueur, MJ, créateur, production) : portés par les données, jamais appliqués avant le lot 4 ; seul `devSeulement` (Debug) retire une entrée, hors du site de dev et de la version portable (et, dans le menu du profil, `prodSeulement` hors de la production). Pas d'entrée pour le générateur `/fiche/` (R319 (6)).
+- Tests : `test/nav.test.mjs`, `test/menu-rendu.test.mjs`, `test/menu-du-site-script.test.mjs` et `test/menu-du-profil-script.test.mjs` (les scripts dans un faux navigateur), `test/menu-du-site-css.test.mjs`, `test/compte.test.mjs`, et le site construit (`test/site-html.test.mjs`).
 
 ## Niveaux de maîtrise (NM) des sorts
 

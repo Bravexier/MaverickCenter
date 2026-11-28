@@ -138,7 +138,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
       var image = 0;
       // ce que le tiroir rend inerte : cherché à l'ouverture (le pied de page n'est pas encore lu quand ce script tourne)
       function autour() {
-        return [cadre.querySelector(':scope > .classe'), ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test'), document.querySelector('main > p.muted')];
+        return [cadre.querySelector(':scope > .classe'), ouvrir, document.querySelector('.site-header'), document.querySelector('.menu-site'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test'), document.querySelector('main > p.muted')];
       }
       // la place de la bande : du haut du cadre (sous l'en-tête, tant qu'il est visible) ou du haut de l'écran, jusqu'au bas du cadre ou de l'écran
       function placer() {
