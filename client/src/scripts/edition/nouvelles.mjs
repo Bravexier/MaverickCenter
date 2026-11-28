@@ -8,12 +8,11 @@
 //   - l'adresse d'une page renommée dont le fichier n'est pas encore refabriqué (R316) renvoie à l'adresse où le site construit la sert encore ;
 //   - l'adresse d'un don créé (sa fiche n'existe pas encore) mène à son ancre sur la page de sa classe ;
 //   - une page des Règles créée (lot de l'édition des menus : « + Ajouter une page », « Créer la page » d'une entrée « bientôt » ; edition/menus.mjs) :
-//     à son adresse /regles/<slug>/, sa page comme PageDuGuide.astro, à côté du menu latéral de son onglet (MenuLateral.astro, d'après le plan vivant,
-//     GET /api/edition/plan/) — fil d'Ariane, titre modifiable, son texte (un morceau, « À compléter. ») et un bandeau « Page créée sur le site de dev » ;
-//     l'extension `guide` prend ensuite le relais (titre, résumé, texte en place), `menus` le menu (ordre, onglet, suppression) ;
+//     à son adresse /regles/<slug>/, sa page comme PageDuGuide.astro — fil d'Ariane, titre modifiable, son texte (un morceau, « À compléter. ») et un bandeau
+//     « Page créée sur le site de dev » ; son entrée est une sous-entrée de son onglet dans le menu latéral du site (R321), que `menus` redessine d'après le plan
+//     vivant (GET /api/edition/plan/) ; l'extension `guide` prend ensuite le relais (titre, résumé, texte en place), `menus` le menu (ordre, onglet, suppression) ;
 //   - une page de notion créée (page des Règles que le plan vivant ne range dans aucun onglet : serveur/edition-notions.mjs, chantier 3 des mots-clés) :
 //     même adresse, sans menu latéral, fil d'Ariane vers le Glossaire (lib/page-de-notion-rendu.mjs) ; `guide` y pose son résumé facultatif, `menus` « Supprimer la page ».
-import menuLateralCss from '../../styles/guide/menu-lateral.css?raw';
 import guideBlocsCss from '../../styles/guide/blocs.css?raw';
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
@@ -23,12 +22,12 @@ import classePageCss from '../../styles/classe/page.css?raw';
 import { CLASS_GROUPS, groupeDesMotsCles } from '../../lib/class-groups.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
-import { entreesDuPlanVivant, htmlDUneEntree } from '../../lib/ordre-des-menus.mjs';
 // la couleur d'une race ou d'une classe créée : la classe de sa nature ou de sa catégorie, comme les gabarits (familles `race` et `classe`, émises avec
 // la page dessinée : la page 404 ne les a pas) ; l'éditeur peut importer la palette (hors version portable : skill ui-couleurs)
 import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { adresseEncoreServie } from '../../lib/metiers.mjs';
 import { nomDuProtege } from '../../lib/mots-cles-proteges.mjs';
+import { menuDeLaPageCreee } from '../../lib/ordre-des-menus.mjs';
 import { htmlDeLaPageDeNotion, peutEtreUnePageDeNotion } from '../../lib/page-de-notion-rendu.mjs';
 import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
 
@@ -138,33 +137,23 @@ function pageDeClasse(lignes, id, vocabulaire) {
  */
 const paragraphes = (corps) => String(corps ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${echapperHtml(p)}</p>`).join('') || '<p></p>';
 
-/** Une page des Règles créée (`guide/<slug>`, adresse regles/<slug>/), à côté du menu de son onglet ; null si le plan vivant ne la range pas. */
+/** Une page des Règles créée (`guide/<slug>`, adresse regles/<slug>/) ; null si le plan vivant ne la range pas dans un onglet. */
 function pageDesRegles(ed, page, plan) {
   const id = page.cle.id;
   const onglet = plan.onglets.find((o) => o.entrees.some((e) => e.page_id === id));
   if (!onglet) return null;
   const chemin = `${ed.base}regles/${onglet.id}/`;
-  const entrees = entreesDuPlanVivant(plan, { onglet: onglet.id }).map((e) => htmlDUneEntree(e, { base: ed.base, courante: e.page === id })).join('');
   const titre = echapperHtml(page.ligne.titre);
   return {
-    css: [menuLateralCss, guideBlocsCss].join('\n'),
+    css: guideBlocsCss,
     titre: page.ligne.titre,
-    html: `<div class="lateral">
-      <nav class="lateral-menu" aria-label="${echapperHtml(onglet.titre)}">
-        <details class="lateral-menu__repli" open data-lateral-repli>
-          <summary class="lateral-menu__resume"><span class="lateral-menu__resume-rubrique">${echapperHtml(onglet.titre)}</span><span class="lateral-menu__resume-page">${titre}</span></summary>
-          <p class="lateral-menu__titre"><a href="${echapperHtml(chemin)}">${echapperHtml(onglet.titre)}</a></p>
-          <ol class="lateral-menu__liste" data-ed-menu="onglet:${echapperHtml(onglet.id)}">${entrees}</ol>
-        </details>
-      </nav>
-      <div class="lateral-page"><div class="guide-reference">
+    html: `<div class="guide-reference">
         <p class="muted guide-fil"><a href="${echapperHtml(ed.base)}">Accueil</a> › <a href="${echapperHtml(chemin)}">${echapperHtml(onglet.titre)}</a></p>
         <h1 id="guide-titre"><span data-ed="${ed_('page', { id }, 'titre')}">${titre}</span></h1>
         <p class="banner" role="note">Page créée sur le site de dev : elle sera construite comme les autres à la prochaine version du site, une fois le journal des
           modifications rapatrié. Écrivez-la ici (crayon) : titre, résumé et texte.</p>
         <div class="guide-corps" data-ed-corps="${echapperHtml(id)}"><div class="prose" data-ed-morceau>${paragraphes(page.ligne.corps_md)}</div></div>
-      </div></div>
-    </div>`,
+      </div>`,
   };
 }
 
@@ -200,9 +189,13 @@ async function dessinerPage(ed, lignes) {
     && lignes.find((l) => l.table === 'page' && l.cle.id === `guide/${id.slice('regles/'.length)}` && l.ligne);
   if (regle) {
     // une page des Règles que le plan vivant ne range dans aucun onglet est une page de notion (lib/livres.mjs#estHorsDuPlan) : sans menu latéral
-    const rendu = pageDesRegles(ed, regle, await ed.appel('GET', 'edition/plan/'))
+    const plan = await ed.appel('GET', 'edition/plan/');
+    const rendu = pageDesRegles(ed, regle, plan)
       ?? { css: guideBlocsCss, titre: regle.ligne.titre, html: htmlDeLaPageDeNotion({ id: regle.cle.id, titre: regle.ligne.titre, base: ed.base }) };
     poserLaPage(ed, rendu);
+    // le menu du site, construit avant elle, ne la contient pas : l'entrée de son onglet est marquée (`data-contient-la-page`), ce qui active l'extension `menus` (edition/menus.mjs),
+    // qui redessine la liste d'après le plan vivant (la page y apparaît, avec ses poignées) ; une page de notion n'est dans aucun menu
+    document.querySelector(`[data-ed-menu="${CSS.escape(menuDeLaPageCreee(plan, regle.cle.id) ?? '')}"]`)?.closest('.menu-site__groupe')?.setAttribute('data-contient-la-page', '');
     ed.page = regle.cle.id;
     for (const l of lignes) if (l.ligne) ed.appliquerLigne(l.table, l.cle, l.ligne);
     return true;

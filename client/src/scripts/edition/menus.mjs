@@ -2,10 +2,10 @@
 // Edition il faut prévoir de pouvoir changer l'ordre des menu latéraux (par un glisser déposer) », « En mode Edition il faut prévoir aussi de pouvoir
 // ajouter / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », entrées « bientôt » déplaçables, ordre des onglets fixe,
 // « Pages des Règles », « Titre, onglet, résumé », « Refus si citée, puis 404 », pages protégées sans bouton). Sur les pages qui ont un menu latéral
-// modifiable (components/guide/MenuLateral.astro, `data-ed-menu` : les quatre onglets des Règles, l'Artisanat, les pages de race) :
+// modifiable (les sous-entrées du menu latéral du site, `data-ed-menu` sur leur liste : les quatre onglets des Règles, l'Artisanat, les races ; R321 (3), lib/menu-rendu.mjs),
+// c'est-à-dire sur les pages de ce menu (R321 (6) : on réordonne un menu depuis l'une de ses pages ; une page de magie, de classe ou autre : aucune poignée, l'extension est inactive) :
 //   - chaque entrée reçoit une poignée (src/scripts/edition/glisser.mjs : souris, doigt, clavier) ; une race reste dans son groupe ; « Enregistrer »
 //     envoie une opération `ordonner` par menu changé (lib/ordre-des-menus.mjs#operationsDOrdre ; serveur/edition-plan.mjs) ;
-//   - sur petit écran, le menu replié s'ouvre le temps du mode modification ;
 //   - sous un menu d'onglet, « + Ajouter une page » (titre, onglet présélectionné, résumé, tous obligatoires ; l'adresse /regles/<slug>/ tirée du titre,
 //     figée) ; sur une entrée « bientôt », « Créer la page » (son libellé pour titre, son onglet) ; la création est immédiate, puis la page s'ouvre (elle
 //     est dessinée sur la 404 tant que le site n'est pas reconstruit : src/scripts/edition/nouvelles.mjs) ;
@@ -29,7 +29,7 @@ import { GLOSSAIRE } from '../../lib/livres.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import {
   adresseDeLaNouvellePage, adresseDeLaPageCreee, boutonSupprimer, chercherDansLePlan, elementsDuRefus, entreeDeLaPage, entreesDuPlanVivant, htmlDUneEntree,
-  lireMenu, operationsDOrdre, ordonnerSelon, pageSupprimeeEnAttente, raceDuLien,
+  lireMenu, menusModifiablesDeLaPage, operationsDOrdre, ordonnerSelon, pageSupprimeeEnAttente, raceDuLien,
 } from '../../lib/ordre-des-menus.mjs';
 import { rendreReordonnable } from './glisser.mjs';
 
@@ -38,11 +38,11 @@ const POIGNEE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"
 const TABLES_DU_PLAN = new Set(['regles_onglet_entree', 'race', 'page']);
 
 const etat = {
+  menuOuvert: false, // l'événement `menu-du-site:edition` (actif) a été envoyé
   generation: 0, // chaque passage en mode modification (et sa fin) : une réponse du plan arrivée trop tard est ignorée
   abandon: null,
   plan: null,
   menus: [], // [{ liste, avant: [{ id, groupe }], initial: [li] }]
-  replis: [], // [{ details, open }]
   ajouts: [], // éléments posés par l'extension, retirés à la fin
   page: null, // la page des Règles affichée, d'après le plan : { id, titre, onglet, entree } ; une page de notion : { id, titre, notion: true }
   choix: null, // la liste « Onglet »
@@ -51,57 +51,57 @@ const etat = {
   titre: null, // { id, texte } : le titre de la page affichée au passage en mode modification (rendu au menu si l'on abandonne la saisie)
 };
 
-const listesDesMenus = () => [...document.querySelectorAll('ol[data-ed-menu]')];
+const listesDesMenus = (doc = document) => [...doc.querySelectorAll('[data-ed-menu]')];
+/**
+ * Les listes de sous-entrées que cette page peut ordonner (R321 (6)) : celles dont l'entrée contient la page (`data-contient-la-page`, posé au build, tenu par `redessiner`),
+ * c'est-à-dire le menu de l'onglet de la page ou celui des races ; jamais sur une page de magie ou de classe. Le menu du site porte pourtant chaque liste sur toutes les pages
+ * (`data-ed-menu`) : `redessiner` les redessine toutes, seules celles-ci reçoivent des poignées.
+ */
+const listesDeLaPage = (doc = document) => {
+  const listes = listesDesMenus(doc).map((liste) => ({ liste, menu: liste.dataset.edMenu, contientLaPage: Boolean(liste.closest('.menu-site__groupe')?.hasAttribute('data-contient-la-page')) }));
+  return menusModifiablesDeLaPage(listes).map((l) => l.liste);
+};
 const pageCourante = () => document.querySelector('[data-ed-corps]')?.dataset.edCorps ?? null;
 const entreesDeLaListe = (liste) => [...liste.children].filter((li) => li.dataset.edEntree).map((li) => ({ id: li.dataset.edEntree, groupe: li.dataset.edGroupe }));
-const nomDe = (li) => (li.querySelector('.lateral-menu__lien')?.textContent ?? li.querySelector('.lateral-menu__bientot')?.firstChild?.textContent ?? '').trim();
+const nomDe = (li) => (li.querySelector('.menu-site__lien')?.textContent ?? li.querySelector('.nav-soon')?.firstChild?.textContent ?? '').trim();
 const chargerLePlan = (ed) => ed.appel('GET', 'edition/plan/');
 
 /**
- * Redessine chaque menu latéral de la page d'après le plan vivant : l'ordre, les titres, les pages créées ou supprimées ; un menu d'onglet devient celui
- * de l'onglet où est maintenant la page affichée (changée d'onglet), et le fil d'Ariane le suit. L'entrée affichée reste marquée.
+ * Redessine chaque liste de sous-entrées du menu du site d'après le plan vivant : l'ordre, les titres, les pages créées ou supprimées. Une page changée d'onglet
+ * passe dans la liste de son nouvel onglet, et le fil d'Ariane la suit. L'entrée affichée reste marquée.
  */
 function redessiner(ed, plan) {
   const page = pageCourante() ?? ed.page;
+  const ancien = lireMenu(document.querySelector('[data-ed-menu^="onglet:"] [aria-current="page"]')?.closest('[data-ed-menu]')?.dataset.edMenu)?.onglet ?? null;
+  const ici = page ? chercherDansLePlan(plan, (e) => e.page_id === page) : null;
   for (const liste of listesDesMenus()) {
     const menu = lireMenu(liste.dataset.edMenu);
     if (!menu) continue;
     const courantes = new Set([...liste.querySelectorAll('[aria-current="page"]')].map((a) => a.closest('li')?.dataset.edEntree).filter(Boolean));
-    let cible = menu;
-    if (menu.onglet) {
-      const ici = chercherDansLePlan(plan, (e) => e.page_id && e.page_id === page) ?? chercherDansLePlan(plan, (e) => courantes.has(e.id));
-      const onglet = ici?.onglet ?? plan.onglets.find((o) => o.id === menu.onglet);
-      if (!onglet) continue;
-      cible = { onglet: onglet.id };
-      if (onglet.id !== menu.onglet) changerDeRubrique(ed, liste, menu.onglet, onglet);
-    }
-    const entrees = entreesDuPlanVivant(plan, cible);
+    const entrees = entreesDuPlanVivant(plan, menu);
     if (!entrees.length) continue;
     liste.innerHTML = entrees.map((e) => htmlDUneEntree(e, { base: ed.base, courante: courantes.has(e.id) || (e.page !== null && e.page === page) })).join('');
+    // l'entrée qui porte la liste s'ouvre d'office quand la page affichée y est (comme au chargement : data-contient-la-page) : une de ses pages, ou le lien de l'entrée
+    // elle-même (la page de l'onglet) ; ce marqueur décide aussi de l'activité de l'extension (`listesDeLaPage`)
+    const groupe = liste.closest('.menu-site__groupe');
+    groupe?.toggleAttribute('data-contient-la-page', Boolean(liste.querySelector('[aria-current="page"]') || groupe.querySelector(':scope > .menu-site__ligne [aria-current]')));
   }
+  if (ici && ancien && ici.onglet.id !== ancien) suivreLOnglet(ed, ancien, ici.onglet);
 }
 
-/** Le titre d'une page dans les menus latéraux : le libellé de son entrée, et le résumé du menu replié quand c'est la page affichée. */
+/** Le titre d'une page dans les menus latéraux : le libellé de son entrée. */
 function afficherLeTitre(ed, id, titre) {
   if (typeof titre !== 'string' || !titre) return;
   const entree = entreeDeLaPage(id);
   for (const li of document.querySelectorAll('li[data-ed-entree]')) {
-    const lien = li.dataset.edEntree === entree ? li.querySelector('.lateral-menu__lien') : null;
+    const lien = li.dataset.edEntree === entree ? li.querySelector('.menu-site__lien') : null;
     if (lien) lien.textContent = titre;
   }
-  if (id === (pageCourante() ?? ed.page)) for (const r of document.querySelectorAll('.lateral-menu__resume-page')) r.textContent = titre;
 }
 
-/** Le menu d'une page passée dans un autre onglet : son titre, son lien, son résumé (petit écran), le fil d'Ariane. */
-function changerDeRubrique(ed, liste, ancien, onglet) {
-  liste.dataset.edMenu = `onglet:${onglet.id}`;
-  const nav = liste.closest('.lateral-menu');
+/** Une page passée dans un autre onglet : le fil d'Ariane suit (les listes de sous-entrées sont déjà redessinées). */
+function suivreLOnglet(ed, ancien, onglet) {
   const chemin = `${ed.base}regles/${onglet.id}/`;
-  nav?.setAttribute('aria-label', onglet.titre);
-  const titre = nav?.querySelector('.lateral-menu__titre a');
-  if (titre) Object.assign(titre, { textContent: onglet.titre, href: chemin });
-  const resume = nav?.querySelector('.lateral-menu__resume-rubrique');
-  if (resume) resume.textContent = onglet.titre;
   for (const a of document.querySelectorAll('.guide-fil a')) {
     if (a.getAttribute('href') === `${ed.base}regles/${ancien}/`) Object.assign(a, { textContent: onglet.titre, href: chemin });
   }
@@ -112,7 +112,7 @@ function changerDeRubrique(ed, liste, ancien, onglet) {
 function avisDeSuppression(ed, plan) {
   const reference = document.querySelector('.guide-reference');
   if (!reference) return;
-  const menu = lireMenu(document.querySelector('ol[data-ed-menu]')?.dataset.edMenu);
+  const menu = lireMenu(document.querySelector('[data-ed-menu^="onglet:"] [aria-current="page"]')?.closest('[data-ed-menu]')?.dataset.edMenu);
   const onglet = menu?.onglet ? plan.onglets.find((o) => o.id === menu.onglet) : null;
   const fil = reference.querySelector('.guide-fil');
   const titre = document.createElement('h1');
@@ -130,7 +130,7 @@ function avisDeSuppression(ed, plan) {
   }
   // plus de champ modifiable : la page n'existe plus dans la base du site de dev
   reference.replaceChildren(...[fil, titre, avis].filter(Boolean));
-  for (const pied of document.querySelectorAll('.lateral-page > :not(.guide-reference)')) pied.remove();
+  for (const pied of document.querySelectorAll('main > .guide-reference ~ *')) pied.remove();
 }
 
 /** /races/ : chaque groupe de pastilles et le tableau des magies innées dans l'ordre de la liste des races du plan vivant (race.rang_liste). */
@@ -216,7 +216,7 @@ function outilsDesMenus(ed) {
   annonce.className = 'ed-annonce-menu';
   annonce.setAttribute('aria-live', 'polite');
   document.body.append(annonce);
-  for (const liste of listesDesMenus()) {
+  for (const liste of listesDeLaPage()) {
     const menu = lireMenu(liste.dataset.edMenu);
     if (!menu) continue;
     etat.menus.push({ liste, avant: entreesDeLaListe(liste), initial: [...liste.children] });
@@ -252,7 +252,8 @@ function outilsDesMenus(ed) {
       // l'onglet présélectionné : celui du menu au moment du clic (la page a pu changer d'onglet depuis)
       bouton.addEventListener('click', () => creerUnePage(ed, lireMenu(liste.dataset.edMenu)?.onglet ?? menu.onglet), { signal });
       outils.append(bouton);
-      liste.after(outils);
+      // sous la liste, dans l'entrée qui la porte : cachée avec elle quand l'entrée est repliée (edition.css)
+      (liste.closest('.menu-site__groupe') ?? liste).append(outils);
     }
   }
 }
@@ -364,7 +365,8 @@ function refusEnListe(ed, e) {
 // --- Extension --------------------------------------------------------------------------------------------------------------------------------
 export const menus = {
   nom: 'menus',
-  actif: (doc) => Boolean(doc.querySelector('ol[data-ed-menu], .races-pastilles, [data-ed-notion]')),
+  // R321 (6) : seulement sur une page des Règles ou des races (le menu d'une de ses pages), jamais sur une magie, une classe ou une autre page ; /races/ (la liste) et la page d'une notion aussi
+  actif: (doc) => listesDeLaPage(doc).length > 0 || Boolean(doc.querySelector('.races-pastilles, [data-ed-notion]')),
 
   /** Des lignes du plan ont changé depuis la construction de la page : les menus redessinés d'après le plan vivant. */
   async surcouche(ed, lignes) {
@@ -388,8 +390,8 @@ export const menus = {
 
   debut(ed) {
     const notion = Boolean(document.querySelector('[data-ed-corps][data-ed-notion]'));
-    // /races/ (la liste) : rien à modifier ici, seule la surcouche la réordonne
-    if (!listesDesMenus().length && !notion) return;
+    // /races/ (la liste) : rien à modifier ici, seule la surcouche la réordonne ; une page hors des menus modifiables (R321 (6)) : ni poignée ni menu ouvert
+    if (!listesDeLaPage().length && !notion) return;
     const generation = ++etat.generation;
     etat.abandon = new AbortController();
     // le titre en cours de saisie de la page affichée : le menu le suit
@@ -404,11 +406,9 @@ export const menus = {
       outilsDUneNotion(ed);
       return;
     }
-    // petit écran : le menu replié s'ouvre le temps du mode modification (MenuLateral.astro le replie au chargement)
-    for (const details of document.querySelectorAll('[data-lateral-repli]')) {
-      etat.replis.push({ details, open: details.open });
-      details.open = true;
-    }
+    // le menu du site s'ouvre le temps du mode modification (components/MenuDuSite.astro, sans écraser l'état gardé du visiteur) ; contrat d'événement, aucun import
+    etat.menuOuvert = true;
+    document.dispatchEvent(new CustomEvent('menu-du-site:edition', { detail: { actif: true } }));
     // les identifiants envoyés sont ceux de la base : les menus redessinés d'après le plan vivant, puis leurs outils
     chargerLePlan(ed).then((plan) => {
       if (generation !== etat.generation || !ed.enEdition) return;
@@ -452,6 +452,7 @@ export const menus = {
   },
 
   fin(ed) {
+    if (etat.menuOuvert) document.dispatchEvent(new CustomEvent('menu-du-site:edition', { detail: { actif: false } }));
     etat.generation += 1;
     etat.abandon?.abort();
     for (const el of etat.ajouts) el.remove();
@@ -461,10 +462,9 @@ export const menus = {
       for (const li of initial) liste.append(li);
       liste.classList.remove('ed-menu-modifiable');
     }
-    for (const { details, open } of etat.replis) details.open = open;
     // le titre d'avant la saisie (abandon) ; enregistré, la ligne renvoyée le réécrit aussitôt (ligne)
     if (etat.titre) afficherLeTitre(ed, etat.titre.id, etat.titre.texte);
-    Object.assign(etat, { abandon: null, plan: null, menus: [], replis: [], ajouts: [], page: null, choix: null, supprimer: false, titre: null });
+    Object.assign(etat, { menuOuvert: false, abandon: null, plan: null, menus: [], ajouts: [], page: null, choix: null, supprimer: false, titre: null });
   },
 
   apresEnregistrement(ed) {

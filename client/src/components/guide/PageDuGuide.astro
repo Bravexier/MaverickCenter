@@ -25,7 +25,7 @@ import { url, type WikiEntry } from '../../lib/wiki';
 // dans le frontmatter, /archives/ le lit. Une page de Découvrir ou de la création du personnage (l'introduction et ses six étapes) prend la couleur
 // de sa partie (partieDeLaPage, classeDePartie : `.couleur-partie-<id>`, lib/palette-css.mjs, dont la page émet la feuille ; filet du titre,
 // intertitres, blocs) ; les autres pages des onglets des Règles gardent l'accent du site (réponse du propriétaire du 2026-11-05 : « Accent du site » ;
-// leur menu latéral : MenuLateral.astro), comme le Guide du MJ ; seules celles du Guide du MJ ont en plus leur badge « Guide ». Chaque morceau de texte
+// leur menu latéral : les sous-entrées de leur onglet, R321), comme le Guide du MJ ; seules celles du Guide du MJ ont en plus leur badge « Guide ». Chaque morceau de texte
 // est modifiable sur le site de dev (data-ed-morceau ; src/scripts/edition/guide.mjs), comme le titre (data-ed).
 interface Props {
   entry: WikiEntry;

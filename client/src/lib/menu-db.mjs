@@ -12,7 +12,7 @@
 //   - `onglet`       l'id d'un onglet des Règles (`regles_onglet.id`) : son libellé est `regles_onglet.titre` (modifiable sur le site de dev, R319) et son
 //                    adresse `adresseDeLOnglet` (lue ici, jamais recopiée : un lot à part la fera suivre le titre) ;
 //   - `enfants`      les entrées de dessous, résolues de même ;
-//   - tout autre champ (`key`, `devSeulement`, `prodSeulement`, `niveau`, `autres`…) est recopié tel quel dans l'entrée résolue.
+//   - `sous` (R321 : ce que l'entrée porte en sous-entrées, lib/menu-sous-entrees.mjs), tout autre champ (`key`, `devSeulement`, `prodSeulement`, `niveau`, `autres`…) est recopié tel quel dans l'entrée résolue.
 // Une entrée résolue : { …les champs recopiés, href, libelle, bientot, motCle, enfants } :
 //   - `href`     relatif à la racine du site, sans préfixe de déploiement ni barre initiale, avec son ancre ou sa requête s'il en a (« races/ ») ; null quand
 //                l'entrée est « bientôt ». Le préfixe de déploiement s'ajoute à l'affichage (`base` + href) ;

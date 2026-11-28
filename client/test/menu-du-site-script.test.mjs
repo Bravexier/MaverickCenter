@@ -41,7 +41,7 @@ class Element {
  * Un menu : deux rubriques (jeu, regles), une entrée à sous-pages `jeu/introduction` (contient la page quand `dedans`), une autre `regles/avancees` ; `proprePage` : la
  * page a son menu de gauche ; `etroit` : écran étroit ; `stockage` : le contenu de localStorage (`null` : absent, 'casse' : illisible, 'refuse' : il lève).
  */
-function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = false, ressourcesCourante = false, niveauConnu = undefined, ressourcesLevee = false } = {}) {
+function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = false, ongletDedans = false, categories = false, categorieDedans = null, ressourcesCourante = false, niveauConnu = undefined, ressourcesLevee = false } = {}) {
   const document = { activeElement: null };
   const nouveau = (attributs, parent) => Object.assign(new Element(attributs, parent), { document });
   const menu = nouveau({ 'data-menu-site': '' });
@@ -50,14 +50,20 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
   burger.hidden = true;
   const voile = nouveau({ 'data-menu-voile': '' });
   voile.hidden = true;
-  const groupe = (cle, contient = false) => {
-    const li = nouveau({ 'data-cle': cle, ...(contient ? { 'data-contient-la-page': '' } : {}) }, menu);
+  const groupe = (cle, contient = false, ferme = false, accordeon = null) => {
+    const li = nouveau({ 'data-cle': cle, ...(contient ? { 'data-contient-la-page': '' } : {}), ...(ferme ? { 'data-ferme-au-depart': '' } : {}), ...(accordeon ? { 'data-accordeon': accordeon } : {}) }, menu);
     const b = nouveau({ 'data-menu-replier': cle, 'aria-expanded': 'true' }, li);
     return { li, b };
   };
-  const intro = groupe('jeu/introduction', dedans);
+  // R321 (6) : Introduction est repliée au départ comme les autres entrées (`data-ferme-au-depart`), ouverte d'office quand la page courante est dedans ; `avancees` est un
+  // groupe sans `data-ferme-au-depart`, ouvert au départ (l'état par défaut d'avant R321 (6) : le script le gère toujours)
+  const intro = groupe('jeu/introduction', dedans, true);
   const avancees = groupe('regles/avancees');
-  const groupes = [intro, avancees];
+  // R321 : une entrée à lien et à chevron (un onglet des Règles), repliée au départ ; `ongletDedans` : la page courante est dans ses sous-entrées
+  const onglet = groupe('regles/combat', ongletDedans, true);
+  // R321 (6) : les catégories de classes (`data-accordeon="classes"`), repliées au départ, une seule ouverte à la fois ; la catégorie `categorieDedans` contient la page
+  const cats = categories ? ['melee', 'distance', 'magiques'].map((k) => groupe(`jeu/classes-${k}`, categorieDedans === k, true, 'classes')) : [];
+  const groupes = [intro, avancees, onglet, ...cats];
   const titreJeu = nouveau({ 'data-group': 'jeu' }, menu);
   const titreRegles = nouveau({ 'data-group': 'regles' }, menu);
   titreRegles.hidden = true;
@@ -133,7 +139,7 @@ function ouvrir({ stockage = {}, proprePage = false, etroit = false, dedans = fa
   const affiche = () => ({ reduit: menu.getAttribute('data-reduit'), bouton: [bouton.getAttribute('aria-expanded'), bouton.getAttribute('aria-label')] });
   return {
     menu, bouton, burger, voile, intro, avancees, rubriqueJeu, rubriqueRegles, rubriqueRessources, titreJeu, titreRegles, titreRessources, listeJeu, listeRegles, listeRessources, ecrits, etat, affiche, frames, principal, pied,
-    document, classes, proprietes, evenements, changements, mq, lienDuMenu, courante, entete,
+    document, classes, proprietes, evenements, changements, mq, lienDuMenu, courante, entete, onglet, cats,
   };
 }
 
@@ -168,15 +174,14 @@ test('R319 (2) : cliquer une rubrique change la liste montrée (sans changer de 
 });
 
 test('R319 (2) : une entrée à sous-pages se plie et se déplie, son état est gardé ; ouverte d’office quand la page courante est dedans', () => {
+  // `avancees` : un groupe ouvert au départ
   const m = ouvrir();
-  m.intro.b.clic();
-  assert.deepEqual([m.intro.b.getAttribute('aria-expanded'), m.intro.li.getAttribute('data-replie')], ['false', 'oui']);
-  assert.deepEqual(m.etat().replie, ['jeu/introduction']);
   m.avancees.b.clic();
-  assert.deepEqual(m.etat().replie, ['jeu/introduction', 'regles/avancees']);
-  m.intro.b.clic();
-  assert.deepEqual([m.intro.b.getAttribute('aria-expanded'), m.intro.li.getAttribute('data-replie')], ['true', 'non']);
+  assert.deepEqual([m.avancees.b.getAttribute('aria-expanded'), m.avancees.li.getAttribute('data-replie')], ['false', 'oui']);
   assert.deepEqual(m.etat().replie, ['regles/avancees']);
+  m.avancees.b.clic();
+  assert.deepEqual([m.avancees.b.getAttribute('aria-expanded'), m.avancees.li.getAttribute('data-replie')], ['true', 'non']);
+  assert.deepEqual(m.etat().replie, []);
   // une autre page : l'entrée gardée repliée l'est, sauf si la page courante est dedans
   const replie = JSON.stringify({ reduit: false, replie: ['jeu/introduction', 'regles/avancees'] });
   const ailleurs = ouvrir({ stockage: { [CLE]: replie } });
@@ -185,6 +190,86 @@ test('R319 (2) : une entrée à sous-pages se plie et se déplie, son état est 
   assert.deepEqual([dedans.intro.li.getAttribute('data-replie'), dedans.intro.b.getAttribute('aria-expanded')], ['non', 'true'], 'ouverte d’office');
   assert.equal(dedans.avancees.li.getAttribute('data-replie'), 'oui');
   assert.deepEqual(dedans.ecrits, [], 'rien n’est écrit au chargement');
+});
+
+test('R321 (6) : Introduction est repliée au départ comme les autres entrées, ouverte d’office sur Découvrir et L’univers ; son ouverture par le visiteur se garde (`ouvert`), sa fermeture ensuite l’efface', () => {
+  const m = ouvrir();
+  assert.deepEqual([m.intro.b.getAttribute('aria-expanded'), m.intro.li.getAttribute('data-replie')], ['false', 'oui'], 'repliée au départ, sans rien écrire');
+  assert.deepEqual(m.ecrits, []);
+  m.intro.b.clic();
+  assert.deepEqual([m.intro.li.getAttribute('data-replie'), m.etat().replie, m.etat().ouvert], ['non', [], ['jeu/introduction']], 'ouverte par le visiteur : gardée dans `ouvert`');
+  // une autre page : l'ouverture gardée est relue ; la refermer retire le choix
+  const ailleurs = ouvrir({ stockage: { [CLE]: JSON.stringify({ reduit: false, replie: [], ouvert: ['jeu/introduction'] }) } });
+  assert.equal(ailleurs.intro.li.getAttribute('data-replie'), 'non');
+  ailleurs.intro.b.clic();
+  assert.deepEqual([ailleurs.intro.li.getAttribute('data-replie'), ailleurs.etat().replie, ailleurs.etat().ouvert], ['oui', [], []]);
+  // sur Découvrir ou L'univers : ouverte d'office ; la refermer est un choix qui se garde (`replie`), la rouvrir l'efface
+  const dedans = ouvrir({ dedans: true });
+  assert.deepEqual([dedans.intro.li.getAttribute('data-replie'), dedans.ecrits], ['non', []], 'ouverte d’office, rien d’écrit au chargement');
+  dedans.intro.b.clic();
+  assert.deepEqual([dedans.intro.li.getAttribute('data-replie'), dedans.etat().replie], ['oui', ['jeu/introduction']]);
+  dedans.intro.b.clic();
+  assert.deepEqual([dedans.intro.li.getAttribute('data-replie'), dedans.etat().replie, dedans.etat().ouvert], ['non', [], []]);
+  // un état d'avant R321 (6), où Introduction repliée se gardait dans `replie`, est toléré : elle reste repliée
+  const ancien = ouvrir({ stockage: { [CLE]: JSON.stringify({ reduit: false, replie: ['jeu/introduction'] }) } });
+  assert.equal(ancien.intro.li.getAttribute('data-replie'), 'oui');
+});
+
+test('R321 (2) : une entrée à lien et à chevron est repliée au départ, ouverte d’office quand la page courante y est ; son choix se garde (`ouvert`), sans toucher aux entrées ouvertes au départ', () => {
+  const m = ouvrir();
+  assert.deepEqual([m.onglet.b.getAttribute('aria-expanded'), m.onglet.li.getAttribute('data-replie')], ['false', 'oui'], 'repliée au départ, sans rien écrire');
+  assert.equal(m.avancees.li.getAttribute('data-replie'), 'non', 'une entrée sans `data-ferme-au-depart` reste ouverte au départ');
+  assert.deepEqual(m.ecrits, []);
+  // la déplier : gardé dans `ouvert` (et non dans `replie` : l'état par défaut ne s'écrit pas)
+  m.onglet.b.clic();
+  assert.deepEqual([m.onglet.b.getAttribute('aria-expanded'), m.onglet.li.getAttribute('data-replie')], ['true', 'non']);
+  assert.deepEqual([m.etat().replie, m.etat().ouvert], [[], ['regles/combat']]);
+  // une autre page : l'état gardé est relu ; la replier retire le choix
+  const ailleurs = ouvrir({ stockage: { [CLE]: JSON.stringify({ reduit: false, replie: [], ouvert: ['regles/combat'] }) } });
+  assert.equal(ailleurs.onglet.li.getAttribute('data-replie'), 'non', 'ouverte par le visiteur');
+  ailleurs.onglet.b.clic();
+  assert.deepEqual([ailleurs.onglet.li.getAttribute('data-replie'), ailleurs.etat().replie, ailleurs.etat().ouvert], ['oui', [], []]);
+  // la page courante dedans : ouverte d'office, même si le visiteur l'avait repliée ailleurs
+  const dedans = ouvrir({ ongletDedans: true, stockage: { [CLE]: JSON.stringify({ reduit: false, replie: ['regles/combat'], ouvert: [] }) } });
+  assert.deepEqual([dedans.onglet.li.getAttribute('data-replie'), dedans.onglet.b.getAttribute('aria-expanded')], ['non', 'true']);
+  assert.deepEqual(dedans.ecrits, [], 'rien n’est écrit au chargement');
+  // la replier ici est un choix qui se garde ; la rouvrir l'efface
+  dedans.onglet.b.clic();
+  assert.deepEqual([dedans.onglet.li.getAttribute('data-replie'), dedans.etat().replie], ['oui', ['regles/combat']]);
+  dedans.onglet.b.clic();
+  assert.deepEqual([dedans.onglet.li.getAttribute('data-replie'), dedans.etat().replie, dedans.etat().ouvert], ['non', [], []]);
+  // un état ancien (sans `ouvert`) ou illisible est toléré
+  for (const brut of [{ reduit: false, replie: ['jeu/introduction'] }, { reduit: false, replie: [], ouvert: 'x' }]) {
+    const m2 = ouvrir({ stockage: { [CLE]: JSON.stringify(brut) } });
+    assert.equal(m2.onglet.li.getAttribute('data-replie'), 'oui');
+  }
+});
+
+test('R321 (3) : le mode modification ouvre le menu (réduit ou tiroir fermé) le temps de son passage, sans écraser l’état gardé du visiteur, et le remet comme il était', () => {
+  const m = ouvrir({ stockage: { [CLE]: JSON.stringify({ reduit: true, replie: [] }) } });
+  assert.equal(m.affiche().reduit, 'oui');
+  m.document.emettre('menu-du-site:edition', { detail: { actif: true } });
+  assert.equal(m.affiche().reduit, 'non', 'ouvert pour modifier');
+  m.avancees.b.clic(); // un geste du visiteur pendant le mode : l'état gardé garde SON choix de réduction
+  assert.equal(m.etat().reduit, true, 'le choix gardé n’est pas écrasé');
+  m.document.emettre('menu-du-site:edition', { detail: { actif: true } });
+  m.document.emettre('menu-du-site:edition', { detail: { actif: false } });
+  assert.equal(m.affiche().reduit, 'oui', 'remis comme avant');
+  // un menu ouvert reste ouvert ; l'écran étroit : le tiroir s'ouvre une fois, puis se referme
+  const ouvert = ouvrir();
+  ouvert.document.emettre('menu-du-site:edition', { detail: { actif: true } });
+  ouvert.document.emettre('menu-du-site:edition', { detail: { actif: false } });
+  assert.equal(ouvert.affiche().reduit, 'non');
+  const etroit = ouvrir({ etroit: true });
+  assert.equal(etroit.classes.has('menu-ouvert'), false);
+  etroit.document.emettre('menu-du-site:edition', { detail: { actif: true } });
+  assert.equal(etroit.classes.has('menu-ouvert'), true, 'le tiroir s’ouvre');
+  etroit.document.emettre('menu-du-site:edition', { detail: { actif: false } });
+  assert.equal(etroit.classes.has('menu-ouvert'), false, 'puis se referme');
+  assert.deepEqual(etroit.ecrits, [], 'rien d’écrit sur un écran étroit');
+  // l'événement sans détail (autre usage) est sans effet
+  m.document.emettre('menu-du-site:edition', {});
+  assert.equal(m.affiche().reduit, 'oui');
 });
 
 test('R319 (2) : sur une page qui a déjà son menu de gauche, et sur écran étroit, le menu démarre réduit sans que cela s’écrive ; la mémoire ne garde pas un choix fait là', () => {
@@ -199,9 +284,9 @@ test('R319 (2) : sur une page qui a déjà son menu de gauche, et sur écran ét
     assert.equal(m.affiche().reduit, 'non', `${nom} : une rubrique le rouvre`);
     assert.deepEqual(m.ecrits, [], `${nom} : ce choix n’est pas gardé (les autres pages gardent le leur)`);
     // mais les entrées repliées, elles, se gardent
-    m.intro.b.clic();
+    m.avancees.b.clic();
     assert.equal(m.etat().reduit, false, `${nom} : la préférence de réduction n’a pas bougé`);
-    assert.deepEqual(m.etat().replie, ['jeu/introduction']);
+    assert.deepEqual(m.etat().replie, ['regles/avancees']);
   }
 });
 
@@ -211,8 +296,8 @@ test('le stockage absent, refusé ou illisible est toléré : le menu marche, ou
     assert.equal(m.affiche().reduit, 'non', JSON.stringify(stockage));
     m.bouton.clic();
     assert.equal(m.affiche().reduit, 'oui', 'le bouton marche quand même');
-    m.intro.b.clic();
-    assert.equal(m.intro.li.getAttribute('data-replie'), 'oui');
+    m.avancees.b.clic();
+    assert.equal(m.avancees.li.getAttribute('data-replie'), 'oui');
   }
 });
 
@@ -384,4 +469,56 @@ test('R319 (3) : le niveau annoncé avant le chargement du menu (propriété `ma
   assert.deepEqual([montree(deja), listesMontrees(deja)], [['ressources'], ['ressources']], 'la rubrique de la page, sans attendre l’événement');
   const cachee = ouvrir({ ressourcesCourante: true, niveauConnu: 'observateur' });
   assert.deepEqual(montree(cachee), ['jeu']);
+});
+
+test('R321 (6) : une seule catégorie de classes ouverte à la fois (`data-accordeon`) : en ouvrir une referme l’autre, gardée comme repliée ; les autres groupes ne changent pas', () => {
+  const m = ouvrir({ categories: true });
+  const [melee, distance, magiques] = m.cats;
+  const ouverte = (c) => c.b.getAttribute('aria-expanded') === 'true';
+  assert.deepEqual(m.cats.map(ouverte), [false, false, false], 'repliées au départ');
+  melee.b.clic();
+  assert.deepEqual(m.cats.map(ouverte), [true, false, false]);
+  assert.deepEqual(m.etat().ouvert, ['jeu/classes-melee']);
+  distance.b.clic();
+  assert.deepEqual(m.cats.map(ouverte), [false, true, false], 'ouvrir la deuxième referme la première');
+  assert.deepEqual([m.etat().ouvert, m.etat().replie], [['jeu/classes-distance'], []], 'la refermée est l’état par défaut (repliée), pas deux ouvertes');
+  assert.equal(melee.li.getAttribute('data-replie'), 'oui');
+  // la refermer à la main : aucune ouverte
+  distance.b.clic();
+  assert.deepEqual(m.cats.map(ouverte), [false, false, false]);
+  assert.deepEqual(m.etat().ouvert, []);
+  // un groupe qui n'est pas une catégorie n'est ni refermé ni refermant : Introduction reste ouverte quand on ouvre une catégorie
+  m.intro.b.clic();
+  assert.equal(ouverte(m.intro), true);
+  magiques.b.clic();
+  assert.deepEqual([ouverte(m.intro), ouverte(magiques)], [true, true], 'les autres groupes ne changent pas');
+  assert.deepEqual(m.etat().ouvert.sort(), ['jeu/classes-magiques', 'jeu/introduction']);
+  // la page d'une classe : sa catégorie est ouverte d'office ; ouvrir une autre la referme, gardée comme repliée (`replie`), et la rouvrir referme l'autre
+  const dedans = ouvrir({ categories: true, categorieDedans: 'melee' });
+  assert.deepEqual(dedans.cats.map(ouverte), [true, false, false], 'ouverte d’office, rien d’écrit');
+  assert.deepEqual(dedans.ecrits, []);
+  dedans.cats[1].b.clic();
+  assert.deepEqual(dedans.cats.map(ouverte), [false, true, false]);
+  assert.deepEqual([dedans.etat().replie, dedans.etat().ouvert], [['jeu/classes-melee'], ['jeu/classes-distance']]);
+  dedans.cats[0].b.clic();
+  assert.deepEqual(dedans.cats.map(ouverte), [true, false, false], 'rouvrir celle de la page referme l’autre');
+  assert.deepEqual([dedans.etat().replie, dedans.etat().ouvert], [[], []]);
+});
+
+test('R321 (6) : au chargement, jamais deux catégories de classes ouvertes : celle de la page l’emporte, sinon la première ouverte gardée', () => {
+  const ouverte = (c) => c.b.getAttribute('aria-expanded') === 'true';
+  const deux = JSON.stringify({ reduit: false, replie: [], ouvert: ['jeu/classes-melee', 'jeu/classes-magiques'] });
+  // aucune ne contient la page : la première ouverte reste, l'autre est repliée
+  const ailleurs = ouvrir({ categories: true, stockage: { [CLE]: deux } });
+  assert.deepEqual(ailleurs.cats.map(ouverte), [true, false, false]);
+  assert.deepEqual(ailleurs.ecrits, [], 'rien n’est écrit au chargement');
+  // une ouverte gardée, et une autre ouverte d'office parce qu'elle contient la page : celle de la page gagne
+  const page = ouvrir({ categories: true, categorieDedans: 'distance', stockage: { [CLE]: deux } });
+  assert.deepEqual(page.cats.map(ouverte), [false, true, false], 'la catégorie de la page seule est ouverte');
+  assert.equal(page.cats[0].li.getAttribute('data-replie'), 'oui');
+  // l'état s'écrit cohérent au premier geste : plus aucune ouverture contradictoire
+  page.cats[2].b.clic();
+  assert.deepEqual(page.cats.map(ouverte), [false, false, true]);
+  assert.deepEqual(page.etat().ouvert, ['jeu/classes-magiques']);
+  assert.deepEqual(page.etat().replie, ['jeu/classes-distance'], 'la catégorie de la page, refermée par le mécanisme : repliée');
 });

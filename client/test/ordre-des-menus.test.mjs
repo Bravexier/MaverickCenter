@@ -8,9 +8,11 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   adresseDeLaNouvellePage, adresseDeLaPageCreee, annonceDeLaPlace, bornesDuGroupe, boutonSupprimer, chercherDansLePlan, deplacer, elementsDuRefus,
-  entreeDeLaPage, entreesDuPlanVivant, GROUPES_DE_RACES, htmlDUneEntree, lireMenu, MENU_DES_RACES, operationsDOrdre, ordonnerSelon, pageSupprimeeEnAttente,
+  entreeDeLaPage, entreesDuPlanVivant, GROUPES_DE_RACES, htmlDUneEntree, lireMenu, MENU_DES_RACES, menuDeLaPageCreee, menusModifiablesDeLaPage, operationsDOrdre, ordonnerSelon, pageSupprimeeEnAttente,
   placeAuClavier, placeAuPointeur, raceDuLien, vitesseDeDefilement, voisinsADeplacer,
 } from '../src/lib/ordre-des-menus.mjs';
+import { htmlDesEntrees } from '../src/lib/menu-rendu.mjs';
+import { sousEntreesDesPages } from '../src/lib/menu-sous-entrees.mjs';
 import { GROUPES_DE_RACES as GROUPES_DU_SERVICE } from '../serveur/edition-plan.mjs';
 import { installerLesAdresses } from '../src/lib/adresses-renommees.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -31,7 +33,7 @@ const PLAN = {
   races: { pures: [{ id: 'races/humain', nom: 'Humain', rang_liste: 1 }, { id: 'races/nain', nom: 'Nain', rang_liste: 2 }], hybrides: [{ id: 'races/orios', nom: 'Orios', rang_liste: null }] },
 };
 
-test('lireMenu : `onglet:<id>` ou `races` (data-ed-menu, posé par MenuLateral.astro) ; rien d’autre', () => {
+test('lireMenu : `onglet:<id>` ou `races` (data-ed-menu, posé sur la liste de sous-entrées du menu du site, lib/menu-rendu.mjs) ; rien d’autre', () => {
   assert.deepEqual(lireMenu('onglet:fiche-de-personnage'), { onglet: 'fiche-de-personnage' });
   assert.deepEqual(lireMenu(MENU_DES_RACES), { races: true });
   for (const v of [undefined, '', 'onglet:', 'onglet:A b', 'regles', 'race']) assert.equal(lireMenu(v), null, String(v));
@@ -101,7 +103,7 @@ test('operationsDOrdre : une opération `ordonner` par menu changé (toutes ses 
   ]).length, 1);
 });
 
-test('le plan vivant : les entrées d’un menu d’onglet (pages, lien, « bientôt ») et du menu des races (pures puis hybrides), leur HTML celui de MenuLateral.astro', () => {
+test('le plan vivant : les entrées d’un menu d’onglet (pages, lien, « bientôt ») et du menu des races (pures puis hybrides), leur HTML celui d’une sous-entrée du menu du site (R321)', () => {
   assert.deepEqual(entreesDuPlanVivant(PLAN, { onglet: 'exploration' }).map((e) => [e.id, e.rang, e.sorte, e.page, e.texte, e.adresse]), [
     ['page:guide/les-pieges', 1, 'page', 'guide/les-pieges', 'Les pièges', 'regles/les-pieges/'],
     ['lien:regles/artisanat', 2, 'lien', null, 'Artisanat', 'regles/artisanat/'],
@@ -119,18 +121,19 @@ test('le plan vivant : les entrées d’un menu d’onglet (pages, lien, « bien
   }
   assert.deepEqual(entreesDuPlanVivant(PLAN, { onglet: 'absent' }), []);
   assert.deepEqual(entreesDuPlanVivant(null, { races: true }), []);
-  // le HTML : celui du composant (classes, aria-current, « (bientôt) »), texte échappé, et les attributs du mode modification
+  // le HTML : celui d'une sous-entrée du menu du site (lib/menu-rendu.mjs : classes, aria-current, « (bientôt) »), texte échappé, et les attributs du mode modification
   const [degats] = entreesDuPlanVivant(PLAN, { onglet: 'combats' }).slice(1);
   assert.equal(htmlDUneEntree(degats, { base: '/MaverickCenter/', courante: true }),
-    '<li data-ed-entree="page:guide/les-degats" data-ed-rang="2"><a class="lateral-menu__lien" href="/MaverickCenter/regles/les-degats/" aria-current="page">Les dégâts &amp; &lt;b&gt;</a></li>');
+    '<li data-ed-entree="page:guide/les-degats" data-ed-rang="2"><a class="menu-site__lien" href="/MaverickCenter/regles/les-degats/" aria-current="page">Les dégâts &amp; &lt;b&gt;</a></li>');
   const [, , donjons] = entreesDuPlanVivant(PLAN, { onglet: 'exploration' });
-  assert.equal(htmlDUneEntree(donjons), '<li data-ed-entree="bientot:donjons" data-ed-rang="3"><span class="lateral-menu__bientot nav-soon">Les donjons <small>(bientôt)</small></span></li>');
+  assert.equal(htmlDUneEntree(donjons), '<li data-ed-entree="bientot:donjons" data-ed-rang="3"><span class="nav-soon">Les donjons <small>(bientôt)</small></span></li>');
   const orios = entreesDuPlanVivant(PLAN, { races: true }).at(-1);
-  assert.equal(htmlDUneEntree(orios), '<li data-ed-entree="races/orios" data-ed-groupe="hybrides"><a class="lateral-menu__lien" href="/races/orios/">Orios</a></li>', 'sans rang : pas de data-ed-rang');
-  // le composant écrit les mêmes classes et le même « (bientôt) »
-  const composant = readFileSync(new URL('../src/components/guide/MenuLateral.astro', import.meta.url), 'utf8');
-  for (const morceau of ['<a class="lateral-menu__lien" href=', '<span class="lateral-menu__bientot nav-soon">{p.bientot} <small>(bientôt)</small></span>', 'data-ed-menu={edition?.menu}',
-    "'data-ed-entree'", "'data-ed-rang'", "'data-ed-groupe'"]) assert.ok(composant.includes(morceau), morceau);
+  assert.equal(htmlDUneEntree(orios), '<li data-ed-entree="races/orios" data-ed-groupe="hybrides"><a class="menu-site__lien" href="/races/orios/">Orios</a></li>', 'sans rang : pas de data-ed-rang');
+  // le rendu du menu du site écrit les mêmes classes, le même « (bientôt) » et les mêmes attributs que le menu redessiné par le navigateur
+  const rendu = sousEntreesDesPages([{ id: 'guide/les-degats', data: { title: degats.texte } }, { bientot: 'Les donjons' }, { libelle: 'Orios', adresse: 'races/orios/' }],
+    { menu: 'onglet:combats', entrees: [{ id: degats.id, rang: degats.rang }, { id: donjons.id, rang: donjons.rang }, { id: orios.id, rang: null, groupe: 'hybrides' }] });
+  const menu = htmlDesEntrees(rendu, { rubrique: 'regles', adresse: (r) => `/${r}`, base: '/', ici: undefined, entree: undefined });
+  for (const li of [degats, donjons, orios].map((e) => htmlDUneEntree(e, { base: '/' }))) assert.ok(menu.includes(li), li);
 });
 
 test('chercherDansLePlan : l’onglet et l’entrée d’une page (liste « Onglet », « Supprimer », menu d’une page changée d’onglet)', () => {
@@ -232,4 +235,37 @@ test('avant la reconstruction : une page affichée supprimée sur le site de dev
   const elements = ['races/nain', 'races/exemple-race', 'races/humain', null, 'races/orios'].map((id) => ({ id }));
   assert.deepEqual(ordonnerSelon(elements, ['races/orios', 'races/humain', 'races/nain']).map((e) => e.id), ['races/orios', 'races/humain', 'races/nain', 'races/exemple-race', null]);
   assert.deepEqual(ordonnerSelon(['b', 'a'], ['a', 'b'], (x) => x), ['a', 'b']);
+});
+
+test('R321 (6) : l’extension `menus` ne s’active, ne pose ses poignées et n’ouvre le menu du site que sur les listes de la page (menusModifiablesDeLaPage), jamais sur toute liste `data-ed-menu`', () => {
+  const code = readFileSync(new URL('../src/scripts/edition/menus.mjs', import.meta.url), 'utf8');
+  assert.match(code, /actif: \(doc\) => listesDeLaPage\(doc\)\.length > 0/, 'l’activité suit les listes de la page');
+  assert.match(code, /menusModifiablesDeLaPage\(listes\)/);
+  const corps = (nom) => code.slice(code.indexOf(`function ${nom}(`), code.indexOf('\n}\n', code.indexOf(`function ${nom}(`)));
+  assert.match(corps('outilsDesMenus'), /for \(const liste of listesDeLaPage\(\)\)/, 'les poignées : les listes de la page seulement');
+  assert.doesNotMatch(corps('outilsDesMenus'), /listesDesMenus\(/);
+  assert.match(code, /if \(!listesDeLaPage\(\)\.length && !notion\) return;/, 'rien (ni poignée, ni menu ouvert, ni événement) hors des menus de la page');
+  // le plan vivant redessine toutes les listes (le menu du site les porte sur chaque page), mais l'entrée du lien de l'onglet garde son marqueur
+  assert.match(corps('redessiner'), /for \(const liste of listesDesMenus\(\)\)/);
+  assert.match(corps('redessiner'), /:scope > \.menu-site__ligne \[aria-current\]/, 'la page de l’onglet lui-même : le marqueur reste, sinon l’extension se désactiverait');
+});
+
+test('R321 (6) : une page des Règles créée, dessinée sur la 404, rend actif le menu de son onglet (menuDeLaPageCreee) : elle y apparaît, avec ses poignées, une fois le plan vivant lu', () => {
+  assert.equal(menuDeLaPageCreee(PLAN, 'guide/les-degats'), 'onglet:combats');
+  assert.equal(menuDeLaPageCreee(PLAN, 'guide/les-pieges'), 'onglet:exploration');
+  assert.equal(menuDeLaPageCreee(PLAN, 'guide/une-notion'), null, 'une page de notion : dans aucun menu');
+  assert.equal(menuDeLaPageCreee(PLAN, null), null);
+  assert.equal(menuDeLaPageCreee(null, 'guide/les-degats'), null);
+  // le menu rendu est lisible par le mode modification
+  assert.deepEqual(lireMenu(menuDeLaPageCreee(PLAN, 'guide/les-pieges')), { onglet: 'exploration' });
+  // sur la 404, aucune entrée du menu du site ne contient la page : aucun menu modifiable ; une fois la liste de son onglet marquée, seule elle l'est (et les races restent exclues)
+  const listes = (marque) => ['onglet:combats', 'onglet:exploration', 'races'].map((menu) => ({ menu, contientLaPage: menu === marque }));
+  assert.deepEqual(menusModifiablesDeLaPage(listes(null)), [], 'la 404 seule : l’extension reste inactive');
+  assert.deepEqual(menusModifiablesDeLaPage(listes(menuDeLaPageCreee(PLAN, 'guide/les-pieges'))).map((l) => l.menu), ['onglet:exploration']);
+  // le script de la page 404 pose ce marqueur après avoir dessiné la page, avant que l'extension `menus` ne soit consultée (nouvelles est devant menus dans EXTENSIONS)
+  const nouvelles = readFileSync(new URL('../src/scripts/edition/nouvelles.mjs', import.meta.url), 'utf8');
+  assert.match(nouvelles, /menuDeLaPageCreee\(plan, regle\.cle\.id\)[\s\S]{0,120}closest\('\.menu-site__groupe'\)\?\.setAttribute\('data-contient-la-page', ''\)/);
+  assert.ok(nouvelles.indexOf('poserLaPage(ed, rendu);') < nouvelles.indexOf('menuDeLaPageCreee(plan, regle.cle.id)'), 'après le dessin de la page');
+  const extensions = readFileSync(new URL('../src/scripts/edition/extensions.mjs', import.meta.url), 'utf8');
+  assert.ok(extensions.indexOf(' nouvelles,') < extensions.indexOf(' menus,'), 'nouvelles avant menus');
 });

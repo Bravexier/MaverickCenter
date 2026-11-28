@@ -4,7 +4,7 @@ import { ongletsDesRegles, verifierLePlan } from '../../lib/livres.mjs';
 import { loadWiki, pagesSous, type WikiEntry } from '../../lib/wiki';
 
 // Les pages des onglets des Règles (lib/livres.mjs, plan de la base : R184), chacune à /regles/<slug>/ (« adresses à plat »), à côté du menu latéral de
-// son onglet (components/guide/MenuLateral.astro) ; et chaque onglet à /regles/<onglet>/, qui montre sa page d'ouverture (son adresse canonique reste
+// son onglet (lib/menu-sous-entrees-site.ts, sous-entrées du menu du site (R321)) ; et chaque onglet à /regles/<onglet>/, qui montre sa page d'ouverture (son adresse canonique reste
 // /regles/<slug>/ : components/guide/PageDuPlan.astro). /regles/ (pages/regles/index.astro) montre l'ouverture du premier onglet ; le sommaire de
 // l'Artisanat est pages/regles/artisanat.astro. Les ids des onglets sont des noms réservés : aucune page ne les prend (verifierLePlan).
 export async function getStaticPaths() {

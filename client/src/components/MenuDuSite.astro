@@ -10,12 +10,19 @@
 //
 // Le bouton en tête réduit le menu en une bande étroite à la mesure du bouton, qui ne bouge pas (styles/global/menu-site.css) ; le nom de la rubrique
 // est à côté de lui. L'état (réduit, entrées repliées) est gardé d'une page à l'autre dans localStorage (`menu-du-site:etat`, tolérant à son absence). Le menu
-// démarre réduit sur une page qui a déjà son menu de gauche (le guide, les races, les classes, les magies, les armes, la chronologie) et sur un écran étroit,
+// démarre réduit sur une page qui a déjà son menu de gauche (les armes, la chronologie : R321 (4) pour celle-ci ; les onglets des Règles, les races, les magies et les
+// classes n'en ont plus, leurs pages sont des sous-entrées de ce menu-ci) et sur un écran étroit,
 // sans que cela s'écrive : on ne garde que ce que le visiteur a choisi sur les autres pages. Sous 56 rem, ce même balisage est le tiroir (bouton à trois barres de l'en-tête, voile, page inerte).
 //
 // Un seul script, en ligne et sans import (skill site-version-portable : deux scripts de page n'importent jamais le même module), posé après la page (le
 // <slot />) pour trouver, avant le premier affichage, ce que la page a d'elle-même.
+//
+// Sous-entrées (R321) : une entrée peut déplier ses sous-pages (les pages d'un onglet des Règles, les races). Toute entrée est repliée au départ (`data-ferme-au-depart` : une entrée à lien et
+// chevron, Introduction et les catégories de classes, R321 (6)) sauf si la page courante est dedans (`data-contient-la-page`) : Introduction s'ouvre ainsi sur Découvrir et L'univers. L'état gardé :
+// `replie` (les entrées que le visiteur a repliées) et `ouvert` (celles qu'il a ouvertes alors qu'elles sont repliées au départ). Les catégories de classes forment un accordéon
+// (`data-accordeon`, R321 (6)) : une seule est ouverte à la fois.
 import { htmlDesEntrees } from '../lib/menu-rendu.mjs';
+import { cssDuMenu } from '../lib/palette-css.mjs';
 import { url } from '../lib/wiki';
 
 interface Props {
@@ -27,12 +34,14 @@ interface Props {
   ici: string;
   /** L'`href` de l'entrée (onglet du plan) qui mène à la page sans en être une. */
   entree?: string;
+  /** L'`href` de la page affichée à l'adresse d'une autre (la page d'ouverture d'un onglet des Règles) : son entrée est la page courante. */
+  affichee?: string;
   /** La page de maintenance : menu grisé et inerte. */
   maintenance?: boolean;
 }
-const { rubriques, montree, ici, entree, maintenance = false } = Astro.props;
+const { rubriques, montree, ici, entree, affichee, maintenance = false } = Astro.props;
 const base = import.meta.env.BASE_URL;
-const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, { rubrique: g.key, adresse: url, base, ici, entree });
+const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, { rubrique: g.key, adresse: url, base, ici, entree, affichee });
 ---
 
 <div class="site-corps">
@@ -57,6 +66,8 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
         }
       </div>
     </div>
+    {/* la famille `classe` de la palette (les cinq catégories de classes : le point des sous-groupes de « Les classes », R321) : le mode d'émission du menu (palette-css.mjs#FAMILLES_DU_MENU), dans le menu et non dans la feuille de Base.astro */}
+    <style is:inline set:html={cssDuMenu()}></style>
   </nav>
   <slot />
   <script is:inline>
@@ -64,8 +75,8 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
       var menu = document.querySelector('[data-menu-site]');
       if (!menu) return;
       var CLE = 'menu-du-site:etat';
-      // une page qui a déjà son menu de gauche (components/guide/MenuLateral.astro, race, classes, magies, armes, chronologie)
-      var MENU_PROPRE = 'main > .lateral, main > .classe-cadre, main > .magie-cadre, main > .chrono, main .armes-menu';
+      // une page qui a déjà son menu de gauche (armes, chronologie)
+      var MENU_PROPRE = 'main > .chrono, main .armes-menu';
       var ETROIT = '(max-width: 56rem)';
       var bouton = menu.querySelector('[data-menu-reduire]');
       var burger = document.querySelector('[data-menu-burger]');
@@ -73,7 +84,7 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
       var rubriques = document.querySelectorAll('.nav-group__toggle');
       var groupes = menu.querySelectorAll('[data-menu-replier]');
       var racine = document.documentElement;
-      var etat = { reduit: false, replie: [] };
+      var etat = { reduit: false, replie: [], ouvert: [] };
       // le visiteur a-t-il choisi une rubrique lui-même ? (alors le niveau connu ne la change plus que si elle est devenue cachée)
       var choisie = false;
 
@@ -84,6 +95,7 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
           if (brut && typeof brut === 'object') {
             etat.reduit = brut.reduit === true;
             if (Array.isArray(brut.replie)) etat.replie = brut.replie.filter(function (c) { return typeof c === 'string'; });
+            if (Array.isArray(brut.ouvert)) etat.ouvert = brut.ouvert.filter(function (c) { return typeof c === 'string'; });
           }
         } catch (e) {}
       }
@@ -99,11 +111,56 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
       // réduit au départ, sans garder ce choix : la page a son menu, ou l'écran est étroit (le menu est alors le tiroir, fermé)
       function sansMemoire() { return etroit() || propre; }
       var reduit = sansMemoire() ? true : etat.reduit;
+      function groupe(c) { return menu.querySelector('[data-cle="' + c + '"]'); }
+      function contient(c) { var g = groupe(c); return !!g && g.hasAttribute('data-contient-la-page'); }
+      function repliAuDepart(c) { var g = groupe(c); return !!g && g.hasAttribute('data-ferme-au-depart'); }
       // une entrée qui contient la page est ouverte d'office
-      var replie = etat.replie.filter(function (c) {
-        var g = menu.querySelector('[data-cle="' + c + '"]');
-        return !g || !g.hasAttribute('data-contient-la-page');
-      });
+      var replie = etat.replie.filter(function (c) { return !contient(c); });
+      var ouvert = etat.ouvert.slice();
+      // l'entrée `c` est-elle repliée ? ce que le visiteur a choisi, sinon son état au départ (repliée, sauf si la page courante est dedans)
+      function ferme(c) {
+        if (replie.indexOf(c) >= 0) return true;
+        if (ouvert.indexOf(c) >= 0) return false;
+        return repliAuDepart(c) && !contient(c);
+      }
+      function basculerLEntree(c) {
+        var etaitFermee = ferme(c);
+        var r = replie.indexOf(c);
+        if (r >= 0) replie.splice(r, 1);
+        var o = ouvert.indexOf(c);
+        if (o >= 0) ouvert.splice(o, 1);
+        // ce qui s'écarte de l'état au départ se garde ; le reste est l'état par défaut
+        var depart = repliAuDepart(c) && !contient(c);
+        if (etaitFermee && depart) ouvert.push(c);
+        if (!etaitFermee && !depart) replie.push(c);
+      }
+      // un groupe d'accordéon (`data-accordeon="<nom>"`, posé au build par lib/menu-rendu.mjs : les catégories de classes, R321 (6)) : un seul est ouvert à la fois, ouvrir
+      // l'un referme ses sœurs (et le choix s'enregistre comme tout autre : une sœur refermée est repliée). Au chargement, jamais deux ouverts : celui qui contient la page
+      // l'emporte, sinon le premier ouvert.
+      function accordeon(c) { var g = groupe(c); return g ? g.getAttribute('data-accordeon') : null; }
+      function soeurs(c) {
+        var nom = accordeon(c);
+        var liste = [];
+        if (!nom) return liste;
+        Array.prototype.forEach.call(groupes, function (b) {
+          var o = b.getAttribute('data-menu-replier');
+          if (o !== c && accordeon(o) === nom) liste.push(o);
+        });
+        return liste;
+      }
+      function unSeulOuvert() {
+        var vus = {};
+        Array.prototype.forEach.call(groupes, function (b) {
+          var c = b.getAttribute('data-menu-replier');
+          var nom = accordeon(c);
+          if (!nom || vus[nom] === true) return;
+          var ouverts = [c].concat(soeurs(c)).filter(function (o) { return !ferme(o); });
+          vus[nom] = true;
+          var gagnante = ouverts.filter(contient)[0] || ouverts[0];
+          ouverts.forEach(function (o) { if (o !== gagnante) basculerLEntree(o); });
+        });
+      }
+      unSeulOuvert();
       // le tiroir (écran étroit) : ouvert quand le menu n'est pas réduit
       var tiroir = false;
       var retour = null;
@@ -163,17 +220,23 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
           burger.setAttribute('aria-label', reduit ? 'Ouvrir le menu latéral' : 'Fermer le menu latéral');
         }
         Array.prototype.forEach.call(groupes, function (b) {
-          var ferme = replie.indexOf(b.getAttribute('data-menu-replier')) >= 0;
-          b.setAttribute('aria-expanded', ferme ? 'false' : 'true');
-          b.parentNode.setAttribute('data-replie', ferme ? 'oui' : 'non');
+          var c = b.getAttribute('data-menu-replier');
+          var replieeIci = ferme(c);
+          b.setAttribute('aria-expanded', replieeIci ? 'false' : 'true');
+          var g = groupe(c);
+          if (g) g.setAttribute('data-replie', replieeIci ? 'oui' : 'non');
         });
         var doitEtreOuvert = etroit() && !reduit;
         if (doitEtreOuvert && !tiroir) ouvrirLeTiroir();
         else if (!doitEtreOuvert && tiroir) fermerLeTiroir(rendreLeFocus);
       }
+      // le mode modification du site de dev (scripts/edition/menus.mjs) ouvre le menu le temps de son passage, sans écraser le choix du visiteur : `avantEdition` (réduit ou non
+      // avant), null hors du mode ; tant qu'il est posé, c'est ce choix qu'on garde
+      var avantEdition = null;
       function garder() {
-        etat.reduit = reduit;
+        etat.reduit = avantEdition === null ? reduit : avantEdition;
         etat.replie = replie.slice();
+        etat.ouvert = ouvert.slice();
         ecrire();
       }
       function basculer(oui) {
@@ -192,8 +255,9 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
       Array.prototype.forEach.call(groupes, function (b) {
         b.addEventListener('click', function () {
           var c = b.getAttribute('data-menu-replier');
-          var i = replie.indexOf(c);
-          if (i >= 0) replie.splice(i, 1); else replie.push(c);
+          var ouvre = ferme(c);
+          basculerLEntree(c);
+          if (ouvre) soeurs(c).forEach(function (o) { if (!ferme(o)) basculerLEntree(o); });
           appliquer(false);
           garder();
         });
@@ -248,6 +312,20 @@ const liste = (g: { key: string; entrees: any[] }) => htmlDesEntrees(g.entrees, 
         var actif = document.activeElement;
         if (e.shiftKey && (actif === premier || l.indexOf(actif) < 0)) { e.preventDefault(); dernier.focus(); }
         else if (!e.shiftKey && (actif === dernier || l.indexOf(actif) < 0)) { e.preventDefault(); premier.focus(); }
+      });
+      // R321 (3) : le mode modification s'active (`detail.actif`) : le menu s'ouvre (sur écran étroit, le tiroir, une fois) ; il finit : le menu revient comme il était. Un contrat
+      // d'événement sur `document` (skill site-version-portable), jamais un module commun.
+      document.addEventListener('menu-du-site:edition', function (e) {
+        var actif = !!(e && e.detail && e.detail.actif);
+        if (actif && avantEdition === null) {
+          avantEdition = reduit;
+          reduit = false;
+          appliquer(false);
+        } else if (!actif && avantEdition !== null) {
+          reduit = avantEdition;
+          avantEdition = null;
+          appliquer(false);
+        }
       });
       // le profil du compte s'ouvre : le tiroir se referme
       document.addEventListener('menu-du-profil:ouvert', function () { if (tiroir) basculer(false); });

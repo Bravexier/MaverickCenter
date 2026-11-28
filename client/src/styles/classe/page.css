@@ -12,12 +12,6 @@
 .classe-hero__reperes li { padding: 0.15rem 0.75rem; border-radius: var(--radius-pill); background: color-mix(in srgb, #fff 14%, transparent); border: 1px solid color-mix(in srgb, #fff 28%, transparent); }
 .classe-hero__reperes a { color: var(--texte-sur-fonce); }
 
-.classe-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0.8rem 0 0; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
-.classe-nav a { text-decoration: none; font-size: var(--fs-lg); padding: 0.15rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-.classe-nav a:hover { border-color: var(--cla); color: var(--cla-readable); }
-.classe-nav__specialites { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.4rem; padding-left: 0.6rem; border-left: 1px solid var(--border); }
-.classe-nav__specialites a { font-size: var(--fs-sm); padding-inline: 0.55rem; }
-
 .classe-section { margin: 1.6rem 0; scroll-margin-top: 1rem; }
 .classe-section > h2, .classe-card > h2 { margin: 0 0 0.6rem; font-size: 1.3rem; }
 .classe-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; scroll-margin-top: 1rem; }
@@ -69,7 +63,6 @@
   .classe-stat { min-width: 6.5rem; }
 }
 @media print {
-  .classe-nav { display: none !important; }
   .classe-hero { color: #000; background: none; border: 1px solid #000; }
   .classe-hero__reperes a { color: #000; }
 }

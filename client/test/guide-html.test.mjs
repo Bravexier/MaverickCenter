@@ -31,7 +31,7 @@ import { chargerModeHyper } from '../src/lib/guide-db.mjs';
 import { chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
-import { entreesDeLaListe, listeDeLaRubrique, menuLateral as menuDuSite, rubriquesDeLEntete } from './aide-menu-html.mjs';
+import { entreesDeLaListe, listeDeLaRubrique, menuLateral as menuDuSite, rubriquesDeLEntete, sousEntreesDeLaListe } from './aide-menu-html.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -166,32 +166,37 @@ test('le fil d’Ariane : Découvrir, l’onglet de la page, Guide du MJ ; la co
   assert.match(lire('regles/creer-son-personnage').main, /class="tags"/);
 });
 
-/** Le menu latéral d'un onglet (`titre` : « Les combats »…) d'une page construite : [[adresse, titre, courante]] dans l'ordre (pages et liens), et le HTML du menu. */
-const menuLateral = (main, titre) => {
-  const nav = main.match(new RegExp(`<nav class="lateral-menu" aria-label="${titre}">([\\s\\S]*?)<\\/nav>`));
-  assert.ok(nav, `le menu latéral « ${titre} »`);
-  const entrees = [...nav[1].matchAll(/<li(?: [^>]*)?><a class="lateral-menu__lien" href="([^"]+)"( aria-current="page")?>([^<]+)<\/a><\/li>/g)]
-    .map((m) => [m[1], m[3].replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"'), Boolean(m[2])]);
-  return { entrees, html: nav[1] };
+const sansEntites = (t) => t.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+
+/**
+ * Les sous-entrées de l'onglet `onglet` (son id) dans le menu du site d'une page construite (R321 : les pages d'un onglet ne sont plus à côté de la page, mais sous
+ * l'entrée de leur onglet) : [[adresse, titre, courante]] dans l'ordre (pages et liens), le `menu` (data-ed-menu), l'ouverture d'office de l'entrée, et son HTML.
+ */
+const menuLateral = (html, onglet) => {
+  const listes = sousEntreesDeLaListe(menuDuSite(html)).filter((g) => g.menu === `onglet:${onglet}`);
+  assert.equal(listes.length, 1, `les sous-entrées de l’onglet ${onglet}, une seule liste`);
+  const [liste] = listes;
+  return { entrees: liste.entrees.map((e) => [e.href, sansEntites(e.libelle), e.courant === 'page']), liste, html: menuDuSite(html) };
 };
 
 /**
- * Les contrôles communs d'une page à menu latéral (un onglet des Règles) : les entrées dans l'ordre, l'entrée affichée marquée, ni titres de groupe ni
- * sommaire, la page à droite (`droite` : à partir d'elle), le mode modification, la couleur de sa partie ou l'accent du site, le menu lisible sans
- * JavaScript, aucun script importé, l'entrée de l'onglet marquée dans le menu du site (d'après le plan, pas l'adresse).
+ * Les contrôles communs d'une page d'un onglet des Règles : ses sous-entrées dans le menu du site, dans l'ordre, l'entrée affichée marquée, l'entrée de l'onglet ouverte
+ * d'office (R321 (2)), aucun ancien menu de page, ni sommaire, la page seule dans <main> (`droite`), le mode modification, la couleur de sa partie ou l'accent du site,
+ * aucun script importé, l'entrée de l'onglet marquée dans le menu du site (d'après le plan, pas l'adresse).
  */
 const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
   const { html, main } = lire(chemin);
-  const { entrees, html: menu } = menuLateral(main, rubrique.titre);
+  const { entrees, liste } = menuLateral(html, rubrique.id);
   assert.deepEqual(entrees.map(([href, titre]) => [href, titre]), attendues, `${chemin} : les entrées, dans l’ordre`);
-  // l'entrée affichée marquée (aria-current), elle seule
+  // l'entrée affichée marquée (aria-current), elle seule ; l'entrée de l'onglet ouverte d'office, les autres onglets repliés
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => e[0]), [`/${cheminDePage(page.id)}`], `${chemin} : l’entrée courante`);
-  // plus de groupes : ni titres de groupe, ni sommaire
-  assert.doesNotMatch(sansStyles(menu), /<h[2-6]/, `${chemin} : sans titres de groupe`);
-  assert.doesNotMatch(main, /class="sommaire/, `${chemin} : plus de sommaire en groupes`);
-  // à droite, la page elle-même (son titre, son texte modifiable, son pied de page), après le menu
-  const droite = main.slice(main.indexOf('<div class="lateral-page">'));
-  assert.ok(main.indexOf('<nav class="lateral-menu"') < main.indexOf('<div class="lateral-page">'), `${chemin} : le menu à gauche, la page à droite`);
+  assert.equal(liste.contientLaPage, true, `${chemin} : l’onglet qui contient la page est ouvert d’office`);
+  assert.deepEqual(sousEntreesDeLaListe(menuDuSite(html)).filter((g) => g.contientLaPage && g.menu.startsWith('onglet:')).map((g) => g.menu), [`onglet:${rubrique.id}`], `${chemin} : lui seul`);
+  // plus d'ancien menu de page, ni sommaire en groupes
+  assert.doesNotMatch(main, /lateral-menu|class="lateral|data-lateral-repli|class="sommaire/, `${chemin} : aucun ancien menu de page`);
+  // la page elle-même (son titre, son texte modifiable, son pied de page), seule dans <main>
+  const droite = main;
+  assert.ok(main.indexOf('<div class="guide-reference') >= 0, `${chemin} : la page`);
   // (une page d'exemple, dans le reste des Règles avancées tant qu'elle est chargée, ne se modifie pas : HIDE_EXAMPLES=1 la retire)
   const modifiable = page.statut !== 'example';
   assert.match(droite, new RegExp(`<h1 id="guide-titre">${modifiable ? '<span data-ed="[^"]+">' : ''}${echappe(page.titre).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), `${chemin} : le titre de la page`);
@@ -208,8 +213,8 @@ const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
     assert.deepEqual(classesDesParties, [], `${chemin} : aucune classe des parties`);
     assert.doesNotMatch(html.replace(/<style[^>]*\bdata-couleurs-mots-cles\b[^>]*>[\s\S]*?<\/style>/g, ''), /\.couleur-partie-[a-z-]+\{/, `${chemin} : ni leur feuille`);
   }
-  // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
-  assert.match(menu, /<details class="lateral-menu__repli" open data-lateral-repli>/, `${chemin} : ouvert sans JavaScript`);
+  // les sous-entrées se lisent sans JavaScript : dans le HTML construit, toutes ouvertes (le script du menu replie celles qui ne sont pas à ouvrir d'office)
+  assert.match(menuDuSite(html), new RegExp(`<button type="button" class="menu-site__replier menu-site__replier--chevron" aria-expanded="true" aria-controls="menu-du-site-[a-z]+-${rubrique.id}"`), `${chemin} : le chevron de l’onglet`);
   assert.doesNotMatch(sansLeScriptDesOnglets(main), /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
   // l'entrée de l'onglet du menu latéral du site (R319), marquée sur chacune de ces pages, elle seule parmi les onglets (son libellé est le titre de l'onglet)
   const marquees = entreesDeLaListe(menuDuSite(html)).filter((e) => e.courant && e.href?.startsWith('/regles/') && ongletsDesRegles().some((o) => `/${o.chemin}` === e.href));
@@ -249,7 +254,11 @@ test('R184 : chaque onglet des Règles, à gauche le menu latéral de ses entré
   assert.match(regles, /<title>Fiche de personnage — Maverick Center<\/title>/);
   assert.deepEqual(entreesDeLaListe(menuDuSite(regles)).filter((e) => e.href === '/regles/fiche-de-personnage/').map((e) => e.courant), ['true'], 'R319 : l’entrée de l’onglet Fiche de personnage (au Jeu), marquée');
   // une entrée « bientôt » : aucune aujourd'hui (R184, bilan) ; son rendu (grisée, sans lien) est épinglé par test/livres.test.mjs et le composant
-  for (const onglet of onglets) assert.doesNotMatch(sansStyles(lire(onglet.chemin.slice(0, -1)).main), /class="lateral-menu__bientot/);
+  for (const onglet of onglets) {
+    const { liste } = menuLateral(lire(onglet.chemin.slice(0, -1)).html, onglet.id);
+    assert.equal(liste.entrees.filter((e) => e.bientot).length, onglet.entrees.filter((e) => e.bientot).length, `${onglet.id} : « bientôt » comme le plan, sans lien`);
+    assert.ok(liste.entrees.filter((e) => e.bientot).every((e) => e.href === null), onglet.id);
+  }
   // le Lexique (2026-11-05, migration 0090) : plus construit, son adresse mène au Glossaire, /regles/glossaire/ (R190 ; page 404 : test/site-html.test.mjs)
   assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
   // la fixture (status: example), si elle est construite : son adresse de repli, sans menu latéral
@@ -408,34 +417,31 @@ test('/mj/ et /regles/artisanat/ : le titre et le résumé de chaque page, liés
   assert.deepEqual(liens.slice(1).map((l) => l[0]), ARTISANAT.pages.slice(1).map((id) => `/${cheminDePage(id)}`));
   // R184 : l'Artisanat est une entrée lien de l'onglet Exploration : son menu latéral, son entrée marquée, l'onglet marqué au menu du site
   const { html, main } = lire('regles/artisanat');
-  const { entrees } = menuLateral(main, ongletsDesRegles().find((o) => o.id === 'exploration').titre); // titre modifiable (R319 (5))
+  const { entrees } = menuLateral(html, 'exploration');
   assert.deepEqual(entrees.filter((e) => e[2]).map((e) => [e[0], e[1]]), [['/regles/artisanat/', 'Artisanat']]);
   assert.deepEqual(entrees.map((e) => e[0]), entreesDuMenuLateral(ongletsDesRegles().find((o) => o.id === 'exploration'), pagesConstruites).map((e) => `/${e.id ? cheminDePage(e.id) : e.adresse}`));
   assert.deepEqual(entreesDeLaListe(listeDeLaRubrique(html, 'regles')).filter((e) => e.courant).map((e) => [e.href, e.courant]), [['/regles/exploration/', 'true']], 'l’onglet Exploration, marqué au menu');
   assert.deepEqual(rubriquesDeLEntete(html).filter((r) => r.montree || r.courante).map((r) => [r.cle, r.montree, r.courante]), [['jeu', true, false], ['ressources', false, true]], 'R319 : l’Artisanat est une entrée des Ressources [J] (menu d’un Observateur au build : Le Jeu montré)');
   // lot de l'édition des menus : l'Artisanat reçoit le mode modification du site de dev (son menu se réordonne, « + Ajouter une page »)
   assert.match(html, /<div data-edition data-api="\/api\/" data-page="regles\/artisanat"/, 'le mode modification');
-  assert.match(main, /<ol class="lateral-menu__liste" data-ed-menu="onglet:exploration">/);
+  assert.match(html, /<ul class="menu-site__sous-liste" data-ed-menu="onglet:exploration">/);
 });
 
 // Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) ») : chaque menu d'onglet porte son onglet (data-ed-menu) et,
 // sur chaque entrée, l'id et le rang de sa ligne de regles_onglet_entree (data-ed-entree, data-ed-rang) : le mode modification réordonne par eux
 // (src/scripts/edition/menus.mjs, opération `ordonner`) ; une entrée de page se retrouve par l'id de sa page (`page:<id>`), dont elle montre le titre
-test('le menu latéral de chaque onglet porte l’id et le rang de chaque ligne de regles_onglet_entree, dans l’ordre, pour le mode modification', options, () => {
+test('les sous-entrées de chaque onglet portent l’id et le rang de chaque ligne de regles_onglet_entree, dans l’ordre, pour le mode modification (R321 (3))', options, () => {
   for (const onglet of ongletsDesRegles()) {
-    const { main } = lire(onglet.chemin.slice(0, -1));
-    const nav = main.match(new RegExp(`<nav class="lateral-menu" aria-label="${echappe(onglet.titre)}">([\\s\\S]*?)<\\/nav>`))[1];
-    assert.match(nav, new RegExp(`<ol class="lateral-menu__liste" data-ed-menu="onglet:${onglet.id}">`), onglet.id);
+    const { html } = lire(onglet.chemin.slice(0, -1));
+    const { liste } = menuLateral(html, onglet.id);
     const lignes = db.prepare('SELECT id, rang, page_id FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id)
       .filter((l) => l.page_id === null || pageDe(l.page_id));
-    const posees = [...nav.matchAll(/<li data-ed-entree="([^"]+)" data-ed-rang="(\d+)">(?:<a class="lateral-menu__lien" href="([^"]+)"[^>]*>([^<]+)<\/a>)?/g)];
-    assert.deepEqual(posees.map((m) => [m[1], Number(m[2])]), lignes.map((l) => [l.id, l.rang]), `${onglet.id} : les lignes de la base, dans l’ordre`);
-    assert.equal((nav.match(/<li[ >]/g) ?? []).length, posees.length, `${onglet.id} : chaque entrée porte les siens`);
-    for (const [, id, , href, titre] of posees) {
-      if (!id.startsWith('page:')) continue;
-      const page = pageDe(id.slice('page:'.length));
-      assert.equal(href, `/${cheminDePage(page.id)}`, id);
-      assert.equal(titre.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"'), page.titre, `${id} : le titre de la page`);
+    assert.deepEqual(liste.entrees.map((e) => [e.id, e.rang]), lignes.map((l) => [l.id, l.rang]), `${onglet.id} : les lignes de la base, dans l’ordre`);
+    for (const e of liste.entrees) {
+      if (!e.id.startsWith('page:')) continue;
+      const page = pageDe(e.id.slice('page:'.length));
+      assert.equal(e.href, `/${cheminDePage(page.id)}`, e.id);
+      assert.equal(sansEntites(e.libelle), page.titre, `${e.id} : le titre de la page`);
     }
   }
 });

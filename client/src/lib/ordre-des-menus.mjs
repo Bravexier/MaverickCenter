@@ -3,14 +3,14 @@
 // pouvoir ajouter / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », entrées « bientôt » déplaçables, « Pages des Règles »,
 // « Titre, onglet, résumé », « Refus si citée, puis 404 »). La logique pure du geste et de l'enregistrement : où va une entrée qu'on glisse ou qu'on
 // déplace au clavier, ce qu'on annonce, les opérations `ordonner` d'un lot (serveur/edition-plan.mjs), les entrées d'un menu d'après le plan vivant
-// (GET /api/edition/plan/) et leur HTML (celui de components/guide/MenuLateral.astro), l'adresse d'une page créée, le refus d'une suppression.
+// (GET /api/edition/plan/) et leur HTML (celui d'une sous-entrée du menu latéral du site, lib/menu-rendu.mjs), l'adresse d'une page créée, le refus d'une suppression.
 // Le geste lui-même (Pointer Events, clavier, défilement) est dans src/scripts/edition/glisser.mjs, l'extension dans src/scripts/edition/menus.mjs.
 // Sans DOM ni Astro (il entre dans la chaîne de l'édition du navigateur) ; imports : lib/text.mjs#normalize (l'adresse d'une page, comme le service) et
 // lib/metiers.mjs#cheminDePage (l'adresse d'une race, son segment renommé compris : R316 ; déjà dans la même chaîne, par menus.mjs et nouvelles.mjs).
 import { cheminDePage } from './metiers.mjs';
 import { normalize } from './text.mjs';
 
-/** Le menu latéral des races (data-ed-menu) ; un menu d'onglet des Règles est `onglet:<id>` (lib/livres.mjs#editionDuMenuLateral). */
+/** Le menu des races, sous « Les races » du menu latéral du site (data-ed-menu ; lib/menu-sous-entrees.mjs, R321) ; un menu d'onglet des Règles est `onglet:<id>` (lib/livres.mjs#editionDuMenuLateral). */
 export const MENU_DES_RACES = 'races';
 /** Les groupes de la liste des races, dans l'ordre du menu (data-ed-groupe ; serveur/edition-plan.mjs#GROUPES_DE_RACES). */
 export const GROUPES_DE_RACES = Object.freeze(['pures', 'hybrides']);
@@ -28,6 +28,16 @@ export function lireMenu(valeur) {
   if (v === MENU_DES_RACES) return { races: true };
   const m = v.match(/^onglet:([a-z0-9]+(?:-[a-z0-9]+)*)$/);
   return m ? { onglet: m[1] } : null;
+}
+
+/**
+ * Les menus que le mode modification peut ordonner sur une page (R321 (6) : « on réordonne un menu depuis l'une de ses pages ; sur une page de magie ou de classe, le menu du
+ * site reste sans poignées »). `listes` : [{ menu (le `data-ed-menu` de la liste), contientLaPage (l'entrée qui la porte contient la page affichée : `data-contient-la-page`) }] ;
+ * ne restent que les listes d'un menu connu (`lireMenu`) dont la page affichée est l'une des pages : le menu de son onglet des Règles, celui des races. Sur une page qui n'est
+ * d'aucun de ces menus (une magie, une classe, l'accueil…), la liste est vide : aucune poignée.
+ */
+export function menusModifiablesDeLaPage(listes) {
+  return (listes ?? []).filter((l) => l?.contientLaPage === true && lireMenu(l.menu) !== null);
 }
 
 /** Une copie de `liste` où l'élément d'index `de` est passé à l'index `vers` (bornés à la liste). */
@@ -179,12 +189,22 @@ export function chercherDansLePlan(plan, test) {
   return null;
 }
 
+/**
+ * Le menu (`data-ed-menu`, « onglet:<id> ») de la liste qui range une page des Règles créée sur le site de dev, d'après le plan vivant (GET /api/edition/plan/), ou null quand le
+ * plan ne la range dans aucun onglet (une page de notion). La page est dessinée sur la 404 (scripts/edition/nouvelles.mjs) : le menu du site, construit avant elle, ne la contient
+ * pas, donc aucune entrée n'y porte `data-contient-la-page` ; le menu de son onglet est alors celui que le mode modification doit ouvrir et redessiner (menusModifiablesDeLaPage).
+ */
+export function menuDeLaPageCreee(plan, pageId) {
+  const trouvee = pageId ? chercherDansLePlan(plan, (e) => e.page_id === pageId) : null;
+  return trouvee ? `onglet:${trouvee.onglet.id}` : null;
+}
+
 const echapper = (texte) => String(texte ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 /**
- * Le HTML d'une entrée du menu latéral (entreesDuPlanVivant), le même que components/guide/MenuLateral.astro : une page ou un lien (`<a
- * class="lateral-menu__lien">`, `aria-current="page"` pour l'entrée affichée), une entrée « bientôt » grisée, sans lien ; avec les attributs du mode
- * modification (data-ed-entree, data-ed-rang, data-ed-groupe). `base` : le préfixe du site (« / », « /MaverickCenter/ »).
+ * Le HTML d'une sous-entrée du menu latéral du site (entreesDuPlanVivant), le même que lib/menu-rendu.mjs : une page ou un lien (`<a class="menu-site__lien">`,
+ * `aria-current="page"` pour l'entrée affichée), une entrée « bientôt » grisée, sans lien (`nav-soon`) ; avec les attributs du mode modification (data-ed-entree,
+ * data-ed-rang, data-ed-groupe). `base` : le préfixe du site (« / », « /MaverickCenter/ »).
  */
 export function htmlDUneEntree(e, { base = '/', courante = false } = {}) {
   const attributs = [
@@ -192,8 +212,8 @@ export function htmlDUneEntree(e, { base = '/', courante = false } = {}) {
     e.rang === null || e.rang === undefined ? '' : ` data-ed-rang="${echapper(e.rang)}"`,
     e.groupe ? ` data-ed-groupe="${echapper(e.groupe)}"` : '',
   ].join('');
-  if (e.sorte === 'bientot') return `<li${attributs}><span class="lateral-menu__bientot nav-soon">${echapper(e.texte)} <small>(bientôt)</small></span></li>`;
-  return `<li${attributs}><a class="lateral-menu__lien" href="${echapper(`${base}${e.adresse}`)}"${courante ? ' aria-current="page"' : ''}>${echapper(e.texte)}</a></li>`;
+  if (e.sorte === 'bientot') return `<li${attributs}><span class="nav-soon">${echapper(e.texte)} <small>(bientôt)</small></span></li>`;
+  return `<li${attributs}><a class="menu-site__lien" href="${echapper(`${base}${e.adresse}`)}"${courante ? ' aria-current="page"' : ''}>${echapper(e.texte)}</a></li>`;
 }
 
 /**

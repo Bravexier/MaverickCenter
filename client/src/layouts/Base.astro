@@ -4,6 +4,7 @@ import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
 import { NAV, entreesVisibles, rubriqueCourante } from '../lib/nav.mjs';
 import { menuDuSite } from '../lib/menu-db.mjs';
+import { avecLesSousEntrees } from '../lib/menu-sous-entrees-site';
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
@@ -30,12 +31,19 @@ interface Props {
    */
   entree?: string;
   /**
+   * L'`href` (relatif, lib/livres.mjs#cheminDePage) de la page affichée quand elle l'est à l'adresse d'une autre : la page d'ouverture d'un onglet des Règles, à /regles/<onglet>/
+   * ou /regles/ : sa sous-entrée est la page courante (`aria-current="page"`), comme sur sa propre adresse.
+   */
+  affichee?: string;
+  /**
    * La page pose elle-même sa couleur principale (les gabarits des magies, des classes, des races et du guide : lib/couleur-de-la-page.mjs#classeDeLaPage) :
    * <main> n'en prend pas.
    */
   couleurPropre?: boolean;
+  /** Les ancres propres à la page (R321 (2) : les sections d'une page de magie), sous l'entrée de la page `page` dans le menu latéral : { page (son id), entrees: [{ ancre: '#id', libelle }] }. */
+  ancres?: { page: string; entrees: { ancre: string; libelle: string }[] };
 }
-const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false, entree, couleurPropre = false } = Astro.props;
+const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false, entree, affichee, couleurPropre = false, ancres } = Astro.props;
 // Version portable (tools/build-artifact.mjs, INLINE_CSS=1) : pas de service, donc pas de mode modification.
 const portable = process.env.INLINE_CSS === '1';
 
@@ -54,7 +62,8 @@ const dev = !site.prod && !portable;
 const courante = rubriqueCourante(Astro.url.pathname, base, NAV, entree);
 const rubriquesDUnObservateur = NAV.filter((g) => !g.niveau);
 const montree = courante && !courante.niveau ? courante : rubriquesDUnObservateur[0];
-const rubriques = NAV.filter((g) => !(portable && g.niveau)).map((g) => ({ key: g.key, label: g.label, niveau: g.niveau, entrees: entreesVisibles(menuDuSite(g.items), { dev, sansNiveau: portable }) }));
+// Sur toutes les pages, chaque entrée porte ses sous-entrées, repliées (R321 : les pages d'un onglet des Règles, les races ; lib/menu-sous-entrees-site.ts)
+const rubriques = await Promise.all(NAV.filter((g) => !(portable && g.niveau)).map(async (g) => ({ key: g.key, label: g.label, niveau: g.niveau, entrees: await avecLesSousEntrees(entreesVisibles(menuDuSite(g.items), { dev, sansNiveau: portable }), ancres) })));
 // Balise des pages (métriques du navigateur, page Debug) : dans tous les builds, production comprise (décision du propriétaire du 2026-10-15 :
 // « Active-le aussi en prod dans un premier temps ») ; SITE_METRIQUES_PAGES=0 au build la retire (l'interrupteur pour plus tard, comme
 // MAVERICK_METRIQUES_PAGES=0 côté service). Ni dans la version portable (pas de service) ni sur la page de maintenance.
@@ -166,7 +175,7 @@ const adressesRenommees = jsonDesAdressesRenommees();
         {portable && <MenuDuProfil portable ici={here} />}
       </div>
     </header>
-    <MenuDuSite rubriques={rubriques} montree={montree.key} ici={here} entree={entree} maintenance={maintenance}>
+    <MenuDuSite rubriques={rubriques} montree={montree.key} ici={here} entree={entree} affichee={affichee} maintenance={maintenance}>
       <main class={couleurDeLaPage ? `page-coloree ${couleurDeLaPage}` : undefined}>
         <slot />
       </main>

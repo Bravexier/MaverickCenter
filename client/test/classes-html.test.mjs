@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ancresAplaties, ancresDeLaClasse } from '../src/lib/classe-ancres.mjs';
 import { htmlDuRepereMagique } from '../src/lib/classe-dons-rendu.mjs';
 import { CLASSE_MAGIQUE_HORS_CATEGORIE } from '../src/lib/classe-magique.mjs';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
@@ -19,6 +20,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { menuLateral } from './aide-menu-html.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/classes/', import.meta.url));
 const present = existsSync(dossier);
@@ -77,12 +79,12 @@ test('une page de classe rendue par le gabarit par classe de la base (41 à l’
   for (const id of classes.keys()) assert.ok(page(id.slice('classes/'.length)), `${id} : page`);
 });
 
-test('chaque identifiant est unique ; les liens de la navigation et les aria-labelledby mènent à un élément de la page', options, () => {
+test('chaque identifiant est unique ; les ancres du menu du site et les aria-labelledby mènent à un élément de la page', options, () => {
   for (const { slug, html } of pages) {
     const tous = ids(html);
     assert.equal(new Set(tous).size, tous.length, `${slug} : identifiant en double`);
-    const nav = html.slice(html.indexOf('class="classe-nav'), html.indexOf('</nav>', html.indexOf('class="classe-nav')));
-    for (const [, cible] of nav.matchAll(/href="#([^"]+)"/g)) assert.ok(tous.includes(cible), `${slug} : #${cible} sans section`);
+    // R321 (6) : les ancres de la page sont dans le menu du site, sous la classe affichée
+    for (const [, cible] of menuLateral(html).matchAll(/<a class="menu-site__lien menu-site__lien--ancre" href="#([^"]+)">/g)) assert.ok(tous.includes(cible), `${slug} : #${cible} sans section`);
     for (const [, cible] of main(html).matchAll(/aria-(?:labelledby|describedby)="([^"]+)"/g)) assert.ok(tous.includes(cible), `${slug} : ${cible} introuvable`);
   }
 });
@@ -323,54 +325,64 @@ test('page d’une classe : la couleur de sa catégorie de /classes/ par la clas
   }
 });
 
-test('menu latéral d’une classe : les cinq catégories de /classes/ à dérouler, une seule à la fois, celle de la classe affichée ouverte', options, () => {
+/** Le HTML de l'élément `<li>` ouvrant en `debut` du menu, jusqu'à sa fermeture (comptage des `<li>`). */
+function elementLi(html, debut) {
+  const re = /<(\/?)li\b[^>]*>/g;
+  re.lastIndex = debut;
+  let profondeur = 0;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    profondeur += m[1] ? -1 : 1;
+    if (profondeur === 0) return html.slice(debut, m.index + m[0].length);
+  }
+  return html.slice(debut);
+}
+
+// R321 (étape 4 du lot 2 du menu) : le menu latéral des classes (demande du propriétaire : « les 5 types de classes en menu à dérouler […] par défaut le menu ouvert soit celui
+// du type de la classe actuellement ouvert ») est celui de « Les classes » dans le menu latéral du site : les cinq catégories de /classes/ en sous-groupes repliables.
+test('menu latéral d’une classe : « Les classes » du menu du site porte les cinq catégories (sous-groupes sans lien, repliés), celle de la classe affichée ouverte d’office', options, () => {
   const ordre = ['melee', 'distance', 'magiques', 'raciales', 'speciales'];
-  const menuDe = (html) => {
-    const m = main(html);
-    const debut = m.indexOf('<nav class="classes-menu"');
-    return { m, debut, menu: debut < 0 ? '' : m.slice(debut, m.indexOf('</nav>', debut)) };
-  };
   for (const { slug, html } of pages) {
-    const { m, debut, menu } = menuDe(html);
-    assert.ok(debut >= 0, `${slug} : menu latéral`);
-    assert.ok(debut < m.indexOf('<div class="classe couleur-classe-'), `${slug} : le menu à gauche, la page à droite`);
-    // téléphone : un tiroir comme celui de la chronologie (réponse du propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») :
-    // l'en-tête et sa croix, le bouton de la bande qui l'ouvre (fermé au build), le voile caché
-    assert.ok(menu.startsWith('<nav class="classes-menu" id="classes-menu" aria-label="Classes" data-classes-menu>'), `${slug} : le menu et l'id du tiroir`);
-    assert.match(menu, /<div class="classes-menu__entete">[\s\S]*?data-classes-fermer/, `${slug} : en-tête du tiroir et sa croix`);
-    assert.match(m, /<button type="button" class="classes-ouvrir" aria-controls="classes-menu" aria-expanded="false" data-classes-ouvrir>/, `${slug} : le bouton de la bande`);
-    assert.match(m, /<div class="classes-voile" data-classes-voile hidden><\/div>/, `${slug} : le voile du tiroir`);
-    assert.equal(compte(m.slice(m.indexOf('class="classes-ouvrir__points"')), /class="classes-ouvrir__point couleur-classe-[a-z]+( est-courant)?"/g), 5, `${slug} : un point par type sur la bande`);
-    // cinq <details> du même `name` (un seul ouvert à la fois), dans l'ordre et la couleur des colonnes de /classes/ ; un seul ouvert au build
-    const groupes = [...menu.matchAll(/<details class="classes-menu__groupe couleur-classe-([a-z]+)" name="classes-menu"( open)?>/g)];
-    assert.deepEqual(groupes.map(([, cle]) => cle), ordre, `${slug} : les cinq catégories`);
-    const ouverts = groupes.filter(([, , open]) => open).map(([, cle]) => cle);
-    // celle de la classe affichée : la même que sa couleur (Parleur sous « Spéciales » compris)
+    const m = main(html);
+    assert.doesNotMatch(html, /classes-menu|classes-ouvrir|classes-voile|classe-cadre/, `${slug} : plus de menu ni de tiroir propres`);
+    assert.ok(m.indexOf('<div class="classe couleur-classe-') >= 0, `${slug} : la page`);
+    const menu = menuLateral(html);
+    const debut = menu.indexOf('<li class="menu-site__groupe" data-cle="jeu/classes"');
+    assert.ok(debut >= 0, `${slug} : l'entrée « Les classes »`);
+    const groupeDesClasses = elementLi(menu, debut);
+    assert.match(groupeDesClasses, /^<li class="menu-site__groupe" data-cle="jeu\/classes" data-contient-la-page data-ferme-au-depart><div class="menu-site__ligne"><a [^>]*href="[^"]*\/classes\/"/, `${slug} : lien, ouverte d'office`);
+    // cinq catégories, dans l'ordre et la couleur des colonnes de /classes/, chacune un bouton sans lien ; celle de la classe affichée ouverte d'office, elle seule
+    const categories = [...groupeDesClasses.matchAll(/<li class="menu-site__groupe" data-cle="jeu\/classes-([a-z]+)"( data-contient-la-page)? data-ferme-au-depart data-accordeon="classes"><button type="button" class="menu-site__replier"[^>]*><span class="menu-site__etiquette"><span class="menu-site__point couleur-classe-([a-z]+)"/g)];
+    assert.deepEqual(categories.map((c) => c[1]), ordre, `${slug} : les cinq catégories`);
+    // R321 (6) : les cinq catégories (elles seules : « Les classes » et les classes n'en ont pas) sont un accordéon, une seule ouverte à la fois (script du menu)
+    assert.equal(groupeDesClasses.match(/data-accordeon="classes"/g).length, ordre.length, `${slug} : un accordéon, une marque par catégorie`);
+    assert.ok(categories.every((c) => c[1] === c[3]), `${slug} : le point de chaque catégorie, de sa couleur`);
     const couleur = m.match(/<div class="classe couleur-classe-([a-z]+)"/)[1];
-    assert.deepEqual(ouverts, [couleur], `${slug} : seule sa catégorie ouverte`);
-    // chaque classe une fois ; la classe affichée marquée, dans le groupe ouvert
-    const liens = [...menu.matchAll(/<a class="classes-menu__lien" href="[^"]*\/classes\/([^/"]+)\/"( aria-current="page")?>/g)];
+    assert.deepEqual(categories.filter((c) => c[2]).map((c) => c[1]), [couleur], `${slug} : seule sa catégorie ouverte d'office`);
+    // chaque classe une fois ; la classe affichée marquée, dans la catégorie ouverte
+    const liens = [...groupeDesClasses.matchAll(/<a class="menu-site__lien" href="[^"]*\/classes\/([^/"]+)\/"( aria-current="page")?>/g)];
     for (const p of pages) assert.equal(liens.filter(([, s]) => s === p.slug).length, 1, `${slug} : ${p.slug} une fois dans le menu`);
     assert.deepEqual(liens.filter(([, , c]) => c).map(([, s]) => s), [slug], `${slug} : la classe affichée marquée`);
-    const groupeOuvert = menu.slice(menu.indexOf(' name="classes-menu" open>'));
-    assert.ok(groupeOuvert.slice(0, groupeOuvert.indexOf('</details>')).includes('aria-current="page"'), `${slug} : marquée dans son groupe`);
+    const ouverte = elementLi(groupeDesClasses, groupeDesClasses.indexOf(`<li class="menu-site__groupe" data-cle="jeu/classes-${couleur}"`));
+    assert.ok(ouverte.includes('aria-current="page"'), `${slug} : marquée dans sa catégorie`);
   }
-  assert.match(menuDe(page('parleur')).menu, /couleur-classe-speciales" name="classes-menu" open>/, 'le Parleur : « Spéciales » ouvert');
-  assert.match(menuDe(page('kitsune')).menu, /couleur-classe-raciales" name="classes-menu" open>/);
+  assert.match(menuLateral(page('parleur')), /data-cle="jeu\/classes-speciales" data-contient-la-page/, 'le Parleur : « Spéciales » ouvert');
+  assert.match(menuLateral(page('kitsune')), /data-cle="jeu\/classes-raciales" data-contient-la-page/);
 });
 
-test('menu latéral d’une classe, téléphone : la feuille du tiroir (bande fixée à gauche, tiroir par-dessus la page depuis la gauche, voile)', options, () => {
-  const css = readFileSync(fileURLToPath(new URL('../src/styles/classe/menu.css', import.meta.url)), 'utf8');
-  const telephone = css.slice(css.indexOf('@media (max-width: 56rem) {'), css.indexOf('@media (max-width: 56rem) and (prefers-reduced-motion'));
-  const regleTel = (selecteur) => {
-    const i = telephone.indexOf(`\n  ${selecteur} {`);
-    assert.ok(i >= 0, `règle du téléphone ${selecteur}`);
-    return telephone.slice(i, telephone.indexOf('}', i));
-  };
-  assert.match(regleTel('html.js .classe-cadre'), /grid-template-columns: 2\.25rem minmax\(0, 1fr\);/, 'la bande à gauche, la page à côté');
-  assert.match(regleTel('html.js .classe-cadre :is(.classes-menu, .classes-ouvrir)'), /position: fixed;[\s\S]*top: var\(--mini-haut[\s\S]*bottom: var\(--mini-bas/, 'la bande reste à l’écran pendant la lecture');
-  assert.match(regleTel('html.js .classe-cadre .classes-menu.est-ouvert'), /position: fixed;[\s\S]*inset: 0 auto 0 0;/, 'le tiroir, par-dessus la page, depuis la gauche');
-  assert.match(regleTel('html.js .classes-voile:not([hidden])'), /position: fixed;[\s\S]*background: var\(--voile-tiroir\)/, 'le voile');
-  // la page construite charge cette feuille
-  assert.ok(page('guerrier').includes('.classes-menu.est-ouvert'), 'la feuille du menu dans la page');
+// R321 (6) : la barre de sections de la page de classe (`classe-nav`) disparaît ; ses sections sont des ancres sous la classe affichée, sur sa page seulement (comme les magies).
+test('pages de classe : plus de barre de sections ; les sections de la classe sont des ancres sous elle dans le menu du site, sur sa page seulement', options, () => {
+  const ancresDe = (html) => [...menuLateral(html).matchAll(/<a class="menu-site__lien menu-site__lien--ancre" href="(#[^"]+)">/g)].map((m) => m[1]);
+  for (const { slug, html } of pages) {
+    assert.doesNotMatch(html, /class="classe-nav|classe-nav__specialites/, `${slug} : plus de barre de sections`);
+    const attendues = ancresAplaties(ancresDeLaClasse(classes.get(`classes/${slug}`))).map((a) => a.ancre);
+    assert.deepEqual(ancresDe(html), attendues, `${slug} : les ancres du menu, dans l'ordre`);
+    for (const ancre of attendues) assert.ok(ids(html).includes(ancre.slice(1)), `${slug} : ${ancre} existe sur la page`);
+    if (attendues.length) {
+      // sous sa propre entrée, marquée : la classe est un groupe (lien + chevron) ouvert d'office
+      const menu = menuLateral(html);
+      assert.match(menu, new RegExp(`<li class="menu-site__groupe" data-cle="jeu/classe-[a-z0-9-]+" data-contient-la-page data-ferme-au-depart><div class="menu-site__ligne"><a class="menu-site__lien" href="[^"]*/classes/${slug}/" aria-current="page">`), `${slug} : la classe affichée porte ses ancres`);
+    }
+  }
+  // sur les autres pages (la liste, une autre classe) : seules les ancres de la page affichée
+  assert.doesNotMatch(menuLateral(readFileSync(join(dossier, 'index.html'), 'utf8')), /menu-site__lien--ancre/, 'la liste /classes/ : aucune ancre');
 });

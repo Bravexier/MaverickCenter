@@ -4,7 +4,7 @@ import { ongletsDesRegles } from '../../lib/livres.mjs';
 import { loadWiki } from '../../lib/wiki';
 
 // /regles/ : le premier onglet des Règles (lib/livres.mjs, plan de la base : R184, « Fiche de personnage »), ouvert sur sa page d'ouverture, comme
-// /regles/<onglet>/ (pages/regles/[...page].astro) : le menu latéral de l'onglet (components/guide/MenuLateral.astro), le texte de la page à droite ;
+// /regles/<onglet>/ (pages/regles/[...page].astro) : le menu latéral de l'onglet (lib/menu-sous-entrees-site.ts, sous-entrées du menu du site (R321)), le texte de la page à droite ;
 // la page garde son adresse /regles/<slug>/, que celle-ci désigne comme canonique (components/guide/PageDuPlan.astro).
 const { entries } = await loadWiki();
 const [premier] = ongletsDesRegles();

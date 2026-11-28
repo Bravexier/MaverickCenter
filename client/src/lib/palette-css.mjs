@@ -61,7 +61,8 @@
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
 // Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
 // qui dessine une race ou une classe créée, une page de Découvrir, l'accueil), comme les combinaisons des potions
-// (cssDesPotions).
+// (cssDesPotions). Un troisième mode, celui du menu latéral : FAMILLES_DU_MENU (les catégories de classes, le point de ses sous-groupes) est posée sur chaque
+// page par components/MenuDuSite.astro seul (cssDuMenu, dans son propre <style>, dans le menu), sans grossir la feuille de Base.astro (épinglée sous 4 ko).
 //
 // Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
 // deux magies, arme de deux compétences) : la première est la classe de sa couleur (`--couleur`, `--couleur-texte`), la seconde sa classe de second
@@ -139,6 +140,12 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * Découvrir, l'accueil, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
 export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+/**
+ * Les familles que le menu latéral du site pose sur chaque page (components/MenuDuSite.astro : cssDuMenu), en plus de celles de FAMILLES_DE_CHAQUE_PAGE : `classe`, le point
+ * des catégories de classes sous « Les classes » (R321). Ce sont des familles d'une zone (FAMILLES_DES_ZONES : les pages de classe les posent aussi) ; leur feuille n'est pas
+ * dans celle de Base.astro (cssDeLaPalette), que son poids borne.
+ */
+export const FAMILLES_DU_MENU = Object.freeze(['classe']);
 
 /**
  * Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni
@@ -314,6 +321,9 @@ export const cssDesSecondsRangs = (famille) => secondsRangs(famille).map((c) => 
  * magies. Les familles d'une zone (FAMILLES_DES_ZONES) et les seconds rangs des caractéristiques n'y sont pas.
  */
 export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cssDesSecondsRangs('magie');
+
+/** La feuille que le menu latéral pose sur chaque page, dans son propre `<style>` (components/MenuDuSite.astro) : les familles de FAMILLES_DU_MENU. */
+export const cssDuMenu = () => cssDesFamilles(FAMILLES_DU_MENU);
 
 /**
  * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir et l'accueil (la fiche l'émet avec ses
