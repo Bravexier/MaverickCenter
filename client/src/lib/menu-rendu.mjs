@@ -27,7 +27,7 @@ const avecAttributs = (html, attributs) => (attributs ? html.replace(/^<(a|stron
 
 /**
  * L'attribut `aria-current` d'une entrée : « page » pour la page courante (son ancre ne compte pas : « Personnages prétirés » mène à `personnages/#pretires`,
- * R321) ou la page affichée à une autre adresse (`affichee`, R321), « true » pour l'onglet du plan qui y mène, rien sinon.
+ * R320) ou la page affichée à une autre adresse (`affichee`, R321), « true » pour l'onglet du plan qui y mène, rien sinon.
  */
 export function courantDe(entree, { ici, entree: onglet, affichee, adresse }) {
   if (entree.href === null || entree.href === undefined) return null;
